@@ -1,0 +1,12 @@
+.info-tooltip {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--accent-cyan, #00BFFF);
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}

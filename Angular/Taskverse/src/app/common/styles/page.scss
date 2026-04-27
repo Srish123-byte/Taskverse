@@ -1,0 +1,31 @@
+.page-container {
+  padding: 32px 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-eyebrow {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--accent-cyan, #00BFFF);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary, #FFFFFF);
+  margin: 0 0 4px;
+}
+
+.page-welcome {
+  font-size: 0.95rem;
+  color: var(--text-body, #9CA3AF);
+  margin: 0 0 24px;
+}
+
+.page-content {
+  margin-top: 24px;
+}

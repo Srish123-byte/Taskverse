@@ -1,0 +1,21 @@
+import { NgModule } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { AppCommonModule } from '../../common/common.module';
+import { SharedPagesRoutes } from './shared-pages.routes';
+import { RoleDirectorComponent } from './role-director/role-director.component';
+import { UnhandledErrorComponent } from './unhandled-error/unhandled-error.component';
+import { SessionTimeoutComponent } from './session-timeout/session-timeout.component';
+
+@NgModule({
+  declarations: [
+    RoleDirectorComponent,
+    UnhandledErrorComponent,
+    SessionTimeoutComponent
+  ],
+  imports: [
+    CommonModule,
+    AppCommonModule,
+    SharedPagesRoutes
+  ]
+})
+export class SharedPagesModule {}

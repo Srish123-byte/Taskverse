@@ -1,0 +1,23 @@
+import { NgModule } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { AppCommonModule } from '../../common/common.module';
+import { TrainerRoutes } from './trainer.routes';
+import { DashboardComponent } from './dashboard/dashboard.component';
+import { CoursesComponent } from './courses/courses.component';
+import { StudentsComponent } from './students/students.component';
+import { ManageComponent } from './manage/manage.component';
+
+@NgModule({
+  declarations: [
+    DashboardComponent,
+    CoursesComponent,
+    StudentsComponent,
+    ManageComponent
+  ],
+  imports: [
+    CommonModule,
+    AppCommonModule,
+    TrainerRoutes
+  ]
+})
+export class TrainerModule {}
