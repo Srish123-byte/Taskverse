@@ -2,7 +2,6 @@ import { Component, OnInit, Renderer2, Inject } from '@angular/core';
 import { AppConfig } from './app.config';
 import { Meta } from '@angular/platform-browser';
 import { DOCUMENT } from '@angular/common';
-import { GtmService } from './common/services/gtm.service';
 import { LocationStrategyService } from './common/services/utilities/location-strategy.service';
 
 @Component({
@@ -19,14 +18,12 @@ export class AppComponent implements OnInit {
     private readonly meta: Meta,
     private readonly renderer: Renderer2,
     @Inject(DOCUMENT) private readonly document: Document,
-    private readonly gtmService: GtmService,
     private readonly locationStrategyService: LocationStrategyService
   ) {}
 
   ngOnInit(): void {
     this.locationStrategyService.init();
     this.addCspMetaTag();
-    this.gtmService.loadGtmScript();
   }
 
   addCspMetaTag(): void {

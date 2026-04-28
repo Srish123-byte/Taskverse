@@ -1,0 +1,57 @@
+using Microsoft.AspNetCore.Mvc;
+using Taskverse.Api.MicroServices.Models;
+
+namespace Taskverse.Api.MicroServices.Interfaces;
+
+public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
+{
+    // Users
+    Task<ObjectResult> GetUser(string userId);
+    Task<ObjectResult> SearchUsers(UserSearchCriteriaModel criteria);
+    Task<ObjectResult> CreateUser(CreateUserModel model);
+    Task<ObjectResult> UpdateUser(string userId, UpdateUserModel model);
+    Task<ObjectResult> DeleteUser(string userId);
+    Task<ObjectResult> GetUserRoles(string userId);
+
+    // Auth
+    Task<ObjectResult> Login(LoginRequestModel model);
+    Task<ObjectResult> RefreshToken(RefreshTokenRequestModel model);
+    Task<ObjectResult> Logout(LogoutRequestModel model);
+    Task<ObjectResult> ValidateToken(ValidateTokenRequestModel model);
+
+    // Exam Engine
+    Task<ObjectResult> GetExam(string examId);
+    Task<ObjectResult> CreateExam(CreateExamModel model);
+    Task<ObjectResult> GetExamQuestions(string examId);
+    Task<ObjectResult> SubmitExam(ExamSubmissionModel model);
+    Task<ObjectResult> GetExamResult(string submissionId);
+    Task<ObjectResult> GetExamsByUser(string userId);
+
+    // Assessment
+    Task<ObjectResult> GetAssessment(string assessmentId);
+    Task<ObjectResult> CreateAssessment(CreateAssessmentModel model);
+    Task<ObjectResult> GetAssessmentsByUser(string userId);
+    Task<ObjectResult> GetAssessmentResult(string assessmentId, string userId);
+    Task<ObjectResult> GetAssessmentSummary(string assessmentId);
+
+    // Reports
+    Task<ObjectResult> GenerateReport(GenerateReportRequestModel model);
+    Task<ObjectResult> GetReport(string reportId);
+    Task<ObjectResult> GetUserPerformanceReport(string userId);
+    Task<ObjectResult> GetAssessmentReport(string assessmentId);
+    Task<ObjectResult> GetReportsByUser(string userId);
+
+    // Proctor
+    Task<ObjectResult> StartProctorSession(StartProctorSessionModel model);
+    Task<ObjectResult> GetProctorSession(string sessionId);
+    Task<ObjectResult> RecordProctorEvent(ProctorEventModel model);
+    Task<ObjectResult> EndProctorSession(string sessionId);
+    Task<ObjectResult> GetProctorSummary(string sessionId);
+
+    // Coding Engine
+    Task<ObjectResult> GetChallenge(string challengeId);
+    Task<ObjectResult> ExecuteCode(CodeExecutionRequestModel model);
+    Task<ObjectResult> GetSubmission(string submissionId);
+    Task<ObjectResult> GetSubmissionsByUser(string userId);
+    Task<ObjectResult> GetChallengesByAssessment(string assessmentId);
+}

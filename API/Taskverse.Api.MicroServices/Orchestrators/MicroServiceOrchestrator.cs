@@ -1,0 +1,233 @@
+using CorrelationId.Abstractions;
+using log4net;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
+using System.Net.Http.Headers;
+using System.Text;
+using Taskverse.Api.MicroServices.Enums;
+using Taskverse.Api.MicroServices.Interfaces;
+using Taskverse.Api.MicroServices.Models;
+using Taskverse.Api.MicroServices.Utilities;
+
+namespace Taskverse.Api.MicroServices.Orchestrators;
+
+public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
+{
+    private const string ClientName = "TaskverseMicroServiceClient";
+    private const string XCorrelationIdKey = "X-CorrelationId";
+
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ICorrelationContextAccessor _correlationContextAccessor;
+    private readonly IConfiguration _configuration;
+    private readonly ILog _log;
+
+    private readonly string _baseUrl;
+    private readonly string _baseUrlDev;
+    private readonly bool _useLocalMicroservices;
+    private readonly int _serviceTimeoutSeconds;
+
+    public MicroServiceOrchestrator(
+        IHttpClientFactory httpClientFactory,
+        ICorrelationContextAccessor correlationContextAccessor,
+        IConfiguration configuration)
+    {
+        _httpClientFactory = httpClientFactory;
+        _correlationContextAccessor = correlationContextAccessor;
+        _configuration = configuration;
+        _log = LogManager.GetLogger(typeof(MicroServiceOrchestrator));
+
+        _baseUrl = _configuration["MicroServiceSettings:BaseUrl"] ?? string.Empty;
+        _baseUrlDev = _configuration["MicroServiceSettings:BaseUrlDev"] ?? string.Empty;
+        _useLocalMicroservices = bool.TryParse(_configuration["MicroServiceSettings:UseLocalMicroservices"], out var useLocal) && useLocal;
+        _serviceTimeoutSeconds = int.TryParse(_configuration["MicroServiceSettings:ServiceTimeoutSeconds"], out var timeout) ? timeout : 30;
+    }
+
+    public string GetMicroServiceUrl(MicroService microService)
+    {
+        var isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+
+        if (isDevelopment && _useLocalMicroservices)
+        {
+            var port = (int)microService;
+            return $"{_baseUrl}:{port}/";
+        }
+
+        if (isDevelopment)
+        {
+            return $"{_baseUrlDev}/{microService}/";
+        }
+
+        return $"{_baseUrl}/{microService}/";
+    }
+
+    private void AddRequestHeaders(HttpClient client)
+    {
+        client.Timeout = TimeSpan.FromSeconds(_serviceTimeoutSeconds);
+
+        var correlationId = _correlationContextAccessor.CorrelationContext?.CorrelationId ?? string.Empty;
+
+        if (client.DefaultRequestHeaders.Contains(XCorrelationIdKey))
+        {
+            client.DefaultRequestHeaders.Remove(XCorrelationIdKey);
+        }
+
+        client.DefaultRequestHeaders.Add(XCorrelationIdKey, correlationId);
+    }
+
+    private Uri GetValidatedUri(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            _log.Error($"[MicroServiceOrchestrator] Invalid or non-HTTP/HTTPS URL: {url}");
+            throw new InvalidOperationException(MicroServiceBusinessCondition.AddressNotFound);
+        }
+
+        return uri;
+    }
+
+    private async Task<ObjectResult> GetResult<T>(HttpResponseMessage response, string url)
+    {
+        var content = await response.Content.ReadAsStringAsync();
+        var statusCode = (int)response.StatusCode;
+
+        if (response.IsSuccessStatusCode)
+        {
+            try
+            {
+                var result = JsonConvert.DeserializeObject<T>(content);
+                return new ObjectResult(result) { StatusCode = statusCode };
+            }
+            catch (Exception ex)
+            {
+                _log.Error($"[MicroServiceOrchestrator] Deserialization error for URL {url}: {ex.Message}", ex);
+                return new ObjectResult(content) { StatusCode = statusCode };
+            }
+        }
+
+        try
+        {
+            var errorModel = JsonConvert.DeserializeObject<ErrorModel>(content);
+            if (errorModel is not null)
+            {
+                var validationErrors = GetValidationErrors(errorModel);
+                var message = string.IsNullOrWhiteSpace(validationErrors)
+                    ? errorModel.Message
+                    : $"{errorModel.Message} | {validationErrors}";
+
+                return new ObjectResult(new { errorModel.Name, Message = message }) { StatusCode = statusCode };
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.Error($"[MicroServiceOrchestrator] Error model deserialization failed for URL {url}: {ex.Message}", ex);
+        }
+
+        return new ObjectResult(content) { StatusCode = statusCode };
+    }
+
+    private static string GetValidationErrors(ErrorModel errorModel)
+    {
+        if (errorModel.Errors is null || errorModel.Errors.Count == 0)
+            return string.Empty;
+
+        return string.Join(" | ", errorModel.Errors.Select(e => e.Message));
+    }
+
+    public async Task<ObjectResult> Get<T>(string url)
+    {
+        var uri = GetValidatedUri(url);
+        var client = _httpClientFactory.CreateClient(ClientName);
+        AddRequestHeaders(client);
+
+        try
+        {
+            var response = await client.GetAsync(uri);
+            return await GetResult<T>(response, url);
+        }
+        catch (Exception ex)
+        {
+            _log.Error($"[MicroServiceOrchestrator] GET request failed for URL {url}: {ex.Message}", ex);
+            throw;
+        }
+    }
+
+    public async Task<ObjectResult> Post<T>(string url, object postData)
+    {
+        var uri = GetValidatedUri(url);
+        var client = _httpClientFactory.CreateClient(ClientName);
+        AddRequestHeaders(client);
+
+        try
+        {
+            var json = JsonConvert.SerializeObject(postData);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await client.PostAsync(uri, content);
+            return await GetResult<T>(response, url);
+        }
+        catch (Exception ex)
+        {
+            _log.Error($"[MicroServiceOrchestrator] POST request failed for URL {url}: {ex.Message}", ex);
+            throw;
+        }
+    }
+
+    public async Task<ObjectResult> Put<T>(string url, object postData)
+    {
+        var uri = GetValidatedUri(url);
+        var client = _httpClientFactory.CreateClient(ClientName);
+        AddRequestHeaders(client);
+
+        try
+        {
+            var json = JsonConvert.SerializeObject(postData);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await client.PutAsync(uri, content);
+            return await GetResult<T>(response, url);
+        }
+        catch (Exception ex)
+        {
+            _log.Error($"[MicroServiceOrchestrator] PUT request failed for URL {url}: {ex.Message}", ex);
+            throw;
+        }
+    }
+
+    public async Task<ObjectResult> Patch<T>(string url, object patchData)
+    {
+        var uri = GetValidatedUri(url);
+        var client = _httpClientFactory.CreateClient(ClientName);
+        AddRequestHeaders(client);
+
+        try
+        {
+            var json = JsonConvert.SerializeObject(patchData);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await client.PatchAsync(uri, content);
+            return await GetResult<T>(response, url);
+        }
+        catch (Exception ex)
+        {
+            _log.Error($"[MicroServiceOrchestrator] PATCH request failed for URL {url}: {ex.Message}", ex);
+            throw;
+        }
+    }
+
+    public async Task<ObjectResult> Delete(string url)
+    {
+        var uri = GetValidatedUri(url);
+        var client = _httpClientFactory.CreateClient(ClientName);
+        AddRequestHeaders(client);
+
+        try
+        {
+            var response = await client.DeleteAsync(uri);
+            return new ObjectResult(null) { StatusCode = (int)response.StatusCode };
+        }
+        catch (Exception ex)
+        {
+            _log.Error($"[MicroServiceOrchestrator] DELETE request failed for URL {url}: {ex.Message}", ex);
+            throw;
+        }
+    }
+}

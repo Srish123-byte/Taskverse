@@ -1,0 +1,9 @@
+@Taskverse_API_HostAddress = http://localhost:5200
+
+GET {{Taskverse_API_HostAddress}}/api/system
+Accept: application/json
+
+###
+
+GET {{Taskverse_API_HostAddress}}/api/tokens
+Accept: application/json
