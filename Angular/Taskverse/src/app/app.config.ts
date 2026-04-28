@@ -18,14 +18,6 @@ export class AppConfig {
     return this.config?.['api_url'] || '';
   }
 
-  get gtmId(): string {
-    return this.config?.['gtm_id'] || '';
-  }
-
-  get gtmEnabled(): boolean {
-    return this.config?.['gtm_enabled'] ?? false;
-  }
-
   get cspMetaTag(): string {
     return this.config?.['csp_meta_tag'] || '';
   }
