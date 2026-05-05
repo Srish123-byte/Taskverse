@@ -13,14 +13,12 @@ namespace Taskverse.Business.Tests.Orchestrators;
 public class ReportsOrchestratorTests
 {
     private readonly Mock<IMicroServiceOrchestrator> _mockMicroServiceOrchestrator;
-    private readonly Mock<ILog> _mockLog;
     private readonly ReportsOrchestrator _orchestrator;
 
     public ReportsOrchestratorTests()
     {
         _mockMicroServiceOrchestrator = new Mock<IMicroServiceOrchestrator>();
-        _mockLog = new Mock<ILog>();
-        _orchestrator = new ReportsOrchestrator(_mockMicroServiceOrchestrator.Object, _mockLog.Object);
+        _orchestrator = new ReportsOrchestrator(_mockMicroServiceOrchestrator.Object);
     }
 
     [TestMethod]

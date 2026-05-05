@@ -1,50 +1,61 @@
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Taskverse.Data.DataAccess;
 
+[Table("assessments")]
 public class Assessment
 {
-    [BsonId]
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string Id { get; set; } = default!;
+    [Key]
+    [Column("id")]
+    public Guid Id { get; set; } = Guid.NewGuid();
 
-    [BsonElement("title")]
+    [Required]
+    [MaxLength(256)]
+    [Column("title")]
     public string Title { get; set; } = default!;
 
-    [BsonElement("description")]
+    [Column("description")]
     public string? Description { get; set; }
 
     /// <summary>
     /// Valid values: Exam, Coding, Mixed
     /// </summary>
-    [BsonElement("type")]
+    [Required]
+    [MaxLength(50)]
+    [Column("type")]
     public string Type { get; set; } = default!;
 
-    [BsonElement("examId")]
-    public string? ExamId { get; set; }
-
-    [BsonElement("challengeIds")]
-    public List<string> ChallengeIds { get; set; } = [];
+    [Column("exam_id")]
+    public Guid? ExamId { get; set; }
 
     /// <summary>
-    /// List of UserIds this assessment is assigned to.
+    /// UUIDs of coding challenges linked to this assessment.
+    /// Stored as a native PostgreSQL UUID array.
     /// </summary>
-    [BsonElement("assignedTo")]
-    public List<string> AssignedTo { get; set; } = [];
+    [Column("challenge_ids", TypeName = "uuid[]")]
+    public Guid[] ChallengeIds { get; set; } = [];
 
-    [BsonElement("dueDate")]
+    /// <summary>
+    /// UUIDs of users (students) this assessment is assigned to.
+    /// Stored as a native PostgreSQL UUID array.
+    /// </summary>
+    [Column("assigned_to", TypeName = "uuid[]")]
+    public Guid[] AssignedTo { get; set; } = [];
+
+    [Column("due_date")]
     public DateTime? DueDate { get; set; }
 
-    [BsonElement("isActive")]
+    [Column("is_active")]
     public bool IsActive { get; set; } = true;
 
-    [BsonElement("createdBy")]
-    public string CreatedBy { get; set; } = default!;
+    [Required]
+    [Column("created_by")]
+    public Guid CreatedBy { get; set; }
 
-    [BsonElement("createdAt")]
+    [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    [BsonElement("updatedAt")]
+    [Column("modified_at")]
     public DateTime? UpdatedAt { get; set; }
 }

@@ -1,4 +1,4 @@
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 using Taskverse.Business.Interface;
 using Taskverse.Data;
 using Taskverse.Data.DataAccess;
@@ -16,41 +16,44 @@ public class UsersManager : IUsersManager
 
     public async Task<User?> GetByEmail(string email)
     {
-        FilterDefinition<User> filter = Builders<User>.Filter.Eq(
-            u => u.Email, email.ToLowerInvariant());
-
-        return await _context.Users.Find(filter).FirstOrDefaultAsync();
+        return await _context.Users
+            .FirstOrDefaultAsync(u => u.Email == email.ToLowerInvariant());
     }
 
     public async Task<User?> GetById(string userId)
     {
-        FilterDefinition<User> filter = Builders<User>.Filter.Eq(u => u.Id, userId);
-        return await _context.Users.Find(filter).FirstOrDefaultAsync();
+        if (!Guid.TryParse(userId, out Guid id))
+            return null;
+
+        return await _context.Users.FindAsync(id);
     }
 
     public async Task<User> Create(User user)
     {
-        await _context.Users.InsertOneAsync(user);
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
         return user;
     }
 
     public async Task Update(User user)
     {
-        FilterDefinition<User> filter = Builders<User>.Filter.Eq(u => u.Id, user.Id);
-        await _context.Users.ReplaceOneAsync(filter, user);
+        _context.Users.Update(user);
+        await _context.SaveChangesAsync();
     }
 
     public async Task Delete(string userId)
     {
-        FilterDefinition<User> filter = Builders<User>.Filter.Eq(u => u.Id, userId);
-        User? user = await _context.Users.Find(filter).FirstOrDefaultAsync();
+        if (!Guid.TryParse(userId, out Guid id))
+            return;
 
+        User? user = await _context.Users.FindAsync(id);
         if (user is null)
             return;
 
-        user.IsActive = false;
-        user.UpdatedAt = DateTime.UtcNow;
+        user.Status     = "SUSPENDED";
+        user.ModifiedAt = DateTime.UtcNow;
 
-        await _context.Users.ReplaceOneAsync(filter, user);
+        _context.Users.Update(user);
+        await _context.SaveChangesAsync();
     }
 }

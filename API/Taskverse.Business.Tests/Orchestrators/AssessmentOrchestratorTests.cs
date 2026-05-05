@@ -15,18 +15,15 @@ public class AssessmentOrchestratorTests
 {
     private readonly Mock<IMicroServiceOrchestrator> _mockMicroServiceOrchestrator;
     private readonly Mock<IAssessmentManager> _mockAssessmentManager;
-    private readonly Mock<ILog> _mockLog;
     private readonly AssessmentOrchestrator _orchestrator;
 
     public AssessmentOrchestratorTests()
     {
         _mockMicroServiceOrchestrator = new Mock<IMicroServiceOrchestrator>();
         _mockAssessmentManager = new Mock<IAssessmentManager>();
-        _mockLog = new Mock<ILog>();
         _orchestrator = new AssessmentOrchestrator(
             _mockMicroServiceOrchestrator.Object,
-            _mockAssessmentManager.Object,
-            _mockLog.Object);
+            _mockAssessmentManager.Object);
     }
 
     [TestMethod]

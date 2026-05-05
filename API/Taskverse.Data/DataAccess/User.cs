@@ -1,44 +1,53 @@
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Taskverse.Data.DataAccess;
 
+[Table("users")]
 public class User
 {
-    [BsonId]
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string Id { get; set; } = default!;
+    [Key]
+    [Column("id")]
+    public Guid Id { get; set; } = Guid.NewGuid();
 
-    [BsonElement("email")]
+    [Required]
+    [Column("full_name")]
+    public string FullName { get; set; } = default!;
+
+    [Required]
+    [Column("email")]
     public string Email { get; set; } = default!;
 
-    [BsonElement("firstName")]
-    public string FirstName { get; set; } = default!;
+    [Column("phone")]
+    public string? Phone { get; set; }
 
-    [BsonElement("lastName")]
-    public string LastName { get; set; } = default!;
+    [Column("college_id")]
+    public Guid? CollegeId { get; set; }
 
-    [BsonElement("passwordHash")]
-    public string PasswordHash { get; set; } = default!;
-
-    /// <summary>
-    /// Valid values: Student, Instructor, Admin, Proctor
-    /// </summary>
-    [BsonElement("role")]
+    [Required]
+    [Column("role")]
     public string Role { get; set; } = default!;
 
-    [BsonElement("isActive")]
-    public bool IsActive { get; set; } = true;
+    /// <summary>
+    /// Maps to the PostgreSQL user_status enum.
+    /// Valid values: PENDING_APPROVAL, ACTIVE, SUSPENDED, REJECTED
+    /// </summary>
+    [Required]
+    [Column("status")]
+    public string Status { get; set; } = "PENDING_APPROVAL";
 
-    [BsonElement("createdAt")]
+    [Column("batch_id")]
+    public Guid? BatchId { get; set; }
+
+    [Column("class_id")]
+    public Guid? ClassId { get; set; }
+
+    [Column("password_hash")]
+    public string? PasswordHash { get; set; }
+
+    [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    [BsonElement("updatedAt")]
-    public DateTime? UpdatedAt { get; set; }
-
-    [BsonElement("refreshToken")]
-    public string? RefreshToken { get; set; }
-
-    [BsonElement("refreshTokenExpiry")]
-    public DateTime? RefreshTokenExpiry { get; set; }
+    [Column("modified_at")]
+    public DateTime? ModifiedAt { get; set; }
 }

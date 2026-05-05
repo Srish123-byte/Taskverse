@@ -12,28 +12,71 @@
   border-radius: var(--radius-card, 12px);
   padding: 40px 36px;
   width: 100%;
-  max-width: 420px;
+  max-width: 460px;
 }
 
+// ── Title ────────────────────────────────────────────────────────────────────
 .login-title {
   font-size: 1.75rem;
   font-weight: 800;
   color: var(--text-primary, #FFFFFF);
-  margin: 0 0 4px;
+  margin: 0 0 24px;
   text-align: center;
 }
 
-.login-subtitle {
-  font-size: 0.9rem;
+// ── Mode tabs ────────────────────────────────────────────────────────────────
+.auth-tabs {
+  position: relative;
+  display: flex;
+  background: var(--bg-page, #0a0a0a);
+  border-radius: 9999px;
+  padding: 4px;
+  margin-bottom: 28px;
+  overflow: hidden;
+}
+
+.tab-btn {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  border: none;
   color: var(--text-body, #9CA3AF);
-  text-align: center;
-  margin: 0 0 28px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px 0;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: color 0.25s;
+
+  &.active { color: var(--text-primary, #FFFFFF); }
 }
 
-.full-width { width: 100%; }
+.tab-indicator {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  height: calc(100% - 8px);
+  background: var(--gradient-cta, linear-gradient(to right, #F59E0B, #EF4444));
+  border-radius: 9999px;
+  transition: transform 0.25s ease;
+
+  &.right { transform: translateX(calc(100% + 0px)); }
+}
+
+// ── Forms ────────────────────────────────────────────────────────────────────
+.full-width  { width: 100%; }
+
+.name-row {
+  display: flex;
+  gap: 12px;
+}
+
+.half-width { flex: 1; }
 
 .submit-btn {
-  margin-top: 16px;
+  margin-top: 8px;
   height: 48px;
   font-size: 1rem;
   font-weight: 600;
@@ -47,8 +90,41 @@
 
 .btn-spinner { display: inline-block; }
 
+// ── Messages ─────────────────────────────────────────────────────────────────
 .error-message {
   color: var(--accent-red, #EF4444);
   font-size: 0.875rem;
-  margin: 0 0 8px;
+  margin: 0 0 12px;
+}
+
+.success-message {
+  color: #34D399;
+  font-size: 0.875rem;
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 0 0 16px;
+}
+
+.approval-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-body, #9CA3AF);
+  background: rgba(245, 158, 11, 0.07);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 4px 0 12px;
+
+  .hint-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: #F59E0B;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
 }

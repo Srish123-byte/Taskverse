@@ -1,37 +1,40 @@
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Taskverse.Data.DataAccess;
 
+[Table("assessment_results")]
 public class AssessmentResult
 {
-    [BsonId]
-    [BsonRepresentation(BsonType.ObjectId)]
-    public string Id { get; set; } = default!;
+    [Key]
+    [Column("id")]
+    public Guid Id { get; set; } = Guid.NewGuid();
 
-    [BsonRepresentation(BsonType.ObjectId)]
-    [BsonElement("assessmentId")]
-    public string AssessmentId { get; set; } = default!;
+    [Required]
+    [Column("assessment_id")]
+    public Guid AssessmentId { get; set; }
 
-    [BsonRepresentation(BsonType.ObjectId)]
-    [BsonElement("userId")]
-    public string UserId { get; set; } = default!;
+    [Required]
+    [Column("user_id")]
+    public Guid UserId { get; set; }
 
     /// <summary>
     /// Valid values: Pending, InProgress, Completed, Expired
     /// </summary>
-    [BsonElement("status")]
+    [Required]
+    [MaxLength(50)]
+    [Column("status")]
     public string Status { get; set; } = default!;
 
-    [BsonElement("score")]
+    [Column("score")]
     public int? Score { get; set; }
 
-    [BsonElement("completedAt")]
+    [Column("completed_at")]
     public DateTime? CompletedAt { get; set; }
 
-    [BsonElement("createdAt")]
+    [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    [BsonElement("updatedAt")]
+    [Column("modified_at")]
     public DateTime? UpdatedAt { get; set; }
 }

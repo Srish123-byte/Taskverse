@@ -11,13 +11,10 @@ import { MaterialModule } from './material.module';
 import { ErrorInterceptor } from './common/interceptors/error.interceptor';
 import { LocationStrategyService } from './common/services/utilities/location-strategy.service';
 
-// Feature modules
+// Feature modules (eagerly loaded — needed before authentication)
 import { LoginModule } from './website/login/login.module';
 import { SharedPagesModule } from './website/shared/shared-pages.module';
-import { SuperAdminModule } from './website/super-admin/super-admin.module';
-import { CollegeAdminModule } from './website/college-admin/college-admin.module';
-import { TrainerModule } from './website/trainer/trainer.module';
-import { StudentModule } from './website/student/student.module';
+// Role modules are lazy-loaded via loadChildren in app.routes.ts
 
 @NgModule({
   declarations: [
@@ -28,14 +25,10 @@ import { StudentModule } from './website/student/student.module';
     BrowserAnimationsModule,
     AppCommonModule,
     MaterialModule,
-    // Feature modules — order matters: shared & login before role modules
+    // Eagerly loaded feature modules (pre-auth pages)
     LoginModule,
     SharedPagesModule,
-    SuperAdminModule,
-    CollegeAdminModule,
-    TrainerModule,
-    StudentModule,
-    // Root routes last so the wildcard catches anything unmatched
+    // Root routes last — includes lazy-loaded role modules & wildcard 404
     AppRoutes
   ],
   providers: [

@@ -2,6 +2,8 @@ using CorrelationId;
 using CorrelationId.DependencyInjection;
 using log4net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Taskverse.Data;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
@@ -72,6 +74,7 @@ public class Startup
         ConfigureCors(services);
         ConfigureMvc(services);
         ConfigureHttpClients(services);
+        ConfigureDatabase(services);
         ConfigureDependencyInjection(services);
 
         Log.DebugFormat("Services configured. Startup time elapsed: {0}ms",
@@ -172,15 +175,18 @@ public class Startup
             });
     }
 
+    private void ConfigureDatabase(IServiceCollection services)
+    {
+        services.AddDbContext<TaskverseContext>(options =>
+            options.UseNpgsql(Configuration.GetConnectionString("TaskverseDb")));
+    }
+
     private void ConfigureDependencyInjection(IServiceCollection services)
     {
         services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 
         // Filters
         services.AddScoped<JwtTokenValidationFilter>();
-
-        // Data
-        services.AddSingleton<TaskverseContext>();
 
         // Managers
         services.AddScoped<IUsersManager, UsersManager>();

@@ -7,37 +7,42 @@ public static class UserMappings
 {
     public static CreateUserDto ToDto(this CreateUserRequestModel model) => new()
     {
-        Email = model.Email,
-        FirstName = model.FirstName,
-        LastName = model.LastName,
-        Role = model.Role,
-        Password = model.Password
+        FullName  = model.FullName,
+        Email     = model.Email,
+        Phone     = model.Phone,
+        CollegeId = model.CollegeId,
+        Role      = model.Role,
+        Password  = model.Password
     };
 
     public static UpdateUserDto ToDto(this UpdateUserRequestModel model) => new()
     {
-        FirstName = model.FirstName,
-        LastName = model.LastName,
-        IsActive = model.IsActive
+        FullName  = model.FullName,
+        Phone     = model.Phone,
+        CollegeId = model.CollegeId,
+        BatchId   = model.BatchId,
+        ClassId   = model.ClassId,
+        Status    = model.Status
     };
 
     public static UserResponseModel ToResponseModel(this UserDto dto) => new()
     {
-        UserId = dto.UserId,
-        Email = dto.Email,
-        FirstName = dto.FirstName,
-        LastName = dto.LastName,
-        Role = dto.Role,
-        IsActive = dto.IsActive,
+        UserId    = dto.UserId,
+        FullName  = dto.FullName,
+        Email     = dto.Email,
+        Phone     = dto.Phone,
+        CollegeId = dto.CollegeId,
+        Role      = dto.Role,
+        Status    = dto.Status,
         CreatedAt = dto.CreatedAt,
-        UpdatedAt = dto.UpdatedAt
+        ModifiedAt = dto.ModifiedAt
     };
 
     public static PagedUserResponseModel ToResponseModel(this PagedUserDto dto) => new()
     {
-        Items = dto.Items.Select(u => u.ToResponseModel()).ToList(),
+        Items      = dto.Items.Select(u => u.ToResponseModel()).ToList(),
         TotalCount = dto.TotalCount,
         PageNumber = dto.PageNumber,
-        PageSize = dto.PageSize
+        PageSize   = dto.PageSize
     };
 }

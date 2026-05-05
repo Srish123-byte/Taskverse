@@ -1,65 +1,73 @@
-using Microsoft.Extensions.Configuration;
-using MongoDB.Bson;
-using MongoDB.Driver;
+using Microsoft.EntityFrameworkCore;
 using Taskverse.Data.DataAccess;
 
 namespace Taskverse.Data;
 
-public class TaskverseContext
+public class TaskverseContext : DbContext
 {
-    private readonly IMongoDatabase _database;
+    public TaskverseContext(DbContextOptions<TaskverseContext> options)
+        : base(options) { }
 
-    public TaskverseContext(IConfiguration configuration)
+    // ── Registered tables (matching actual DB) ────────────────────────────────
+    public DbSet<User>    Users    => Set<User>();
+    public DbSet<College> Colleges => Set<College>();
+    public DbSet<Class>   Classes  => Set<Class>();
+    public DbSet<Batch>   Batches  => Set<Batch>();
+    public DbSet<Role>    Roles    => Set<Role>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        string connectionString = configuration.GetConnectionString("TaskverseDb")
-            ?? throw new InvalidOperationException("Connection string 'TaskverseDb' is not configured.");
+        base.OnModelCreating(modelBuilder);
 
-        string databaseName = configuration["DatabaseName"] ?? "taskverse";
+        // ── Users ─────────────────────────────────────────────────────────────
+        modelBuilder.Entity<User>(entity =>
+        {
+            // Map the user_status PostgreSQL enum column as a string
+            entity.Property(u => u.Status)
+                  .HasColumnName("status")
+                  .HasColumnType("user_status")
+                  .HasConversion<string>();
 
-        MongoClient client = new(connectionString);
-        _database = client.GetDatabase(databaseName);
-    }
+            entity.HasIndex(u => u.Email)
+                  .IsUnique()
+                  .HasDatabaseName("idx_users_email_unique");
 
-    public IMongoCollection<User> Users =>
-        _database.GetCollection<User>("users");
+            entity.HasIndex(u => u.Role)
+                  .HasDatabaseName("idx_users_role");
 
-    public IMongoCollection<Assessment> Assessments =>
-        _database.GetCollection<Assessment>("assessments");
+            entity.HasIndex(u => u.Status)
+                  .HasDatabaseName("idx_users_status");
+        });
 
-    public IMongoCollection<AssessmentResult> AssessmentResults =>
-        _database.GetCollection<AssessmentResult>("assessment_results");
+        // ── Colleges ──────────────────────────────────────────────────────────
+        modelBuilder.Entity<College>(entity =>
+        {
+            entity.HasIndex(c => c.Name)
+                  .HasDatabaseName("idx_colleges_name");
+        });
 
-    public IMongoCollection<AuditLog> AuditLogs =>
-        _database.GetCollection<AuditLog>("audit_logs");
+        // ── Classes ───────────────────────────────────────────────────────────
+        modelBuilder.Entity<Class>(entity =>
+        {
+            entity.HasIndex(c => c.CollegeId)
+                  .HasDatabaseName("idx_classes_college_id");
+        });
 
-    public async Task EnsureIndexesAsync()
-    {
-        // Users: unique index on Email
-        IndexKeysDefinition<User> userEmailKey = Builders<User>.IndexKeys.Ascending(u => u.Email);
-        CreateIndexModel<User> userEmailIndex = new(
-            userEmailKey,
-            new CreateIndexOptions { Unique = true, Name = "idx_users_email_unique" }
-        );
-        await Users.Indexes.CreateOneAsync(userEmailIndex);
+        // ── Batches ───────────────────────────────────────────────────────────
+        modelBuilder.Entity<Batch>(entity =>
+        {
+            entity.HasIndex(b => b.CollegeId)
+                  .HasDatabaseName("idx_batches_college_id");
 
-        // AssessmentResults: compound index on AssessmentId + UserId
-        IndexKeysDefinition<AssessmentResult> resultKey = Builders<AssessmentResult>.IndexKeys
-            .Ascending(r => r.AssessmentId)
-            .Ascending(r => r.UserId);
-        CreateIndexModel<AssessmentResult> resultIndex = new(
-            resultKey,
-            new CreateIndexOptions { Name = "idx_results_assessmentId_userId" }
-        );
-        await AssessmentResults.Indexes.CreateOneAsync(resultIndex);
+            entity.HasIndex(b => b.ClassId)
+                  .HasDatabaseName("idx_batches_class_id");
+        });
 
-        // AuditLogs: compound index on UserId + OccurredAt
-        IndexKeysDefinition<AuditLog> auditKey = Builders<AuditLog>.IndexKeys
-            .Ascending(a => a.UserId)
-            .Ascending(a => a.OccurredAt);
-        CreateIndexModel<AuditLog> auditIndex = new(
-            auditKey,
-            new CreateIndexOptions { Name = "idx_auditlogs_userId_occurredAt" }
-        );
-        await AuditLogs.Indexes.CreateOneAsync(auditIndex);
+        // ── Roles ─────────────────────────────────────────────────────────────
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.Property(r => r.RoleId)
+                  .ValueGeneratedNever(); // smallint PK, not auto-generated
+        });
     }
 }
