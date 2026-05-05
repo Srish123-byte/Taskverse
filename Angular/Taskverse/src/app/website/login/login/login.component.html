@@ -5,8 +5,8 @@
 
     <!-- Mode Tabs -->
     <div class="auth-tabs">
-      <button class="tab-btn" [class.active]="mode === 'login'"    (click)="switchMode('login')"    id="tab-login">Sign In</button>
-      <button class="tab-btn" [class.active]="mode === 'register'" (click)="switchMode('register')" id="tab-register">Create Account</button>
+      <button type="button" class="tab-btn" [class.active]="mode === 'login'"    (click)="switchMode('login')"    id="tab-login">Sign In</button>
+      <button type="button" class="tab-btn" [class.active]="mode === 'register'" (click)="switchMode('register')" id="tab-register">Create Account</button>
       <span class="tab-indicator" [class.right]="mode === 'register'"></span>
     </div>
 

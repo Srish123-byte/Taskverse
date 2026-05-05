@@ -1,6 +1,7 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { HttpClientService } from '../http/http-client.service';
+import { AppConfig } from '../../../app.config';
 
 export interface RegisterRequest {
   fullName: string;
@@ -24,11 +25,21 @@ export interface RegisterResponse {
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
-  private readonly url = 'users';
 
-  constructor(private readonly http: HttpClientService) {}
+  constructor(
+    private readonly http: HttpClient,
+    private readonly appConfig: AppConfig
+  ) {}
 
+  /**
+   * Public self-registration — uses HttpClient directly (observe:'body')
+   * instead of the authenticated HttpClientService, so the response body
+   * is returned without any JWT or response-wrapping concerns.
+   */
   register(request: RegisterRequest): Observable<RegisterResponse> {
-    return this.http.post<RegisterResponse>(`${this.url}/register`, request);
+    const url = `${this.appConfig.api_url}/users/register`;
+    return this.http.post<RegisterResponse>(url, request, {
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }

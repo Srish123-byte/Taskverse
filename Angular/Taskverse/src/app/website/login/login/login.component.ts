@@ -60,7 +60,7 @@ export class LoginComponent implements OnInit {
     this.registerForm = this.fb.group({
       fullName:        ['', [Validators.required, Validators.minLength(2)]],
       email:           ['', [Validators.required, Validators.email]],
-      phone:           ['', [Validators.pattern(/^\+?[0-9\s\-]{7,15}$/)]],
+      phone:           [''],   // optional — no pattern restriction
       role:            ['Student', Validators.required],
       password:        ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', Validators.required]
@@ -102,7 +102,14 @@ export class LoginComponent implements OnInit {
 
   // ─── Register ─────────────────────────────────────────────────────────────
   onRegister(): void {
-    if (this.registerForm.invalid) { this.registerForm.markAllAsTouched(); return; }
+    if (this.registerForm.invalid) {
+      this.registerForm.markAllAsTouched();
+      console.warn('[Register] Form invalid:', this.registerForm.errors,
+        Object.fromEntries(Object.keys(this.registerForm.controls)
+          .filter(k => this.registerForm.get(k)?.invalid)
+          .map(k => [k, this.registerForm.get(k)?.errors])));
+      return;
+    }
 
     this.isLoading      = true;
     this.errorMessage   = '';
