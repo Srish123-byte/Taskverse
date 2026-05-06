@@ -22,11 +22,10 @@ public class TaskverseContext : DbContext
         // ── Users ─────────────────────────────────────────────────────────────
         modelBuilder.Entity<User>(entity =>
         {
-            // Map the user_status PostgreSQL enum column as a string
+            // Map the user_status PostgreSQL enum column (registered via NpgsqlDataSourceBuilder.MapEnum)
             entity.Property(u => u.Status)
                   .HasColumnName("status")
-                  .HasColumnType("user_status")
-                  .HasConversion<string>();
+                  .HasColumnType("user_status");
 
             entity.HasIndex(u => u.Email)
                   .IsUnique()

@@ -98,7 +98,7 @@ public class UsersOrchestrator : IUsersOrchestrator
 
         // 2. Determine status
         bool isSuperAdmin = dto.Role.Equals(SuperAdminRole, StringComparison.OrdinalIgnoreCase);
-        string status = isSuperAdmin ? "ACTIVE" : "PENDING_APPROVAL";
+        UserStatus status = isSuperAdmin ? UserStatus.ACTIVE : UserStatus.PENDING_APPROVAL;
 
         // 3. Build entity + hash password
         var newUser = new User

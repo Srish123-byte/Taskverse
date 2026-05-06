@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Npgsql;
 using System.Text;
 using Taskverse.Api.Configuration;
 using Taskverse.Api.Filters;
@@ -17,7 +18,7 @@ using Taskverse.Business.ConfigClasses;
 using Taskverse.Business.Interface;
 using Taskverse.Business.Managers;
 using Taskverse.Business.Orchestrators;
-using Taskverse.Data;
+using Taskverse.Data.DataAccess;
 
 namespace Taskverse.Api;
 
@@ -177,8 +178,17 @@ public class Startup
 
     private void ConfigureDatabase(IServiceCollection services)
     {
+        var connStr = Configuration.GetConnectionString("TaskverseDb")
+            ?? throw new InvalidOperationException("Connection string 'TaskverseDb' is missing.");
+
+        // Register the PostgreSQL user_status enum so Npgsql can serialize/deserialize it correctly.
+        // Without this, Npgsql sends strings as 'text' and PostgreSQL rejects the implicit cast.
+        var dataSource = new NpgsqlDataSourceBuilder(connStr)
+            .MapEnum<UserStatus>("user_status")
+            .Build();
+
         services.AddDbContext<TaskverseContext>(options =>
-            options.UseNpgsql(Configuration.GetConnectionString("TaskverseDb")));
+            options.UseNpgsql(dataSource));
     }
 
     private void ConfigureDependencyInjection(IServiceCollection services)

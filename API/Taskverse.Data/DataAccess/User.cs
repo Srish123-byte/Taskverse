@@ -34,7 +34,7 @@ public class User
     /// </summary>
     [Required]
     [Column("status")]
-    public string Status { get; set; } = "PENDING_APPROVAL";
+    public UserStatus Status { get; set; } = UserStatus.PENDING_APPROVAL;
 
     [Column("batch_id")]
     public Guid? BatchId { get; set; }
