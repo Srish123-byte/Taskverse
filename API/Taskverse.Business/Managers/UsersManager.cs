@@ -50,7 +50,7 @@ public class UsersManager : IUsersManager
         if (user is null)
             return;
 
-        user.Status     = UserStatus.SUSPENDED;
+        user.UserStatus = UserStatus.REJECTED;
         user.ModifiedAt = DateTime.UtcNow;
 
         _context.Users.Update(user);

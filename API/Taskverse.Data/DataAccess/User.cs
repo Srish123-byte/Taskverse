@@ -30,11 +30,11 @@ public class User
 
     /// <summary>
     /// Maps to the PostgreSQL user_status enum.
-    /// Valid values: PENDING_APPROVAL, ACTIVE, SUSPENDED, REJECTED
+    /// Valid values: APPROVED, PENDING_APPROVAL, REJECTED
     /// </summary>
     [Required]
     [Column("status")]
-    public UserStatus Status { get; set; } = UserStatus.PENDING_APPROVAL;
+    public UserStatus UserStatus { get; set; } = UserStatus.PENDING_APPROVAL;
 
     [Column("batch_id")]
     public Guid? BatchId { get; set; }

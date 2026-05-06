@@ -6,8 +6,7 @@ namespace Taskverse.Data.DataAccess;
 /// </summary>
 public enum UserStatus
 {
+    APPROVED,
     PENDING_APPROVAL,
-    ACTIVE,
-    SUSPENDED,
     REJECTED
 }

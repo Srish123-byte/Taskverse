@@ -98,18 +98,18 @@ public class UsersOrchestrator : IUsersOrchestrator
 
         // 2. Determine status
         bool isSuperAdmin = dto.Role.Equals(SuperAdminRole, StringComparison.OrdinalIgnoreCase);
-        UserStatus status = isSuperAdmin ? UserStatus.ACTIVE : UserStatus.PENDING_APPROVAL;
+        UserStatus status = isSuperAdmin ? UserStatus.APPROVED : UserStatus.PENDING_APPROVAL;
 
         // 3. Build entity + hash password
         var newUser = new User
         {
-            FullName  = dto.FullName.Trim(),
-            Email     = dto.Email.Trim().ToLowerInvariant(),
-            Phone     = dto.Phone?.Trim(),
-            CollegeId = dto.CollegeId,
-            Role      = dto.Role,
-            Status    = status,
-            CreatedAt = DateTime.UtcNow
+            FullName   = dto.FullName.Trim(),
+            Email      = dto.Email.Trim().ToLowerInvariant(),
+            Phone      = dto.Phone?.Trim(),
+            CollegeId  = dto.CollegeId,
+            Role       = dto.Role,
+            UserStatus = status,
+            CreatedAt  = DateTime.UtcNow
         };
 
         if (!string.IsNullOrWhiteSpace(dto.Password))
@@ -121,7 +121,7 @@ public class UsersOrchestrator : IUsersOrchestrator
         // 4. Persist
         User created = await _usersManager.Create(newUser);
 
-        _log.Info($"UsersOrchestrator.RegisterUser: created id={created.Id}, status={created.Status}");
+        _log.Info($"UsersOrchestrator.RegisterUser: created id={created.Id}, status={created.UserStatus}");
         return created.ToDto();
     }
 }

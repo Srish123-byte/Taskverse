@@ -32,10 +32,10 @@ public class TaskverseContext : DbContext
         // ── Users ─────────────────────────────────────────────────────────────
         modelBuilder.Entity<User>(entity =>
         {
-            // Map the user_status PostgreSQL enum column (registered via NpgsqlDataSourceBuilder.MapEnum)
-            entity.Property(u => u.Status)
-                  .HasColumnName("status")
-                  .HasColumnType("user_status");
+            // HasPostgresEnum<UserStatus> above handles type resolution — do NOT set HasColumnType here,
+            // as that overrides Npgsql's enum handler and causes it to fall back to integer serialization.
+            entity.Property(u => u.UserStatus)
+                  .HasColumnName("status");
 
             entity.HasIndex(u => u.Email)
                   .IsUnique()
@@ -44,7 +44,7 @@ public class TaskverseContext : DbContext
             entity.HasIndex(u => u.Role)
                   .HasDatabaseName("idx_users_role");
 
-            entity.HasIndex(u => u.Status)
+            entity.HasIndex(u => u.UserStatus)
                   .HasDatabaseName("idx_users_status");
         });
 

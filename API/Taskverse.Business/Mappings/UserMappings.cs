@@ -29,7 +29,7 @@ public static class UserMappings
             Phone      = entity.Phone,
             CollegeId  = entity.CollegeId,
             Role       = entity.Role,
-            Status     = entity.Status.ToString(),
+            Status     = entity.UserStatus.ToString(),
             CreatedAt  = entity.CreatedAt,
             ModifiedAt = entity.ModifiedAt
         };
