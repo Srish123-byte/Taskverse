@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql.NameTranslation;
 using Taskverse.Data.DataAccess;
 
 namespace Taskverse.Data;
@@ -18,6 +19,15 @@ public class TaskverseContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // Register user_status PostgreSQL enum at the model level.
+        // This prevents EF Core from falling back to integer serialization.
+        // NpgsqlNullNameTranslator keeps the C# enum names unchanged (UPPERCASE),
+        // matching the PostgreSQL enum labels exactly.
+        modelBuilder.HasPostgresEnum<UserStatus>(
+            schema: null,
+            name: "user_status",
+            nameTranslator: new NpgsqlNullNameTranslator());
 
         // ── Users ─────────────────────────────────────────────────────────────
         modelBuilder.Entity<User>(entity =>

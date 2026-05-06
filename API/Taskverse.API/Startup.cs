@@ -9,6 +9,7 @@ using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Npgsql;
+using Npgsql.NameTranslation;
 using System.Text;
 using Taskverse.Api.Configuration;
 using Taskverse.Api.Filters;
@@ -182,9 +183,11 @@ public class Startup
             ?? throw new InvalidOperationException("Connection string 'TaskverseDb' is missing.");
 
         // Register the PostgreSQL user_status enum so Npgsql can serialize/deserialize it correctly.
-        // Without this, Npgsql sends strings as 'text' and PostgreSQL rejects the implicit cast.
+        // NpgsqlNullNameTranslator preserves the UPPERCASE enum label names (PENDING_APPROVAL, ACTIVE, etc.)
+        // matching the PostgreSQL enum values exactly. Without it, the default snake_case translator
+        // would mangle ALL_CAPS names into p_e_n_d_i_n_g__a_p_p_r_o_v_a_l etc.
         var dataSource = new NpgsqlDataSourceBuilder(connStr)
-            .MapEnum<UserStatus>("user_status")
+            .MapEnum<UserStatus>("user_status", nameTranslator: new NpgsqlNullNameTranslator())
             .Build();
 
         services.AddDbContext<TaskverseContext>(options =>
