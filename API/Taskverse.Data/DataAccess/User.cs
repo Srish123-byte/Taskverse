@@ -1,53 +1,27 @@
-using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-
+using Taskverse.Business.Enums;
 namespace Taskverse.Data.DataAccess;
 
 [Table("users")]
 public class User
 {
-    [Key]
-    [Column("id")]
-    public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid Id { get; set; }
 
-    [Required]
-    [Column("full_name")]
-    public string FullName { get; set; } = default!;
+        public string FullName { get; set; } = null!;
+        public string Email { get; set; } = null!;
+        public string? Phone { get; set; }
 
-    [Required]
-    [Column("email")]
-    public string Email { get; set; } = default!;
+        public Guid? CollegeId { get; set; }
 
-    [Column("phone")]
-    public string? Phone { get; set; }
+        public string Role { get; set; } = null!;
 
-    [Column("college_id")]
-    public Guid? CollegeId { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime ModifiedAt { get; set; }
 
-    [Required]
-    [Column("role")]
-    public string Role { get; set; } = default!;
+        public Guid? BatchId { get; set; }
+        public Guid? ClassId { get; set; }
 
-    /// <summary>
-    /// Maps to the PostgreSQL user_status enum.
-    /// Valid values: APPROVED, PENDING_APPROVAL, REJECTED
-    /// </summary>
-    [Required]
-    [Column("status")]
-    public UserStatus UserStatus { get; set; } = UserStatus.PENDING_APPROVAL;
+        public string PasswordHash { get; set; } = null!;
 
-    [Column("batch_id")]
-    public Guid? BatchId { get; set; }
-
-    [Column("class_id")]
-    public Guid? ClassId { get; set; }
-
-    [Column("password_hash")]
-    public string? PasswordHash { get; set; }
-
-    [Column("created_at")]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    [Column("modified_at")]
-    public DateTime? ModifiedAt { get; set; }
+        public UserStatus Status { get; set; }
 }

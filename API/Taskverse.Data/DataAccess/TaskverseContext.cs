@@ -1,0 +1,230 @@
+using Microsoft.EntityFrameworkCore;
+using Taskverse.Business.Enums;
+
+namespace Taskverse.Data.DataAccess;
+
+public class TaskverseContext : DbContext
+{
+    public TaskverseContext(DbContextOptions<TaskverseContext> options)
+        : base(options)
+    {
+    }
+
+    public DbSet<User> Users { get; set; } = null!;
+    public DbSet<Role> Roles { get; set; } = null!;
+    public DbSet<College> Colleges { get; set; } = null!;
+    public DbSet<Class> Classes { get; set; } = null!;
+    public DbSet<Batch> Batches { get; set; } = null!;
+    public DbSet<Assessment> Assessments { get; set; } = null!;
+    public DbSet<AssessmentResult> AssessmentResults { get; set; } = null!;
+    public DbSet<AuditLog> AuditLogs { get; set; } = null!;
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // Configure Role entity
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.ToTable("roles");
+            entity.HasKey(r => r.RoleId);
+            entity.Property(r => r.RoleId).HasColumnName("role_id");
+            entity.Property(r => r.Name).HasColumnName("name").IsRequired();
+            entity.Property(r => r.Description).HasColumnName("description");
+            entity.Property(r => r.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.HasIndex(r => r.Name).IsUnique();
+        });
+
+        // Configure College entity
+        modelBuilder.Entity<College>(entity =>
+        {
+            entity.ToTable("colleges");
+            entity.HasKey(c => c.CollegeId);
+            entity.Property(c => c.CollegeId).HasColumnName("college_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(c => c.Name).HasColumnName("name").IsRequired();
+            entity.Property(c => c.City).HasColumnName("city");
+            entity.Property(c => c.State).HasColumnName("state");
+            entity.Property(c => c.Status).HasColumnName("status").HasDefaultValue("Active");
+            entity.Property(c => c.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(c => c.ModifiedAt).HasColumnName("modified_at");
+            entity.HasIndex(c => c.Name).IsUnique();
+        });
+
+        // Configure User entity
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.ToTable("users");
+            entity.HasKey(u => u.Id);
+            entity.Property(u => u.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(u => u.FullName).HasColumnName("full_name").IsRequired();
+            entity.Property(u => u.Email).HasColumnName("email").IsRequired();
+            entity.Property(u => u.Phone).HasColumnName("phone");
+            entity.Property(u => u.CollegeId).HasColumnName("college_id");
+            entity.Property(u => u.Role).HasColumnName("role").IsRequired();
+            entity.Property(u => u.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(u => u.ModifiedAt).HasColumnName("modified_at").HasDefaultValueSql("now()");
+            entity.Property(u => u.BatchId).HasColumnName("batch_id");
+            entity.Property(u => u.ClassId).HasColumnName("class_id");
+            entity.Property(u => u.PasswordHash).HasColumnName("password_hash").IsRequired();
+            entity.Property(u => u.Status).HasColumnName("status");
+
+            entity.HasIndex(u => u.Email).IsUnique();
+            entity.HasIndex(u => u.CollegeId);
+            entity.HasIndex(u => u.Role);
+            entity.HasIndex(u => u.BatchId);
+            entity.HasIndex(u => u.ClassId);
+
+            // Foreign key: users.college_id -> colleges.college_id
+            entity.HasOne<College>()
+                .WithMany()
+                .HasForeignKey(u => u.CollegeId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_users_college");
+
+            // Foreign key: users.role -> roles.name
+            entity.HasOne<Role>()
+                .WithMany()
+                .HasForeignKey(u => u.Role)
+                .HasPrincipalKey(r => r.Name)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_users_role_name");
+
+            // Foreign key: users.batch_id -> batches.batch_id
+            entity.HasOne<Batch>()
+                .WithMany()
+                .HasForeignKey(u => u.BatchId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_users_batch");
+
+            // Foreign key: users.class_id -> classes.class_id
+            entity.HasOne<Class>()
+                .WithMany()
+                .HasForeignKey(u => u.ClassId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_users_class");
+        });
+
+        // Configure Class entity
+        modelBuilder.Entity<Class>(entity =>
+        {
+            entity.ToTable("classes");
+            entity.HasKey(c => c.ClassId);
+            entity.Property(c => c.ClassId).HasColumnName("class_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(c => c.CollegeId).HasColumnName("college_id");
+            entity.Property(c => c.Name).HasColumnName("name").IsRequired();
+            entity.Property(c => c.Description).HasColumnName("description");
+            entity.Property(c => c.AcademicYear).HasColumnName("academic_year");
+            entity.Property(c => c.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(c => c.ModifiedAt).HasColumnName("modified_at");
+
+            entity.HasIndex(c => new { c.CollegeId, c.Name, c.AcademicYear }).IsUnique();
+
+            // Foreign key: classes.college_id -> colleges.college_id
+            entity.HasOne<College>()
+                .WithMany()
+                .HasForeignKey(c => c.CollegeId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_classes_college");
+        });
+
+        // Configure Batch entity
+        modelBuilder.Entity<Batch>(entity =>
+        {
+            entity.ToTable("batches");
+            entity.HasKey(b => b.BatchId);
+            entity.Property(b => b.BatchId).HasColumnName("batch_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(b => b.ClassId).HasColumnName("class_id");
+            entity.Property(b => b.CollegeId).HasColumnName("college_id");
+            entity.Property(b => b.Name).HasColumnName("name").IsRequired();
+            entity.Property(b => b.Capacity).HasColumnName("capacity");
+            entity.Property(b => b.Description).HasColumnName("description");
+            entity.Property(b => b.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(b => b.ModifiedAt).HasColumnName("modified_at");
+
+            entity.HasIndex(b => new { b.ClassId, b.Name }).IsUnique();
+
+            // Foreign key: batches.class_id -> classes.class_id
+            entity.HasOne<Class>()
+                .WithMany()
+                .HasForeignKey(b => b.ClassId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_batches_class");
+
+            // Foreign key: batches.college_id -> colleges.college_id
+            entity.HasOne<College>()
+                .WithMany()
+                .HasForeignKey(b => b.CollegeId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("fk_batches_college");
+        });
+
+        // Configure Assessment entity
+        modelBuilder.Entity<Assessment>(entity =>
+        {
+            entity.ToTable("assessments");
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(a => a.Title).HasColumnName("title").IsRequired().HasMaxLength(256);
+            entity.Property(a => a.Description).HasColumnName("description");
+            entity.Property(a => a.Type).HasColumnName("type").IsRequired().HasMaxLength(50);
+            entity.Property(a => a.ExamId).HasColumnName("exam_id");
+            entity.Property(a => a.ChallengeIds).HasColumnName("challenge_ids").HasColumnType("uuid[]");
+            entity.Property(a => a.AssignedTo).HasColumnName("assigned_to").HasColumnType("uuid[]");
+            entity.Property(a => a.DueDate).HasColumnName("due_date");
+            entity.Property(a => a.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(a => a.CreatedBy).HasColumnName("created_by");
+            entity.Property(a => a.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(a => a.UpdatedAt).HasColumnName("modified_at");
+        });
+
+        // Configure AssessmentResult entity
+        modelBuilder.Entity<AssessmentResult>(entity =>
+        {
+            entity.ToTable("assessment_results");
+            entity.HasKey(ar => ar.Id);
+            entity.Property(ar => ar.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(ar => ar.AssessmentId).HasColumnName("assessment_id");
+            entity.Property(ar => ar.UserId).HasColumnName("user_id");
+            entity.Property(ar => ar.Status).HasColumnName("status").IsRequired().HasMaxLength(50);
+            entity.Property(ar => ar.Score).HasColumnName("score");
+            entity.Property(ar => ar.CompletedAt).HasColumnName("completed_at");
+            entity.Property(ar => ar.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(ar => ar.UpdatedAt).HasColumnName("modified_at");
+
+            // Foreign keys
+            entity.HasOne<Assessment>()
+                .WithMany()
+                .HasForeignKey(ar => ar.AssessmentId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_assessment_results_assessment");
+
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(ar => ar.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_assessment_results_user");
+        });
+
+        // Configure AuditLog entity
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.ToTable("audit_logs");
+            entity.HasKey(al => al.Id);
+            entity.Property(al => al.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(al => al.UserId).HasColumnName("user_id");
+            entity.Property(al => al.Action).HasColumnName("action").IsRequired().HasMaxLength(100);
+            entity.Property(al => al.EntityType).HasColumnName("entity_type").HasMaxLength(100);
+            entity.Property(al => al.EntityId).HasColumnName("entity_id");
+            entity.Property(al => al.Details).HasColumnName("details");
+            entity.Property(al => al.OccurredAt).HasColumnName("occurred_at").HasDefaultValueSql("now()");
+            entity.Property(al => al.IpAddress).HasColumnName("ip_address").HasMaxLength(45);
+
+            // Foreign key
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(al => al.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_audit_logs_user");
+        });
+    }
+}

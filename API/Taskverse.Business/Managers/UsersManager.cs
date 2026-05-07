@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Taskverse.Business.Enums;
 using Taskverse.Business.Interface;
 using Taskverse.Data;
 using Taskverse.Data.DataAccess;
@@ -31,9 +32,9 @@ public class UsersManager : IUsersManager
     public async Task<User> Create(User user)
     {
         _context.Users.Add(user);
-        await _context.SaveChangesAsync();
-        return user;
-    }
+            await _context.SaveChangesAsync();
+            return user;
+        }
 
     public async Task Update(User user)
     {
@@ -50,7 +51,7 @@ public class UsersManager : IUsersManager
         if (user is null)
             return;
 
-        user.UserStatus = UserStatus.REJECTED;
+        user.Status = UserStatus.REJECTED;
         user.ModifiedAt = DateTime.UtcNow;
 
         _context.Users.Update(user);

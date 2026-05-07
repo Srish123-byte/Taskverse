@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Taskverse.Api.MicroServices.Interfaces;
 using Taskverse.Api.MicroServices.Models;
 using Taskverse.Business.DTOs;
+using Taskverse.Business.Enums;
 using Taskverse.Business.Interface;
 using Taskverse.Business.Mappings;
 using Taskverse.Business.Utilities;
@@ -98,7 +99,7 @@ public class UsersOrchestrator : IUsersOrchestrator
 
         // 2. Determine status
         bool isSuperAdmin = dto.Role.Equals(SuperAdminRole, StringComparison.OrdinalIgnoreCase);
-        UserStatus status = isSuperAdmin ? UserStatus.APPROVED : UserStatus.PENDING_APPROVAL;
+        dto.Status = isSuperAdmin ? UserStatus.APPROVED : UserStatus.PENDING_APPROVAL;
 
         // 3. Build entity + hash password
         var newUser = new User
@@ -108,7 +109,9 @@ public class UsersOrchestrator : IUsersOrchestrator
             Phone      = dto.Phone?.Trim(),
             CollegeId  = dto.CollegeId,
             Role       = dto.Role,
-            UserStatus = status,
+            Status     = dto.Status,
+            BatchId    = dto.BatchId,
+            ClassId    = dto.ClassId,
             CreatedAt  = DateTime.UtcNow
         };
 
@@ -121,7 +124,7 @@ public class UsersOrchestrator : IUsersOrchestrator
         // 4. Persist
         User created = await _usersManager.Create(newUser);
 
-        _log.Info($"UsersOrchestrator.RegisterUser: created id={created.Id}, status={created.UserStatus}");
+        _log.Info($"UsersOrchestrator.RegisterUser: created id={created.Id}, status={created.Status}");
         return created.ToDto();
     }
 }

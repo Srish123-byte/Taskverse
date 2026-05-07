@@ -20,6 +20,7 @@ using Taskverse.Business.Interface;
 using Taskverse.Business.Managers;
 using Taskverse.Business.Orchestrators;
 using Taskverse.Data.DataAccess;
+using Taskverse.Business.Enums;
 
 namespace Taskverse.Api;
 
@@ -186,9 +187,12 @@ public class Startup
         // NpgsqlNullNameTranslator preserves the UPPERCASE enum label names (PENDING_APPROVAL, ACTIVE, etc.)
         // matching the PostgreSQL enum values exactly. Without it, the default snake_case translator
         // would mangle ALL_CAPS names into p_e_n_d_i_n_g__a_p_p_r_o_v_a_l etc.
-        var dataSource = new NpgsqlDataSourceBuilder(connStr)
-            .MapEnum<UserStatus>("user_status", nameTranslator: new NpgsqlNullNameTranslator())
-            .Build();
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connStr);
+        //dataSourceBuilder.MapEnum<UserStatus>(nameTranslator: new NpgsqlNullNameTranslator());
+        var dataSource = dataSourceBuilder.Build();
+
+        // Register dataSource as singleton to preserve enum mapping for application lifetime
+        services.AddSingleton(dataSource);
 
         services.AddDbContext<TaskverseContext>(options =>
             options.UseNpgsql(dataSource));

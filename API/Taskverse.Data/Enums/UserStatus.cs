@@ -1,4 +1,4 @@
-namespace Taskverse.Data.DataAccess;
+namespace Taskverse.Business.Enums;
 
 /// <summary>
 /// Mirrors the PostgreSQL user_status enum.
@@ -6,7 +6,7 @@ namespace Taskverse.Data.DataAccess;
 /// </summary>
 public enum UserStatus
 {
-    APPROVED,
-    PENDING_APPROVAL,
-    REJECTED
+    APPROVED = 1,
+    PENDING_APPROVAL = 2,
+    REJECTED = 3
 }

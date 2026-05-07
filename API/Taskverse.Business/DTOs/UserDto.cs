@@ -1,3 +1,5 @@
+using Taskverse.Business.Enums;
+
 namespace Taskverse.Business.DTOs;
 
 public class UserDto
@@ -21,6 +23,9 @@ public class CreateUserDto
     public Guid? CollegeId { get; set; }
     public string Role { get; set; } = default!;
     public string Password { get; set; } = default!;
+    public UserStatus Status { get; set; }
+    public Guid? BatchId { get; set; }
+    public Guid? ClassId { get; set; }
 }
 
 public class UpdateUserDto
