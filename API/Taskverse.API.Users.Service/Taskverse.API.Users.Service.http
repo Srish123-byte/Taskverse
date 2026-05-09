@@ -1,0 +1,6 @@
+@Taskverse.API.Users.Service_HostAddress = http://localhost:5028
+
+GET {{Taskverse.API.Users.Service_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
