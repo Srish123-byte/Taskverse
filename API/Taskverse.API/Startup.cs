@@ -187,6 +187,7 @@ public class Startup
         // NpgsqlNullNameTranslator preserves the UPPERCASE enum label names (PENDING_APPROVAL, ACTIVE, etc.)
         // matching the PostgreSQL enum values exactly. Without it, the default snake_case translator
         // would mangle ALL_CAPS names into p_e_n_d_i_n_g__a_p_p_r_o_v_a_l etc.
+
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(connStr);
         //dataSourceBuilder.MapEnum<UserStatus>(nameTranslator: new NpgsqlNullNameTranslator());
         var dataSource = dataSourceBuilder.Build();
