@@ -18,18 +18,17 @@ public class TokenService : ITokenService
         _logger = logger;
     }
 
-    public async Task<string> GenerateTokenAsync(Guid userId, string email, string role)
+    public async Task<string> GenerateTokenAsync(Guid userId, string email, string role, string firstName, string lastName)
     {
         try
         {
             var jwtSettings = _configuration.GetSection("JwtSettings");
-            var secret = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured");
+            var secret = jwtSettings["Key"] ?? jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT secret not configured");
             var key = Encoding.ASCII.GetBytes(secret);
 
             var tokenHandler = new JwtSecurityTokenHandler();
-            var expirationMinutes = int.TryParse(jwtSettings["ExpiresInMinutes"], out var exp) 
-                ? exp 
-                : 60;
+            var expirationMinutes = ResolveExpiryMinutes(jwtSettings);
+            var expiresAt = DateTime.UtcNow.AddMinutes(expirationMinutes);
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
@@ -38,9 +37,11 @@ public class TokenService : ITokenService
                     new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
                     new Claim(ClaimTypes.Email, email),
                     new Claim(ClaimTypes.Role, role),
+                    new Claim(ClaimTypes.GivenName, firstName),
+                    new Claim(ClaimTypes.Surname, lastName),
                     new Claim("service", "taskverse-api")
                 }),
-                Expires = DateTime.UtcNow.AddMinutes(expirationMinutes),
+                Expires = expiresAt,
                 Issuer = jwtSettings["Issuer"],
                 Audience = jwtSettings["Audience"],
                 SigningCredentials = new SigningCredentials(
@@ -61,12 +62,18 @@ public class TokenService : ITokenService
         }
     }
 
+    public DateTime GetExpiryUtc()
+    {
+        var expirationMinutes = ResolveExpiryMinutes(_configuration.GetSection("JwtSettings"));
+        return DateTime.UtcNow.AddMinutes(expirationMinutes);
+    }
+
     public async Task<ClaimsPrincipal?> ValidateTokenAsync(string token)
     {
         try
         {
             var jwtSettings = _configuration.GetSection("JwtSettings");
-            var secret = jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured");
+            var secret = jwtSettings["Key"] ?? jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT secret not configured");
             var key = Encoding.ASCII.GetBytes(secret);
 
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -106,5 +113,20 @@ public class TokenService : ITokenService
         // TODO: Implement refresh token validation from database
         // For now, just return true to indicate format is valid
         return await Task.FromResult(!string.IsNullOrWhiteSpace(refreshToken));
+    }
+
+    private static int ResolveExpiryMinutes(IConfigurationSection jwtSettings)
+    {
+        if (int.TryParse(jwtSettings["ExpiresInMinutes"], out var expiresInMinutes))
+        {
+            return expiresInMinutes;
+        }
+
+        if (int.TryParse(jwtSettings["TokenExpiryTimeInMinutes"], out var tokenExpiryMinutes))
+        {
+            return tokenExpiryMinutes;
+        }
+
+        return 60;
     }
 }

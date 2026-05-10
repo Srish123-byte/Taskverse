@@ -11,8 +11,12 @@ public class LoginResponse
 {
     public string AccessToken { get; set; } = default!;
     public string RefreshToken { get; set; } = default!;
-    public int ExpiresIn { get; set; }
-    public string TokenType { get; set; } = "Bearer";
+    public DateTime ExpiresAt { get; set; }
+    public string UserId { get; set; } = default!;
+    public string Email { get; set; } = default!;
+    public string FirstName { get; set; } = default!;
+    public string LastName { get; set; } = default!;
+    public List<string> Roles { get; set; } = [];
 }
 
 public class RefreshTokenRequest
@@ -23,8 +27,7 @@ public class RefreshTokenRequest
 public class RefreshTokenResponse
 {
     public string AccessToken { get; set; } = default!;
-    public int ExpiresIn { get; set; }
-    public string TokenType { get; set; } = "Bearer";
+    public DateTime ExpiresAt { get; set; }
 }
 
 public class ValidateTokenRequest

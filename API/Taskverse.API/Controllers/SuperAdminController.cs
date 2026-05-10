@@ -1,0 +1,123 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
+using Swashbuckle.AspNetCore.Annotations;
+using Taskverse.Api.Mappings;
+using Taskverse.Api.Models;
+using Taskverse.Business.Interface;
+
+namespace Taskverse.Api.Controllers;
+
+[Route("api/super-admin")]
+[Produces("application/json")]
+public class SuperAdminController : TaskverseBaseController
+{
+    private const string SuperAdminRole = "SuperAdmin";
+
+    private readonly ISuperAdminOrchestrator _superAdminOrchestrator;
+
+    public SuperAdminController(ISuperAdminOrchestrator superAdminOrchestrator)
+    {
+        _superAdminOrchestrator = superAdminOrchestrator;
+    }
+
+    [HttpGet("dashboard")]
+    [SwaggerResponse(200, "Super admin dashboard", typeof(SuperAdminDashboardResponseModel))]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> GetDashboard()
+    {
+        var roleCheck = EnsureSuperAdmin();
+        if (roleCheck is not null) return roleCheck;
+
+        var dto = await _superAdminOrchestrator.GetDashboard();
+        return Ok(dto.ToResponseModel());
+    }
+
+    [HttpGet("colleges")]
+    [SwaggerResponse(200, "All colleges", typeof(List<CollegeResponseModel>))]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> GetColleges()
+    {
+        var roleCheck = EnsureSuperAdmin();
+        if (roleCheck is not null) return roleCheck;
+
+        var dto = await _superAdminOrchestrator.GetColleges();
+        return Ok(dto.Select(x => x.ToResponseModel()).ToList());
+    }
+
+    [HttpGet("colleges/pending")]
+    [SwaggerResponse(200, "Pending colleges", typeof(List<CollegeResponseModel>))]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> GetPendingColleges()
+    {
+        var roleCheck = EnsureSuperAdmin();
+        if (roleCheck is not null) return roleCheck;
+
+        var dto = await _superAdminOrchestrator.GetPendingColleges();
+        return Ok(dto.Select(x => x.ToResponseModel()).ToList());
+    }
+
+    [HttpPost("colleges/{collegeId}/approve")]
+    [SwaggerResponse(200, "College approved", typeof(CollegeResponseModel))]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> ApproveCollege(string collegeId, [FromBody] CollegeActionRequestModel model)
+    {
+        var roleCheck = EnsureSuperAdmin();
+        if (roleCheck is not null) return roleCheck;
+
+        var dto = await _superAdminOrchestrator.ApproveCollege(collegeId, model.ToDto(GetPerformedBy()));
+        return Ok(dto.ToResponseModel());
+    }
+
+    [HttpPost("colleges/{collegeId}/reject")]
+    [SwaggerResponse(200, "College rejected", typeof(CollegeResponseModel))]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> RejectCollege(string collegeId, [FromBody] CollegeActionRequestModel model)
+    {
+        var roleCheck = EnsureSuperAdmin();
+        if (roleCheck is not null) return roleCheck;
+
+        var dto = await _superAdminOrchestrator.RejectCollege(collegeId, model.ToDto(GetPerformedBy()));
+        return Ok(dto.ToResponseModel());
+    }
+
+    [HttpPost("colleges/{collegeId}/deactivate")]
+    [SwaggerResponse(200, "College deactivated", typeof(CollegeResponseModel))]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> DeactivateCollege(string collegeId, [FromBody] CollegeActionRequestModel model)
+    {
+        var roleCheck = EnsureSuperAdmin();
+        if (roleCheck is not null) return roleCheck;
+
+        var dto = await _superAdminOrchestrator.DeactivateCollege(collegeId, model.ToDto(GetPerformedBy()));
+        return Ok(dto.ToResponseModel());
+    }
+
+    [HttpPost("colleges/{collegeId}/reactivate")]
+    [SwaggerResponse(200, "College reactivated", typeof(CollegeResponseModel))]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> ReactivateCollege(string collegeId, [FromBody] CollegeActionRequestModel model)
+    {
+        var roleCheck = EnsureSuperAdmin();
+        if (roleCheck is not null) return roleCheck;
+
+        var dto = await _superAdminOrchestrator.ReactivateCollege(collegeId, model.ToDto(GetPerformedBy()));
+        return Ok(dto.ToResponseModel());
+    }
+
+    private IActionResult? EnsureSuperAdmin()
+    {
+        if (User?.Identity?.IsAuthenticated != true || !User.IsInRole(SuperAdminRole))
+        {
+            return Forbid();
+        }
+
+        return null;
+    }
+
+    private string GetPerformedBy()
+    {
+        return User.FindFirstValue(ClaimTypes.Email)
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? "super-admin";
+    }
+}

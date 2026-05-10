@@ -8,7 +8,7 @@ public interface ITokenService
     /// <summary>
     /// Generates a JWT token for the given user claims
     /// </summary>
-    Task<string> GenerateTokenAsync(Guid userId, string email, string role);
+    Task<string> GenerateTokenAsync(Guid userId, string email, string role, string firstName, string lastName);
 
     /// <summary>
     /// Validates a JWT token and returns the principal if valid
@@ -19,6 +19,8 @@ public interface ITokenService
     /// Generates a refresh token
     /// </summary>
     Task<string> GenerateRefreshTokenAsync();
+
+    DateTime GetExpiryUtc();
 
     /// <summary>
     /// Validates a refresh token

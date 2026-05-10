@@ -7,6 +7,9 @@ public record LoginResponseModel(
     string RefreshToken,
     DateTime ExpiresAt,
     string UserId,
+    string Email,
+    string FirstName,
+    string LastName,
     List<string> Roles);
 
 public record RefreshTokenRequestModel(string RefreshToken);

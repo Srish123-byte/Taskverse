@@ -33,6 +33,9 @@ public class AuthOrchestrator : IAuthOrchestrator
             model.RefreshToken,
             model.ExpiresAt,
             model.UserId,
+            model.Email,
+            model.FirstName,
+            model.LastName,
             model.Roles);
     }
 
@@ -52,6 +55,9 @@ public class AuthOrchestrator : IAuthOrchestrator
             model.RefreshToken,
             model.ExpiresAt,
             model.UserId,
+            model.Email,
+            model.FirstName,
+            model.LastName,
             model.Roles);
     }
 

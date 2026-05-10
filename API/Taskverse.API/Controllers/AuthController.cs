@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using Swashbuckle.AspNetCore.Annotations;
 using Taskverse.Api.Filters;
 using Taskverse.Api.Models;
@@ -33,11 +34,18 @@ public class AuthController : Controller
             if (result is null) return Unauthorized("Invalid credentials");
             return Ok(new LoginResponseModel
             {
-                AccessToken = result.AccessToken,
+                Token = result.AccessToken,
                 RefreshToken = result.RefreshToken,
                 ExpiresAt = result.ExpiresAt,
-                UserId = result.UserId,
-                Roles = result.Roles
+                User = new CurrentUserResponseModel
+                {
+                    UserId = result.UserId,
+                    Email = result.Email,
+                    FirstName = result.FirstName,
+                    LastName = result.LastName,
+                    Role = result.Roles.FirstOrDefault() ?? string.Empty,
+                    IsActive = true
+                }
             });
         }
         catch (Exception ex)
@@ -49,7 +57,7 @@ public class AuthController : Controller
     /// <summary>Refreshes an access token using a valid refresh token.</summary>
     [AllowAnonymous]
     [HttpPost("refresh")]
-    [SwaggerResponse(200, "Token refreshed", typeof(LoginResponseModel))]
+    [SwaggerResponse(200, "Token refreshed", typeof(RefreshLoginResponseModel))]
     [SwaggerResponse(401, "Invalid or expired refresh token")]
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestModel model)
     {
@@ -57,13 +65,11 @@ public class AuthController : Controller
         {
             var result = await _authOrchestrator.RefreshToken(new RefreshTokenRequestDto(model.RefreshToken));
             if (result is null) return Unauthorized("Invalid or expired refresh token");
-            return Ok(new LoginResponseModel
+            return Ok(new RefreshLoginResponseModel
             {
-                AccessToken = result.AccessToken,
+                Token = result.AccessToken,
                 RefreshToken = result.RefreshToken,
-                ExpiresAt = result.ExpiresAt,
-                UserId = result.UserId,
-                Roles = result.Roles
+                ExpiresAt = result.ExpiresAt
             });
         }
         catch (Exception ex)
@@ -112,5 +118,21 @@ public class AuthController : Controller
         {
             return Problem(ex.Message);
         }
+    }
+
+    [Authorize]
+    [HttpGet("profile")]
+    [SwaggerResponse(200, "Current authenticated user", typeof(CurrentUserResponseModel))]
+    public IActionResult Profile()
+    {
+        return Ok(new CurrentUserResponseModel
+        {
+            UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
+            Email = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty,
+            FirstName = User.FindFirstValue(ClaimTypes.GivenName) ?? string.Empty,
+            LastName = User.FindFirstValue(ClaimTypes.Surname) ?? string.Empty,
+            Role = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty,
+            IsActive = true
+        });
     }
 }

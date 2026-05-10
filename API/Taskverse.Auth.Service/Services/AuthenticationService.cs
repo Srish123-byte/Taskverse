@@ -1,21 +1,25 @@
 // Taskverse.Auth.Service/Services/AuthenticationService.cs
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Taskverse.Auth.Service.Models;
+using Taskverse.Business.Enums;
+using Taskverse.Data.DataAccess;
 
 namespace Taskverse.Auth.Service.Services;
 
 public class AuthenticationService : IAuthenticationService
 {
     private readonly ITokenService _tokenService;
+    private readonly TaskverseContext _context;
     private readonly ILogger<AuthenticationService> _logger;
-    // TODO: Inject actual user service/repository
-    // private readonly IUserService _userService;
 
     public AuthenticationService(
         ITokenService tokenService,
+        TaskverseContext context,
         ILogger<AuthenticationService> logger)
     {
         _tokenService = tokenService;
+        _context = context;
         _logger = logger;
     }
 
@@ -23,19 +27,30 @@ public class AuthenticationService : IAuthenticationService
     {
         try
         {
-            // TODO: Validate credentials against user service
-            // For now, return mock response
-
             if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
             {
                 _logger.LogWarning("Login attempt with empty credentials");
                 return null;
             }
 
-            // This should call Users microservice to validate credentials
-            // For demonstration, we'll generate a token
-            var userId = Guid.NewGuid(); // In reality, get from user service
-            var token = await _tokenService.GenerateTokenAsync(userId, request.Email, "Student");
+            var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail);
+            if (user is null || !CanLogin(user))
+            {
+                _logger.LogWarning("Blocked login attempt for {Email}", normalizedEmail);
+                return null;
+            }
+
+            var passwordHasher = new PasswordHasher<User>();
+            var verificationResult = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
+            if (verificationResult == PasswordVerificationResult.Failed)
+            {
+                _logger.LogWarning("Invalid password for {Email}", normalizedEmail);
+                return null;
+            }
+
+            var (firstName, lastName) = SplitName(user.FullName);
+            var token = await _tokenService.GenerateTokenAsync(user.Id, user.Email, user.Role, firstName, lastName);
             var refreshToken = await _tokenService.GenerateRefreshTokenAsync();
 
             _logger.LogInformation($"User logged in: {request.Email}");
@@ -44,8 +59,12 @@ public class AuthenticationService : IAuthenticationService
             {
                 AccessToken = token,
                 RefreshToken = refreshToken,
-                ExpiresIn = 3600,
-                TokenType = "Bearer"
+                ExpiresAt = _tokenService.GetExpiryUtc(),
+                UserId = user.Id.ToString(),
+                Email = user.Email,
+                FirstName = firstName,
+                LastName = lastName,
+                Roles = [user.Role]
             };
         }
         catch (Exception ex)
@@ -67,13 +86,12 @@ public class AuthenticationService : IAuthenticationService
             }
 
             // TODO: Get user from refresh token and generate new access token
-            var newAccessToken = await _tokenService.GenerateTokenAsync(Guid.NewGuid(), "user@example.com", "Student");
+            var newAccessToken = await _tokenService.GenerateTokenAsync(Guid.NewGuid(), "user@example.com", "Student", "Taskverse", "User");
 
             return new RefreshTokenResponse
             {
                 AccessToken = newAccessToken,
-                ExpiresIn = 3600,
-                TokenType = "Bearer"
+                ExpiresAt = _tokenService.GetExpiryUtc()
             };
         }
         catch (Exception ex)
@@ -110,5 +128,29 @@ public class AuthenticationService : IAuthenticationService
             _logger.LogError($"Logout error: {ex.Message}");
             throw;
         }
+    }
+
+    private static bool CanLogin(User user)
+    {
+        if (string.Equals(user.Role, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
+        {
+            return user.Status != UserStatus.REJECTED;
+        }
+
+        return user.Status == UserStatus.APPROVED;
+    }
+
+    private static (string FirstName, string LastName) SplitName(string fullName)
+    {
+        var parts = (fullName ?? string.Empty)
+            .Trim()
+            .Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+
+        return parts.Length switch
+        {
+            0 => (string.Empty, string.Empty),
+            1 => (parts[0], string.Empty),
+            _ => (parts[0], parts[1])
+        };
     }
 }

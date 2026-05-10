@@ -1,0 +1,14 @@
+using Taskverse.Business.DTOs;
+
+namespace Taskverse.Business.Interface;
+
+public interface ISuperAdminOrchestrator
+{
+    Task<SuperAdminDashboardDto> GetDashboard();
+    Task<List<CollegeDto>> GetColleges();
+    Task<List<CollegeDto>> GetPendingColleges();
+    Task<CollegeDto> ApproveCollege(string collegeId, CollegeActionDto dto);
+    Task<CollegeDto> RejectCollege(string collegeId, CollegeActionDto dto);
+    Task<CollegeDto> DeactivateCollege(string collegeId, CollegeActionDto dto);
+    Task<CollegeDto> ReactivateCollege(string collegeId, CollegeActionDto dto);
+}

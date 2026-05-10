@@ -1,78 +1,103 @@
-var builder = WebApplication.CreateBuilder(args);
+namespace Taskverse.College.Service;
 
-// Add services to the container.
-builder.Services.AddOpenApi();
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+public class Program
 {
-    app.MapOpenApi();
-}
-
-app.UseHttpsRedirection();
-
-// College Service endpoints
-app.MapGet("/api/colleges", GetColleges)
-    .WithName("GetColleges")
-    .WithOpenApi();
-
-app.MapGet("/api/colleges/{id}", GetCollegeById)
-    .WithName("GetCollegeById")
-    .WithOpenApi();
-
-app.MapPost("/api/colleges", CreateCollege)
-    .WithName("CreateCollege")
-    .WithOpenApi();
-
-app.MapPut("/api/colleges/{id}", UpdateCollege)
-    .WithName("UpdateCollege")
-    .WithOpenApi();
-
-app.MapDelete("/api/colleges/{id}", DeleteCollege)
-    .WithName("DeleteCollege")
-    .WithOpenApi();
-
-app.Run();
-
-// College endpoints implementation
-async Task<IResult> GetColleges()
-{
-    var colleges = new[]
+    public static void Main(string[] args)
     {
-        new College { Id = 1, Name = "Engineering College", City = "New York", Country = "USA" },
-        new College { Id = 2, Name = "Medical College", City = "Boston", Country = "USA" }
-    };
-    return Results.Ok(colleges);
+        var builder = WebApplication.CreateBuilder(args);
+        var startup = new Startup(builder.Environment);
+        startup.ConfigureServices(builder.Services);
+        var app = builder.Build();
+        startup.Configure(app, app.Environment);
+        app.Run();
+    }
 }
 
-async Task<IResult> GetCollegeById(int id)
+internal static class CollegeStatuses
 {
-    var college = new College { Id = id, Name = $"College {id}", City = "City", Country = "Country" };
-    return Results.Ok(college);
+    public const string Active = "Active";
+    public const string Inactive = "Inactive";
+    public const string Rejected = "Rejected";
 }
 
-async Task<IResult> CreateCollege(College college)
+internal static class ApprovalStatuses
 {
-    return Results.Created($"/api/colleges/{college.Id}", college);
+    public const string Pending = "Pending";
+    public const string Approved = "Approved";
+    public const string Rejected = "Rejected";
 }
 
-async Task<IResult> UpdateCollege(int id, College college)
-{
-    college.Id = id;
-    return Results.Ok(college);
-}
+internal record CollegeActionRequest(
+    string PerformedBy,
+    string? Reason);
 
-async Task<IResult> DeleteCollege(int id)
-{
-    return Results.NoContent();
-}
+internal record CollegeRecord(
+    Guid CollegeId,
+    string Name,
+    string? City,
+    string? State,
+    string Status,
+    string ApprovalStatus,
+    bool IsActive,
+    DateTime RequestedAt,
+    string? RequestedBy,
+    DateTime? ApprovedAt,
+    string? ApprovedBy,
+    string? Notes);
 
-record College
+internal static class CollegeStore
 {
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string City { get; set; } = string.Empty;
-    public string Country { get; set; } = string.Empty;
+    private static readonly List<CollegeRecord> _colleges =
+    [
+        new(
+            Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            "Northwind Institute of Technology",
+            "Bengaluru",
+            "Karnataka",
+            CollegeStatuses.Active,
+            ApprovalStatuses.Approved,
+            true,
+            DateTime.UtcNow.AddDays(-30),
+            "registrar@northwind.edu",
+            DateTime.UtcNow.AddDays(-28),
+            "platform@taskverse.ai",
+            "Initial rollout college"),
+        new(
+            Guid.Parse("22222222-2222-2222-2222-222222222222"),
+            "Riverdale Engineering College",
+            "Hyderabad",
+            "Telangana",
+            CollegeStatuses.Active,
+            ApprovalStatuses.Pending,
+            false,
+            DateTime.UtcNow.AddDays(-2),
+            "admin@riverdale.edu",
+            null,
+            null,
+            "Awaiting compliance review"),
+        new(
+            Guid.Parse("33333333-3333-3333-3333-333333333333"),
+            "Summit Medical Academy",
+            "Pune",
+            "Maharashtra",
+            CollegeStatuses.Inactive,
+            ApprovalStatuses.Approved,
+            false,
+            DateTime.UtcNow.AddDays(-75),
+            "director@summitmed.edu",
+            DateTime.UtcNow.AddDays(-70),
+            "platform@taskverse.ai",
+            "Temporarily suspended during renewal")
+    ];
+
+    public static IReadOnlyList<CollegeRecord> Colleges => _colleges;
+
+    public static void Replace(CollegeRecord updated)
+    {
+        var index = _colleges.FindIndex(item => item.CollegeId == updated.CollegeId);
+        if (index >= 0)
+        {
+            _colleges[index] = updated;
+        }
+    }
 }

@@ -10,12 +10,14 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   token: string;
+  refreshToken: string;
+  expiresAt: string;
   user: User;
 }
 
 @Injectable({ providedIn: 'root' })
 export class AccountService {
-  private readonly url = 'accounts';
+  private readonly url = 'auth';
 
   constructor(private readonly http: HttpClientService) {}
 

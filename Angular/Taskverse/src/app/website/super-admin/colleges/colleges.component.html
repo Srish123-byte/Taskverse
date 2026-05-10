@@ -1,6 +1,35 @@
 <div class="page-container">
   <h2 class="page-title">Colleges</h2>
-  <div class="page-content">
-    <!-- Colleges list goes here -->
+  <div class="page-content colleges-page">
+    <div *ngIf="isLoading" class="page-state">Loading colleges...</div>
+    <div *ngIf="errorMessage" class="page-state page-state-error">{{ errorMessage }}</div>
+
+    <div *ngFor="let college of colleges" class="college-card">
+      <div class="college-copy">
+        <h3>{{ college.name }}</h3>
+        <p>{{ college.city }}{{ college.city && college.state ? ', ' : '' }}{{ college.state }}</p>
+        <div class="college-meta">
+          <span class="meta-chip">{{ college.approvalStatus }}</span>
+          <span class="meta-chip" [class.meta-chip-muted]="!college.isActive">{{ college.status }}</span>
+        </div>
+      </div>
+
+      <div class="college-actions">
+        <button
+          *ngIf="college.approvalStatus === 'Pending'"
+          mat-stroked-button
+          color="primary"
+          (click)="approveCollege(college.collegeId)">
+          Approve
+        </button>
+
+        <button
+          mat-flat-button
+          [color]="college.isActive ? 'warn' : 'primary'"
+          (click)="toggleCollegeStatus(college)">
+          {{ college.isActive ? 'Deactivate' : 'Reactivate' }}
+        </button>
+      </div>
+    </div>
   </div>
 </div>
