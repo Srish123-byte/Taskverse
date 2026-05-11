@@ -8,9 +8,10 @@ export const RouteAddress = {
     Root:       'super-admin',
     Dashboard:  'super-admin/dashboard',
     Colleges:   'super-admin/colleges',
-    Trainers:   'super-admin/trainers',
     Users:      'super-admin/users',
-    Manage:     'super-admin/manage'
+    Analytics:  'super-admin/analytics',
+    Assessments:'super-admin/assessments',
+    Settings:   'super-admin/settings'
   },
 
   CollegeAdmin: {

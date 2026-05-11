@@ -1,0 +1,15 @@
+<div class="page-container">
+  <div class="page-eyebrow">Super Admin</div>
+  <h2 class="page-title">Settings</h2>
+  <p class="page-welcome">Platform-level controls for governance, security, and operational preferences.</p>
+
+  <div class="settings-stack">
+    <article *ngFor="let section of sections" class="settings-card">
+      <div>
+        <h3>{{ section.title }}</h3>
+        <p>{{ section.description }}</p>
+      </div>
+      <button mat-stroked-button color="primary" type="button">Configure</button>
+    </article>
+  </div>
+</div>

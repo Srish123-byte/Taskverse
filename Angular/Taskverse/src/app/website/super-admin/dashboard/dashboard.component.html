@@ -1,31 +1,56 @@
 <div class="page-container">
+  <div class="page-eyebrow">Super Admin</div>
   <h2 class="page-title">Super Admin Dashboard</h2>
-  <p class="page-welcome">Welcome, {{ userName }}</p>
+  <p class="page-welcome">Welcome, {{ userName }}. Here is the live operational snapshot for the platform.</p>
 
   <div class="page-content super-admin-dashboard">
     <div *ngIf="isLoading" class="dashboard-state">Loading dashboard...</div>
     <div *ngIf="errorMessage" class="dashboard-state dashboard-state-error">{{ errorMessage }}</div>
 
     <ng-container *ngIf="dashboard">
+      <section class="dashboard-grid hero-grid">
+        <article class="hero-card hero-card-primary">
+          <span class="hero-label">Action Required</span>
+          <strong class="hero-value">{{ dashboard.pendingApprovals.length }}</strong>
+          <p class="hero-copy">Colleges waiting for registration approval.</p>
+        </article>
+
+        <article class="hero-card">
+          <span class="hero-label">Platform Uptime</span>
+          <strong class="hero-value">{{ dashboard.platformHealth.uptimePercent }}%</strong>
+          <p class="hero-copy">Current reported uptime across the platform.</p>
+        </article>
+
+        <article class="hero-card">
+          <span class="hero-label">Monthly Change</span>
+          <strong class="hero-value">{{ assessmentDelta > 0 ? '+' : '' }}{{ assessmentDelta }}</strong>
+          <p class="hero-copy">Difference between this month and the prior month.</p>
+        </article>
+      </section>
+
       <section class="dashboard-grid metrics-grid">
         <article class="metric-card">
-          <span class="metric-label">Active Colleges</span>
+          <span class="metric-label">Total Active Colleges</span>
           <strong class="metric-value">{{ dashboard.totals.activeColleges }}</strong>
+          <span class="metric-footnote">Live colleges currently active on the platform</span>
         </article>
 
         <article class="metric-card">
           <span class="metric-label">Registered Students</span>
           <strong class="metric-value">{{ dashboard.totals.registeredStudents }}</strong>
+          <span class="metric-footnote">Combined across all colleges</span>
         </article>
 
         <article class="metric-card">
           <span class="metric-label">Assessments This Month</span>
           <strong class="metric-value">{{ dashboard.totals.assessmentsThisMonth }}</strong>
+          <span class="metric-footnote">Completed during the current UTC month</span>
         </article>
 
         <article class="metric-card">
           <span class="metric-label">Previous Month</span>
           <strong class="metric-value">{{ dashboard.totals.assessmentsPreviousMonth }}</strong>
+          <span class="metric-footnote">Baseline from the immediately prior month</span>
         </article>
       </section>
 
@@ -44,7 +69,7 @@
               <div class="list-subtitle">{{ college.city }}{{ college.city && college.state ? ', ' : '' }}{{ college.state }}</div>
             </div>
             <div class="list-meta">
-              Requested by {{ college.requestedBy || 'Unknown' }}
+              Requested by {{ college.requestedBy || 'Unknown' }} on {{ college.requestedAt | date:'mediumDate' }}
             </div>
           </div>
         </article>
@@ -63,6 +88,10 @@
             <div>
               <div class="metric-label">Error Rate</div>
               <div class="metric-value">{{ dashboard.platformHealth.errorRatePercent }}%</div>
+            </div>
+            <div>
+              <div class="metric-label">API Status</div>
+              <div class="metric-value">{{ dashboard.platformHealth.apiStatus }}</div>
             </div>
           </div>
         </article>
@@ -88,6 +117,7 @@
         <article class="dashboard-panel">
           <div class="panel-header">
             <h3>Recent Activity</h3>
+            <span class="panel-caption">Last 20 actions</span>
           </div>
 
           <div *ngIf="!dashboard.recentActivity.length" class="panel-empty">No recent audit activity found.</div>
@@ -95,7 +125,7 @@
           <div *ngFor="let item of dashboard.recentActivity" class="list-row">
             <div>
               <div class="list-title">{{ item.action }}</div>
-              <div class="list-subtitle">{{ item.entityType || 'Platform' }} • {{ item.performedBy }}</div>
+              <div class="list-subtitle">{{ item.entityType || 'Platform' }} | {{ item.performedBy }}</div>
             </div>
             <div class="list-meta">{{ item.occurredAt | date:'medium' }}</div>
           </div>

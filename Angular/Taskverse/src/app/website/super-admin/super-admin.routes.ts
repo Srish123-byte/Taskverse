@@ -1,17 +1,26 @@
 import { RouterModule, Routes } from '@angular/router';
+import { SuperAdminShellComponent } from './super-admin-shell/super-admin-shell.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { CollegesComponent } from './colleges/colleges.component';
-import { TrainersComponent } from './trainers/trainers.component';
 import { UsersComponent } from './users/users.component';
-import { ManageComponent } from './manage/manage.component';
+import { AnalyticsComponent } from './analytics/analytics.component';
+import { AssessmentsComponent } from './assessments/assessments.component';
+import { SettingsComponent } from './settings/settings.component';
 
 const routes: Routes = [
-  { path: '',          redirectTo: 'dashboard', pathMatch: 'full' },
-  { path: 'dashboard', component: DashboardComponent },
-  { path: 'colleges',  component: CollegesComponent  },
-  { path: 'trainers',  component: TrainersComponent  },
-  { path: 'users',     component: UsersComponent     },
-  { path: 'manage',    component: ManageComponent    }
+  {
+    path: '',
+    component: SuperAdminShellComponent,
+    children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'dashboard', component: DashboardComponent },
+      { path: 'colleges', component: CollegesComponent },
+      { path: 'users', component: UsersComponent },
+      { path: 'analytics', component: AnalyticsComponent },
+      { path: 'assessments', component: AssessmentsComponent },
+      { path: 'settings', component: SettingsComponent }
+    ]
+  }
 ];
 
 export const SuperAdminRoutes = RouterModule.forChild(routes);

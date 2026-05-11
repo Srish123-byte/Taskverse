@@ -1,12 +1,12 @@
 @use '../../../common/styles/page' as *;
 
-.users-grid {
+.assessment-grid {
   display: grid;
   gap: 20px;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
-.user-card {
+.assessment-card {
   padding: 24px;
   border: 1px solid #dae5ef;
   border-radius: 22px;
@@ -14,23 +14,23 @@
   box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
 }
 
-.user-card-icon {
+.assessment-icon {
   display: inline-grid;
   place-items: center;
   width: 52px;
   height: 52px;
   margin-bottom: 16px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #94d2bd 0%, #0a9396 100%);
+  background: linear-gradient(135deg, #ee9b00 0%, #ca6702 100%);
   color: #ffffff;
 }
 
-.user-card h3 {
+.assessment-card h3 {
   margin: 0 0 10px;
   color: #16314a;
 }
 
-.user-card p {
+.assessment-card p {
   margin: 0;
   color: #617589;
   line-height: 1.6;

@@ -1,0 +1,26 @@
+<div class="super-admin-shell">
+  <aside class="shell-sidebar">
+    <div class="shell-brand">
+      <div class="brand-mark">TV</div>
+      <div>
+        <div class="brand-eyebrow">Control Center</div>
+        <div class="brand-title">Super Admin</div>
+      </div>
+    </div>
+
+    <nav class="shell-nav" aria-label="Super admin navigation">
+      <a
+        *ngFor="let item of navItems"
+        class="nav-link"
+        [routerLink]="item.route"
+        routerLinkActive="nav-link-active">
+        <mat-icon>{{ item.icon }}</mat-icon>
+        <span>{{ item.label }}</span>
+      </a>
+    </nav>
+  </aside>
+
+  <main class="shell-main">
+    <router-outlet></router-outlet>
+  </main>
+</div>

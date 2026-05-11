@@ -2,19 +2,23 @@ import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AppCommonModule } from '../../common/common.module';
 import { SuperAdminRoutes } from './super-admin.routes';
+import { SuperAdminShellComponent } from './super-admin-shell/super-admin-shell.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { CollegesComponent } from './colleges/colleges.component';
-import { TrainersComponent } from './trainers/trainers.component';
 import { UsersComponent } from './users/users.component';
-import { ManageComponent } from './manage/manage.component';
+import { AnalyticsComponent } from './analytics/analytics.component';
+import { AssessmentsComponent } from './assessments/assessments.component';
+import { SettingsComponent } from './settings/settings.component';
 
 @NgModule({
   declarations: [
+    SuperAdminShellComponent,
     DashboardComponent,
     CollegesComponent,
-    TrainersComponent,
     UsersComponent,
-    ManageComponent
+    AnalyticsComponent,
+    AssessmentsComponent,
+    SettingsComponent
   ],
   imports: [
     CommonModule,
