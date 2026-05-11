@@ -1,4 +1,4 @@
-namespace Taskverse.Business.ConfigClasses;
+namespace Taskverse.Api.MicroServices;
 
 public class MicroServiceSettings
 {

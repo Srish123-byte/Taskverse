@@ -132,7 +132,7 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
     private async Task<(int ThisMonth, int PreviousMonth)> GetAssessmentTotals()
     {
         var utcNow = DateTime.UtcNow;
-        var startOfThisMonth = new DateTime(utcNow.Year, utcNow.Month, 1);
+        var startOfThisMonth = new DateTime(utcNow.Year, utcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var startOfPreviousMonth = startOfThisMonth.AddMonths(-1);
 
         var thisMonth = await _context.Assessments.CountAsync(a => a.CreatedAt >= startOfThisMonth);
@@ -188,7 +188,7 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 
     private async Task<List<UsageTrendPointDto>> GetUsageTrends()
     {
-        var utcToday = DateTime.UtcNow.Date;
+        var utcToday = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
         var rangeStart = utcToday.AddDays(-29);
 
         return await _context.AssessmentResults

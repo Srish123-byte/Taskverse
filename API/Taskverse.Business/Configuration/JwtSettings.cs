@@ -1,4 +1,4 @@
-namespace Taskverse.Business.ConfigClasses;
+namespace Taskverse.Business.Configuration;
 
 public class JwtSettings
 {

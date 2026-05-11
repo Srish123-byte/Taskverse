@@ -15,12 +15,13 @@ using Taskverse.Api.Configuration;
 using Taskverse.Api.Filters;
 using Taskverse.Api.MicroServices.Interfaces;
 using Taskverse.Api.MicroServices.Orchestrators;
-using Taskverse.Business.ConfigClasses;
+using Taskverse.Business.Configuration;
 using Taskverse.Business.Interface;
 using Taskverse.Business.Managers;
 using Taskverse.Business.Orchestrators;
 using Taskverse.Data.DataAccess;
 using Taskverse.Business.Enums;
+using Taskverse.Api.MicroServices;
 
 namespace Taskverse.Api;
 

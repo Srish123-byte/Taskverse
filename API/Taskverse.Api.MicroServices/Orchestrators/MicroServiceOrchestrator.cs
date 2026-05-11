@@ -1,9 +1,8 @@
 using CorrelationId.Abstractions;
 using log4net;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
-using System.Net.Http.Headers;
 using System.Text;
 using Taskverse.Api.MicroServices.Enums;
 using Taskverse.Api.MicroServices.Interfaces;
@@ -19,7 +18,6 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ICorrelationContextAccessor _correlationContextAccessor;
-    private readonly IConfiguration _configuration;
     private readonly ILog _log;
 
     private readonly string _baseUrl;
@@ -30,17 +28,18 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
     public MicroServiceOrchestrator(
         IHttpClientFactory httpClientFactory,
         ICorrelationContextAccessor correlationContextAccessor,
-        IConfiguration configuration)
+        IOptions<MicroServiceSettings> microServiceSettings)
     {
         _httpClientFactory = httpClientFactory;
         _correlationContextAccessor = correlationContextAccessor;
-        _configuration = configuration;
         _log = LogManager.GetLogger(typeof(MicroServiceOrchestrator));
 
-        _baseUrl = _configuration["MicroServiceSettings:BaseUrl"] ?? string.Empty;
-        _baseUrlDev = _configuration["MicroServiceSettings:BaseUrlDev"] ?? string.Empty;
-        _useLocalMicroservices = bool.TryParse(_configuration["MicroServiceSettings:UseLocalMicroservices"], out var useLocal) && useLocal;
-        _serviceTimeoutSeconds = int.TryParse(_configuration["MicroServiceSettings:ServiceTimeoutSeconds"], out var timeout) ? timeout : 30;
+        var settings = microServiceSettings.Value ?? throw new InvalidOperationException("MicroServiceSettings are not configured.");
+
+        _baseUrl = NormalizeBaseUrl(settings.BaseUrl);
+        _baseUrlDev = NormalizeBaseUrl(settings.BaseUrlDev);
+        _useLocalMicroservices = settings.UseLocalMicroservices;
+        _serviceTimeoutSeconds = settings.ServiceTimeoutSeconds > 0 ? settings.ServiceTimeoutSeconds : 30;
     }
 
     public string GetMicroServiceUrl(MicroService microService)
@@ -50,20 +49,39 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
         if (isDevelopment && _useLocalMicroservices)
         {
             var port = (int)microService;
+            if (string.IsNullOrWhiteSpace(_baseUrl))
+            {
+                throw new InvalidOperationException("MicroServiceSettings:BaseUrl is missing for local microservice routing.");
+            }
+
             return $"{_baseUrl}:{port}/";
         }
 
         if (isDevelopment)
         {
+            if (string.IsNullOrWhiteSpace(_baseUrlDev))
+            {
+                throw new InvalidOperationException("MicroServiceSettings:BaseUrlDev is missing for development microservice routing.");
+            }
+
             return $"{_baseUrlDev}/{microService}/";
+        }
+
+        if (string.IsNullOrWhiteSpace(_baseUrl))
+        {
+            throw new InvalidOperationException("MicroServiceSettings:BaseUrl is missing for microservice routing.");
         }
 
         return $"{_baseUrl}/{microService}/";
     }
 
-    private void AddRequestHeaders(HttpClient client)
+    private static string NormalizeBaseUrl(string? baseUrl)
+        => string.IsNullOrWhiteSpace(baseUrl) ? string.Empty : baseUrl.TrimEnd('/');
+
+    private void PrepareClient(HttpClient client, Uri uri)
     {
         client.Timeout = TimeSpan.FromSeconds(_serviceTimeoutSeconds);
+        client.BaseAddress = new Uri($"{uri.Scheme}://{uri.Authority}");
 
         var correlationId = _correlationContextAccessor.CorrelationContext?.CorrelationId ?? string.Empty;
 
@@ -139,7 +157,7 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
     {
         var uri = GetValidatedUri(url);
         var client = _httpClientFactory.CreateClient(ClientName);
-        AddRequestHeaders(client);
+        PrepareClient(client, uri);
 
         try
         {
@@ -157,13 +175,17 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
     {
         var uri = GetValidatedUri(url);
         var client = _httpClientFactory.CreateClient(ClientName);
-        AddRequestHeaders(client);
+        PrepareClient(client, uri);
 
         try
         {
             var json = JsonConvert.SerializeObject(postData);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await client.PostAsync(uri, content);
+            using var request = new HttpRequestMessage(HttpMethod.Post, uri)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            };
+
+            var response = await client.SendAsync(request);
             return await GetResult<T>(response, url);
         }
         catch (Exception ex)
@@ -177,13 +199,17 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
     {
         var uri = GetValidatedUri(url);
         var client = _httpClientFactory.CreateClient(ClientName);
-        AddRequestHeaders(client);
+        PrepareClient(client, uri);
 
         try
         {
             var json = JsonConvert.SerializeObject(postData);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await client.PutAsync(uri, content);
+            using var request = new HttpRequestMessage(HttpMethod.Put, uri)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            };
+
+            var response = await client.SendAsync(request);
             return await GetResult<T>(response, url);
         }
         catch (Exception ex)
@@ -197,13 +223,17 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
     {
         var uri = GetValidatedUri(url);
         var client = _httpClientFactory.CreateClient(ClientName);
-        AddRequestHeaders(client);
+        PrepareClient(client, uri);
 
         try
         {
             var json = JsonConvert.SerializeObject(patchData);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await client.PatchAsync(uri, content);
+            using var request = new HttpRequestMessage(HttpMethod.Patch, uri)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            };
+
+            var response = await client.SendAsync(request);
             return await GetResult<T>(response, url);
         }
         catch (Exception ex)
@@ -217,7 +247,7 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
     {
         var uri = GetValidatedUri(url);
         var client = _httpClientFactory.CreateClient(ClientName);
-        AddRequestHeaders(client);
+        PrepareClient(client, uri);
 
         try
         {
