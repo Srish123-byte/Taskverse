@@ -107,10 +107,12 @@ public class AuthenticationService : IAuthenticationService
 
             // TODO: Get user from refresh token and generate new access token
             var newAccessToken = await _tokenService.GenerateTokenAsync(Guid.NewGuid(), "user@example.com", "Student", "Taskverse", "User");
+            var newRefreshToken = await _tokenService.GenerateRefreshTokenAsync();
 
             return new RefreshTokenResponse
             {
                 AccessToken = newAccessToken,
+                RefreshToken = newRefreshToken,
                 ExpiresAt = _tokenService.GetExpiryUtc()
             };
         }

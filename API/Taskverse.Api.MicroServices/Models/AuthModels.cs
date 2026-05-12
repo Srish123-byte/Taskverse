@@ -13,6 +13,11 @@ public record LoginResponseModel(
     List<string> Roles,
     string Status);
 
+public record RefreshTokenResponseModel(
+    string AccessToken,
+    string RefreshToken,
+    DateTime ExpiresAt);
+
 public record RefreshTokenRequestModel(string RefreshToken);
 
 public record LogoutRequestModel(string UserId, string RefreshToken);

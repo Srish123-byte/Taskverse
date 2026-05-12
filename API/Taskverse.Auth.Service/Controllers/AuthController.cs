@@ -1,6 +1,8 @@
 // Taskverse.Auth.Service/Controllers/AuthController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Taskverse.Auth.Service.Models;
 using Taskverse.Auth.Service.Services;
 
@@ -92,11 +94,12 @@ public class AuthController : ControllerBase
             if (principal == null)
                 return Ok(new ValidateTokenResponse { IsValid = false });
 
-            var claims = principal.Claims.ToDictionary(c => c.Type, c => (object)c.Value);
             return Ok(new ValidateTokenResponse 
             { 
                 IsValid = true,
-                Claims = claims
+                UserId = principal.FindFirstValue(ClaimTypes.NameIdentifier),
+                Roles = principal.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList(),
+                ExpiresAt = ResolveExpiryUtc(principal)
             });
         }
         catch (Exception ex)
@@ -140,5 +143,14 @@ public class AuthController : ControllerBase
     public IActionResult Health()
     {
         return Ok(new { status = "healthy", service = "auth-service" });
+    }
+
+    private static DateTime? ResolveExpiryUtc(ClaimsPrincipal principal)
+    {
+        var expClaim = principal.FindFirst(JwtRegisteredClaimNames.Exp)?.Value;
+        if (!long.TryParse(expClaim, out var expUnix))
+            return null;
+
+        return DateTimeOffset.FromUnixTimeSeconds(expUnix).UtcDateTime;
     }
 }

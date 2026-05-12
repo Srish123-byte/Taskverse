@@ -1,10 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AccountService, LoginRequest } from '../../../common/services/api/account.service';
+import { AccountService, LegacyLoginResponse, LoginRequest, LoginResponse } from '../../../common/services/api/account.service';
 import { UserService, RegisterRequest } from '../../../common/services/api/user.service';
 import { Session } from '../../../common/services/session/session.service';
 import { RouteAddress } from '../../../common/constants/routes.constants';
+import { RoleType } from '../../../common/enums/role-type.enum';
+import { User } from '../../../common/models/user.model';
 import { take } from 'rxjs/operators';
 
 export type AuthMode = 'login' | 'register';
@@ -48,7 +50,7 @@ export class LoginComponent implements OnInit {
 
   ngOnInit(): void {
     if (this.session.isLoggedIn()) {
-      this.router.navigate([RouteAddress.RoleDirector]);
+      void this.router.navigateByUrl(`/${RouteAddress.RoleDirector}`);
       return;
     }
 
@@ -86,19 +88,29 @@ export class LoginComponent implements OnInit {
 
     this.accountService.login(request).pipe(take(1)).subscribe({
       next: (response) => {
-        // Check if user is approved
-        if (response.user.status !== 'APPROVED') {
+        const normalizedResponse = this.normalizeLoginResponse(response);
+
+        if (!normalizedResponse?.user || !normalizedResponse.token) {
           this.isLoading = false;
-          this.errorMessage = this.getApprovalPendingMessage(response.user.role);
+          this.errorMessage = 'Login succeeded, but the server returned an unexpected response.';
           return;
         }
 
-        this.session.jwtToken  = response.token;
-        this.session.user      = response.user;
-        this.session.userEmail = response.user.email;
-        this.session.userId    = response.user.userId;
-        this.session.role      = response.user.role;
-        this.router.navigate([RouteAddress.RoleDirector]);
+        const normalizedStatus = this.normalizeStatus(normalizedResponse.user.status);
+
+        if (normalizedStatus !== 'APPROVED') {
+          this.redirectToApprovalStatus(normalizedResponse.user.role, normalizedStatus);
+          return;
+        }
+
+        normalizedResponse.user.status = normalizedStatus;
+        this.session.jwtToken  = normalizedResponse.token;
+        this.session.refreshToken = normalizedResponse.refreshToken;
+        this.session.user      = normalizedResponse.user;
+        this.session.userEmail = normalizedResponse.user.email;
+        this.session.userId    = normalizedResponse.user.userId;
+        this.session.role      = normalizedResponse.user.role;
+        this.navigateToLandingPage();
       },
       error: (err) => {
         this.isLoading    = false;
@@ -111,17 +123,116 @@ export class LoginComponent implements OnInit {
   }
 
   // ─── Helper Methods ───────────────────────────────────────────────────────
-  private getApprovalPendingMessage(role: string): string {
-    if (role === 'CollegeAdmin') {
-      return 'Your account is awaiting approval from super administrator';
+  private getApprovalPendingMessage(role: string, status: string): string {
+    if (status === 'PENDING_APPROVAL') {
+      if (role === RoleType.CollegeAdmin) {
+        return 'Your account is awaiting approval from the super administrator.';
+      }
+      if (role === RoleType.Trainer || role === RoleType.Student) {
+        return 'Your account is awaiting approval from your college administrator.';
+      }
     }
-    if (role === 'Trainer' || role === 'Student') {
-      return 'Your account is awaiting approval from your college administrator';
+
+    if (status === 'REJECTED') {
+      return 'Your account is not allowed to sign in. Please contact the administrator.';
+    }
+
+    if (role === RoleType.CollegeAdmin) {
+      return 'Your account is awaiting approval from the super administrator.';
+    }
+    if (role === RoleType.Trainer || role === RoleType.Student) {
+      return 'Your account is awaiting approval from your college administrator.';
     }
     return 'Your account is awaiting approval.';
   }
 
+  private redirectToApprovalStatus(role: RoleType, status: string): void {
+    void this.router.navigate([`/${RouteAddress.ApprovalStatus}`], {
+      queryParams: {
+        role,
+        status
+      }
+    }).finally(() => {
+      this.isLoading = false;
+    });
+  }
+
   // ─── Register ─────────────────────────────────────────────────────────────
+  private normalizeLoginResponse(
+    response: LoginResponse | LegacyLoginResponse | null | undefined
+  ): LoginResponse | null {
+    if (!response) {
+      return null;
+    }
+
+    if ('token' in response && 'user' in response) {
+      const normalizedRole = this.normalizeRole(response.user.role);
+      if (!normalizedRole) {
+        return null;
+      }
+
+      response.user.role = normalizedRole;
+      response.user.status = this.normalizeStatus(response.user.status);
+      return response;
+    }
+
+    const role = this.normalizeRole(response.roles?.[0]);
+    if (!role) {
+      return null;
+    }
+
+    const user: User = {
+      userId: response.userId,
+      email: response.email,
+      firstName: response.firstName,
+      lastName: response.lastName,
+      role: role as RoleType,
+      isActive: true,
+      status: response.status
+    };
+
+    return {
+      token: response.accessToken,
+      refreshToken: response.refreshToken,
+      expiresAt: response.expiresAt,
+      user
+    };
+  }
+
+  private normalizeRole(role: string | RoleType | undefined | null): RoleType | null {
+    switch ((role ?? '').toString().trim().toLowerCase()) {
+      case 'superadmin':
+      case 'super-admin':
+      case 'super_admin':
+        return RoleType.SuperAdmin;
+      case 'collegeadmin':
+      case 'college-admin':
+      case 'college_admin':
+      case 'college admin':
+        return RoleType.CollegeAdmin;
+      case 'trainer':
+        return RoleType.Trainer;
+      case 'student':
+        return RoleType.Student;
+      default:
+        return null;
+    }
+  }
+
+  private normalizeStatus(status: string | null | undefined): string {
+    return (status ?? '').toString().trim().toUpperCase();
+  }
+
+  private navigateToLandingPage(): void {
+    void this.router.navigateByUrl(`/${RouteAddress.RoleDirector}`)
+      .catch(() => {
+        this.errorMessage = 'Signed in, but we could not open your dashboard.';
+      })
+      .finally(() => {
+        this.isLoading = false;
+      });
+  }
+
   onRegister(): void {
     if (this.registerForm.invalid) {
       this.registerForm.markAllAsTouched();

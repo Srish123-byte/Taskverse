@@ -2,6 +2,7 @@ export const RouteAddress = {
   Base:           '/',
   Login:          'login',
   RoleDirector:   'role-director',
+  ApprovalStatus: 'approval-status',
   Error:          'error',
 
   SuperAdmin: {

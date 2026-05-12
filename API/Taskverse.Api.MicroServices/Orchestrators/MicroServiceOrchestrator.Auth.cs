@@ -15,7 +15,7 @@ public partial class MicroServiceOrchestrator
     public async Task<ObjectResult> RefreshToken(RefreshTokenRequestModel model)
     {
         var url = $"{GetMicroServiceUrl(MicroService.Auth)}api/auth/refresh-token";
-        return await Post<LoginResponseModel>(url, model);
+        return await Post<RefreshTokenResponseModel>(url, model);
     }
 
     public async Task<ObjectResult> Logout(LogoutRequestModel model)

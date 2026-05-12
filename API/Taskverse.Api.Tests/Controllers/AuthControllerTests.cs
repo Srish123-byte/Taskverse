@@ -88,20 +88,14 @@ public class AuthControllerTests
     public async Task RefreshToken_ReturnsOk_WhenTokenValid()
     {
         // Arrange
-        var loginResponse = new LoginResponseDto(
+        var refreshResponse = new RefreshLoginResponseDto(
             AccessToken: "new-access-token",
             RefreshToken: "new-refresh-token",
-            ExpiresAt: DateTime.UtcNow.AddHours(1),
-            UserId: "user-123",
-            Email: "john.doe@example.com",
-            FirstName: "John",
-            LastName: "Doe",
-            Roles: ["Student"],
-            Status: "APPROVED");
+            ExpiresAt: DateTime.UtcNow.AddHours(1));
 
         _mockOrchestrator
             .Setup(o => o.RefreshToken(It.IsAny<RefreshTokenRequestDto>()))
-            .ReturnsAsync(loginResponse);
+            .ReturnsAsync(refreshResponse);
 
         var model = new RefreshTokenRequestModel
         {

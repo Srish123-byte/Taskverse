@@ -39,7 +39,7 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
         _baseUrl = NormalizeBaseUrl(settings.BaseUrl);
         _baseUrlDev = NormalizeBaseUrl(settings.BaseUrlDev);
         _useLocalMicroservices = settings.UseLocalMicroservices;
-        _serviceTimeoutSeconds = settings.ServiceTimeoutSeconds > 0 ? settings.ServiceTimeoutSeconds : 30;
+        _serviceTimeoutSeconds = settings.ServiceTimeoutSeconds > 0 ? settings.ServiceTimeoutSeconds : 36000;
     }
 
     public string GetMicroServiceUrl(MicroService microService)

@@ -17,7 +17,7 @@ public class LoginResponse
     public string FirstName { get; set; } = default!;
     public string LastName { get; set; } = default!;
     public List<string> Roles { get; set; } = [];
-    public string Status { get; set; } = default!;
+    public string Status { get; set; }
 }
 
 public class RefreshTokenRequest
@@ -28,6 +28,7 @@ public class RefreshTokenRequest
 public class RefreshTokenResponse
 {
     public string AccessToken { get; set; } = default!;
+    public string RefreshToken { get; set; } = default!;
     public DateTime ExpiresAt { get; set; }
 }
 
@@ -39,8 +40,10 @@ public class ValidateTokenRequest
 public class ValidateTokenResponse
 {
     public bool IsValid { get; set; }
+    public string? UserId { get; set; }
+    public List<string>? Roles { get; set; }
+    public DateTime? ExpiresAt { get; set; }
     public string? Message { get; set; }
-    public Dictionary<string, object>? Claims { get; set; }
 }
 
 public class LogoutRequest

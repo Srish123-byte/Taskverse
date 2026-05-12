@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { AuthSessionService } from '../../../common/services/session/auth-session.service';
 
 interface SuperAdminNavItem {
   label: string;
@@ -13,6 +14,8 @@ interface SuperAdminNavItem {
   styleUrl: './super-admin-shell.component.scss'
 })
 export class SuperAdminShellComponent {
+  constructor(private readonly authSessionService: AuthSessionService) {}
+
   readonly navItems: SuperAdminNavItem[] = [
     { label: 'Dashboard', route: 'dashboard', icon: 'dashboard' },
     { label: 'Colleges', route: 'colleges', icon: 'school' },
@@ -21,4 +24,8 @@ export class SuperAdminShellComponent {
     { label: 'Assessments', route: 'assessments', icon: 'assignment' },
     { label: 'Settings', route: 'settings', icon: 'settings' }
   ];
+
+  logout(): void {
+    this.authSessionService.logout();
+  }
 }

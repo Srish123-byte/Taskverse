@@ -5,12 +5,14 @@ import { SharedPagesRoutes } from './shared-pages.routes';
 import { RoleDirectorComponent } from './role-director/role-director.component';
 import { UnhandledErrorComponent } from './unhandled-error/unhandled-error.component';
 import { SessionTimeoutComponent } from './session-timeout/session-timeout.component';
+import { ApprovalStatusComponent } from './approval-status/approval-status.component';
 
 @NgModule({
   declarations: [
     RoleDirectorComponent,
     UnhandledErrorComponent,
-    SessionTimeoutComponent
+    SessionTimeoutComponent,
+    ApprovalStatusComponent
   ],
   imports: [
     CommonModule,

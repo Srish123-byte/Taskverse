@@ -72,27 +72,21 @@ public class AuthOrchestrator : IAuthOrchestrator
         return token["message"]?.ToString() ?? token["Message"]?.ToString();
     }
 
-    public async Task<LoginResponseDto?> RefreshToken(RefreshTokenRequestDto request)
+    public async Task<RefreshLoginResponseDto?> RefreshToken(RefreshTokenRequestDto request)
     {
         _log.Debug("AuthOrchestrator.RefreshToken");
 
         var result = await _microServiceOrchestrator.RefreshToken(new RefreshTokenRequestModel(request.RefreshToken));
         result.EnsureSuccess(nameof(RefreshToken));
 
-        LoginResponseModel? model = result.DeserializeValue<LoginResponseModel>();
+        RefreshTokenResponseModel? model = result.DeserializeValue<RefreshTokenResponseModel>();
         if (model is null)
             return null;
 
-        return new LoginResponseDto(
+        return new RefreshLoginResponseDto(
             model.AccessToken,
             model.RefreshToken,
-            model.ExpiresAt,
-            model.UserId,
-            model.Email,
-            model.FirstName,
-            model.LastName,
-            model.Roles,
-            model.Status);
+            model.ExpiresAt);
     }
 
     public async Task Logout(LogoutRequestDto request)

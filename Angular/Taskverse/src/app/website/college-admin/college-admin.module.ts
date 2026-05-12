@@ -2,6 +2,7 @@ import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AppCommonModule } from '../../common/common.module';
 import { CollegeAdminRoutes } from './college-admin.routes';
+import { CollegeAdminShellComponent } from './college-admin-shell/college-admin-shell.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { CoursesComponent } from './courses/courses.component';
 import { TrainersComponent } from './trainers/trainers.component';
@@ -10,6 +11,7 @@ import { ManageComponent } from './manage/manage.component';
 
 @NgModule({
   declarations: [
+    CollegeAdminShellComponent,
     DashboardComponent,
     CoursesComponent,
     TrainersComponent,

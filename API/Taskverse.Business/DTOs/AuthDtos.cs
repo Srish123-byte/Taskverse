@@ -13,6 +13,11 @@ public record LoginResponseDto(
     List<string> Roles,
     string Status);
 
+public record RefreshLoginResponseDto(
+    string AccessToken,
+    string RefreshToken,
+    DateTime ExpiresAt);
+
 public record RefreshTokenRequestDto(string RefreshToken);
 
 public record LogoutRequestDto(string UserId, string RefreshToken);

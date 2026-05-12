@@ -32,8 +32,7 @@ export class HttpHelperService {
         observe: 'response',
         params,
         reportProgress: false,
-        responseType: 'json',
-        withCredentials: true
+        responseType: 'json'
       };
     }
 
