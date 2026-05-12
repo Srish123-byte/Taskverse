@@ -1,5 +1,6 @@
 import { RouterModule, Routes } from '@angular/router';
 import { RouteAddress } from '../../common/constants/routes.constants';
+import { ApprovalStatusComponent } from './approval-status/approval-status.component';
 import { RoleDirectorComponent } from './role-director/role-director.component';
 import { UnhandledErrorComponent } from './unhandled-error/unhandled-error.component';
 import { SessionTimeoutComponent } from './session-timeout/session-timeout.component';
@@ -14,6 +15,10 @@ const routes: Routes = [
   {
     path: RouteAddress.Error,
     component: UnhandledErrorComponent
+  },
+  {
+    path: RouteAddress.ApprovalStatus,
+    component: ApprovalStatusComponent
   },
   {
     path: 'session-timeout',

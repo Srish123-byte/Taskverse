@@ -11,13 +11,12 @@ public class UserModelTests
     [TestCategory("Unit")]
     public void CreateUserRequestModel_RequiredFields_AreValidated()
     {
-        // Arrange
+        // Arrange — email deliberately empty to trigger validation failure
         var model = new CreateUserRequestModel
         {
-            Email = string.Empty,
-            FirstName = "John",
-            LastName = "Doe",
-            Role = "Student",
+            Email    = string.Empty,
+            FullName = "John Doe",
+            Role     = "Student",
             Password = "SecurePass123!"
         };
 
@@ -39,10 +38,10 @@ public class UserModelTests
         // Arrange
         var model = new CreateUserRequestModel
         {
-            Email = "john.doe@example.com",
-            FirstName = "John",
-            LastName = "Doe",
-            Role = "Student",
+            FullName = "John Doe",
+            Email    = "john.doe@example.com",
+            Phone    = "+911234567890",
+            Role     = "Student",
             Password = "SecurePass123!"
         };
 
@@ -65,11 +64,12 @@ public class UserModelTests
         var model = new UserResponseModel();
 
         // Assert
-        Assert.IsFalse(model.IsActive);
         Assert.AreEqual(string.Empty, model.UserId);
+        Assert.AreEqual(string.Empty, model.FullName);
         Assert.AreEqual(string.Empty, model.Email);
-        Assert.AreEqual(string.Empty, model.FirstName);
-        Assert.AreEqual(string.Empty, model.LastName);
         Assert.AreEqual(string.Empty, model.Role);
+        Assert.AreEqual(string.Empty, model.Status);
+        Assert.IsNull(model.Phone);
+        Assert.IsNull(model.ModifiedAt);
     }
 }

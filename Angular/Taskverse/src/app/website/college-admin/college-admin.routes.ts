@@ -1,7 +1,5 @@
 import { RouterModule, Routes } from '@angular/router';
-import { RoleType } from '../../common/enums/role-type.enum';
-import { canActivateAuth } from '../../common/services/guards/can-activate-auth.guard';
-import { canActivateRole } from '../../common/services/guards/can-activate-role.guard';
+import { CollegeAdminShellComponent } from './college-admin-shell/college-admin-shell.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { CoursesComponent } from './courses/courses.component';
 import { TrainersComponent } from './trainers/trainers.component';
@@ -10,16 +8,15 @@ import { ManageComponent } from './manage/manage.component';
 
 const routes: Routes = [
   {
-    path: 'college-admin',
-    canActivate: [canActivateAuth, canActivateRole],
-    data: { role: RoleType.CollegeAdmin },
+    path: '',
+    component: CollegeAdminShellComponent,
     children: [
-      { path: '',          redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'dashboard', component: DashboardComponent },
-      { path: 'courses',   component: CoursesComponent   },
-      { path: 'trainers',  component: TrainersComponent  },
-      { path: 'students',  component: StudentsComponent  },
-      { path: 'manage',    component: ManageComponent    }
+      { path: 'courses', component: CoursesComponent },
+      { path: 'trainers', component: TrainersComponent },
+      { path: 'students', component: StudentsComponent },
+      { path: 'manage', component: ManageComponent }
     ]
   }
 ];

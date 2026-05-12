@@ -69,11 +69,11 @@ public class UsersControllerTests : TestControllerBase
 
         var model = new UserSearchRequestModel
         {
-            Email = null,
-            Role = "Student",
-            IsActive = true,
+            Email      = null,
+            Role       = "Student",
+            IsActive   = true,
             PageNumber = 1,
-            PageSize = 20
+            PageSize   = 20
         };
 
         // Act
@@ -96,10 +96,10 @@ public class UsersControllerTests : TestControllerBase
 
         var model = new CreateUserRequestModel
         {
-            Email = "jane.smith@example.com",
-            FirstName = "Jane",
-            LastName = "Smith",
-            Role = "Student",
+            FullName = "Jane Smith",
+            Email    = "jane.smith@example.com",
+            Phone    = "+919876543210",
+            Role     = "Student",
             Password = "SecurePass123!"
         };
 
@@ -123,9 +123,9 @@ public class UsersControllerTests : TestControllerBase
 
         var model = new UpdateUserRequestModel
         {
-            FirstName = "Updated",
-            LastName = null,
-            IsActive = null
+            FullName = "Updated Name",
+            Phone    = null,
+            Status   = null
         };
 
         // Act

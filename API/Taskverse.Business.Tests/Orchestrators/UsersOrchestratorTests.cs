@@ -1,10 +1,9 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using log4net;
-using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Taskverse.Api.MicroServices.Interfaces;
 using Taskverse.Api.MicroServices.Models;
 using Taskverse.Business.DTOs;
+using Taskverse.Business.Interface;
 using Taskverse.Business.Orchestrators;
 using Taskverse.Business.Tests.Helpers;
 
@@ -14,14 +13,16 @@ namespace Taskverse.Business.Tests.Orchestrators;
 public class UsersOrchestratorTests
 {
     private readonly Mock<IMicroServiceOrchestrator> _mockMicroServiceOrchestrator;
-    private readonly Mock<ILog> _mockLog;
+    private readonly Mock<IUsersManager> _mockUsersManager;
     private readonly UsersOrchestrator _orchestrator;
 
     public UsersOrchestratorTests()
     {
         _mockMicroServiceOrchestrator = new Mock<IMicroServiceOrchestrator>();
-        _mockLog = new Mock<ILog>();
-        _orchestrator = new UsersOrchestrator(_mockMicroServiceOrchestrator.Object, _mockLog.Object);
+        _mockUsersManager = new Mock<IUsersManager>();
+        _orchestrator = new UsersOrchestrator(
+            _mockMicroServiceOrchestrator.Object,
+            _mockUsersManager.Object);
     }
 
     [TestMethod]
@@ -52,10 +53,10 @@ public class UsersOrchestratorTests
 
         var dto = new CreateUserDto
         {
-            Email = "john.doe@example.com",
-            FirstName = "John",
-            LastName = "Doe",
-            Role = "Student",
+            FullName = "John Doe",
+            Email    = "john.doe@example.com",
+            Phone    = "+911234567890",
+            Role     = "Student",
             Password = "SecurePass123!"
         };
 

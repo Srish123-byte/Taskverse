@@ -1,0 +1,66 @@
+<div class="page-container analytics-page">
+  <div class="page-eyebrow">Super Admin</div>
+  <h2 class="page-title">Analytics</h2>
+  <p class="page-welcome">Cross-platform performance, assessment trends, and score distribution across colleges.</p>
+
+  <div *ngIf="isLoading" class="page-state">Loading analytics...</div>
+  <div *ngIf="errorMessage" class="page-state page-state-error">{{ errorMessage }}</div>
+
+  <ng-container *ngIf="dashboard">
+    <section class="analytics-grid hero-grid">
+      <article class="analytics-card highlight-card">
+        <span class="card-label">Assessment Volume</span>
+        <strong class="card-value">{{ dashboard.totals.assessmentsThisMonth }}</strong>
+        <p class="card-copy">Assessments completed this month across the platform.</p>
+      </article>
+
+      <article class="analytics-card">
+        <span class="card-label">Previous Month</span>
+        <strong class="card-value">{{ dashboard.totals.assessmentsPreviousMonth }}</strong>
+        <p class="card-copy">Used as your baseline for monthly momentum.</p>
+      </article>
+
+      <article class="analytics-card">
+        <span class="card-label">Students Assessed</span>
+        <strong class="card-value">{{ studentsAssessed }}</strong>
+        <p class="card-copy">Combined from the currently surfaced college score summaries.</p>
+      </article>
+    </section>
+
+    <section class="analytics-grid content-grid">
+      <article class="analytics-panel">
+        <div class="panel-header">
+          <h3>Usage Trends</h3>
+          <span class="panel-tag">{{ dashboard.usageTrends.length }} days tracked</span>
+        </div>
+
+        <div *ngIf="!dashboard.usageTrends.length" class="panel-empty">No usage trend data available yet.</div>
+
+        <div *ngFor="let point of dashboard.usageTrends" class="trend-row">
+          <div>
+            <div class="trend-date">{{ point.date | date:'mediumDate' }}</div>
+            <div class="trend-meta">{{ point.studentsAssessed }} students assessed</div>
+          </div>
+          <div class="trend-pill">{{ point.assessments }} assessments</div>
+        </div>
+      </article>
+
+      <article class="analytics-panel">
+        <div class="panel-header">
+          <h3>Top College Scores</h3>
+          <span class="panel-tag">Leaderboard</span>
+        </div>
+
+        <div *ngIf="!dashboard.averageScoresByCollege.length" class="panel-empty">No score aggregates available yet.</div>
+
+        <div *ngFor="let college of dashboard.averageScoresByCollege" class="trend-row">
+          <div>
+            <div class="trend-date">{{ college.collegeName }}</div>
+            <div class="trend-meta">{{ college.studentsAssessed }} students assessed</div>
+          </div>
+          <div class="trend-pill trend-pill-blue">{{ college.averageScore }}</div>
+        </div>
+      </article>
+    </section>
+  </ng-container>
+</div>

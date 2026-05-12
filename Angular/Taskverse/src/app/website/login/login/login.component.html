@@ -1,34 +1,100 @@
 <div class="login-page">
   <div class="login-card mat-elevation-z4">
-    <h1 class="login-title">Taskverse</h1>
-    <p class="login-subtitle">Sign in to your account</p>
 
-    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
+    <h1 class="login-title">Taskverse</h1>
+
+    <!-- Mode Tabs -->
+    <div class="auth-tabs">
+      <button type="button" class="tab-btn" [class.active]="mode === 'login'"    (click)="switchMode('login')"    id="tab-login">Sign In</button>
+      <button type="button" class="tab-btn" [class.active]="mode === 'register'" (click)="switchMode('register')" id="tab-register">Create Account</button>
+      <span class="tab-indicator" [class.right]="mode === 'register'"></span>
+    </div>
+
+    <p class="success-message" *ngIf="successMessage">{{ successMessage }}</p>
+    <p class="error-message"   *ngIf="errorMessage">{{ errorMessage }}</p>
+
+    <!-- ─── LOGIN ─────────────────────────────────────────────────────────── -->
+    <form *ngIf="mode === 'login'" [formGroup]="loginForm" (ngSubmit)="onLogin()" novalidate>
+
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Email</mat-label>
-        <input matInput type="email" formControlName="email" autocomplete="email" />
+        <input matInput type="email" formControlName="email" autocomplete="email" id="login-email" />
         <mat-error *ngIf="email?.hasError('required')">Email is required</mat-error>
         <mat-error *ngIf="email?.hasError('email')">Enter a valid email address</mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Password</mat-label>
-        <input matInput type="password" formControlName="password" autocomplete="current-password" />
+        <input matInput type="password" formControlName="password" autocomplete="current-password" id="login-password" />
         <mat-error *ngIf="password?.hasError('required')">Password is required</mat-error>
         <mat-error *ngIf="password?.hasError('minlength')">Minimum 8 characters</mat-error>
       </mat-form-field>
 
-      <p class="error-message" *ngIf="errorMessage">{{ errorMessage }}</p>
-
-      <button
-        mat-raised-button
-        color="primary"
-        type="submit"
-        class="full-width submit-btn"
-        [disabled]="isLoading">
+      <button mat-raised-button color="primary" type="submit"
+              class="full-width submit-btn" [disabled]="isLoading" id="btn-login">
         <mat-spinner *ngIf="isLoading" diameter="20" class="btn-spinner"></mat-spinner>
         <span *ngIf="!isLoading">Sign In</span>
       </button>
+
     </form>
+
+    <!-- ─── REGISTER ──────────────────────────────────────────────────────── -->
+    <form *ngIf="mode === 'register'" [formGroup]="registerForm" (ngSubmit)="onRegister()" novalidate>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Full Name</mat-label>
+        <input matInput formControlName="fullName" autocomplete="name" id="reg-full-name" />
+        <mat-error *ngIf="rFullName?.hasError('required')">Full name is required</mat-error>
+        <mat-error *ngIf="rFullName?.hasError('minlength')">Minimum 2 characters</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Email</mat-label>
+        <input matInput type="email" formControlName="email" autocomplete="email" id="reg-email" />
+        <mat-error *ngIf="rEmail?.hasError('required')">Email is required</mat-error>
+        <mat-error *ngIf="rEmail?.hasError('email')">Enter a valid email address</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Phone (optional)</mat-label>
+        <input matInput type="tel" formControlName="phone" autocomplete="tel" id="reg-phone" />
+        <mat-error *ngIf="rPhone?.hasError('pattern')">Enter a valid phone number</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Role</mat-label>
+        <mat-select formControlName="role" id="reg-role">
+          <mat-option *ngFor="let r of roles" [value]="r.value">{{ r.label }}</mat-option>
+        </mat-select>
+        <mat-error *ngIf="rRole?.hasError('required')">Please select a role</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Password</mat-label>
+        <input matInput type="password" formControlName="password" autocomplete="new-password" id="reg-password" />
+        <mat-error *ngIf="rPassword?.hasError('required')">Password is required</mat-error>
+        <mat-error *ngIf="rPassword?.hasError('minlength')">Minimum 8 characters</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Confirm Password</mat-label>
+        <input matInput type="password" formControlName="confirmPassword" autocomplete="new-password" id="reg-confirm-password" />
+        <mat-error *ngIf="rConfirmPassword?.hasError('required')">Please confirm your password</mat-error>
+        <mat-error *ngIf="passwordMismatch">Passwords do not match</mat-error>
+      </mat-form-field>
+
+      <p class="approval-hint">
+        <mat-icon class="hint-icon">info</mat-icon>
+        Accounts for Student, Trainer &amp; College Admin roles require admin approval before sign-in.
+      </p>
+
+      <button mat-raised-button color="primary" type="submit"
+              class="full-width submit-btn" [disabled]="isLoading" id="btn-register">
+        <mat-spinner *ngIf="isLoading" diameter="20" class="btn-spinner"></mat-spinner>
+        <span *ngIf="!isLoading">Create Account</span>
+      </button>
+
+    </form>
+
   </div>
 </div>

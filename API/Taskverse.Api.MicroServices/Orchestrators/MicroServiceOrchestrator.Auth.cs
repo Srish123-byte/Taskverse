@@ -8,25 +8,25 @@ public partial class MicroServiceOrchestrator
 {
     public async Task<ObjectResult> Login(LoginRequestModel model)
     {
-        var url = $"{GetMicroServiceUrl(MicroService.Authentication)}auth/login";
+        var url = $"{GetMicroServiceUrl(MicroService.Auth)}api/auth/login";
         return await Post<LoginResponseModel>(url, model);
     }
 
     public async Task<ObjectResult> RefreshToken(RefreshTokenRequestModel model)
     {
-        var url = $"{GetMicroServiceUrl(MicroService.Authentication)}auth/refresh";
-        return await Post<LoginResponseModel>(url, model);
+        var url = $"{GetMicroServiceUrl(MicroService.Auth)}api/auth/refresh-token";
+        return await Post<RefreshTokenResponseModel>(url, model);
     }
 
     public async Task<ObjectResult> Logout(LogoutRequestModel model)
     {
-        var url = $"{GetMicroServiceUrl(MicroService.Authentication)}auth/logout";
+        var url = $"{GetMicroServiceUrl(MicroService.Auth)}api/auth/logout";
         return await Post<object>(url, model);
     }
 
     public async Task<ObjectResult> ValidateToken(ValidateTokenRequestModel model)
     {
-        var url = $"{GetMicroServiceUrl(MicroService.Authentication)}auth/validate";
+        var url = $"{GetMicroServiceUrl(MicroService.Auth)}api/auth/validate";
         return await Post<ValidateTokenResponseModel>(url, model);
     }
 }

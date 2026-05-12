@@ -1,0 +1,6 @@
+@Taskverse.API.Proctor.Service_HostAddress = http://localhost:5133
+
+GET {{Taskverse.API.Proctor.Service_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

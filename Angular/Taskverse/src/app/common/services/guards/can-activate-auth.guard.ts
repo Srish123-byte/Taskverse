@@ -14,7 +14,7 @@ export class CanActivateAuthService {
     if (this.session.isLoggedIn()) {
       return true;
     }
-    this.router.navigate([RouteAddress.Login]);
+    void this.router.navigateByUrl(`/${RouteAddress.Login}`);
     return false;
   }
 }

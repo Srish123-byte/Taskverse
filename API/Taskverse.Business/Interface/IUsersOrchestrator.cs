@@ -10,4 +10,10 @@ public interface IUsersOrchestrator
     Task<UserDto?> UpdateUser(string userId, UpdateUserDto dto);
     Task DeleteUser(string userId);
     Task<List<string>?> GetUserRoles(string userId);
+
+    /// <summary>
+    /// Public self-registration. Validates uniqueness, hashes the password,
+    /// sets PENDING_APPROVAL for non-SuperAdmin roles, and persists directly to the DB.
+    /// </summary>
+    Task<UserDto> RegisterUser(CreateUserDto dto);
 }

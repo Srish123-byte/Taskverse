@@ -6,14 +6,14 @@ public static partial class MockData
 {
     public static UserDto GetUserDto(string userId = "user-123") => new()
     {
-        UserId = userId,
-        Email = "john.doe@example.com",
-        FirstName = "John",
-        LastName = "Doe",
-        Role = "Student",
-        IsActive = true,
+        UserId    = userId,
+        FullName  = "John Doe",
+        Email     = "john.doe@example.com",
+        Phone     = "+911234567890",
+        Role      = "Student",
+        Status    = "ACTIVE",
         CreatedAt = new DateTime(2025, 1, 15, 0, 0, 0, DateTimeKind.Utc),
-        UpdatedAt = null
+        ModifiedAt = null
     };
 
     public static PagedUserDto GetPagedUserDto() => new()
@@ -25,22 +25,22 @@ public static partial class MockData
         ],
         TotalCount = 2,
         PageNumber = 1,
-        PageSize = 20
+        PageSize   = 20
     };
 
     public static CreateUserDto GetCreateUserDto() => new()
     {
-        Email = "jane.smith@example.com",
-        FirstName = "Jane",
-        LastName = "Smith",
-        Role = "Student",
+        FullName = "Jane Smith",
+        Email    = "jane.smith@example.com",
+        Phone    = "+919876543210",
+        Role     = "Student",
         Password = "SecurePass123!"
     };
 
     public static UpdateUserDto GetUpdateUserDto() => new()
     {
-        FirstName = "Updated",
-        LastName = null,
-        IsActive = null
+        FullName = "Updated Name",
+        Phone    = null,
+        Status   = null
     };
 }

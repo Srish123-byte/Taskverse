@@ -1,4 +1,5 @@
 using log4net;
+using Newtonsoft.Json.Linq;
 using Taskverse.Api.MicroServices.Interfaces;
 using Taskverse.Api.MicroServices.Models;
 using Taskverse.Business.DTOs;
@@ -22,7 +23,15 @@ public class AuthOrchestrator : IAuthOrchestrator
         _log.Debug($"AuthOrchestrator.Login: email={request.Email}");
 
         var result = await _microServiceOrchestrator.Login(new LoginRequestModel(request.Email, request.Password));
-        result.EnsureSuccess(nameof(Login));
+        if (!result.IsSuccess())
+        {
+            if (result.StatusCode == 401)
+            {
+                throw new UnauthorizedAccessException(ExtractMessage(result.Value) ?? "Invalid credentials");
+            }
+
+            result.EnsureSuccess(nameof(Login));
+        }
 
         LoginResponseModel? model = result.DeserializeValue<LoginResponseModel>();
         if (model is null)
@@ -33,26 +42,51 @@ public class AuthOrchestrator : IAuthOrchestrator
             model.RefreshToken,
             model.ExpiresAt,
             model.UserId,
-            model.Roles);
+            model.Email,
+            model.FirstName,
+            model.LastName,
+            model.Roles,
+            model.Status);
     }
 
-    public async Task<LoginResponseDto?> RefreshToken(RefreshTokenRequestDto request)
+    private static string? ExtractMessage(object? value)
+    {
+        if (value is null)
+            return null;
+
+        if (value is string json)
+        {
+            try
+            {
+                return JObject.Parse(json)["message"]?.ToString()
+                    ?? JObject.Parse(json)["Message"]?.ToString()
+                    ?? json;
+            }
+            catch
+            {
+                return json;
+            }
+        }
+
+        var token = JToken.FromObject(value);
+        return token["message"]?.ToString() ?? token["Message"]?.ToString();
+    }
+
+    public async Task<RefreshLoginResponseDto?> RefreshToken(RefreshTokenRequestDto request)
     {
         _log.Debug("AuthOrchestrator.RefreshToken");
 
         var result = await _microServiceOrchestrator.RefreshToken(new RefreshTokenRequestModel(request.RefreshToken));
         result.EnsureSuccess(nameof(RefreshToken));
 
-        LoginResponseModel? model = result.DeserializeValue<LoginResponseModel>();
+        RefreshTokenResponseModel? model = result.DeserializeValue<RefreshTokenResponseModel>();
         if (model is null)
             return null;
 
-        return new LoginResponseDto(
+        return new RefreshLoginResponseDto(
             model.AccessToken,
             model.RefreshToken,
-            model.ExpiresAt,
-            model.UserId,
-            model.Roles);
+            model.ExpiresAt);
     }
 
     public async Task Logout(LogoutRequestDto request)

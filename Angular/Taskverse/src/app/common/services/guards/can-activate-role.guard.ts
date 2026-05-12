@@ -24,7 +24,7 @@ export class CanActivateRoleService {
     }
 
     // Role mismatch — send to error page
-    this.router.navigate([RouteAddress.Error]);
+    void this.router.navigateByUrl(`/${RouteAddress.Error}`);
     return false;
   }
 }

@@ -1,33 +1,36 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace Taskverse.Api.Models;
 
 public class UserResponseModel
 {
     public string UserId { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public Guid? CollegeId { get; set; }
     public string Role { get; set; } = string.Empty;
-    public bool IsActive { get; set; }
+    public string Status { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime? ModifiedAt { get; set; }
 }
 
 public class CreateUserRequestModel
 {
-    [Required] public string Email { get; set; } = string.Empty;
-    [Required] public string FirstName { get; set; } = string.Empty;
-    [Required] public string LastName { get; set; } = string.Empty;
-    [Required] public string Role { get; set; } = string.Empty;
-    [Required] public string Password { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public Guid? CollegeId { get; set; }
+    public string Role { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
 }
 
 public class UpdateUserRequestModel
 {
-    public string? FirstName { get; set; }
-    public string? LastName { get; set; }
-    public bool? IsActive { get; set; }
+    public string? FullName { get; set; }
+    public string? Phone { get; set; }
+    public Guid? CollegeId { get; set; }
+    public Guid? BatchId { get; set; }
+    public Guid? ClassId { get; set; }
+    public string? Status { get; set; }
 }
 
 public class UserSearchRequestModel
@@ -41,7 +44,7 @@ public class UserSearchRequestModel
 
 public class PagedUserResponseModel
 {
-    public List<UserResponseModel> Items { get; set; } = new();
+    public List<UserResponseModel> Items { get; set; } = [];
     public int TotalCount { get; set; }
     public int PageNumber { get; set; }
     public int PageSize { get; set; }

@@ -19,6 +19,14 @@ export class Session {
     this.storage.setItem(SessionKey.JwtToken, value);
   }
 
+  // Refresh token
+  get refreshToken(): string {
+    return this.storage.getItem(SessionKey.RefreshToken) as string;
+  }
+  set refreshToken(value: string) {
+    this.storage.setItem(SessionKey.RefreshToken, value);
+  }
+
   // User email
   get userEmail(): string {
     return this.storage.getItem(SessionKey.UserEmail) as string;
@@ -58,6 +66,7 @@ export class Session {
   clear(): void {
     this._user$.next(null);
     this.storage.removeItem(SessionKey.JwtToken);
+    this.storage.removeItem(SessionKey.RefreshToken);
     this.storage.removeItem(SessionKey.UserEmail);
     this.storage.removeItem(SessionKey.UserId);
     this.storage.removeItem(SessionKey.Role);

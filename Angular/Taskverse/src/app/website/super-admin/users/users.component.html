@@ -1,6 +1,15 @@
 <div class="page-container">
+  <div class="page-eyebrow">Super Admin</div>
   <h2 class="page-title">Users</h2>
-  <div class="page-content">
-    <!-- Users list goes here -->
+  <p class="page-welcome">Centralized visibility into user governance across students, admins, and platform roles.</p>
+
+  <div class="users-grid">
+    <article *ngFor="let section of sections" class="user-card">
+      <div class="user-card-icon">
+        <mat-icon>{{ section.icon }}</mat-icon>
+      </div>
+      <h3>{{ section.title }}</h3>
+      <p>{{ section.description }}</p>
+    </article>
   </div>
 </div>

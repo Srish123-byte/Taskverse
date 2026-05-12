@@ -15,10 +15,10 @@ public class UserMappingTests
         // Arrange
         var model = new CreateUserRequestModel
         {
-            Email = "jane.smith@example.com",
-            FirstName = "Jane",
-            LastName = "Smith",
-            Role = "Student",
+            FullName = "Jane Smith",
+            Email    = "jane.smith@example.com",
+            Phone    = "+919876543210",
+            Role     = "Student",
             Password = "SecurePass123!"
         };
 
@@ -26,11 +26,11 @@ public class UserMappingTests
         CreateUserDto dto = model.ToDto();
 
         // Assert
-        Assert.AreEqual(model.Email, dto.Email);
-        Assert.AreEqual(model.FirstName, dto.FirstName);
-        Assert.AreEqual(model.LastName, dto.LastName);
-        Assert.AreEqual(model.Role, dto.Role);
-        Assert.AreEqual(model.Password, dto.Password);
+        Assert.AreEqual(model.FullName,  dto.FullName);
+        Assert.AreEqual(model.Email,     dto.Email);
+        Assert.AreEqual(model.Phone,     dto.Phone);
+        Assert.AreEqual(model.Role,      dto.Role);
+        Assert.AreEqual(model.Password,  dto.Password);
     }
 
     [TestMethod]
@@ -40,18 +40,18 @@ public class UserMappingTests
         // Arrange
         var model = new UpdateUserRequestModel
         {
-            FirstName = "Updated",
-            LastName = "Name",
-            IsActive = false
+            FullName = "Updated Name",
+            Phone    = "+910000000000",
+            Status   = "ACTIVE"
         };
 
         // Act
         UpdateUserDto dto = model.ToDto();
 
         // Assert
-        Assert.AreEqual(model.FirstName, dto.FirstName);
-        Assert.AreEqual(model.LastName, dto.LastName);
-        Assert.AreEqual(model.IsActive, dto.IsActive);
+        Assert.AreEqual(model.FullName, dto.FullName);
+        Assert.AreEqual(model.Phone,    dto.Phone);
+        Assert.AreEqual(model.Status,   dto.Status);
     }
 
     [TestMethod]
@@ -59,33 +59,33 @@ public class UserMappingTests
     public void UserDto_ToResponseModel_MapsCorrectly()
     {
         // Arrange
-        var createdAt = new DateTime(2025, 1, 15, 0, 0, 0, DateTimeKind.Utc);
-        var updatedAt = new DateTime(2025, 3, 10, 0, 0, 0, DateTimeKind.Utc);
+        var createdAt  = new DateTime(2025, 1, 15, 0, 0, 0, DateTimeKind.Utc);
+        var modifiedAt = new DateTime(2025, 3, 10, 0, 0, 0, DateTimeKind.Utc);
 
         var dto = new UserDto
         {
-            UserId = "user-123",
-            Email = "john.doe@example.com",
-            FirstName = "John",
-            LastName = "Doe",
-            Role = "Student",
-            IsActive = true,
-            CreatedAt = createdAt,
-            UpdatedAt = updatedAt
+            UserId     = "user-123",
+            FullName   = "John Doe",
+            Email      = "john.doe@example.com",
+            Phone      = "+911234567890",
+            Role       = "Student",
+            Status     = "PENDING_APPROVAL",
+            CreatedAt  = createdAt,
+            ModifiedAt = modifiedAt
         };
 
         // Act
         UserResponseModel model = dto.ToResponseModel();
 
         // Assert
-        Assert.AreEqual(dto.UserId, model.UserId);
-        Assert.AreEqual(dto.Email, model.Email);
-        Assert.AreEqual(dto.FirstName, model.FirstName);
-        Assert.AreEqual(dto.LastName, model.LastName);
-        Assert.AreEqual(dto.Role, model.Role);
-        Assert.AreEqual(dto.IsActive, model.IsActive);
-        Assert.AreEqual(dto.CreatedAt, model.CreatedAt);
-        Assert.AreEqual(dto.UpdatedAt, model.UpdatedAt);
+        Assert.AreEqual(dto.UserId,     model.UserId);
+        Assert.AreEqual(dto.FullName,   model.FullName);
+        Assert.AreEqual(dto.Email,      model.Email);
+        Assert.AreEqual(dto.Phone,      model.Phone);
+        Assert.AreEqual(dto.Role,       model.Role);
+        Assert.AreEqual(dto.Status,     model.Status);
+        Assert.AreEqual(dto.CreatedAt,  model.CreatedAt);
+        Assert.AreEqual(dto.ModifiedAt, model.ModifiedAt);
     }
 
     [TestMethod]
@@ -97,39 +97,21 @@ public class UserMappingTests
         {
             Items =
             [
-                new UserDto
-                {
-                    UserId = "user-123",
-                    Email = "john.doe@example.com",
-                    FirstName = "John",
-                    LastName = "Doe",
-                    Role = "Student",
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow
-                },
-                new UserDto
-                {
-                    UserId = "user-456",
-                    Email = "jane.smith@example.com",
-                    FirstName = "Jane",
-                    LastName = "Smith",
-                    Role = "Trainer",
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow
-                }
+                new UserDto { UserId = "user-123", FullName = "John Doe",   Email = "john@example.com",  Role = "Student", Status = "ACTIVE",           CreatedAt = DateTime.UtcNow },
+                new UserDto { UserId = "user-456", FullName = "Jane Smith", Email = "jane@example.com",  Role = "Trainer", Status = "PENDING_APPROVAL",  CreatedAt = DateTime.UtcNow }
             ],
             TotalCount = 2,
             PageNumber = 1,
-            PageSize = 20
+            PageSize   = 20
         };
 
         // Act
         PagedUserResponseModel model = pagedDto.ToResponseModel();
 
         // Assert
-        Assert.AreEqual(2, model.Items.Count);
-        Assert.AreEqual(pagedDto.TotalCount, model.TotalCount);
-        Assert.AreEqual(pagedDto.PageNumber, model.PageNumber);
-        Assert.AreEqual(pagedDto.PageSize, model.PageSize);
+        Assert.AreEqual(2,                    model.Items.Count);
+        Assert.AreEqual(pagedDto.TotalCount,  model.TotalCount);
+        Assert.AreEqual(pagedDto.PageNumber,  model.PageNumber);
+        Assert.AreEqual(pagedDto.PageSize,    model.PageSize);
     }
 }

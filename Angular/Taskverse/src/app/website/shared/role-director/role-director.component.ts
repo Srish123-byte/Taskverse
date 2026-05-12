@@ -37,7 +37,7 @@ export class RoleDirectorComponent implements OnInit {
             this.session.role      = user.role;
             this.dispatch(user.role);
           },
-          error: () => this.router.navigate([RouteAddress.Error])
+          error: () => void this.router.navigateByUrl(`/${RouteAddress.Error}`)
         });
     }
   }
@@ -45,19 +45,19 @@ export class RoleDirectorComponent implements OnInit {
   private dispatch(role: RoleType): void {
     switch (role) {
       case RoleType.SuperAdmin:
-        this.router.navigate([RouteAddress.SuperAdmin.Dashboard]);
+        void this.router.navigateByUrl(`/${RouteAddress.SuperAdmin.Dashboard}`);
         break;
       case RoleType.CollegeAdmin:
-        this.router.navigate([RouteAddress.CollegeAdmin.Dashboard]);
+        void this.router.navigateByUrl(`/${RouteAddress.CollegeAdmin.Dashboard}`);
         break;
       case RoleType.Trainer:
-        this.router.navigate([RouteAddress.Trainer.Dashboard]);
+        void this.router.navigateByUrl(`/${RouteAddress.Trainer.Dashboard}`);
         break;
       case RoleType.Student:
-        this.router.navigate([RouteAddress.Student.Dashboard]);
+        void this.router.navigateByUrl(`/${RouteAddress.Student.Dashboard}`);
         break;
       default:
-        this.router.navigate([RouteAddress.Error]);
+        void this.router.navigateByUrl(`/${RouteAddress.Error}`);
     }
   }
 }

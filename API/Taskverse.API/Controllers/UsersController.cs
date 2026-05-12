@@ -1,6 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
-using Taskverse.Api.Filters;
 using Taskverse.Api.Mappings;
 using Taskverse.Api.Models;
 using Taskverse.Business.Interface;
@@ -9,7 +9,6 @@ namespace Taskverse.Api.Controllers;
 
 [Route("api/[controller]")]
 [Produces("application/json")]
-[ServiceFilter(typeof(JwtTokenValidationFilter))]
 public class UsersController : TaskverseBaseController
 {
     private readonly IUsersOrchestrator _usersOrchestrator;
@@ -17,6 +16,32 @@ public class UsersController : TaskverseBaseController
     public UsersController(IUsersOrchestrator usersOrchestrator)
     {
         _usersOrchestrator = usersOrchestrator ?? throw new ArgumentNullException(nameof(usersOrchestrator));
+    }
+
+    /// <summary>
+    /// Self-registration — publicly accessible, no JWT required.
+    /// Creates a new user account. Non-SuperAdmin accounts are set to PENDING_APPROVAL.
+    /// </summary>
+    [HttpPost("register")]
+    [AllowAnonymous]
+    [SwaggerResponse(201, "User registered successfully", typeof(UserResponseModel))]
+    [SwaggerResponse(400, "Invalid request")]
+    [SwaggerResponse(409, "Email already registered")]
+    public async Task<IActionResult> Register([FromBody] CreateUserRequestModel model)
+    {
+        try
+        {
+            var dto = await _usersOrchestrator.RegisterUser(model.ToDto());
+            return Created($"api/users/{dto.UserId}", dto.ToResponseModel());
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("User with this email already exists"))
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return Problem(ex.Message);
+        }
     }
 
     /// <summary>Gets a user by their ID.</summary>
@@ -29,7 +54,7 @@ public class UsersController : TaskverseBaseController
         try
         {
             var dto = await _usersOrchestrator.GetUser(userId);
-            return Ok(dto.ToResponseModel());
+            return Ok(dto?.ToResponseModel());
         }
         catch (Exception ex)
         {
@@ -46,7 +71,7 @@ public class UsersController : TaskverseBaseController
         try
         {
             var dto = await _usersOrchestrator.SearchUsers(model.Email, model.Role, model.IsActive, model.PageNumber, model.PageSize);
-            return Ok(dto.ToResponseModel());
+            return Ok(dto?.ToResponseModel());
         }
         catch (Exception ex)
         {
@@ -54,7 +79,7 @@ public class UsersController : TaskverseBaseController
         }
     }
 
-    /// <summary>Creates a new user.</summary>
+    /// <summary>Creates a new user (admin use — requires JWT).</summary>
     [HttpPost]
     [SwaggerResponse(201, "User created", typeof(UserResponseModel))]
     [SwaggerResponse(400, "Invalid request")]
@@ -64,7 +89,7 @@ public class UsersController : TaskverseBaseController
         try
         {
             var dto = await _usersOrchestrator.CreateUser(model.ToDto());
-            return Created($"api/users/{dto.UserId}", dto.ToResponseModel());
+            return Created($"api/users/{dto?.UserId}", dto?.ToResponseModel());
         }
         catch (Exception ex)
         {
@@ -82,7 +107,7 @@ public class UsersController : TaskverseBaseController
         try
         {
             var dto = await _usersOrchestrator.UpdateUser(userId, model.ToDto());
-            return Ok(dto.ToResponseModel());
+            return Ok(dto?.ToResponseModel());
         }
         catch (Exception ex)
         {

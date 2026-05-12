@@ -1,7 +1,5 @@
 import { RouterModule, Routes } from '@angular/router';
-import { RoleType } from '../../common/enums/role-type.enum';
-import { canActivateAuth } from '../../common/services/guards/can-activate-auth.guard';
-import { canActivateRole } from '../../common/services/guards/can-activate-role.guard';
+import { StudentShellComponent } from './student-shell/student-shell.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { CoursesComponent } from './courses/courses.component';
 import { TasksComponent } from './tasks/tasks.component';
@@ -9,15 +7,14 @@ import { ManageComponent } from './manage/manage.component';
 
 const routes: Routes = [
   {
-    path: 'student',
-    canActivate: [canActivateAuth, canActivateRole],
-    data: { role: RoleType.Student },
+    path: '',
+    component: StudentShellComponent,
     children: [
-      { path: '',          redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'dashboard', component: DashboardComponent },
-      { path: 'courses',   component: CoursesComponent   },
-      { path: 'tasks',     component: TasksComponent     },
-      { path: 'manage',    component: ManageComponent    }
+      { path: 'courses', component: CoursesComponent },
+      { path: 'tasks', component: TasksComponent },
+      { path: 'manage', component: ManageComponent }
     ]
   }
 ];

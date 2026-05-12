@@ -2,20 +2,26 @@ using CorrelationId;
 using CorrelationId.DependencyInjection;
 using log4net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Taskverse.Data;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Npgsql;
+using Npgsql.NameTranslation;
 using System.Text;
 using Taskverse.Api.Configuration;
 using Taskverse.Api.Filters;
 using Taskverse.Api.MicroServices.Interfaces;
 using Taskverse.Api.MicroServices.Orchestrators;
-using Taskverse.Business.ConfigClasses;
+using Taskverse.Business.Configuration;
 using Taskverse.Business.Interface;
 using Taskverse.Business.Managers;
 using Taskverse.Business.Orchestrators;
-using Taskverse.Data;
+using Taskverse.Data.DataAccess;
+using Taskverse.Business.Enums;
+using Taskverse.Api.MicroServices;
 
 namespace Taskverse.Api;
 
@@ -72,6 +78,7 @@ public class Startup
         ConfigureCors(services);
         ConfigureMvc(services);
         ConfigureHttpClients(services);
+        ConfigureDatabase(services);
         ConfigureDependencyInjection(services);
 
         Log.DebugFormat("Services configured. Startup time elapsed: {0}ms",
@@ -172,15 +179,38 @@ public class Startup
             });
     }
 
+    private void ConfigureDatabase(IServiceCollection services)
+    {
+        var connStr = Configuration.GetConnectionString("TaskverseDb")
+            ?? throw new InvalidOperationException("Connection string 'TaskverseDb' is missing.");
+
+        // Register the PostgreSQL user_status enum so Npgsql can serialize/deserialize it correctly.
+        // NpgsqlNullNameTranslator preserves the UPPERCASE enum label names (PENDING_APPROVAL, ACTIVE, etc.)
+        // matching the PostgreSQL enum values exactly. Without it, the default snake_case translator
+        // would mangle ALL_CAPS names into p_e_n_d_i_n_g__a_p_p_r_o_v_a_l etc.
+
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connStr);
+        //dataSourceBuilder.MapEnum<UserStatus>(nameTranslator: new NpgsqlNullNameTranslator());
+        var dataSource = dataSourceBuilder.Build();
+
+        // Register dataSource as singleton to preserve enum mapping for application lifetime
+        services.AddSingleton(dataSource);
+
+        services.AddDbContext<TaskverseContext>(
+            options => options.UseNpgsql(dataSource),
+            contextLifetime: ServiceLifetime.Scoped,
+            optionsLifetime: ServiceLifetime.Singleton);
+
+        services.AddDbContextFactory<TaskverseContext>(options =>
+            options.UseNpgsql(dataSource));
+    }
+
     private void ConfigureDependencyInjection(IServiceCollection services)
     {
         services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 
         // Filters
         services.AddScoped<JwtTokenValidationFilter>();
-
-        // Data
-        services.AddSingleton<TaskverseContext>();
 
         // Managers
         services.AddScoped<IUsersManager, UsersManager>();
@@ -196,6 +226,7 @@ public class Startup
         services.AddScoped<IAssessmentOrchestrator, AssessmentOrchestrator>();
         services.AddScoped<IProctorOrchestrator, ProctorOrchestrator>();
         services.AddScoped<IReportsOrchestrator, ReportsOrchestrator>();
+        services.AddScoped<ISuperAdminOrchestrator, SuperAdminOrchestrator>();
     }
 
     private void ConfigureSwagger(IServiceCollection services)
