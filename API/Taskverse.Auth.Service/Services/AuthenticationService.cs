@@ -27,6 +27,8 @@ public class AuthenticationService : IAuthenticationService
     {
         try
         {
+            _logger.LogInformation($"[Login] Starting login for email: {request.Email}");
+
             if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
             {
                 _logger.LogWarning("Login attempt with empty credentials");
@@ -34,13 +36,25 @@ public class AuthenticationService : IAuthenticationService
             }
 
             var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+            _logger.LogInformation($"[Login] Querying user from database for email: {normalizedEmail}");
+            
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail);
-            if (user is null || !CanLogin(user))
+            if (user is null)
             {
                 _logger.LogWarning("Blocked login attempt for {Email}", normalizedEmail);
                 return null;
             }
 
+            _logger.LogInformation($"[Login] User found. Status: {user.Status}, Role: {user.Role}");
+
+            var blockedMessage = GetLoginBlockMessage(user);
+            if (!string.IsNullOrWhiteSpace(blockedMessage))
+            {
+                _logger.LogWarning("Blocked login attempt for {Email}: {Reason}", normalizedEmail, blockedMessage);
+                throw new UnauthorizedAccessException(blockedMessage);
+            }
+
+            _logger.LogInformation($"[Login] Verifying password for user: {normalizedEmail}");
             var passwordHasher = new PasswordHasher<User>();
             var verificationResult = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
             if (verificationResult == PasswordVerificationResult.Failed)
@@ -49,6 +63,7 @@ public class AuthenticationService : IAuthenticationService
                 return null;
             }
 
+            _logger.LogInformation($"[Login] Password verified. Generating tokens for user: {normalizedEmail}");
             var (firstName, lastName) = SplitName(user.FullName);
             var token = await _tokenService.GenerateTokenAsync(user.Id, user.Email, user.Role, firstName, lastName);
             var refreshToken = await _tokenService.GenerateRefreshTokenAsync();
@@ -64,8 +79,13 @@ public class AuthenticationService : IAuthenticationService
                 Email = user.Email,
                 FirstName = firstName,
                 LastName = lastName,
-                Roles = [user.Role]
+                Roles = [user.Role],
+                Status = user.Status.ToString()
             };
+        }
+        catch (UnauthorizedAccessException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -130,14 +150,16 @@ public class AuthenticationService : IAuthenticationService
         }
     }
 
-    private static bool CanLogin(User user)
+    private static string? GetLoginBlockMessage(User user)
     {
+        // Only block SuperAdmin if rejected
         if (string.Equals(user.Role, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
         {
-            return user.Status != UserStatus.REJECTED;
+            return user.Status == UserStatus.REJECTED ? "Your account is not allowed to sign in." : null;
         }
 
-        return user.Status == UserStatus.APPROVED;
+        // For other roles, allow login but frontend will check status and show message
+        return null;
     }
 
     private static (string FirstName, string LastName) SplitName(string fullName)

@@ -8,6 +8,14 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+        
+        // Configure Kestrel with longer timeout
+        builder.WebHost.ConfigureKestrel(options =>
+        {
+            options.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(60);
+            options.Limits.KeepAliveTimeout = TimeSpan.FromSeconds(60);
+        });
+        
         var startup = new Startup(builder.Environment);
         startup.ConfigureServices(builder.Services);
         var app = builder.Build();

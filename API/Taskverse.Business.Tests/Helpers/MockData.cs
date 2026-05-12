@@ -114,7 +114,11 @@ public static class MockData
         RefreshToken: TestConstants.RefreshToken,
         ExpiresAt: new DateTime(2025, 4, 28, 0, 0, 0, DateTimeKind.Utc),
         UserId: TestConstants.UserId,
-        Roles: ["Student"]);
+        Email: "test@example.com",
+        FirstName: "Test",
+        LastName: "User",
+        Roles: ["Student"],
+        Status: "APPROVED");
 
     public static ValidateTokenResponseModel GetValidateTokenResponseModel() => new(
         IsValid: true,

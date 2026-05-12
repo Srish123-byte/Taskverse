@@ -41,6 +41,11 @@ public class AuthController : ControllerBase
 
             return Ok(response);
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Login blocked: {Message}", ex.Message);
+            return Unauthorized(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
             _logger.LogError($"Login error: {ex.Message}");

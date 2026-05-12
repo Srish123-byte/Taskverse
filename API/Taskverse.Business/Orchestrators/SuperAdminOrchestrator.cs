@@ -16,15 +16,15 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
     private const string HealthyStatus = "Healthy";
 
     private readonly IMicroServiceOrchestrator _microServiceOrchestrator;
-    private readonly TaskverseContext _context;
+    private readonly IDbContextFactory<TaskverseContext> _dbContextFactory;
     private static readonly ILog _log = LogManager.GetLogger(typeof(SuperAdminOrchestrator));
 
     public SuperAdminOrchestrator(
         IMicroServiceOrchestrator microServiceOrchestrator,
-        TaskverseContext context)
+        IDbContextFactory<TaskverseContext> dbContextFactory)
     {
         _microServiceOrchestrator = microServiceOrchestrator;
-        _context = context;
+        _dbContextFactory = dbContextFactory;
     }
 
     public async Task<SuperAdminDashboardDto> GetDashboard()
@@ -131,12 +131,14 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 
     private async Task<(int ThisMonth, int PreviousMonth)> GetAssessmentTotals()
     {
+        await using var context = await _dbContextFactory.CreateDbContextAsync();
+
         var utcNow = DateTime.UtcNow;
         var startOfThisMonth = new DateTime(utcNow.Year, utcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var startOfPreviousMonth = startOfThisMonth.AddMonths(-1);
 
-        var thisMonth = await _context.Assessments.CountAsync(a => a.CreatedAt >= startOfThisMonth);
-        var previousMonth = await _context.Assessments.CountAsync(a =>
+        var thisMonth = await context.Assessments.CountAsync(a => a.CreatedAt >= startOfThisMonth);
+        var previousMonth = await context.Assessments.CountAsync(a =>
             a.CreatedAt >= startOfPreviousMonth && a.CreatedAt < startOfThisMonth);
 
         return (thisMonth, previousMonth);
@@ -144,12 +146,14 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 
     private async Task<List<RecentActivityDto>> GetRecentActivity()
     {
-        var recentLogs = await _context.AuditLogs
+        await using var context = await _dbContextFactory.CreateDbContextAsync();
+
+        var recentLogs = await context.AuditLogs
             .AsNoTracking()
             .OrderByDescending(a => a.OccurredAt)
             .Take(20)
             .Join(
-                _context.Users.AsNoTracking(),
+                context.Users.AsNoTracking(),
                 audit => audit.UserId,
                 user => user.Id,
                 (audit, user) => new { audit, user.FullName })
@@ -162,14 +166,16 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 
     private async Task<List<CollegeScoreSummaryDto>> GetAverageScoresByCollege()
     {
-        return await _context.AssessmentResults
+        await using var context = await _dbContextFactory.CreateDbContextAsync();
+
+        return await context.AssessmentResults
             .AsNoTracking()
-            .Join(_context.Users.AsNoTracking(),
+            .Join(context.Users.AsNoTracking(),
                 result => result.UserId,
                 user => user.Id,
                 (result, user) => new { result, user })
             .Where(x => x.user.CollegeId.HasValue && x.result.Score.HasValue)
-            .Join(_context.Colleges.AsNoTracking(),
+            .Join(context.Colleges.AsNoTracking(),
                 x => x.user.CollegeId!.Value,
                 college => college.CollegeId,
                 (x, college) => new { x.result, x.user, college })
@@ -188,10 +194,12 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 
     private async Task<List<UsageTrendPointDto>> GetUsageTrends()
     {
+        await using var context = await _dbContextFactory.CreateDbContextAsync();
+
         var utcToday = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
         var rangeStart = utcToday.AddDays(-29);
 
-        return await _context.AssessmentResults
+        return await context.AssessmentResults
             .AsNoTracking()
             .Where(result => result.CreatedAt >= rangeStart)
             .GroupBy(result => result.CreatedAt.Date)

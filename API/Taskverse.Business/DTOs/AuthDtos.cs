@@ -10,7 +10,8 @@ public record LoginResponseDto(
     string Email,
     string FirstName,
     string LastName,
-    List<string> Roles);
+    List<string> Roles,
+    string Status);
 
 public record RefreshTokenRequestDto(string RefreshToken);
 

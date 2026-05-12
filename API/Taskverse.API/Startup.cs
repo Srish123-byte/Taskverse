@@ -196,7 +196,12 @@ public class Startup
         // Register dataSource as singleton to preserve enum mapping for application lifetime
         services.AddSingleton(dataSource);
 
-        services.AddDbContext<TaskverseContext>(options =>
+        services.AddDbContext<TaskverseContext>(
+            options => options.UseNpgsql(dataSource),
+            contextLifetime: ServiceLifetime.Scoped,
+            optionsLifetime: ServiceLifetime.Singleton);
+
+        services.AddDbContextFactory<TaskverseContext>(options =>
             options.UseNpgsql(dataSource));
     }
 

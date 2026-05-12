@@ -36,7 +36,11 @@ public class AuthControllerTests
             RefreshToken: "refresh-token",
             ExpiresAt: DateTime.UtcNow.AddHours(1),
             UserId: "user-123",
-            Roles: ["Student"]);
+            Email: "john.doe@example.com",
+            FirstName: "John",
+            LastName: "Doe",
+            Roles: ["Student"],
+            Status: "APPROVED");
 
         _mockOrchestrator
             .Setup(o => o.Login(It.IsAny<LoginRequestDto>()))
@@ -89,7 +93,11 @@ public class AuthControllerTests
             RefreshToken: "new-refresh-token",
             ExpiresAt: DateTime.UtcNow.AddHours(1),
             UserId: "user-123",
-            Roles: ["Student"]);
+            Email: "john.doe@example.com",
+            FirstName: "John",
+            LastName: "Doe",
+            Roles: ["Student"],
+            Status: "APPROVED");
 
         _mockOrchestrator
             .Setup(o => o.RefreshToken(It.IsAny<RefreshTokenRequestDto>()))

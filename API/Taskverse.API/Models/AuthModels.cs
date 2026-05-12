@@ -24,6 +24,7 @@ public class CurrentUserResponseModel
     public string LastName { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
     public bool IsActive { get; set; }
+    public string Status { get; set; } = string.Empty;
 }
 
 public class RefreshLoginResponseModel

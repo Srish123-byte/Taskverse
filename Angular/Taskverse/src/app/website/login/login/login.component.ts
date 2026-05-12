@@ -86,6 +86,13 @@ export class LoginComponent implements OnInit {
 
     this.accountService.login(request).pipe(take(1)).subscribe({
       next: (response) => {
+        // Check if user is approved
+        if (response.user.status !== 'APPROVED') {
+          this.isLoading = false;
+          this.errorMessage = this.getApprovalPendingMessage(response.user.role);
+          return;
+        }
+
         this.session.jwtToken  = response.token;
         this.session.user      = response.user;
         this.session.userEmail = response.user.email;
@@ -93,11 +100,25 @@ export class LoginComponent implements OnInit {
         this.session.role      = response.user.role;
         this.router.navigate([RouteAddress.RoleDirector]);
       },
-      error: () => {
+      error: (err) => {
         this.isLoading    = false;
-        this.errorMessage = 'Invalid email or password. Please try again.';
+        this.errorMessage =
+          err?.error?.message ||
+          (typeof err?.error === 'string' ? err.error : '') ||
+          'Invalid email or password. Please try again.';
       }
     });
+  }
+
+  // ─── Helper Methods ───────────────────────────────────────────────────────
+  private getApprovalPendingMessage(role: string): string {
+    if (role === 'CollegeAdmin') {
+      return 'Your account is awaiting approval from super administrator';
+    }
+    if (role === 'Trainer' || role === 'Student') {
+      return 'Your account is awaiting approval from your college administrator';
+    }
+    return 'Your account is awaiting approval.';
   }
 
   // ─── Register ─────────────────────────────────────────────────────────────

@@ -44,9 +44,14 @@ public class AuthController : Controller
                     FirstName = result.FirstName,
                     LastName = result.LastName,
                     Role = result.Roles.FirstOrDefault() ?? string.Empty,
-                    IsActive = true
+                    IsActive = true,
+                    Status = result.Status
                 }
             });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
         }
         catch (Exception ex)
         {

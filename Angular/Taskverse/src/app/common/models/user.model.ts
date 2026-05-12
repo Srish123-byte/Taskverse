@@ -7,4 +7,5 @@ export interface User {
   lastName: string;
   role: RoleType;
   isActive: boolean;
+  status: string;
 }
