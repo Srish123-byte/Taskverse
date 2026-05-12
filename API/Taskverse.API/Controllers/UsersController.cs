@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
-using Taskverse.Api.Filters;
 using Taskverse.Api.Mappings;
 using Taskverse.Api.Models;
 using Taskverse.Business.Interface;
@@ -47,7 +46,6 @@ public class UsersController : TaskverseBaseController
 
     /// <summary>Gets a user by their ID.</summary>
     [HttpGet("{userId}")]
-    [ServiceFilter(typeof(JwtTokenValidationFilter))]
     [SwaggerResponse(200, "User found", typeof(UserResponseModel))]
     [SwaggerResponse(401, "Unauthorized")]
     [SwaggerResponse(404, "User not found")]
@@ -66,7 +64,6 @@ public class UsersController : TaskverseBaseController
 
     /// <summary>Searches users by criteria.</summary>
     [HttpPost("search")]
-    [ServiceFilter(typeof(JwtTokenValidationFilter))]
     [SwaggerResponse(200, "Search results", typeof(PagedUserResponseModel))]
     [SwaggerResponse(401, "Unauthorized")]
     public async Task<IActionResult> SearchUsers([FromBody] UserSearchRequestModel model)
@@ -84,7 +81,6 @@ public class UsersController : TaskverseBaseController
 
     /// <summary>Creates a new user (admin use — requires JWT).</summary>
     [HttpPost]
-    [ServiceFilter(typeof(JwtTokenValidationFilter))]
     [SwaggerResponse(201, "User created", typeof(UserResponseModel))]
     [SwaggerResponse(400, "Invalid request")]
     [SwaggerResponse(401, "Unauthorized")]
@@ -103,7 +99,6 @@ public class UsersController : TaskverseBaseController
 
     /// <summary>Updates an existing user.</summary>
     [HttpPut("{userId}")]
-    [ServiceFilter(typeof(JwtTokenValidationFilter))]
     [SwaggerResponse(200, "User updated", typeof(UserResponseModel))]
     [SwaggerResponse(401, "Unauthorized")]
     [SwaggerResponse(404, "User not found")]
@@ -122,7 +117,6 @@ public class UsersController : TaskverseBaseController
 
     /// <summary>Deletes a user by ID.</summary>
     [HttpDelete("{userId}")]
-    [ServiceFilter(typeof(JwtTokenValidationFilter))]
     [SwaggerResponse(204, "User deleted")]
     [SwaggerResponse(401, "Unauthorized")]
     [SwaggerResponse(404, "User not found")]
@@ -141,7 +135,6 @@ public class UsersController : TaskverseBaseController
 
     /// <summary>Gets the roles assigned to a user.</summary>
     [HttpGet("{userId}/roles")]
-    [ServiceFilter(typeof(JwtTokenValidationFilter))]
     [SwaggerResponse(200, "User roles", typeof(List<string>))]
     [SwaggerResponse(401, "Unauthorized")]
     [SwaggerResponse(404, "User not found")]

@@ -22,18 +22,6 @@ export interface LoginResponse {
   user: User;
 }
 
-export interface LegacyLoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: string;
-  userId: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  roles: string[];
-  status: string;
-}
-
 @Injectable({ providedIn: 'root' })
 export class AccountService {
   private readonly url = 'auth';
@@ -44,8 +32,8 @@ export class AccountService {
     private readonly appConfig: AppConfig
   ) {}
 
-  login(request: LoginRequest): Observable<LoginResponse | LegacyLoginResponse> {
-    return this.rawHttp.post<LoginResponse | LegacyLoginResponse>(
+  login(request: LoginRequest): Observable<LoginResponse> {
+    return this.rawHttp.post<LoginResponse>(
       `${this.appConfig.api_url}/${this.url}/login`,
       request,
       {

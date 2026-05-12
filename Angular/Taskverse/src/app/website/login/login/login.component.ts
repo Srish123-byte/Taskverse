@@ -1,12 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AccountService, LegacyLoginResponse, LoginRequest, LoginResponse } from '../../../common/services/api/account.service';
+import { AccountService, LoginRequest, LoginResponse } from '../../../common/services/api/account.service';
 import { UserService, RegisterRequest } from '../../../common/services/api/user.service';
 import { Session } from '../../../common/services/session/session.service';
 import { RouteAddress } from '../../../common/constants/routes.constants';
 import { RoleType } from '../../../common/enums/role-type.enum';
-import { User } from '../../../common/models/user.model';
 import { take } from 'rxjs/operators';
 
 export type AuthMode = 'login' | 'register';
@@ -88,28 +87,28 @@ export class LoginComponent implements OnInit {
 
     this.accountService.login(request).pipe(take(1)).subscribe({
       next: (response) => {
-        const normalizedResponse = this.normalizeLoginResponse(response);
-
-        if (!normalizedResponse?.user || !normalizedResponse.token) {
+        const normalizedRole = this.normalizeRole(response.user?.role);
+        if (!normalizedRole || !response.user || !response.token) {
           this.isLoading = false;
           this.errorMessage = 'Login succeeded, but the server returned an unexpected response.';
           return;
         }
 
-        const normalizedStatus = this.normalizeStatus(normalizedResponse.user.status);
+        response.user.role = normalizedRole;
+        const normalizedStatus = this.normalizeStatus(response.user.status);
 
         if (normalizedStatus !== 'APPROVED') {
-          this.redirectToApprovalStatus(normalizedResponse.user.role, normalizedStatus);
+          this.redirectToApprovalStatus(response.user.role, normalizedStatus);
           return;
         }
 
-        normalizedResponse.user.status = normalizedStatus;
-        this.session.jwtToken  = normalizedResponse.token;
-        this.session.refreshToken = normalizedResponse.refreshToken;
-        this.session.user      = normalizedResponse.user;
-        this.session.userEmail = normalizedResponse.user.email;
-        this.session.userId    = normalizedResponse.user.userId;
-        this.session.role      = normalizedResponse.user.role;
+        response.user.status = normalizedStatus;
+        this.session.jwtToken = response.token;
+        this.session.refreshToken = response.refreshToken;
+        this.session.user = response.user;
+        this.session.userEmail = response.user.email;
+        this.session.userId = response.user.userId;
+        this.session.role = response.user.role;
         this.navigateToLandingPage();
       },
       error: (err) => {
@@ -123,29 +122,6 @@ export class LoginComponent implements OnInit {
   }
 
   // ─── Helper Methods ───────────────────────────────────────────────────────
-  private getApprovalPendingMessage(role: string, status: string): string {
-    if (status === 'PENDING_APPROVAL') {
-      if (role === RoleType.CollegeAdmin) {
-        return 'Your account is awaiting approval from the super administrator.';
-      }
-      if (role === RoleType.Trainer || role === RoleType.Student) {
-        return 'Your account is awaiting approval from your college administrator.';
-      }
-    }
-
-    if (status === 'REJECTED') {
-      return 'Your account is not allowed to sign in. Please contact the administrator.';
-    }
-
-    if (role === RoleType.CollegeAdmin) {
-      return 'Your account is awaiting approval from the super administrator.';
-    }
-    if (role === RoleType.Trainer || role === RoleType.Student) {
-      return 'Your account is awaiting approval from your college administrator.';
-    }
-    return 'Your account is awaiting approval.';
-  }
-
   private redirectToApprovalStatus(role: RoleType, status: string): void {
     void this.router.navigate([`/${RouteAddress.ApprovalStatus}`], {
       queryParams: {
@@ -158,47 +134,6 @@ export class LoginComponent implements OnInit {
   }
 
   // ─── Register ─────────────────────────────────────────────────────────────
-  private normalizeLoginResponse(
-    response: LoginResponse | LegacyLoginResponse | null | undefined
-  ): LoginResponse | null {
-    if (!response) {
-      return null;
-    }
-
-    if ('token' in response && 'user' in response) {
-      const normalizedRole = this.normalizeRole(response.user.role);
-      if (!normalizedRole) {
-        return null;
-      }
-
-      response.user.role = normalizedRole;
-      response.user.status = this.normalizeStatus(response.user.status);
-      return response;
-    }
-
-    const role = this.normalizeRole(response.roles?.[0]);
-    if (!role) {
-      return null;
-    }
-
-    const user: User = {
-      userId: response.userId,
-      email: response.email,
-      firstName: response.firstName,
-      lastName: response.lastName,
-      role: role as RoleType,
-      isActive: true,
-      status: response.status
-    };
-
-    return {
-      token: response.accessToken,
-      refreshToken: response.refreshToken,
-      expiresAt: response.expiresAt,
-      user
-    };
-  }
-
   private normalizeRole(role: string | RoleType | undefined | null): RoleType | null {
     switch ((role ?? '').toString().trim().toLowerCase()) {
       case 'superadmin':
@@ -236,10 +171,6 @@ export class LoginComponent implements OnInit {
   onRegister(): void {
     if (this.registerForm.invalid) {
       this.registerForm.markAllAsTouched();
-      console.warn('[Register] Form invalid:', this.registerForm.errors,
-        Object.fromEntries(Object.keys(this.registerForm.controls)
-          .filter(k => this.registerForm.get(k)?.invalid)
-          .map(k => [k, this.registerForm.get(k)?.errors])));
       return;
     }
 
