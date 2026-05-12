@@ -7,6 +7,7 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
 {
     // Users
     Task<ObjectResult> GetUser(string userId);
+    Task<ObjectResult> GetPendingUsers();
     Task<ObjectResult> SearchUsers(UserSearchCriteriaModel criteria);
     Task<ObjectResult> CreateUser(CreateUserModel model);
     Task<ObjectResult> UpdateUser(string userId, UpdateUserModel model);

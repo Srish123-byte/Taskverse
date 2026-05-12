@@ -56,6 +56,18 @@ public class SuperAdminController : TaskverseBaseController
         return Ok(dto.Select(x => x.ToResponseModel()).ToList());
     }
 
+    [HttpGet("users/pending")]
+    [SwaggerResponse(200, "Pending users", typeof(List<PendingUserResponseModel>))]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> GetPendingUsers()
+    {
+        var roleCheck = EnsureSuperAdmin();
+        if (roleCheck is not null) return roleCheck;
+
+        var dto = await _superAdminOrchestrator.GetPendingUsers();
+        return Ok(dto.Select(x => x.ToResponseModel()).ToList());
+    }
+
     [HttpPost("colleges/{collegeId}/approve")]
     [SwaggerResponse(200, "College approved", typeof(CollegeResponseModel))]
     [SwaggerResponse(403, "Forbidden")]

@@ -90,6 +90,18 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
         return models.Select(c => c.ToDto()).ToList();
     }
 
+    public async Task<List<PendingUserDto>> GetPendingUsers()
+    {
+        _log.Debug("SuperAdminOrchestrator.GetPendingUsers");
+        var result = await _microServiceOrchestrator.GetPendingUsers();
+        result.EnsureSuccess(nameof(GetPendingUsers));
+
+        var models = result.DeserializeValue<List<PendingUserModel>>()
+            ?? throw new InvalidOperationException("GetPendingUsers returned empty.");
+
+        return models.Select(user => user.ToDto()).ToList();
+    }
+
     public async Task<CollegeDto> ApproveCollege(string collegeId, CollegeActionDto dto) =>
         await ExecuteCollegeAction(nameof(ApproveCollege), collegeId, dto, _microServiceOrchestrator.ApproveCollege);
 

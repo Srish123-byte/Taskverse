@@ -28,7 +28,7 @@ namespace Taskverse.Api;
 public class Startup
 {
     private static readonly ILog Log = LogManager.GetLogger(typeof(Startup));
-    private readonly DateTime _startupTime = DateTime.Now;
+    private readonly DateTime _startupTime = DateTime.UtcNow;
     private const string CorsPolicyName = "TaskverseCorsPolicy";
 
     private readonly IConfigurationBuilder _builder;
@@ -59,7 +59,7 @@ public class Startup
     public void ConfigureServices(IServiceCollection services)
     {
         Log.DebugFormat("Configuring services... Startup time elapsed: {0}ms",
-            (DateTime.Now - _startupTime).TotalMilliseconds);
+            (DateTime.UtcNow - _startupTime).TotalMilliseconds);
 
         services.AddDefaultCorrelationId(options =>
         {
@@ -82,13 +82,13 @@ public class Startup
         ConfigureDependencyInjection(services);
 
         Log.DebugFormat("Services configured. Startup time elapsed: {0}ms",
-            (DateTime.Now - _startupTime).TotalMilliseconds);
+            (DateTime.UtcNow - _startupTime).TotalMilliseconds);
     }
 
     public void Configure(WebApplication app, IWebHostEnvironment env)
     {
         Log.DebugFormat("Configuring HTTP request pipeline... Startup time elapsed: {0}ms",
-            (DateTime.Now - _startupTime).TotalMilliseconds);
+            (DateTime.UtcNow - _startupTime).TotalMilliseconds);
 
         // Must be first — restores real client IP/protocol when behind a reverse proxy
         app.UseForwardedHeaders(new ForwardedHeadersOptions
@@ -125,7 +125,7 @@ public class Startup
         app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 
         Log.DebugFormat("Application Startup complete. Total duration: {0}ms",
-            (DateTime.Now - _startupTime).TotalMilliseconds);
+            (DateTime.UtcNow - _startupTime).TotalMilliseconds);
     }
 
     private void ConfigureAuthentication(IServiceCollection services)

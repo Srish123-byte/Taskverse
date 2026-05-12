@@ -1,7 +1,7 @@
-// Taskverse.Auth.Service/Services/ITokenService.cs
+// Taskverse.API.Auth.Service/Services/ITokenService.cs
 using System.Security.Claims;
 
-namespace Taskverse.Auth.Service.Services;
+namespace Taskverse.API.Auth.Service.Services;
 
 public interface ITokenService
 {

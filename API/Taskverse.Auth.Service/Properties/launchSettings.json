@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "Taskverse.Auth.Service": {
+    "Taskverse.API.Auth.Service": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {

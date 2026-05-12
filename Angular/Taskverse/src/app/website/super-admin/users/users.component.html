@@ -1,15 +1,53 @@
 <div class="page-container">
   <div class="page-eyebrow">Super Admin</div>
   <h2 class="page-title">Users</h2>
-  <p class="page-welcome">Centralized visibility into user governance across students, admins, and platform roles.</p>
+  <p class="page-welcome">Review accounts waiting for access and keep approvals visible in one place.</p>
 
-  <div class="users-grid">
-    <article *ngFor="let section of sections" class="user-card">
-      <div class="user-card-icon">
-        <mat-icon>{{ section.icon }}</mat-icon>
+  <div class="page-content">
+    <div *ngIf="isLoading" class="page-state">Loading pending users...</div>
+    <div *ngIf="errorMessage" class="page-state page-state-error">{{ errorMessage }}</div>
+
+    <div *ngIf="!isLoading && !errorMessage" class="users-table-shell">
+      <div class="table-header-row" *ngIf="pendingUsers.length > 0">
+        <span>Full Name</span>
+        <span>Role</span>
+        <span>Email</span>
+        <span>Institution &amp; Details</span>
+        <span>Actions</span>
       </div>
-      <h3>{{ section.title }}</h3>
-      <p>{{ section.description }}</p>
-    </article>
+
+      <div *ngIf="pendingUsers.length === 0" class="empty-state">
+        No users are currently waiting for approval.
+      </div>
+
+      <article *ngFor="let user of pendingUsers; trackBy: trackByUserId" class="user-row">
+        <div class="user-name-cell">
+          <span class="user-accent"></span>
+          <div>
+            <div class="user-name">{{ user.fullName }}</div>
+            <div class="user-created">Requested {{ user.createdAt | date: 'mediumDate' }}</div>
+          </div>
+        </div>
+
+        <div class="role-cell">
+          <span class="role-pill" [ngClass]="'role-pill-' + getRoleClass(user.role)">{{ getRoleLabel(user.role) }}</span>
+        </div>
+
+        <div class="email-cell">{{ user.email }}</div>
+
+        <div class="institution-cell">
+          <div class="institution-name">{{ user.institutionName || 'Global System Access' }}</div>
+        </div>
+
+        <div class="actions-cell">
+          <button mat-flat-button color="primary" disabled matTooltip="Approval actions are not wired yet.">
+            Approve
+          </button>
+          <button mat-stroked-button disabled matTooltip="Rejection actions are not wired yet.">
+            Reject
+          </button>
+        </div>
+      </article>
+    </div>
   </div>
 </div>

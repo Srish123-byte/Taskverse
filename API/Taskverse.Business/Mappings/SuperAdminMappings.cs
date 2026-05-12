@@ -25,6 +25,17 @@ public static class SuperAdminMappings
     public static CollegeActionModel ToMicroServiceModel(this CollegeActionDto dto) =>
         new(dto.PerformedBy, dto.Reason);
 
+    public static PendingUserDto ToDto(this PendingUserModel model) => new()
+    {
+        UserId = model.UserId,
+        FullName = model.FullName,
+        Email = model.Email,
+        Role = model.Role,
+        Status = model.Status,
+        CreatedAt = model.CreatedAt,
+        InstitutionName = model.InstitutionName
+    };
+
     public static RecentActivityDto ToDto(this AuditLog auditLog, string performedBy) => new()
     {
         Action = auditLog.Action,

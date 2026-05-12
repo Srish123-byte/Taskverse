@@ -1,4 +1,4 @@
-namespace Taskverse.Auth.Service;
+namespace Taskverse.API.Auth.Service;
 
 public class Program
 {

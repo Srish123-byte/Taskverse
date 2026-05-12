@@ -27,6 +27,17 @@ public static class SuperAdminMappings
         Notes = dto.Notes
     };
 
+    public static PendingUserResponseModel ToResponseModel(this PendingUserDto dto) => new()
+    {
+        UserId = dto.UserId,
+        FullName = dto.FullName,
+        Email = dto.Email,
+        Role = dto.Role,
+        Status = dto.Status,
+        CreatedAt = dto.CreatedAt,
+        InstitutionName = dto.InstitutionName
+    };
+
     public static SuperAdminDashboardResponseModel ToResponseModel(this SuperAdminDashboardDto dto) => new()
     {
         Totals = new SuperAdminTotalsResponseModel

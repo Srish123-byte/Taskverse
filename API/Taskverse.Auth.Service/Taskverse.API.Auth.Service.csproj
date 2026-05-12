@@ -4,8 +4,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>Taskverse.Auth.Service</AssemblyName>
-    <RootNamespace>Taskverse.Auth.Service</RootNamespace>
+    <AssemblyName>Taskverse.API.Auth.Service</AssemblyName>
+    <RootNamespace>Taskverse.API.Auth.Service</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

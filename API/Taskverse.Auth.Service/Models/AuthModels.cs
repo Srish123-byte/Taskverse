@@ -1,5 +1,5 @@
-// Taskverse.Auth.Service/Models/AuthModels.cs
-namespace Taskverse.Auth.Service.Models;
+// Taskverse.API.Auth.Service/Models/AuthModels.cs
+namespace Taskverse.API.Auth.Service.Models;
 
 public class LoginRequest
 {

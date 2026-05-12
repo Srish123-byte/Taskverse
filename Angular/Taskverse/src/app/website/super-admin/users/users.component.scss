@@ -1,37 +1,164 @@
 @use '../../../common/styles/page' as *;
 
-.users-grid {
+.page-state {
+  padding: 20px;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.55);
+  color: #dbe7f3;
+}
+
+.page-state-error {
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #fecaca;
+}
+
+.users-table-shell {
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 26px;
+  background:
+    linear-gradient(180deg, rgba(30, 41, 59, 0.96) 0%, rgba(15, 23, 42, 0.98) 100%),
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 38%);
+  box-shadow: 0 28px 60px rgba(2, 8, 23, 0.42);
+}
+
+.table-header-row,
+.user-row {
   display: grid;
+  grid-template-columns: 1.35fr 0.9fr 1.15fr 1.3fr 0.95fr;
   gap: 20px;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  align-items: center;
 }
 
-.user-card {
-  padding: 24px;
-  border: 1px solid #dae5ef;
-  border-radius: 22px;
-  background: linear-gradient(180deg, #ffffff 0%, #f6fafc 100%);
-  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+.table-header-row {
+  padding: 20px 28px;
+  color: #d8e6f4;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: rgba(30, 41, 59, 0.82);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
 }
 
-.user-card-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 52px;
+.user-row {
+  padding: 22px 28px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.user-row:last-child {
+  border-bottom: 0;
+}
+
+.user-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.user-accent {
+  width: 5px;
+  min-width: 5px;
   height: 52px;
-  margin-bottom: 16px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #94d2bd 0%, #0a9396 100%);
-  color: #ffffff;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #7dd3fc 0%, #38bdf8 100%);
 }
 
-.user-card h3 {
-  margin: 0 0 10px;
-  color: #16314a;
+.user-name,
+.email-cell,
+.institution-name {
+  color: #f8fafc;
 }
 
-.user-card p {
-  margin: 0;
-  color: #617589;
-  line-height: 1.6;
+.user-name {
+  font-weight: 700;
+}
+
+.user-created,
+.institution-cell {
+  margin-top: 4px;
+  color: #9fb2c8;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.email-cell,
+.institution-cell {
+  word-break: break-word;
+}
+
+.role-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(51, 65, 85, 0.9);
+  color: #e2e8f0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.role-pill-student {
+  background: rgba(56, 189, 248, 0.16);
+  color: #7dd3fc;
+}
+
+.role-pill-trainer {
+  background: rgba(251, 191, 36, 0.16);
+  color: #fbbf24;
+}
+
+.role-pill-college-admin {
+  background: rgba(59, 130, 246, 0.16);
+  color: #93c5fd;
+}
+
+.role-pill-super-admin {
+  background: rgba(226, 232, 240, 0.14);
+  color: #e2e8f0;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-start;
+}
+
+.actions-cell button[disabled] {
+  opacity: 0.72;
+}
+
+.empty-state {
+  padding: 36px 28px;
+  color: #cbd5e1;
+}
+
+@media (max-width: 1080px) {
+  .table-header-row {
+    display: none;
+  }
+
+  .user-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .actions-cell {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .users-table-shell {
+    border-radius: 20px;
+  }
+
+  .user-row {
+    padding: 18px 18px 20px;
+  }
+
+  .user-name-cell {
+    align-items: flex-start;
+  }
 }

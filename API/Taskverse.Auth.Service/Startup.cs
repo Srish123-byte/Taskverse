@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using System.Text;
-using Taskverse.Auth.Service.Services;
+using Taskverse.API.Auth.Service.Services;
 using Taskverse.Data.DataAccess;
 
-namespace Taskverse.Auth.Service;
+namespace Taskverse.API.Auth.Service;
 
 public class Startup
 {

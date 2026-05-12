@@ -2,6 +2,16 @@ export interface CollegeActionRequest {
   reason?: string;
 }
 
+export interface PendingUser {
+  userId: string;
+  fullName: string;
+  email: string;
+  role: string;
+  status: string;
+  createdAt: string;
+  institutionName?: string;
+}
+
 export interface College {
   collegeId: string;
   name: string;

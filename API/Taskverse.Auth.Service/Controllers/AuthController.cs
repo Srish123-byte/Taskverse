@@ -1,12 +1,12 @@
-// Taskverse.Auth.Service/Controllers/AuthController.cs
+// Taskverse.API.Auth.Service/Controllers/AuthController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using Taskverse.Auth.Service.Models;
-using Taskverse.Auth.Service.Services;
+using Taskverse.API.Auth.Service.Models;
+using Taskverse.API.Auth.Service.Services;
 
-namespace Taskverse.Auth.Service.Controllers;
+namespace Taskverse.API.Auth.Service.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
