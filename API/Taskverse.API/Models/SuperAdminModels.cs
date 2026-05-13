@@ -21,6 +21,11 @@ public class CollegeActionRequestModel
     public string? Reason { get; set; }
 }
 
+public class UserActionRequestModel
+{
+    public string? Reason { get; set; }
+}
+
 public class PendingUserResponseModel
 {
     public string UserId { get; set; } = string.Empty;

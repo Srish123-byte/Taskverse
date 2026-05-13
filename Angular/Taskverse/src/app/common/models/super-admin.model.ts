@@ -2,6 +2,10 @@ export interface CollegeActionRequest {
   reason?: string;
 }
 
+export interface UserActionRequest {
+  reason?: string;
+}
+
 export interface PendingUser {
   userId: string;
   fullName: string;

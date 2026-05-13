@@ -11,6 +11,8 @@ public static class UserMappings
         Email     = model.Email,
         Phone     = model.Phone,
         CollegeId = model.CollegeId,
+        ClassId   = model.ClassId,
+        BatchId   = model.BatchId,
         Role      = model.Role,
         Password  = model.Password
     };
@@ -32,6 +34,8 @@ public static class UserMappings
         Email     = dto.Email,
         Phone     = dto.Phone,
         CollegeId = dto.CollegeId,
+        ClassId   = dto.ClassId,
+        BatchId   = dto.BatchId,
         Role      = dto.Role,
         Status    = dto.Status,
         CreatedAt = dto.CreatedAt,
@@ -44,5 +48,27 @@ public static class UserMappings
         TotalCount = dto.TotalCount,
         PageNumber = dto.PageNumber,
         PageSize   = dto.PageSize
+    };
+
+    public static RegistrationCollegeResponseModel ToResponseModel(this RegistrationCollegeDto dto) => new()
+    {
+        CollegeId = dto.CollegeId,
+        Name = dto.Name
+    };
+
+    public static RegistrationClassResponseModel ToResponseModel(this RegistrationClassDto dto) => new()
+    {
+        ClassId = dto.ClassId,
+        CollegeId = dto.CollegeId,
+        Name = dto.Name,
+        AcademicYear = dto.AcademicYear
+    };
+
+    public static RegistrationBatchResponseModel ToResponseModel(this RegistrationBatchDto dto) => new()
+    {
+        BatchId = dto.BatchId,
+        ClassId = dto.ClassId,
+        CollegeId = dto.CollegeId,
+        Name = dto.Name
     };
 }

@@ -11,6 +11,13 @@ public static class SuperAdminMappings
         Reason = model.Reason
     };
 
+    public static UserActionDto ToDto(this UserActionRequestModel model, string performedBy, Guid? performedByUserId) => new()
+    {
+        PerformedBy = performedBy,
+        PerformedByUserId = performedByUserId,
+        Reason = model.Reason
+    };
+
     public static CollegeResponseModel ToResponseModel(this CollegeDto dto) => new()
     {
         CollegeId = dto.CollegeId,

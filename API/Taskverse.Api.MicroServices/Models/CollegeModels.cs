@@ -17,3 +17,19 @@ public record CollegeModel(
 public record CollegeActionModel(
     string PerformedBy,
     string? Reason = null);
+
+public record RegistrationCollegeModel(
+    string CollegeId,
+    string Name);
+
+public record RegistrationClassModel(
+    string ClassId,
+    string CollegeId,
+    string Name,
+    string? AcademicYear);
+
+public record RegistrationBatchModel(
+    string BatchId,
+    string ClassId,
+    string CollegeId,
+    string Name);

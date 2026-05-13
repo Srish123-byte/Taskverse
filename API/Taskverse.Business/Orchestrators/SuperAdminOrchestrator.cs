@@ -4,6 +4,7 @@ using Npgsql;
 using Taskverse.Api.MicroServices.Interfaces;
 using Taskverse.Api.MicroServices.Models;
 using Taskverse.Business.DTOs;
+using Taskverse.Business.Enums;
 using Taskverse.Business.Interface;
 using Taskverse.Business.Mappings;
 using Taskverse.Business.Utilities;
@@ -14,6 +15,7 @@ namespace Taskverse.Business.Orchestrators;
 public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 {
     private const string HealthyStatus = "Healthy";
+    private const string ActiveCollegeStatus = "Active";
 
     private readonly IMicroServiceOrchestrator _microServiceOrchestrator;
     private readonly IDbContextFactory<TaskverseContext> _dbContextFactory;
@@ -110,6 +112,58 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
     public async Task<CollegeDto> ReactivateCollege(string collegeId, CollegeActionDto dto) =>
         await ExecuteCollegeAction(nameof(ReactivateCollege), collegeId, dto, _microServiceOrchestrator.ReactivateCollege);
 
+    public async Task ApproveUser(string userId, UserActionDto dto)
+    {
+        _log.Debug($"SuperAdminOrchestrator.ApproveUser: userId={userId}");
+
+        await using var context = await _dbContextFactory.CreateDbContextAsync();
+        await using var transaction = await context.Database.BeginTransactionAsync();
+
+        var user = await GetPendingUserEntity(context, userId);
+        if (user is null)
+        {
+            throw new KeyNotFoundException($"Pending user not found for userId={userId}.");
+        }
+
+        switch (NormalizeRole(user.Role))
+        {
+            case "collegeadmin":
+                await EnsureCollegeAdminApprovalRecord(context, user);
+                break;
+            case "student":
+                await EnsureStudentApprovalRecord(context, user, dto.PerformedByUserId);
+                break;
+            case "trainer":
+                await EnsureTrainerApprovalRecord(context, user, dto.PerformedByUserId);
+                break;
+            default:
+                throw new InvalidOperationException($"Unsupported pending user role '{user.Role}' for approval.");
+        }
+
+        user.Status = UserStatus.APPROVED;
+        user.ModifiedAt = DateTime.UtcNow;
+
+        await context.SaveChangesAsync();
+        await transaction.CommitAsync();
+    }
+
+    public async Task RejectUser(string userId, UserActionDto _)
+    {
+        _log.Debug($"SuperAdminOrchestrator.RejectUser: userId={userId}");
+
+        await using var context = await _dbContextFactory.CreateDbContextAsync();
+        var user = await GetPendingUserEntity(context, userId);
+        if (user is null)
+        {
+            throw new KeyNotFoundException($"Pending user not found for userId={userId}.");
+        }
+
+        user.Status = UserStatus.REJECTED;
+        user.ModifiedAt = DateTime.UtcNow;
+
+        await context.SaveChangesAsync();
+    }
+
     private async Task<CollegeDto> ExecuteCollegeAction(
         string operationName,
         string collegeId,
@@ -124,6 +178,121 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             ?? throw new InvalidOperationException($"{operationName} returned empty for collegeId={collegeId}.");
 
         return model.ToDto();
+    }
+
+    private static async Task<User?> GetPendingUserEntity(TaskverseContext context, string userId)
+    {
+        if (!Guid.TryParse(userId, out var parsedUserId))
+        {
+            return null;
+        }
+
+        return await context.Users.FirstOrDefaultAsync(user =>
+            user.Id == parsedUserId && user.Status == UserStatus.PENDING_APPROVAL);
+    }
+
+    private static string NormalizeRole(string role) =>
+        (role ?? string.Empty).Trim().Replace(" ", string.Empty).ToLowerInvariant();
+
+    private static async Task EnsureCollegeAdminApprovalRecord(TaskverseContext context, User user)
+    {
+        if (user.CollegeId.HasValue)
+        {
+            var existingCollege = await context.Colleges
+                .AsNoTracking()
+                .FirstOrDefaultAsync(college => college.CollegeId == user.CollegeId.Value);
+
+            if (existingCollege is not null)
+            {
+                return;
+            }
+        }
+
+        var college = new College
+        {
+            CollegeId = Guid.NewGuid(),
+            Name = user.FullName.Trim(),
+            Status = ActiveCollegeStatus,
+            CreatedAt = DateTime.UtcNow,
+            ModifiedAt = DateTime.UtcNow
+        };
+
+        context.Colleges.Add(college);
+        user.CollegeId = college.CollegeId;
+    }
+
+    private static async Task EnsureStudentApprovalRecord(TaskverseContext context, User user, Guid? approvedByUserId)
+    {
+        if (!user.CollegeId.HasValue)
+        {
+            throw new InvalidOperationException($"Student user '{user.Id}' cannot be approved without a college.");
+        }
+
+        if (!user.BatchId.HasValue)
+        {
+            throw new InvalidOperationException($"Student user '{user.Id}' cannot be approved without a batch.");
+        }
+
+        var existingStudent = await context.Students
+            .FirstOrDefaultAsync(student => student.UserId == user.Id);
+
+        if (existingStudent is not null)
+        {
+            existingStudent.Status = UserStatus.APPROVED;
+            existingStudent.StatusId = (int)UserStatus.APPROVED;
+            existingStudent.ModifiedAt = DateTime.UtcNow;
+            existingStudent.ApprovedBy = approvedByUserId;
+            return;
+        }
+
+        context.Students.Add(new Student
+        {
+            StudentId = Guid.NewGuid(),
+            UserId = user.Id,
+            CollegeId = user.CollegeId.Value,
+            BatchId = user.BatchId.Value,
+            FullName = user.FullName,
+            Email = user.Email,
+            Status = UserStatus.APPROVED,
+            StatusId = (int)UserStatus.APPROVED,
+            CreatedAt = DateTime.UtcNow,
+            ModifiedAt = DateTime.UtcNow,
+            ApprovedBy = approvedByUserId
+        });
+    }
+
+    private static async Task EnsureTrainerApprovalRecord(TaskverseContext context, User user, Guid? approvedByUserId)
+    {
+        if (!user.CollegeId.HasValue)
+        {
+            throw new InvalidOperationException($"Trainer user '{user.Id}' cannot be approved without a college.");
+        }
+
+        var existingTrainer = await context.Trainers
+            .FirstOrDefaultAsync(trainer => trainer.UserId == user.Id);
+
+        if (existingTrainer is not null)
+        {
+            existingTrainer.Status = UserStatus.APPROVED;
+            existingTrainer.StatusId = (int)UserStatus.APPROVED;
+            existingTrainer.ModifiedAt = DateTime.UtcNow;
+            existingTrainer.ApprovedBy = approvedByUserId;
+            return;
+        }
+
+        context.Trainers.Add(new Trainer
+        {
+            TrainerId = Guid.NewGuid(),
+            UserId = user.Id,
+            CollegeId = user.CollegeId.Value,
+            FullName = user.FullName,
+            Email = user.Email,
+            Status = UserStatus.APPROVED,
+            StatusId = (int)UserStatus.APPROVED,
+            CreatedAt = DateTime.UtcNow,
+            ModifiedAt = DateTime.UtcNow,
+            ApprovedBy = approvedByUserId
+        });
     }
 
     private async Task<(int ThisMonth, int PreviousMonth)> GetAssessmentTotals()

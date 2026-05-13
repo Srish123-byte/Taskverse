@@ -6,6 +6,7 @@
   <div class="page-content">
     <div *ngIf="isLoading" class="page-state">Loading pending users...</div>
     <div *ngIf="errorMessage" class="page-state page-state-error">{{ errorMessage }}</div>
+    <div *ngIf="actionMessage && !errorMessage" class="page-state">{{ actionMessage }}</div>
 
     <div *ngIf="!isLoading && !errorMessage" class="users-page-shell">
       <section class="filters-shell">
@@ -74,10 +75,17 @@
           </div>
 
           <div class="actions-cell">
-            <button mat-flat-button color="primary" disabled matTooltip="Approval actions are not wired yet.">
-              Approve
+            <button
+              mat-flat-button
+              color="primary"
+              [disabled]="isActingOn(user.userId)"
+              (click)="approveUser(user)">
+              {{ isActingOn(user.userId) ? 'Working...' : 'Approve' }}
             </button>
-            <button mat-stroked-button disabled matTooltip="Rejection actions are not wired yet.">
+            <button
+              mat-stroked-button
+              [disabled]="isActingOn(user.userId)"
+              (click)="rejectUser(user)">
               Reject
             </button>
           </div>

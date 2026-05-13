@@ -16,7 +16,9 @@ export class UsersComponent implements OnInit, OnDestroy {
   selectedInstitution = 'all';
   searchTerm = '';
   isLoading = false;
+  activeUserId: string | null = null;
   errorMessage = '';
+  actionMessage = '';
   private routeSubscription?: Subscription;
 
   constructor(
@@ -89,6 +91,64 @@ export class UsersComponent implements OnInit, OnDestroy {
     this.searchTerm = '';
   }
 
+  isActingOn(userId: string): boolean {
+    return this.activeUserId === userId;
+  }
+
+  approveUser(user: PendingUser): void {
+    if (this.activeUserId) {
+      return;
+    }
+
+    this.activeUserId = user.userId;
+    this.errorMessage = '';
+    this.actionMessage = '';
+
+    this.superAdminService.approveUser(user.userId).subscribe({
+      next: () => {
+        this.pendingUsers = this.pendingUsers.filter(item => item.userId !== user.userId);
+        this.actionMessage = `${user.fullName} has been approved.`;
+        this.activeUserId = null;
+        this.changeDetectorRef.detectChanges();
+      },
+      error: err => {
+        this.errorMessage =
+          err?.error?.detail ||
+          err?.error?.message ||
+          'Unable to approve this user right now.';
+        this.activeUserId = null;
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
+  rejectUser(user: PendingUser): void {
+    if (this.activeUserId) {
+      return;
+    }
+
+    this.activeUserId = user.userId;
+    this.errorMessage = '';
+    this.actionMessage = '';
+
+    this.superAdminService.rejectUser(user.userId).subscribe({
+      next: () => {
+        this.pendingUsers = this.pendingUsers.filter(item => item.userId !== user.userId);
+        this.actionMessage = `${user.fullName} has been rejected.`;
+        this.activeUserId = null;
+        this.changeDetectorRef.detectChanges();
+      },
+      error: err => {
+        this.errorMessage =
+          err?.error?.detail ||
+          err?.error?.message ||
+          'Unable to reject this user right now.';
+        this.activeUserId = null;
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
   private loadPendingUsers(): void {
     if (this.isLoading) {
       return;
@@ -96,6 +156,7 @@ export class UsersComponent implements OnInit, OnDestroy {
 
     this.isLoading = true;
     this.errorMessage = '';
+    this.actionMessage = '';
 
     this.superAdminService.getPendingUsers().subscribe({
       next: users => {

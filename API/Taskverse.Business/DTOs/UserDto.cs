@@ -9,6 +9,8 @@ public class UserDto
     public string Email { get; set; } = default!;
     public string? Phone { get; set; }
     public Guid? CollegeId { get; set; }
+    public Guid? ClassId { get; set; }
+    public Guid? BatchId { get; set; }
     public string Role { get; set; } = default!;
     public string Status { get; set; } = default!;
     public DateTime CreatedAt { get; set; }
@@ -44,4 +46,26 @@ public class PagedUserDto
     public int TotalCount { get; set; }
     public int PageNumber { get; set; }
     public int PageSize { get; set; }
+}
+
+public class RegistrationCollegeDto
+{
+    public string CollegeId { get; set; } = default!;
+    public string Name { get; set; } = default!;
+}
+
+public class RegistrationClassDto
+{
+    public string ClassId { get; set; } = default!;
+    public string CollegeId { get; set; } = default!;
+    public string Name { get; set; } = default!;
+    public string? AcademicYear { get; set; }
+}
+
+public class RegistrationBatchDto
+{
+    public string BatchId { get; set; } = default!;
+    public string ClassId { get; set; } = default!;
+    public string CollegeId { get; set; } = default!;
+    public string Name { get; set; } = default!;
 }

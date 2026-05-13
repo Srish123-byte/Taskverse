@@ -15,7 +15,6 @@
   max-width: 460px;
 }
 
-// ── Title ────────────────────────────────────────────────────────────────────
 .login-title {
   font-size: 1.75rem;
   font-weight: 800;
@@ -24,7 +23,6 @@
   text-align: center;
 }
 
-// ── Mode tabs ────────────────────────────────────────────────────────────────
 .auth-tabs {
   position: relative;
   display: flex;
@@ -49,7 +47,9 @@
   cursor: pointer;
   transition: color 0.25s;
 
-  &.active { color: var(--text-primary, #FFFFFF); }
+  &.active {
+    color: var(--text-primary, #FFFFFF);
+  }
 }
 
 .tab-indicator {
@@ -62,18 +62,28 @@
   border-radius: 9999px;
   transition: transform 0.25s ease;
 
-  &.right { transform: translateX(calc(100% + 0px)); }
+  &.right {
+    transform: translateX(calc(100% + 0px));
+  }
 }
 
-// ── Forms ────────────────────────────────────────────────────────────────────
-.full-width  { width: 100%; }
+.full-width {
+  width: 100%;
+}
+
+.registration-grid {
+  display: grid;
+  gap: 4px;
+}
 
 .name-row {
   display: flex;
   gap: 12px;
 }
 
-.half-width { flex: 1; }
+.half-width {
+  flex: 1;
+}
 
 .submit-btn {
   margin-top: 8px;
@@ -88,9 +98,10 @@
   cursor: pointer;
 }
 
-.btn-spinner { display: inline-block; }
+.btn-spinner {
+  display: inline-block;
+}
 
-// ── Messages ─────────────────────────────────────────────────────────────────
 .error-message {
   color: var(--accent-red, #EF4444);
   font-size: 0.875rem;

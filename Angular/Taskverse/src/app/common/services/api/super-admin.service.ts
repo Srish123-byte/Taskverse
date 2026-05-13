@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { College, CollegeActionRequest, PendingUser, SuperAdminDashboard } from '../../models/super-admin.model';
+import { College, CollegeActionRequest, PendingUser, SuperAdminDashboard, UserActionRequest } from '../../models/super-admin.model';
 import { HttpClientService } from '../http/http-client.service';
 
 @Injectable({ providedIn: 'root' })
@@ -19,6 +19,14 @@ export class SuperAdminService {
 
   getPendingUsers(): Observable<PendingUser[]> {
     return this.http.get<PendingUser[]>(`${this.url}/users/pending`);
+  }
+
+  approveUser(userId: string, request: UserActionRequest = {}): Observable<void> {
+    return this.http.post<void>(`${this.url}/users/${userId}/approve`, request);
+  }
+
+  rejectUser(userId: string, request: UserActionRequest = {}): Observable<void> {
+    return this.http.post<void>(`${this.url}/users/${userId}/reject`, request);
   }
 
   approveCollege(collegeId: string, request: CollegeActionRequest = {}): Observable<College> {

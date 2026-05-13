@@ -22,6 +22,13 @@ public class CollegeActionDto
     public string? Reason { get; set; }
 }
 
+public class UserActionDto
+{
+    public string PerformedBy { get; set; } = default!;
+    public Guid? PerformedByUserId { get; set; }
+    public string? Reason { get; set; }
+}
+
 public class PendingUserDto
 {
     public string UserId { get; set; } = default!;

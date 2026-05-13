@@ -24,6 +24,24 @@ public partial class MicroServiceOrchestrator
         return await Get<CollegeModel>(url);
     }
 
+    public async Task<ObjectResult> GetApprovedRegistrationColleges()
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/registration/colleges";
+        return await Get<List<RegistrationCollegeModel>>(url);
+    }
+
+    public async Task<ObjectResult> GetRegistrationClasses(string collegeId)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/registration/colleges/{collegeId}/classes";
+        return await Get<List<RegistrationClassModel>>(url);
+    }
+
+    public async Task<ObjectResult> GetRegistrationBatches(string classId)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/registration/classes/{classId}/batches";
+        return await Get<List<RegistrationBatchModel>>(url);
+    }
+
     public async Task<ObjectResult> ApproveCollege(string collegeId, CollegeActionModel model)
     {
         var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/approve";
