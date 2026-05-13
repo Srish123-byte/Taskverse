@@ -31,4 +31,10 @@ public class Batch
 
     [Column("modified_at")]
     public DateTime? ModifiedAt { get; set; }
+
+    // Navigation to students
+    public ICollection<Student> Students { get; set; }
+
+    // Navigation to trainer assignments
+    public ICollection<TrainerBatch> TrainerBatches { get; set; }
 }

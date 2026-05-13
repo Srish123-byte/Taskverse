@@ -1,5 +1,6 @@
 using log4net;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Taskverse.Api.MicroServices.Interfaces;
 using Taskverse.Api.MicroServices.Models;
 using Taskverse.Business.DTOs;
@@ -12,7 +13,6 @@ namespace Taskverse.Business.Orchestrators;
 
 public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 {
-    private const string StudentRole = "Student";
     private const string HealthyStatus = "Healthy";
 
     private readonly IMicroServiceOrchestrator _microServiceOrchestrator;
@@ -33,13 +33,9 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 
         var collegesTask = GetColleges();
         var pendingTask = GetPendingColleges();
-        var studentsTask = GetRegisteredStudentsCount();
         var totalsTask = GetAssessmentTotals();
-        var activityTask = GetRecentActivity();
-        var scoresTask = GetAverageScoresByCollege();
-        var trendsTask = GetUsageTrends();
 
-        await Task.WhenAll(collegesTask, pendingTask, studentsTask, totalsTask, activityTask, scoresTask, trendsTask);
+        await Task.WhenAll(collegesTask, pendingTask, totalsTask);
 
         var totals = await totalsTask;
         var colleges = await collegesTask;
@@ -49,7 +45,7 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             Totals = new SuperAdminTotalsDto
             {
                 ActiveColleges = colleges.Count(c => c.IsActive),
-                RegisteredStudents = await studentsTask,
+                RegisteredStudents = 0,
                 AssessmentsThisMonth = totals.ThisMonth,
                 AssessmentsPreviousMonth = totals.PreviousMonth
             },
@@ -60,9 +56,9 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
                 ErrorRatePercent = 0.05,
                 ApiStatus = HealthyStatus
             },
-            RecentActivity = await activityTask,
-            AverageScoresByCollege = await scoresTask,
-            UsageTrends = await trendsTask
+            RecentActivity = [],
+            AverageScoresByCollege = [],
+            UsageTrends = []
         };
     }
 
@@ -130,98 +126,121 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
         return model.ToDto();
     }
 
-    private async Task<int> GetRegisteredStudentsCount()
-    {
-        var result = await _microServiceOrchestrator.SearchUsers(new UserSearchCriteriaModel(null, StudentRole, true, 1, 1000));
-        result.EnsureSuccess(nameof(GetRegisteredStudentsCount));
-
-        var model = result.DeserializeValue<PagedUserResultModel>()
-            ?? throw new InvalidOperationException("SearchUsers returned empty for student count.");
-
-        return model.TotalCount;
-    }
-
     private async Task<(int ThisMonth, int PreviousMonth)> GetAssessmentTotals()
     {
-        await using var context = await _dbContextFactory.CreateDbContextAsync();
+        try
+        {
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
 
-        var utcNow = DateTime.UtcNow;
-        var startOfThisMonth = new DateTime(utcNow.Year, utcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var startOfPreviousMonth = startOfThisMonth.AddMonths(-1);
+            var utcNow = DateTime.UtcNow;
+            var startOfThisMonth = new DateTime(utcNow.Year, utcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var startOfPreviousMonth = startOfThisMonth.AddMonths(-1);
 
-        var thisMonth = await context.Assessments.CountAsync(a => a.CreatedAt >= startOfThisMonth);
-        var previousMonth = await context.Assessments.CountAsync(a =>
-            a.CreatedAt >= startOfPreviousMonth && a.CreatedAt < startOfThisMonth);
+            var thisMonth = await context.Assessments.CountAsync(a => a.CreatedAt >= startOfThisMonth);
+            var previousMonth = await context.Assessments.CountAsync(a =>
+                a.CreatedAt >= startOfPreviousMonth && a.CreatedAt < startOfThisMonth);
 
-        return (thisMonth, previousMonth);
+            return (thisMonth, previousMonth);
+        }
+        catch (PostgresException ex) when (IsMissingRelation(ex))
+        {
+            _log.Warn("SuperAdminOrchestrator.GetAssessmentTotals: assessments table is missing. Returning zero totals.", ex);
+            return (0, 0);
+        }
     }
 
     private async Task<List<RecentActivityDto>> GetRecentActivity()
     {
-        await using var context = await _dbContextFactory.CreateDbContextAsync();
+        try
+        {
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
 
-        var recentLogs = await context.AuditLogs
-            .AsNoTracking()
-            .OrderByDescending(a => a.OccurredAt)
-            .Take(20)
-            .Join(
-                context.Users.AsNoTracking(),
-                audit => audit.UserId,
-                user => user.Id,
-                (audit, user) => new { audit, user.FullName })
-            .ToListAsync();
+            var recentLogs = await context.AuditLogs
+                .AsNoTracking()
+                .OrderByDescending(a => a.OccurredAt)
+                .Take(20)
+                .Join(
+                    context.Users.AsNoTracking(),
+                    audit => audit.UserId,
+                    user => user.Id,
+                    (audit, user) => new { audit, user.FullName })
+                .ToListAsync();
 
-        return recentLogs
-            .Select(x => x.audit.ToDto(x.FullName))
-            .ToList();
+            return recentLogs
+                .Select(x => x.audit.ToDto(x.FullName))
+                .ToList();
+        }
+        catch (PostgresException ex) when (IsMissingRelation(ex))
+        {
+            _log.Warn("SuperAdminOrchestrator.GetRecentActivity: required audit tables are missing. Returning empty activity list.", ex);
+            return [];
+        }
     }
 
     private async Task<List<CollegeScoreSummaryDto>> GetAverageScoresByCollege()
     {
-        await using var context = await _dbContextFactory.CreateDbContextAsync();
+        try
+        {
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
 
-        return await context.AssessmentResults
-            .AsNoTracking()
-            .Join(context.Users.AsNoTracking(),
-                result => result.UserId,
-                user => user.Id,
-                (result, user) => new { result, user })
-            .Where(x => x.user.CollegeId.HasValue && x.result.Score.HasValue)
-            .Join(context.Colleges.AsNoTracking(),
-                x => x.user.CollegeId!.Value,
-                college => college.CollegeId,
-                (x, college) => new { x.result, x.user, college })
-            .GroupBy(x => new { x.college.CollegeId, x.college.Name })
-            .Select(group => new CollegeScoreSummaryDto
-            {
-                CollegeId = group.Key.CollegeId.ToString(),
-                CollegeName = group.Key.Name,
-                AverageScore = Math.Round(group.Average(x => x.result.Score ?? 0), 2),
-                StudentsAssessed = group.Select(x => x.user.Id).Distinct().Count()
-            })
-            .OrderByDescending(x => x.AverageScore)
-            .Take(10)
-            .ToListAsync();
+            return await context.AssessmentResults
+                .AsNoTracking()
+                .Join(context.Users.AsNoTracking(),
+                    result => result.UserId,
+                    user => user.Id,
+                    (result, user) => new { result, user })
+                .Where(x => x.user.CollegeId.HasValue && x.result.Score.HasValue)
+                .Join(context.Colleges.AsNoTracking(),
+                    x => x.user.CollegeId!.Value,
+                    college => college.CollegeId,
+                    (x, college) => new { x.result, x.user, college })
+                .GroupBy(x => new { x.college.CollegeId, x.college.Name })
+                .Select(group => new CollegeScoreSummaryDto
+                {
+                    CollegeId = group.Key.CollegeId.ToString(),
+                    CollegeName = group.Key.Name,
+                    AverageScore = Math.Round(group.Average(x => x.result.Score ?? 0), 2),
+                    StudentsAssessed = group.Select(x => x.user.Id).Distinct().Count()
+                })
+                .OrderByDescending(x => x.AverageScore)
+                .Take(10)
+                .ToListAsync();
+        }
+        catch (PostgresException ex) when (IsMissingRelation(ex))
+        {
+            _log.Warn("SuperAdminOrchestrator.GetAverageScoresByCollege: required assessment tables are missing. Returning empty scores.", ex);
+            return [];
+        }
     }
 
     private async Task<List<UsageTrendPointDto>> GetUsageTrends()
     {
-        await using var context = await _dbContextFactory.CreateDbContextAsync();
+        try
+        {
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
 
-        var utcToday = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
-        var rangeStart = utcToday.AddDays(-29);
+            var utcToday = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+            var rangeStart = utcToday.AddDays(-29);
 
-        return await context.AssessmentResults
-            .AsNoTracking()
-            .Where(result => result.CreatedAt >= rangeStart)
-            .GroupBy(result => result.CreatedAt.Date)
-            .Select(group => new UsageTrendPointDto
-            {
-                Date = group.Key,
-                Assessments = group.Select(x => x.AssessmentId).Distinct().Count(),
-                StudentsAssessed = group.Select(x => x.UserId).Distinct().Count()
-            })
-            .OrderBy(point => point.Date)
-            .ToListAsync();
+            return await context.AssessmentResults
+                .AsNoTracking()
+                .Where(result => result.CreatedAt >= rangeStart)
+                .GroupBy(result => result.CreatedAt.Date)
+                .Select(group => new UsageTrendPointDto
+                {
+                    Date = group.Key,
+                    Assessments = group.Select(x => x.AssessmentId).Distinct().Count(),
+                    StudentsAssessed = group.Select(x => x.UserId).Distinct().Count()
+                })
+                .OrderBy(point => point.Date)
+                .ToListAsync();
+        }
+        catch (PostgresException ex) when (IsMissingRelation(ex))
+        {
+            _log.Warn("SuperAdminOrchestrator.GetUsageTrends: assessment_results table is missing. Returning empty trend data.", ex);
+            return [];
+        }
     }
+
+    private static bool IsMissingRelation(PostgresException ex) => ex.SqlState == PostgresErrorCodes.UndefinedTable;
 }

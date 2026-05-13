@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { RouteAddress } from '../../../common/constants/routes.constants';
 import { AuthSessionService } from '../../../common/services/session/auth-session.service';
 
 interface SuperAdminNavItem {
@@ -17,12 +18,12 @@ export class SuperAdminShellComponent {
   constructor(private readonly authSessionService: AuthSessionService) {}
 
   readonly navItems: SuperAdminNavItem[] = [
-    { label: 'Dashboard', route: 'dashboard', icon: 'dashboard' },
-    { label: 'Colleges', route: 'colleges', icon: 'school' },
-    { label: 'Users', route: 'users', icon: 'groups' },
-    { label: 'Analytics', route: 'analytics', icon: 'query_stats' },
-    { label: 'Assessments', route: 'assessments', icon: 'assignment' },
-    { label: 'Settings', route: 'settings', icon: 'settings' }
+    { label: 'Dashboard', route: `/${RouteAddress.SuperAdmin.Dashboard}`, icon: 'dashboard' },
+    { label: 'Colleges', route: `/${RouteAddress.SuperAdmin.Colleges}`, icon: 'school' },
+    { label: 'Users', route: `/${RouteAddress.SuperAdmin.Users}`, icon: 'groups' },
+    { label: 'Analytics', route: `/${RouteAddress.SuperAdmin.Analytics}`, icon: 'query_stats' },
+    { label: 'Assessments', route: `/${RouteAddress.SuperAdmin.Assessments}`, icon: 'assignment' },
+    { label: 'Settings', route: `/${RouteAddress.SuperAdmin.Settings}`, icon: 'settings' }
   ];
 
   logout(): void {

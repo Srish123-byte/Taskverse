@@ -1,4 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { NavigationEnd, Router } from '@angular/router';
+import { Subscription, filter } from 'rxjs';
 import { PendingUser } from '../../../common/models/super-admin.model';
 import { SuperAdminService } from '../../../common/services/api/super-admin.service';
 
@@ -8,15 +10,37 @@ import { SuperAdminService } from '../../../common/services/api/super-admin.serv
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss'
 })
-export class UsersComponent implements OnInit {
+export class UsersComponent implements OnInit, OnDestroy {
   pendingUsers: PendingUser[] = [];
+  selectedRole = 'all';
+  selectedInstitution = 'all';
+  searchTerm = '';
   isLoading = false;
   errorMessage = '';
+  private routeSubscription?: Subscription;
 
-  constructor(private readonly superAdminService: SuperAdminService) {}
+  constructor(
+    private readonly superAdminService: SuperAdminService,
+    private readonly router: Router,
+    private readonly changeDetectorRef: ChangeDetectorRef
+  ) {}
 
   ngOnInit(): void {
-    this.loadPendingUsers();
+    this.routeSubscription = this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe(event => {
+        if (event.urlAfterRedirects.endsWith('/super-admin/users') && (this.pendingUsers.length === 0 || this.errorMessage)) {
+          this.loadPendingUsers();
+        }
+      });
+
+    if (this.router.url.endsWith('/super-admin/users')) {
+      this.loadPendingUsers();
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.routeSubscription?.unsubscribe();
   }
 
   trackByUserId(_: number, user: PendingUser): string {
@@ -34,7 +58,42 @@ export class UsersComponent implements OnInit {
       .toLowerCase();
   }
 
+  get filteredUsers(): PendingUser[] {
+    return this.pendingUsers.filter(user => {
+      const matchesRole = this.selectedRole === 'all' || user.role === this.selectedRole;
+      const institutionName = user.institutionName?.trim() || 'Global System Access';
+      const matchesInstitution =
+        this.selectedInstitution === 'all' || institutionName === this.selectedInstitution;
+      const normalizedSearch = this.searchTerm.trim().toLowerCase();
+      const matchesSearch =
+        normalizedSearch.length === 0 ||
+        user.fullName.toLowerCase().includes(normalizedSearch) ||
+        user.email.toLowerCase().includes(normalizedSearch);
+
+      return matchesRole && matchesInstitution && matchesSearch;
+    });
+  }
+
+  get availableRoles(): string[] {
+    return [...new Set(this.pendingUsers.map(user => user.role))].sort((left, right) => left.localeCompare(right));
+  }
+
+  get availableInstitutions(): string[] {
+    return [...new Set(this.pendingUsers.map(user => user.institutionName?.trim() || 'Global System Access'))]
+      .sort((left, right) => left.localeCompare(right));
+  }
+
+  resetFilters(): void {
+    this.selectedRole = 'all';
+    this.selectedInstitution = 'all';
+    this.searchTerm = '';
+  }
+
   private loadPendingUsers(): void {
+    if (this.isLoading) {
+      return;
+    }
+
     this.isLoading = true;
     this.errorMessage = '';
 
@@ -42,10 +101,12 @@ export class UsersComponent implements OnInit {
       next: users => {
         this.pendingUsers = users;
         this.isLoading = false;
+        this.changeDetectorRef.detectChanges();
       },
       error: () => {
         this.errorMessage = 'Unable to load pending users right now.';
         this.isLoading = false;
+        this.changeDetectorRef.detectChanges();
       }
     });
   }
