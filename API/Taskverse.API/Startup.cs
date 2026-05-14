@@ -281,6 +281,7 @@ public class Startup
         services.AddControllers(options =>
         {
             options.Filters.Add<TaskverseResponseHeaderFilter>();
+            options.Filters.Add<AuditLoggingFilter>();
         })
         .AddNewtonsoftJson(options =>
         {

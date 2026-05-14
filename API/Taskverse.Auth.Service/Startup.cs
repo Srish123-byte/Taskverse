@@ -1,8 +1,10 @@
+using log4net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using System.Text;
+using Taskverse.API.Auth.Service.Filters;
 using Taskverse.API.Auth.Service.Services;
 using Taskverse.Data.DataAccess;
 
@@ -10,6 +12,7 @@ namespace Taskverse.API.Auth.Service;
 
 public class Startup
 {
+    private static readonly ILog Log = LogManager.GetLogger(typeof(Startup));
     private readonly IConfigurationBuilder _builder;
 
     public IConfigurationRoot Configuration { get; }
@@ -23,6 +26,16 @@ public class Startup
             .AddEnvironmentVariables();
 
         Configuration = _builder.Build();
+
+        var logConfigPath = Path.Combine(
+            environment.ContentRootPath,
+            Configuration["Logging:Log4NetConfigFileRelativePath"] ?? "Log4Net.config");
+
+        log4net.Config.XmlConfigurator.Configure(
+            LogManager.GetRepository(System.Reflection.Assembly.GetEntryAssembly()!),
+            new FileInfo(logConfigPath));
+
+        Log.Info("Taskverse.API.Auth.Service startup initialized.");
     }
 
     public void ConfigureServices(IServiceCollection services)
@@ -110,7 +123,10 @@ public class Startup
 
     private void ConfigureMvc(IServiceCollection services)
     {
-        services.AddControllers();
+        services.AddControllers(options =>
+        {
+            options.Filters.Add<AuditLoggingFilter>();
+        });
         services.AddEndpointsApiExplorer();
     }
 
