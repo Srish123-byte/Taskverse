@@ -162,6 +162,7 @@ public class UsersOrchestrator : IUsersOrchestrator
             Email      = dto.Email.Trim().ToLowerInvariant(),
             Phone      = dto.Phone?.Trim(),
             CollegeId  = dto.CollegeId,
+            CollegeName = dto.CollegeName?.Trim(),
             Role       = dto.Role,
             Status     = dto.Status,
             BatchId    = dto.BatchId,

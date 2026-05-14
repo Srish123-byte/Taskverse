@@ -1,3 +1,5 @@
+using Newtonsoft.Json;
+
 namespace Taskverse.Api.Models;
 
 public class UserResponseModel
@@ -7,6 +9,8 @@ public class UserResponseModel
     public string Email { get; set; } = string.Empty;
     public string? Phone { get; set; }
     public Guid? CollegeId { get; set; }
+    [JsonProperty("collegeName")]
+    public string? CollegeName { get; set; }
     public Guid? ClassId { get; set; }
     public Guid? BatchId { get; set; }
     public string Role { get; set; } = string.Empty;
@@ -21,6 +25,8 @@ public class CreateUserRequestModel
     public string Email { get; set; } = string.Empty;
     public string? Phone { get; set; }
     public Guid? CollegeId { get; set; }
+    [JsonProperty("collegeName")]
+    public string? CollegeName { get; set; }
     public Guid? ClassId { get; set; }
     public Guid? BatchId { get; set; }
     public string Role { get; set; } = string.Empty;

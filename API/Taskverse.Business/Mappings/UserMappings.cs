@@ -31,6 +31,7 @@ public static class UserMappings
             Email      = entity.Email,
             Phone      = entity.Phone,
             CollegeId  = entity.CollegeId,
+            CollegeName = entity.CollegeName,
             ClassId    = entity.ClassId,
             BatchId    = entity.BatchId,
             Role       = entity.Role,

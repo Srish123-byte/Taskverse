@@ -8,6 +8,7 @@ export interface RegisterRequest {
   email: string;
   phone?: string;
   collegeId?: string;
+  collegeName?: string;
   classId?: string;
   batchId?: string;
   role: string;
@@ -20,6 +21,7 @@ export interface RegisterResponse {
   email: string;
   phone?: string;
   collegeId?: string;
+  collegeName?: string;
   classId?: string;
   batchId?: string;
   role: string;

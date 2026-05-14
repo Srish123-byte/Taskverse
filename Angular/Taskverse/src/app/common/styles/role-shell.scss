@@ -1,0 +1,145 @@
+@mixin role-shell-theme(
+  $root-selector,
+  $background-start,
+  $background-end,
+  $sidebar-start,
+  $sidebar-end,
+  $brand-start,
+  $brand-end,
+  $brand-foreground,
+  $eyebrow-color,
+  $nav-color,
+  $active-border,
+  $active-background,
+  $active-color,
+  $logout-hover-background,
+  $logout-hover-border
+) {
+  #{$root-selector} {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, $background-start, transparent 26%),
+      linear-gradient(180deg, $background-end 0%, #edf3f8 100%);
+  }
+
+  #{$root-selector} .shell-sidebar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    min-height: 100vh;
+    padding: 28px 22px;
+    background: linear-gradient(180deg, $sidebar-start 0%, $sidebar-end 100%);
+    box-shadow: 10px 0 30px rgba(15, 23, 42, 0.14);
+  }
+
+  #{$root-selector} .shell-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  #{$root-selector} .brand-mark {
+    display: grid;
+    place-items: center;
+    width: 50px;
+    height: 50px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, $brand-start 0%, $brand-end 100%);
+    color: $brand-foreground;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+  }
+
+  #{$root-selector} .brand-eyebrow {
+    color: $eyebrow-color;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  #{$root-selector} .brand-title {
+    color: #ffffff;
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+
+  #{$root-selector} .shell-nav {
+    display: grid;
+    gap: 10px;
+  }
+
+  #{$root-selector} .nav-link,
+  #{$root-selector} .logout-button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid transparent;
+    border-radius: 16px;
+    color: $nav-color;
+    background: transparent;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
+  }
+
+  #{$root-selector} .nav-link:hover,
+  #{$root-selector} .logout-button:hover {
+    background: rgba(255, 255, 255, 0.06);
+    transform: translateX(2px);
+  }
+
+  #{$root-selector} .nav-link-active {
+    border-color: $active-border;
+    background: $active-background;
+    color: $active-color;
+  }
+
+  #{$root-selector} .logout-button {
+    margin-top: auto;
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+
+  #{$root-selector} .logout-button:hover {
+    background: $logout-hover-background;
+    border-color: $logout-hover-border;
+    transform: translateY(-1px);
+  }
+
+  #{$root-selector} .shell-main {
+    min-width: 0;
+    padding: 18px 0 36px;
+  }
+
+  @media (max-width: 980px) {
+    #{$root-selector} {
+      grid-template-columns: 1fr;
+    }
+
+    #{$root-selector} .shell-sidebar {
+      position: static;
+      min-height: auto;
+      padding-bottom: 18px;
+    }
+
+    #{$root-selector} .shell-nav {
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+  }
+
+  @media (max-width: 640px) {
+    #{$root-selector} .shell-main {
+      padding-top: 8px;
+    }
+
+    #{$root-selector} .shell-nav {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+}

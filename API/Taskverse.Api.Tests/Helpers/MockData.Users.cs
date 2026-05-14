@@ -33,6 +33,7 @@ public static partial class MockData
         FullName = "Jane Smith",
         Email    = "jane.smith@example.com",
         Phone    = "+919876543210",
+        CollegeName = "Horizon Institute of Tech",
         Role     = "Student",
         Password = "SecurePass123!"
     };

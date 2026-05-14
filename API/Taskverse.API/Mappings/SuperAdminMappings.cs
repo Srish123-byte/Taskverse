@@ -40,6 +40,7 @@ public static class SuperAdminMappings
     {
         CollegeId = dto.CollegeId,
         Name = dto.Name,
+        AdminName = dto.AdminName,
         City = dto.City,
         State = dto.State,
         Status = dto.Status,

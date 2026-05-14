@@ -4,6 +4,7 @@ public class CollegeResponseModel
 {
     public string CollegeId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public string? AdminName { get; set; }
     public string? City { get; set; }
     public string? State { get; set; }
     public string Status { get; set; } = string.Empty;

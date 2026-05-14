@@ -61,6 +61,13 @@
         <mat-error *ngIf="rRole?.hasError('required')">Please select a role</mat-error>
       </mat-form-field>
 
+      <mat-form-field *ngIf="requiresCollegeName" appearance="outline" class="full-width">
+        <mat-label>College Name</mat-label>
+        <input matInput formControlName="collegeName" autocomplete="organization" id="reg-college-name" />
+        <mat-error *ngIf="rCollegeName?.hasError('required')">College name is required</mat-error>
+        <mat-error *ngIf="rCollegeName?.hasError('minlength')">Minimum 2 characters</mat-error>
+      </mat-form-field>
+
       <div *ngIf="requiresInstitutionSelection" class="registration-grid">
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>College</mat-label>

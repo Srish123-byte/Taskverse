@@ -10,6 +10,7 @@ public static class SuperAdminMappings
     {
         CollegeId = model.CollegeId,
         Name = model.Name,
+        AdminName = model.AdminName,
         City = model.City,
         State = model.State,
         Status = model.Status,

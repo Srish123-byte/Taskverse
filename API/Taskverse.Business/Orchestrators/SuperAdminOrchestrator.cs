@@ -232,22 +232,43 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 
     private static async Task EnsureCollegeAdminApprovalRecord(TaskverseContext context, User user)
     {
+        var adminName = string.IsNullOrWhiteSpace(user.FullName)
+            ? null
+            : user.FullName.Trim();
+        var collegeName = string.IsNullOrWhiteSpace(user.CollegeName)
+            ? null
+            : user.CollegeName.Trim();
+
+        if (string.IsNullOrWhiteSpace(adminName))
+        {
+            throw new InvalidOperationException($"College admin user '{user.Id}' cannot be approved without an admin name.");
+        }
+
+        if (string.IsNullOrWhiteSpace(collegeName))
+        {
+            throw new InvalidOperationException($"College admin user '{user.Id}' cannot be approved without a college name.");
+        }
+
         if (user.CollegeId.HasValue)
         {
             var existingCollege = await context.Colleges
-                .AsNoTracking()
                 .FirstOrDefaultAsync(college => college.CollegeId == user.CollegeId.Value);
 
             if (existingCollege is not null)
             {
+                existingCollege.AdminName = adminName;
+                existingCollege.CollegeName = collegeName;
+                existingCollege.ModifiedAt = DateTime.UtcNow;
+                user.CollegeId = existingCollege.CollegeId;
                 return;
             }
         }
 
         var college = new College
         {
-            CollegeId = Guid.NewGuid(),
-            Name = user.FullName.Trim(),
+            CollegeId = user.CollegeId ?? Guid.NewGuid(),
+            CollegeName = collegeName,
+            AdminName = adminName,
             Status = ActiveCollegeStatus,
             CreatedAt = DateTime.UtcNow,
             ModifiedAt = DateTime.UtcNow
@@ -407,11 +428,11 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
                     x => x.user.CollegeId!.Value,
                     college => college.CollegeId,
                     (x, college) => new { x.result, x.user, college })
-                .GroupBy(x => new { x.college.CollegeId, x.college.Name })
+                .GroupBy(x => new { x.college.CollegeId, CollegeName = x.college.CollegeName ?? "Unknown College" })
                 .Select(group => new CollegeScoreSummaryDto
                 {
                     CollegeId = group.Key.CollegeId.ToString(),
-                    CollegeName = group.Key.Name,
+                    CollegeName = group.Key.CollegeName,
                     AverageScore = Math.Round(group.Average(x => x.result.Score ?? 0), 2),
                     StudentsAssessed = group.Select(x => x.user.Id).Distinct().Count()
                 })

@@ -43,6 +43,7 @@ public class AuthController : Controller
                     Email = result.Email,
                     FirstName = result.FirstName,
                     LastName = result.LastName,
+                    CollegeName = result.CollegeName,
                     Role = result.Roles.FirstOrDefault() ?? string.Empty,
                     IsActive = true,
                     Status = result.Status

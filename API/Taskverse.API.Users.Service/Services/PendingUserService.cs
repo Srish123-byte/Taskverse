@@ -34,7 +34,7 @@ public class PendingUserService : IPendingUserService
                     user.Role,
                     user.Status.ToString(),
                     user.CreatedAt,
-                    college != null ? college.Name : null))
+                    string.IsNullOrWhiteSpace(user.CollegeName) ? (college != null ? college.CollegeName : null) : user.CollegeName))
                 .ToListAsync();
 
             return pendingUsers

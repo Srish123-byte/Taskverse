@@ -4,6 +4,7 @@ public class CollegeDto
 {
     public string CollegeId { get; set; } = default!;
     public string Name { get; set; } = default!;
+    public string? AdminName { get; set; }
     public string? City { get; set; }
     public string? State { get; set; }
     public string Status { get; set; } = default!;

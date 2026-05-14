@@ -10,9 +10,11 @@ public class College
     [Column("college_id")]
     public Guid CollegeId { get; set; } = Guid.NewGuid();
 
-    [Required]
-    [Column("name")]
-    public string Name { get; set; } = default!;
+    [Column("college_name")]
+    public string? CollegeName { get; set; }
+
+    [Column("admin_name")]
+    public string? AdminName { get; set; }
 
     [Column("city")]
     public string? City { get; set; }

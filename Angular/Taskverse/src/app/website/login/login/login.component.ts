@@ -78,6 +78,7 @@ export class LoginComponent implements OnInit, OnDestroy {
       phone: [''],
       role: ['Student', Validators.required],
       collegeId: [''],
+      collegeName: [''],
       classId: [''],
       batchId: [''],
       password: ['', [Validators.required, Validators.minLength(8)]],
@@ -111,7 +112,7 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.errorMessage = '';
     this.successMessage = '';
     this.loginForm.reset();
-    this.registerForm.reset({ role: 'Student', collegeId: '', classId: '', batchId: '' });
+    this.registerForm.reset({ role: 'Student', collegeId: '', collegeName: '', classId: '', batchId: '' });
     this.handleRegistrationRoleChange(RoleType.Student);
   }
 
@@ -214,8 +215,11 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.errorMessage = '';
     this.successMessage = '';
 
-    const { confirmPassword, ...formValue } = this.registerForm.value;
-    const request: RegisterRequest = formValue;
+    const { confirmPassword, collegeName, ...formValue } = this.registerForm.value;
+    const request: RegisterRequest = {
+      ...formValue,
+      collegeName: collegeName || undefined
+    };
 
     this.userService.register(request).pipe(take(1)).subscribe({
       next: response => {
@@ -239,7 +243,21 @@ export class LoginComponent implements OnInit, OnDestroy {
     return this.isInstitutionLinkedRole(this.rRole?.value);
   }
 
+  get requiresCollegeName(): boolean {
+    return this.rRole?.value === RoleType.CollegeAdmin;
+  }
+
   private handleRegistrationRoleChange(role: string | null | undefined): void {
+    if (role === RoleType.CollegeAdmin) {
+      this.clearInstitutionSelections();
+      this.clearInstitutionValidators();
+      this.applyCollegeNameValidator();
+      return;
+    }
+
+    this.clearCollegeNameValue();
+    this.clearCollegeNameValidator();
+
     if (!this.isInstitutionLinkedRole(role)) {
       this.clearInstitutionSelections();
       this.clearInstitutionValidators();
@@ -326,6 +344,11 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.batchControl?.updateValueAndValidity({ emitEvent: false });
   }
 
+  private applyCollegeNameValidator(): void {
+    this.collegeNameControl?.setValidators([Validators.required, Validators.minLength(2)]);
+    this.collegeNameControl?.updateValueAndValidity({ emitEvent: false });
+  }
+
   private clearInstitutionValidators(): void {
     this.collegeControl?.clearValidators();
     this.classControl?.clearValidators();
@@ -333,6 +356,17 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.collegeControl?.updateValueAndValidity({ emitEvent: false });
     this.classControl?.updateValueAndValidity({ emitEvent: false });
     this.batchControl?.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private clearCollegeNameValidator(): void {
+    this.collegeNameControl?.clearValidators();
+    this.collegeNameControl?.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private clearCollegeNameValue(): void {
+    this.registerForm.patchValue({
+      collegeName: ''
+    }, { emitEvent: false });
   }
 
   private clearInstitutionSelections(): void {
@@ -382,9 +416,11 @@ export class LoginComponent implements OnInit, OnDestroy {
   get rPhone()           { return this.registerForm.get('phone'); }
   get rRole()            { return this.registerForm.get('role'); }
   get rCollegeId()       { return this.registerForm.get('collegeId'); }
+  get rCollegeName()     { return this.registerForm.get('collegeName'); }
   get rClassId()         { return this.registerForm.get('classId'); }
   get rBatchId()         { return this.registerForm.get('batchId'); }
   get collegeControl()   { return this.registerForm.get('collegeId'); }
+  get collegeNameControl(){ return this.registerForm.get('collegeName'); }
   get classControl()     { return this.registerForm.get('classId'); }
   get batchControl()     { return this.registerForm.get('batchId'); }
   get rPassword()        { return this.registerForm.get('password'); }

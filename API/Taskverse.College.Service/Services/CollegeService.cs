@@ -22,10 +22,10 @@ public class CollegeService : ICollegeService
         return await _context.Colleges
             .AsNoTracking()
             .Where(college => college.Status == CollegeStatuses.Active)
-            .OrderBy(college => college.Name)
+            .OrderBy(college => college.CollegeName ?? string.Empty)
             .Select(college => new RegistrationCollegeRecord(
                 college.CollegeId.ToString(),
-                college.Name))
+                college.CollegeName ?? "Unnamed College"))
             .ToListAsync();
     }
 
@@ -62,7 +62,7 @@ public class CollegeService : ICollegeService
     {
         var colleges = await _context.Colleges
             .AsNoTracking()
-            .OrderBy(college => college.Name)
+            .OrderBy(college => college.CollegeName ?? string.Empty)
             .ToListAsync();
 
         var adminUsers = await _context.Users
@@ -100,10 +100,10 @@ public class CollegeService : ICollegeService
 
                 return new CollegeSearchResultRecord(
                     college.CollegeId.ToString(),
-                    college.Name,
+                    college.CollegeName ?? "Unnamed College",
                     college.City,
                     college.State,
-                    admin?.FullName,
+                    string.IsNullOrWhiteSpace(college.AdminName) ? admin?.FullName : college.AdminName,
                     admin?.Email,
                     totalUsers,
                     NormalizeCollegeStatus(college.Status));

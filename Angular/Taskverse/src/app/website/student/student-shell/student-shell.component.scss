@@ -1,121 +1,19 @@
-.role-shell {
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(142, 202, 230, 0.24), transparent 28%),
-    linear-gradient(180deg, #f7fbff 0%, #edf3f8 100%);
-}
+@use '../../../common/styles/role-shell' as role-shell;
 
-.shell-sidebar {
-  position: sticky;
-  top: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-  min-height: 100vh;
-  padding: 28px 22px;
-  background: linear-gradient(180deg, #19324d 0%, #2b5c82 100%);
-  box-shadow: 10px 0 30px rgba(15, 23, 42, 0.14);
-}
-
-.shell-brand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.brand-mark {
-  display: grid;
-  place-items: center;
-  width: 50px;
-  height: 50px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #8ecae6 0%, #ffdd94 100%);
-  color: #19324d;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-}
-
-.brand-eyebrow {
-  color: #b8d2e6;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.brand-title {
-  color: #ffffff;
-  font-size: 1.2rem;
-  font-weight: 700;
-}
-
-.shell-nav {
-  display: grid;
-  gap: 10px;
-}
-
-.nav-link,
-.logout-button {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 14px 16px;
-  border: 1px solid transparent;
-  border-radius: 16px;
-  color: #dce8f2;
-  background: transparent;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
-}
-
-.nav-link:hover,
-.logout-button:hover {
-  background: rgba(255, 255, 255, 0.06);
-  transform: translateX(2px);
-}
-
-.nav-link-active {
-  border-color: #8ecae6;
-  background: rgba(142, 202, 230, 0.18);
-  color: #f7fbff;
-}
-
-.logout-button {
-  margin-top: auto;
-  border-color: rgba(255, 255, 255, 0.16);
-}
-
-.shell-main {
-  min-width: 0;
-  padding: 18px 0 36px;
-}
-
-@media (max-width: 980px) {
-  .role-shell {
-    grid-template-columns: 1fr;
-  }
-
-  .shell-sidebar {
-    position: static;
-    min-height: auto;
-    padding-bottom: 18px;
-  }
-
-  .shell-nav {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
-  .shell-main {
-    padding-top: 8px;
-  }
-
-  .shell-nav {
-    grid-template-columns: 1fr 1fr;
-  }
-}
+@include role-shell.role-shell-theme(
+  '.role-shell',
+  rgba(142, 202, 230, 0.24),
+  #f7fbff,
+  #19324d,
+  #2b5c82,
+  #8ecae6,
+  #ffdd94,
+  #19324d,
+  #b8d2e6,
+  #dce8f2,
+  #8ecae6,
+  rgba(142, 202, 230, 0.18),
+  #f7fbff,
+  rgba(255, 255, 255, 0.06),
+  rgba(255, 255, 255, 0.16)
+);

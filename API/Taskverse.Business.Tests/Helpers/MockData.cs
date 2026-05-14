@@ -117,6 +117,7 @@ public static class MockData
         Email: "test@example.com",
         FirstName: "Test",
         LastName: "User",
+        CollegeName: "TestCollege",
         Roles: ["Student"],
         Status: "APPROVED");
 

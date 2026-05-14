@@ -9,11 +9,16 @@ import { Session } from '../../../common/services/session/session.service';
 })
 export class DashboardComponent implements OnInit {
   userName = '';
+  isLoading = false;
 
   constructor(private readonly session: Session) {}
 
   ngOnInit(): void {
+    this.isLoading = true;
     const user = this.session.user;
     this.userName = user ? `${user.firstName} ${user.lastName}` : '';
+    window.setTimeout(() => {
+      this.isLoading = false;
+    }, 400);
   }
 }

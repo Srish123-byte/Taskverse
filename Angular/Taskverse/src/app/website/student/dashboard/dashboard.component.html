@@ -1,7 +1,12 @@
 <div class="page-container">
   <h2 class="page-title">Student Dashboard</h2>
   <p class="page-welcome">Welcome, {{ userName }}</p>
-  <div class="page-content">
+  <app-dashboard-loader
+    *ngIf="isLoading"
+    title="Loading dashboard"
+    copy="Preparing the latest student dashboard.">
+  </app-dashboard-loader>
+  <div *ngIf="!isLoading" class="page-content">
     <!-- Dashboard widgets go here -->
   </div>
 </div>

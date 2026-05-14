@@ -19,6 +19,7 @@ public record RegistrationBatchRecord(
 public record CollegeRecord(
     Guid CollegeId,
     string Name,
+    string? AdminName,
     string? City,
     string? State,
     string Status,

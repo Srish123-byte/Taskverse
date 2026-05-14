@@ -45,6 +45,7 @@ public class AuthOrchestrator : IAuthOrchestrator
             model.Email,
             model.FirstName,
             model.LastName,
+            model.CollegeName,
             model.Roles,
             model.Status);
     }

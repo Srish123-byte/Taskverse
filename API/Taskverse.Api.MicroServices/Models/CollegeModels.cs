@@ -3,6 +3,7 @@ namespace Taskverse.Api.MicroServices.Models;
 public record CollegeModel(
     string CollegeId,
     string Name,
+    string? AdminName,
     string? City,
     string? State,
     string Status,

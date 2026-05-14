@@ -4,19 +4,23 @@ import { AppCommonModule } from '../../common/common.module';
 import { CollegeAdminRoutes } from './college-admin.routes';
 import { CollegeAdminShellComponent } from './college-admin-shell/college-admin-shell.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
-import { CoursesComponent } from './courses/courses.component';
-import { TrainersComponent } from './trainers/trainers.component';
-import { StudentsComponent } from './students/students.component';
-import { ManageComponent } from './manage/manage.component';
+import { UserApprovalsComponent } from './user-approvals/user-approvals.component';
+import { UserManagementComponent } from './user-management/user-management.component';
+import { AcademicStructureComponent } from './academic-structure/academic-structure.component';
+import { AssessmentBuilderComponent } from './assessment-builder/assessment-builder.component';
+import { ReportsComponent } from './reports/reports.component';
+import { SettingsComponent } from './settings/settings.component';
 
 @NgModule({
   declarations: [
     CollegeAdminShellComponent,
     DashboardComponent,
-    CoursesComponent,
-    TrainersComponent,
-    StudentsComponent,
-    ManageComponent
+    UserApprovalsComponent,
+    UserManagementComponent,
+    AcademicStructureComponent,
+    AssessmentBuilderComponent,
+    ReportsComponent,
+    SettingsComponent
   ],
   imports: [
     CommonModule,

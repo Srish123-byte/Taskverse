@@ -45,13 +45,14 @@ public class TaskverseContext : DbContext
             entity.ToTable("colleges");
             entity.HasKey(c => c.CollegeId);
             entity.Property(c => c.CollegeId).HasColumnName("college_id").HasDefaultValueSql("gen_random_uuid()");
-            entity.Property(c => c.Name).HasColumnName("name").IsRequired();
+            entity.Property(c => c.CollegeName).HasColumnName("college_name");
+            entity.Property(c => c.AdminName).HasColumnName("admin_name");
             entity.Property(c => c.City).HasColumnName("city");
             entity.Property(c => c.State).HasColumnName("state");
             entity.Property(c => c.Status).HasColumnName("status").HasDefaultValue("Active");
             entity.Property(c => c.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(c => c.ModifiedAt).HasColumnName("modified_at");
-            entity.HasIndex(c => c.Name).IsUnique();
+            entity.HasIndex(c => c.CollegeName).IsUnique();
         });
 
         // Configure User entity
@@ -64,6 +65,7 @@ public class TaskverseContext : DbContext
             entity.Property(u => u.Email).HasColumnName("email").IsRequired();
             entity.Property(u => u.Phone).HasColumnName("phone");
             entity.Property(u => u.CollegeId).HasColumnName("college_id");
+            entity.Property(u => u.CollegeName).HasColumnName("college_name");
             entity.Property(u => u.Role).HasColumnName("role").IsRequired();
             entity.Property(u => u.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(u => u.ModifiedAt).HasColumnName("modified_at").HasDefaultValueSql("now()");
