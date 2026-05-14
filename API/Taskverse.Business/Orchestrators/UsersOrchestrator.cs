@@ -144,7 +144,8 @@ public class UsersOrchestrator : IUsersOrchestrator
     {
         _log.Debug($"UsersOrchestrator.RegisterUser: email={dto.Email}, role={dto.Role}");
 
-        // 1. Duplicate check
+        // Duplicate check
+        _log.Debug($"UsersOrchestrator.RegisterUser: checking existing user by email={dto.Email}");
         User? existing = await _usersManager.GetByEmail(dto.Email);
         if (existing is not null)
             throw new InvalidOperationException($"An account with email '{dto.Email}' already exists.");
@@ -152,8 +153,9 @@ public class UsersOrchestrator : IUsersOrchestrator
         // 2. Determine status
         bool isSuperAdmin = dto.Role.Equals(SuperAdminRole, StringComparison.OrdinalIgnoreCase);
         dto.Status = isSuperAdmin ? UserStatus.APPROVED : UserStatus.PENDING_APPROVAL;
+        _log.Debug($"UsersOrchestrator.RegisterUser: resolved status={dto.Status} for role={dto.Role}");
 
-        // 3. Build entity + hash password
+        // Build entity + hash password
         var newUser = new User
         {
             FullName   = dto.FullName.Trim(),
@@ -173,7 +175,8 @@ public class UsersOrchestrator : IUsersOrchestrator
             newUser.PasswordHash = hasher.HashPassword(newUser, dto.Password);
         }
 
-        // 4. Persist
+        // Persist
+        _log.Debug($"UsersOrchestrator.RegisterUser: persisting user record for email={newUser.Email}");
         User created = await _usersManager.Create(newUser);
 
         _log.Info($"UsersOrchestrator.RegisterUser: created id={created.Id}, status={created.Status}");
