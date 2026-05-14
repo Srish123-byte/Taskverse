@@ -1,12 +1,12 @@
-// Taskverse.Auth.Service/Controllers/AuthController.cs
+// Taskverse.API.Auth.Service/Controllers/AuthController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using Taskverse.Auth.Service.Models;
-using Taskverse.Auth.Service.Services;
+using Taskverse.API.Auth.Service.Models;
+using Taskverse.API.Auth.Service.Services;
 
-namespace Taskverse.Auth.Service.Controllers;
+namespace Taskverse.API.Auth.Service.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -116,18 +116,23 @@ public class AuthController : ControllerBase
     /// <summary>
     /// Logout user
     /// </summary>
-    [Authorize]
+    [AllowAnonymous]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout([FromBody] LogoutRequest request)
     {
         try
         {
-            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (!Guid.TryParse(userId, out var userGuid))
+            var requestUserId = request.UserId;
+            if (string.IsNullOrWhiteSpace(requestUserId))
+            {
+                requestUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            }
+
+            if (!Guid.TryParse(requestUserId, out var userGuid))
                 return BadRequest(new { message = "Invalid user ID" });
 
             await _authService.LogoutAsync(userGuid);
-            return Ok(new { message = "Logged out successfully" });
+            return NoContent();
         }
         catch (Exception ex)
         {

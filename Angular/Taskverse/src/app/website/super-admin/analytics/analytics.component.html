@@ -3,7 +3,13 @@
   <h2 class="page-title">Analytics</h2>
   <p class="page-welcome">Cross-platform performance, assessment trends, and score distribution across colleges.</p>
 
-  <div *ngIf="isLoading" class="page-state">Loading analytics...</div>
+  <div *ngIf="isLoading" class="page-loader" aria-live="polite" aria-busy="true">
+    <mat-spinner diameter="42"></mat-spinner>
+    <div>
+      <div class="page-loader-title">Loading analytics</div>
+      <div class="page-loader-copy">Gathering usage trends and score summaries.</div>
+    </div>
+  </div>
   <div *ngIf="errorMessage" class="page-state page-state-error">{{ errorMessage }}</div>
 
   <ng-container *ngIf="dashboard">

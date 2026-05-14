@@ -1,4 +1,9 @@
-namespace Taskverse.College.Service;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using Taskverse.API.College.Service.Services;
+using Taskverse.Data.DataAccess;
+
+namespace Taskverse.API.College.Service;
 
 public class Startup
 {
@@ -19,114 +24,69 @@ public class Startup
 
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddControllers();
+        ConfigureMvc(services);
+        ConfigureDatabase(services);
+        ConfigureDependencyInjection(services);
+        ConfigureSwagger(services);
+        ConfigureCors(services);
         services.AddHealthChecks();
     }
 
     public void Configure(WebApplication app, IWebHostEnvironment env)
     {
+        if (env.IsDevelopment())
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Taskverse Colleges Service v1");
+            });
+        }
         app.UseHttpsRedirection();
-        MapCollegeEndpoints(app);
+        app.MapControllers();
+        app.UseCors("AllowTaskverse");
         app.MapHealthChecks("/health");
     }
 
-    private void MapCollegeEndpoints(WebApplication app)
+    private void ConfigureDatabase(IServiceCollection services)
     {
-        app.MapGet("/api/colleges", () => Results.Ok(CollegeStore.Colleges))
-            .WithName("GetColleges")
-            .WithOpenApi();
+        var connStr = Configuration.GetConnectionString("TaskverseDb")
+            ?? throw new InvalidOperationException("Connection string 'TaskverseDb' is missing.");
 
-        app.MapGet("/api/colleges/pending", () =>
-            Results.Ok(CollegeStore.Colleges.Where(college => college.ApprovalStatus == ApprovalStatuses.Pending).ToList()))
-            .WithName("GetPendingColleges")
-            .WithOpenApi();
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connStr);
+        var dataSource = dataSourceBuilder.Build();
 
-        app.MapGet("/api/colleges/{id:guid}", (Guid id) =>
+        services.AddSingleton(dataSource);
+        services.AddDbContext<TaskverseContext>(options =>
+            options.UseNpgsql(dataSource));
+    }
+
+    private void ConfigureSwagger(IServiceCollection services)
+    {
+        services.AddSwaggerGen();
+    }
+
+    private void ConfigureDependencyInjection(IServiceCollection services)
+    {
+        services.AddScoped<ICollegeService, CollegeService>();
+    }
+
+    private void ConfigureMvc(IServiceCollection services)
+    {
+        services.AddControllers();
+        services.AddEndpointsApiExplorer();
+    }
+
+    private void ConfigureCors(IServiceCollection services)
+    {
+        services.AddCors(options =>
         {
-            var college = CollegeStore.Colleges.FirstOrDefault(item => item.CollegeId == id);
-            return college is null ? Results.NotFound() : Results.Ok(college);
-        })
-            .WithName("GetCollegeById")
-            .WithOpenApi();
-
-        app.MapPost("/api/colleges/{id:guid}/approve", (Guid id, CollegeActionRequest request) =>
-        {
-            var college = CollegeStore.Colleges.FirstOrDefault(item => item.CollegeId == id);
-            if (college is null) return Results.NotFound();
-
-            var updated = college with
+            options.AddPolicy("AllowTaskverse", policy =>
             {
-                ApprovalStatus = ApprovalStatuses.Approved,
-                Status = CollegeStatuses.Active,
-                IsActive = true,
-                ApprovedAt = DateTime.UtcNow,
-                ApprovedBy = request.PerformedBy,
-                Notes = request.Reason
-            };
-
-            CollegeStore.Replace(updated);
-            return Results.Ok(updated);
-        })
-            .WithName("ApproveCollege")
-            .WithOpenApi();
-
-        app.MapPost("/api/colleges/{id:guid}/reject", (Guid id, CollegeActionRequest request) =>
-        {
-            var college = CollegeStore.Colleges.FirstOrDefault(item => item.CollegeId == id);
-            if (college is null) return Results.NotFound();
-
-            var updated = college with
-            {
-                ApprovalStatus = ApprovalStatuses.Rejected,
-                Status = CollegeStatuses.Rejected,
-                IsActive = false,
-                ApprovedAt = null,
-                ApprovedBy = request.PerformedBy,
-                Notes = request.Reason
-            };
-
-            CollegeStore.Replace(updated);
-            return Results.Ok(updated);
-        })
-            .WithName("RejectCollege")
-            .WithOpenApi();
-
-        app.MapPost("/api/colleges/{id:guid}/deactivate", (Guid id, CollegeActionRequest request) =>
-        {
-            var college = CollegeStore.Colleges.FirstOrDefault(item => item.CollegeId == id);
-            if (college is null) return Results.NotFound();
-
-            var updated = college with
-            {
-                Status = CollegeStatuses.Inactive,
-                IsActive = false,
-                Notes = request.Reason,
-                ApprovedBy = request.PerformedBy
-            };
-
-            CollegeStore.Replace(updated);
-            return Results.Ok(updated);
-        })
-            .WithName("DeactivateCollege")
-            .WithOpenApi();
-
-        app.MapPost("/api/colleges/{id:guid}/reactivate", (Guid id, CollegeActionRequest request) =>
-        {
-            var college = CollegeStore.Colleges.FirstOrDefault(item => item.CollegeId == id);
-            if (college is null) return Results.NotFound();
-
-            var updated = college with
-            {
-                Status = CollegeStatuses.Active,
-                IsActive = true,
-                Notes = request.Reason,
-                ApprovedBy = request.PerformedBy
-            };
-
-            CollegeStore.Replace(updated);
-            return Results.Ok(updated);
-        })
-            .WithName("ReactivateCollege")
-            .WithOpenApi();
+                policy.AllowAnyOrigin()
+                    .AllowAnyMethod()
+                    .AllowAnyHeader();
+            });
+        });
     }
 }

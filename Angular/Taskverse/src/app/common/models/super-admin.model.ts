@@ -2,6 +2,36 @@ export interface CollegeActionRequest {
   reason?: string;
 }
 
+export interface CollegeSearchRequest {
+  query?: string;
+  status: string;
+}
+
+export interface CollegeSearchResult {
+  collegeId: string;
+  name: string;
+  city?: string;
+  state?: string;
+  adminName?: string;
+  adminEmail?: string;
+  totalUsers: number;
+  status: string;
+}
+
+export interface UserActionRequest {
+  reason?: string;
+}
+
+export interface PendingUser {
+  userId: string;
+  fullName: string;
+  email: string;
+  role: string;
+  status: string;
+  createdAt: string;
+  institutionName?: string;
+}
+
 export interface College {
   collegeId: string;
   name: string;

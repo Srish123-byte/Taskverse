@@ -7,6 +7,7 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
 {
     // Users
     Task<ObjectResult> GetUser(string userId);
+    Task<ObjectResult> GetPendingUsers();
     Task<ObjectResult> SearchUsers(UserSearchCriteriaModel criteria);
     Task<ObjectResult> CreateUser(CreateUserModel model);
     Task<ObjectResult> UpdateUser(string userId, UpdateUserModel model);
@@ -57,8 +58,12 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
 
     // College
     Task<ObjectResult> GetColleges();
+    Task<ObjectResult> SearchColleges(CollegeSearchModel model);
     Task<ObjectResult> GetPendingColleges();
     Task<ObjectResult> GetCollege(string collegeId);
+    Task<ObjectResult> GetApprovedRegistrationColleges();
+    Task<ObjectResult> GetRegistrationClasses(string collegeId);
+    Task<ObjectResult> GetRegistrationBatches(string classId);
     Task<ObjectResult> ApproveCollege(string collegeId, CollegeActionModel model);
     Task<ObjectResult> RejectCollege(string collegeId, CollegeActionModel model);
     Task<ObjectResult> DeactivateCollege(string collegeId, CollegeActionModel model);

@@ -22,6 +22,42 @@ public class CollegeActionDto
     public string? Reason { get; set; }
 }
 
+public class CollegeSearchDto
+{
+    public string? Query { get; set; }
+    public string Status { get; set; } = "all";
+}
+
+public class CollegeSearchResultDto
+{
+    public string CollegeId { get; set; } = default!;
+    public string Name { get; set; } = default!;
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public string? AdminName { get; set; }
+    public string? AdminEmail { get; set; }
+    public int TotalUsers { get; set; }
+    public string Status { get; set; } = default!;
+}
+
+public class UserActionDto
+{
+    public string PerformedBy { get; set; } = default!;
+    public Guid? PerformedByUserId { get; set; }
+    public string? Reason { get; set; }
+}
+
+public class PendingUserDto
+{
+    public string UserId { get; set; } = default!;
+    public string FullName { get; set; } = default!;
+    public string Email { get; set; } = default!;
+    public string Role { get; set; } = default!;
+    public string Status { get; set; } = default!;
+    public DateTime CreatedAt { get; set; }
+    public string? InstitutionName { get; set; }
+}
+
 public class SuperAdminDashboardDto
 {
     public SuperAdminTotalsDto Totals { get; set; } = new();

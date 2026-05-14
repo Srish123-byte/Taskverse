@@ -44,6 +44,18 @@ public class SuperAdminController : TaskverseBaseController
         return Ok(dto.Select(x => x.ToResponseModel()).ToList());
     }
 
+    [HttpPost("colleges/search")]
+    [SwaggerResponse(200, "Filtered colleges", typeof(List<CollegeSearchResponseModel>))]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> SearchColleges([FromBody] CollegeSearchRequestModel model)
+    {
+        var roleCheck = EnsureSuperAdmin();
+        if (roleCheck is not null) return roleCheck;
+
+        var dto = await _superAdminOrchestrator.SearchColleges(model.ToDto());
+        return Ok(dto.Select(x => x.ToResponseModel()).ToList());
+    }
+
     [HttpGet("colleges/pending")]
     [SwaggerResponse(200, "Pending colleges", typeof(List<CollegeResponseModel>))]
     [SwaggerResponse(403, "Forbidden")]
@@ -54,6 +66,62 @@ public class SuperAdminController : TaskverseBaseController
 
         var dto = await _superAdminOrchestrator.GetPendingColleges();
         return Ok(dto.Select(x => x.ToResponseModel()).ToList());
+    }
+
+    [HttpGet("users/pending")]
+    [SwaggerResponse(200, "Pending users", typeof(List<PendingUserResponseModel>))]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> GetPendingUsers()
+    {
+        var roleCheck = EnsureSuperAdmin();
+        if (roleCheck is not null) return roleCheck;
+
+        var dto = await _superAdminOrchestrator.GetPendingUsers();
+        return Ok(dto.Select(x => x.ToResponseModel()).ToList());
+    }
+
+    [HttpPost("users/{userId}/approve")]
+    [SwaggerResponse(204, "User approved")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "User not found")]
+    public async Task<IActionResult> ApproveUser(string userId, [FromBody] UserActionRequestModel model)
+    {
+        var roleCheck = EnsureSuperAdmin();
+        if (roleCheck is not null) return roleCheck;
+
+        try
+        {
+            await _superAdminOrchestrator.ApproveUser(userId, model.ToDto(GetPerformedBy(), GetPerformedByUserId()));
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("users/{userId}/reject")]
+    [SwaggerResponse(204, "User rejected")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "User not found")]
+    public async Task<IActionResult> RejectUser(string userId, [FromBody] UserActionRequestModel model)
+    {
+        var roleCheck = EnsureSuperAdmin();
+        if (roleCheck is not null) return roleCheck;
+
+        try
+        {
+            await _superAdminOrchestrator.RejectUser(userId, model.ToDto(GetPerformedBy(), GetPerformedByUserId()));
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     [HttpPost("colleges/{collegeId}/approve")]
@@ -119,5 +187,11 @@ public class SuperAdminController : TaskverseBaseController
         return User.FindFirstValue(ClaimTypes.Email)
             ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? "super-admin";
+    }
+
+    private Guid? GetPerformedByUserId()
+    {
+        var candidate = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(candidate, out var userId) ? userId : null;
     }
 }

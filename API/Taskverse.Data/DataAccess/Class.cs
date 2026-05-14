@@ -28,4 +28,10 @@ public class Class
 
     [Column("modified_at")]
     public DateTime? ModifiedAt { get; set; }
+
+    // Navigation to batches
+    public ICollection<Batch> Batches { get; set; }
+
+    // Navigation to trainer assignments
+    public ICollection<TrainerClass> TrainerClasses { get; set; }
 }

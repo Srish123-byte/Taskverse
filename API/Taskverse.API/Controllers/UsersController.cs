@@ -44,6 +44,54 @@ public class UsersController : TaskverseBaseController
         }
     }
 
+    [HttpGet("registration/colleges")]
+    [AllowAnonymous]
+    [SwaggerResponse(200, "Approved colleges for registration", typeof(List<RegistrationCollegeResponseModel>))]
+    public async Task<IActionResult> GetApprovedRegistrationColleges()
+    {
+        try
+        {
+            var colleges = await _usersOrchestrator.GetApprovedRegistrationColleges();
+            return Ok(colleges.Select(college => college.ToResponseModel()).ToList());
+        }
+        catch (Exception ex)
+        {
+            return Problem(ex.Message);
+        }
+    }
+
+    [HttpGet("registration/colleges/{collegeId}/classes")]
+    [AllowAnonymous]
+    [SwaggerResponse(200, "Classes for a college", typeof(List<RegistrationClassResponseModel>))]
+    public async Task<IActionResult> GetRegistrationClasses(string collegeId)
+    {
+        try
+        {
+            var classes = await _usersOrchestrator.GetRegistrationClasses(collegeId);
+            return Ok(classes.Select(item => item.ToResponseModel()).ToList());
+        }
+        catch (Exception ex)
+        {
+            return Problem(ex.Message);
+        }
+    }
+
+    [HttpGet("registration/classes/{classId}/batches")]
+    [AllowAnonymous]
+    [SwaggerResponse(200, "Batches for a class", typeof(List<RegistrationBatchResponseModel>))]
+    public async Task<IActionResult> GetRegistrationBatches(string classId)
+    {
+        try
+        {
+            var batches = await _usersOrchestrator.GetRegistrationBatches(classId);
+            return Ok(batches.Select(batch => batch.ToResponseModel()).ToList());
+        }
+        catch (Exception ex)
+        {
+            return Problem(ex.Message);
+        }
+    }
+
     /// <summary>Gets a user by their ID.</summary>
     [HttpGet("{userId}")]
     [SwaggerResponse(200, "User found", typeof(UserResponseModel))]

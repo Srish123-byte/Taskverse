@@ -1,7 +1,7 @@
-// Taskverse.Auth.Service/Services/IAuthenticationService.cs
-using Taskverse.Auth.Service.Models;
+// Taskverse.API.Auth.Service/Services/IAuthenticationService.cs
+using Taskverse.API.Auth.Service.Models;
 
-namespace Taskverse.Auth.Service.Services;
+namespace Taskverse.API.Auth.Service.Services;
 
 public interface IAuthenticationService
 {

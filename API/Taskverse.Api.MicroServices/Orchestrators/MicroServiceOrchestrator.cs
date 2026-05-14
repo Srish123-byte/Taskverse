@@ -3,6 +3,7 @@ using log4net;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using System.Net;
 using System.Text;
 using Taskverse.Api.MicroServices.Enums;
 using Taskverse.Api.MicroServices.Interfaces;
@@ -164,6 +165,11 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
             var response = await client.GetAsync(uri);
             return await GetResult<T>(response, url);
         }
+        catch (HttpRequestException ex)
+        {
+            _log.Error($"[MicroServiceOrchestrator] GET connection failed for URL {url}: {ex.Message}", ex);
+            return CreateServiceUnavailableResult(url, ex);
+        }
         catch (Exception ex)
         {
             _log.Error($"[MicroServiceOrchestrator] GET request failed for URL {url}: {ex.Message}", ex);
@@ -187,6 +193,11 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
 
             var response = await client.SendAsync(request);
             return await GetResult<T>(response, url);
+        }
+        catch (HttpRequestException ex)
+        {
+            _log.Error($"[MicroServiceOrchestrator] POST connection failed for URL {url}: {ex.Message}", ex);
+            return CreateServiceUnavailableResult(url, ex);
         }
         catch (Exception ex)
         {
@@ -212,6 +223,11 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
             var response = await client.SendAsync(request);
             return await GetResult<T>(response, url);
         }
+        catch (HttpRequestException ex)
+        {
+            _log.Error($"[MicroServiceOrchestrator] PUT connection failed for URL {url}: {ex.Message}", ex);
+            return CreateServiceUnavailableResult(url, ex);
+        }
         catch (Exception ex)
         {
             _log.Error($"[MicroServiceOrchestrator] PUT request failed for URL {url}: {ex.Message}", ex);
@@ -236,6 +252,11 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
             var response = await client.SendAsync(request);
             return await GetResult<T>(response, url);
         }
+        catch (HttpRequestException ex)
+        {
+            _log.Error($"[MicroServiceOrchestrator] PATCH connection failed for URL {url}: {ex.Message}", ex);
+            return CreateServiceUnavailableResult(url, ex);
+        }
         catch (Exception ex)
         {
             _log.Error($"[MicroServiceOrchestrator] PATCH request failed for URL {url}: {ex.Message}", ex);
@@ -254,10 +275,28 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
             var response = await client.DeleteAsync(uri);
             return new ObjectResult(null) { StatusCode = (int)response.StatusCode };
         }
+        catch (HttpRequestException ex)
+        {
+            _log.Error($"[MicroServiceOrchestrator] DELETE connection failed for URL {url}: {ex.Message}", ex);
+            return CreateServiceUnavailableResult(url, ex);
+        }
         catch (Exception ex)
         {
             _log.Error($"[MicroServiceOrchestrator] DELETE request failed for URL {url}: {ex.Message}", ex);
             throw;
         }
+    }
+
+    private static ObjectResult CreateServiceUnavailableResult(string url, HttpRequestException ex)
+    {
+        return new ObjectResult(new
+        {
+            Name = "MicroServiceUnavailable",
+            Message = $"Unable to reach microservice at {url}. Ensure the target local service is running.",
+            Detail = ex.Message
+        })
+        {
+            StatusCode = (int)HttpStatusCode.ServiceUnavailable
+        };
     }
 }

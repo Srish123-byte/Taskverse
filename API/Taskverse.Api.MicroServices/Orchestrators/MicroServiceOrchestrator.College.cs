@@ -12,6 +12,12 @@ public partial class MicroServiceOrchestrator
         return await Get<List<CollegeModel>>(url);
     }
 
+    public async Task<ObjectResult> SearchColleges(CollegeSearchModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/search";
+        return await Post<List<CollegeSearchResultModel>>(url, model);
+    }
+
     public async Task<ObjectResult> GetPendingColleges()
     {
         var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/pending";
@@ -22,6 +28,24 @@ public partial class MicroServiceOrchestrator
     {
         var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}";
         return await Get<CollegeModel>(url);
+    }
+
+    public async Task<ObjectResult> GetApprovedRegistrationColleges()
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/registration/colleges";
+        return await Get<List<RegistrationCollegeModel>>(url);
+    }
+
+    public async Task<ObjectResult> GetRegistrationClasses(string collegeId)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/registration/colleges/{collegeId}/classes";
+        return await Get<List<RegistrationClassModel>>(url);
+    }
+
+    public async Task<ObjectResult> GetRegistrationBatches(string classId)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/registration/classes/{classId}/batches";
+        return await Get<List<RegistrationBatchModel>>(url);
     }
 
     public async Task<ObjectResult> ApproveCollege(string collegeId, CollegeActionModel model)

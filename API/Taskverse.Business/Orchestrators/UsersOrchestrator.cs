@@ -84,6 +84,58 @@ public class UsersOrchestrator : IUsersOrchestrator
             ?? throw new InvalidOperationException($"GetUserRoles returned empty for userId={userId}.");
     }
 
+    public async Task<List<RegistrationCollegeDto>> GetApprovedRegistrationColleges()
+    {
+        _log.Debug("UsersOrchestrator.GetApprovedRegistrationColleges");
+        var result = await _microServiceOrchestrator.GetApprovedRegistrationColleges();
+        result.EnsureSuccess(nameof(GetApprovedRegistrationColleges));
+
+        var models = result.DeserializeValue<List<RegistrationCollegeModel>>()
+            ?? throw new InvalidOperationException("GetApprovedRegistrationColleges returned empty.");
+
+        return models.Select(model => new RegistrationCollegeDto
+        {
+            CollegeId = model.CollegeId,
+            Name = model.Name
+        }).ToList();
+    }
+
+    public async Task<List<RegistrationClassDto>> GetRegistrationClasses(string collegeId)
+    {
+        _log.Debug($"UsersOrchestrator.GetRegistrationClasses: collegeId={collegeId}");
+        var result = await _microServiceOrchestrator.GetRegistrationClasses(collegeId);
+        result.EnsureSuccess(nameof(GetRegistrationClasses));
+
+        var models = result.DeserializeValue<List<RegistrationClassModel>>()
+            ?? throw new InvalidOperationException($"GetRegistrationClasses returned empty for collegeId={collegeId}.");
+
+        return models.Select(model => new RegistrationClassDto
+        {
+            ClassId = model.ClassId,
+            CollegeId = model.CollegeId,
+            Name = model.Name,
+            AcademicYear = model.AcademicYear
+        }).ToList();
+    }
+
+    public async Task<List<RegistrationBatchDto>> GetRegistrationBatches(string classId)
+    {
+        _log.Debug($"UsersOrchestrator.GetRegistrationBatches: classId={classId}");
+        var result = await _microServiceOrchestrator.GetRegistrationBatches(classId);
+        result.EnsureSuccess(nameof(GetRegistrationBatches));
+
+        var models = result.DeserializeValue<List<RegistrationBatchModel>>()
+            ?? throw new InvalidOperationException($"GetRegistrationBatches returned empty for classId={classId}.");
+
+        return models.Select(model => new RegistrationBatchDto
+        {
+            BatchId = model.BatchId,
+            ClassId = model.ClassId,
+            CollegeId = model.CollegeId,
+            Name = model.Name
+        }).ToList();
+    }
+
     /// <summary>
     /// Public self-registration: checks for duplicate email, hashes password,
     /// sets PENDING_APPROVAL for non-SuperAdmin, persists directly to DB.

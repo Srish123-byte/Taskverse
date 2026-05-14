@@ -34,3 +34,12 @@ public record PagedUserResultModel(
     int TotalCount,
     int PageNumber,
     int PageSize);
+
+public record PendingUserModel(
+    string UserId,
+    string FullName,
+    string Email,
+    string Role,
+    string Status,
+    DateTime CreatedAt,
+    string? InstitutionName);

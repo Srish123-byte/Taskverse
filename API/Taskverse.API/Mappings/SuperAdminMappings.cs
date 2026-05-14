@@ -11,6 +11,31 @@ public static class SuperAdminMappings
         Reason = model.Reason
     };
 
+    public static CollegeSearchDto ToDto(this CollegeSearchRequestModel model) => new()
+    {
+        Query = model.Query,
+        Status = string.IsNullOrWhiteSpace(model.Status) ? "all" : model.Status
+    };
+
+    public static UserActionDto ToDto(this UserActionRequestModel model, string performedBy, Guid? performedByUserId) => new()
+    {
+        PerformedBy = performedBy,
+        PerformedByUserId = performedByUserId,
+        Reason = model.Reason
+    };
+
+    public static CollegeSearchResponseModel ToResponseModel(this CollegeSearchResultDto dto) => new()
+    {
+        CollegeId = dto.CollegeId,
+        Name = dto.Name,
+        City = dto.City,
+        State = dto.State,
+        AdminName = dto.AdminName,
+        AdminEmail = dto.AdminEmail,
+        TotalUsers = dto.TotalUsers,
+        Status = dto.Status
+    };
+
     public static CollegeResponseModel ToResponseModel(this CollegeDto dto) => new()
     {
         CollegeId = dto.CollegeId,
@@ -25,6 +50,17 @@ public static class SuperAdminMappings
         ApprovedAt = dto.ApprovedAt,
         ApprovedBy = dto.ApprovedBy,
         Notes = dto.Notes
+    };
+
+    public static PendingUserResponseModel ToResponseModel(this PendingUserDto dto) => new()
+    {
+        UserId = dto.UserId,
+        FullName = dto.FullName,
+        Email = dto.Email,
+        Role = dto.Role,
+        Status = dto.Status,
+        CreatedAt = dto.CreatedAt,
+        InstitutionName = dto.InstitutionName
     };
 
     public static SuperAdminDashboardResponseModel ToResponseModel(this SuperAdminDashboardDto dto) => new()

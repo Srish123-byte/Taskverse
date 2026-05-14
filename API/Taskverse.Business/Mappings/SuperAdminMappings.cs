@@ -22,8 +22,40 @@ public static class SuperAdminMappings
         Notes = model.Notes
     };
 
+    public static CollegeSearchDto ToDto(this CollegeSearchModel model) => new()
+    {
+        Query = model.Query,
+        Status = model.Status
+    };
+
+    public static CollegeSearchResultDto ToDto(this CollegeSearchResultModel model) => new()
+    {
+        CollegeId = model.CollegeId,
+        Name = model.Name,
+        City = model.City,
+        State = model.State,
+        AdminName = model.AdminName,
+        AdminEmail = model.AdminEmail,
+        TotalUsers = model.TotalUsers,
+        Status = model.Status
+    };
+
     public static CollegeActionModel ToMicroServiceModel(this CollegeActionDto dto) =>
         new(dto.PerformedBy, dto.Reason);
+
+    public static CollegeSearchModel ToMicroServiceModel(this CollegeSearchDto dto) =>
+        new(dto.Query, dto.Status);
+
+    public static PendingUserDto ToDto(this PendingUserModel model) => new()
+    {
+        UserId = model.UserId,
+        FullName = model.FullName,
+        Email = model.Email,
+        Role = model.Role,
+        Status = model.Status,
+        CreatedAt = model.CreatedAt,
+        InstitutionName = model.InstitutionName
+    };
 
     public static RecentActivityDto ToDto(this AuditLog auditLog, string performedBy) => new()
     {

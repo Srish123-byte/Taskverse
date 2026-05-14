@@ -1,11 +1,11 @@
-// Taskverse.Auth.Service/Services/AuthenticationService.cs
+// Taskverse.API.Auth.Service/Services/AuthenticationService.cs
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Taskverse.Auth.Service.Models;
+using Taskverse.API.Auth.Service.Models;
 using Taskverse.Business.Enums;
 using Taskverse.Data.DataAccess;
 
-namespace Taskverse.Auth.Service.Services;
+namespace Taskverse.API.Auth.Service.Services;
 
 public class AuthenticationService : IAuthenticationService
 {

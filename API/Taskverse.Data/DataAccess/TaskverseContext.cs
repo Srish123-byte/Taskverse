@@ -10,14 +10,18 @@ public class TaskverseContext : DbContext
     {
     }
 
-    public DbSet<User> Users { get; set; } = null!;
-    public DbSet<Role> Roles { get; set; } = null!;
-    public DbSet<College> Colleges { get; set; } = null!;
-    public DbSet<Class> Classes { get; set; } = null!;
-    public DbSet<Batch> Batches { get; set; } = null!;
-    public DbSet<Assessment> Assessments { get; set; } = null!;
-    public DbSet<AssessmentResult> AssessmentResults { get; set; } = null!;
-    public DbSet<AuditLog> AuditLogs { get; set; } = null!;
+    public DbSet<User> Users { get; set; }
+    public DbSet<Role> Roles { get; set; }
+    public DbSet<College> Colleges { get; set; }
+    public DbSet<Class> Classes { get; set; }
+    public DbSet<Batch> Batches { get; set; }
+    public DbSet<Assessment> Assessments { get; set; }
+    public DbSet<AssessmentResult> AssessmentResults { get; set; }
+    public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<Student> Students { get; set; }
+    public DbSet<Trainer> Trainers { get; set; }
+    public DbSet<TrainerClass> TrainerClasses { get; set; }
+    public DbSet<TrainerBatch> TrainerBatches { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -225,6 +229,79 @@ public class TaskverseContext : DbContext
                 .HasForeignKey(al => al.UserId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("fk_audit_logs_user");
+        });
+
+        // Configure Student entity
+        modelBuilder.Entity<Student>(entity =>
+        {
+            entity.ToTable("students");
+            entity.HasKey(s => s.StudentId);
+
+            entity.HasOne(s => s.User)
+                  .WithOne()
+                  .HasForeignKey<Student>(s => s.UserId);
+
+            entity.HasOne(s => s.College)
+                  .WithMany()
+                  .HasForeignKey(s => s.CollegeId);
+
+            entity.HasOne(s => s.Batch)
+                  .WithMany()
+                  .HasForeignKey(s => s.BatchId);
+
+            // Map enum to int column
+            entity.Property(s => s.Status)
+                  .HasColumnName("status")
+                  .HasConversion<int>();
+        });
+
+        // Configure Trainer entity
+        modelBuilder.Entity<Trainer>(entity =>
+        {
+            entity.ToTable("trainers");
+            entity.HasKey(t => t.TrainerId);
+
+            entity.HasOne(t => t.User)
+                  .WithOne()
+                  .HasForeignKey<Trainer>(t => t.UserId);
+
+            entity.HasOne(t => t.College)
+                  .WithMany()
+                  .HasForeignKey(t => t.CollegeId);
+
+            // Map enum to int column
+            entity.Property(s => s.Status)
+                  .HasColumnName("status")
+                  .HasConversion<int>();
+        });
+
+        // Junction tables
+        modelBuilder.Entity<TrainerClass>(entity =>
+        {
+            entity.ToTable("trainer_classes");
+            entity.HasKey(tc => new { tc.TrainerId, tc.ClassId });
+
+            entity.HasOne(tc => tc.Trainer)
+                  .WithMany(t => t.TrainerClasses)
+                  .HasForeignKey(tc => tc.TrainerId);
+
+            entity.HasOne(tc => tc.Class)
+                  .WithMany(c => c.TrainerClasses)
+                  .HasForeignKey(tc => tc.ClassId);
+        });
+
+        modelBuilder.Entity<TrainerBatch>(entity =>
+        {
+            entity.ToTable("trainer_batches");
+            entity.HasKey(tb => new { tb.TrainerId, tb.BatchId });
+
+            entity.HasOne(tb => tb.Trainer)
+                  .WithMany(t => t.TrainerBatches)
+                  .HasForeignKey(tb => tb.TrainerId);
+
+            entity.HasOne(tb => tb.Batch)
+                  .WithMany(b => b.TrainerBatches)
+                  .HasForeignKey(tb => tb.BatchId);
         });
     }
 }

@@ -1,35 +1,94 @@
 <div class="page-container">
-  <h2 class="page-title">Colleges</h2>
+  <div class="page-eyebrow">Super Admin</div>
+  <h2 class="page-title">College Directory</h2>
+  <p class="page-welcome">Track approved colleges, regional footprint, and primary admin contacts.</p>
+
   <div class="page-content colleges-page">
-    <div *ngIf="isLoading" class="page-state">Loading colleges...</div>
+    <div *ngIf="isLoading" class="page-loader" aria-live="polite" aria-busy="true">
+      <mat-spinner diameter="42"></mat-spinner>
+      <div>
+        <div class="page-loader-title">Loading colleges</div>
+        <div class="page-loader-copy">Refreshing directory results and admin contacts.</div>
+      </div>
+    </div>
     <div *ngIf="errorMessage" class="page-state page-state-error">{{ errorMessage }}</div>
+    <div *ngIf="actionMessage && !errorMessage" class="page-state">{{ actionMessage }}</div>
 
-    <div *ngFor="let college of colleges" class="college-card">
-      <div class="college-copy">
-        <h3>{{ college.name }}</h3>
-        <p>{{ college.city }}{{ college.city && college.state ? ', ' : '' }}{{ college.state }}</p>
-        <div class="college-meta">
-          <span class="meta-chip">{{ college.approvalStatus }}</span>
-          <span class="meta-chip" [class.meta-chip-muted]="!college.isActive">{{ college.status }}</span>
+    <div *ngIf="!isLoading && !errorMessage" class="directory-shell">
+      <section class="directory-toolbar">
+        <div class="toolbar-left">
+          <button type="button" class="add-college-button">
+            <mat-icon>library_add</mat-icon>
+            <span>Add New College</span>
+          </button>
+
+          <div class="status-tabs" role="tablist" aria-label="College status filter">
+            <button
+              *ngFor="let tab of statusTabs"
+              type="button"
+              class="status-tab"
+              [class.status-tab-active]="activeStatus === tab"
+              (click)="setStatusTab(tab)">
+              {{ tab }}
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div class="college-actions">
-        <button
-          *ngIf="college.approvalStatus === 'Pending'"
-          mat-stroked-button
-          color="primary"
-          (click)="approveCollege(college.collegeId)">
-          Approve
-        </button>
+        <div class="toolbar-right">
+          <label class="search-shell" for="collegeSearch">
+            <mat-icon>search</mat-icon>
+            <input
+              id="collegeSearch"
+              type="text"
+              [(ngModel)]="searchTerm"
+              (ngModelChange)="onSearchTermChange()"
+              placeholder="Filter by name, region or admin..." />
+          </label>
 
-        <button
-          mat-flat-button
-          [color]="college.isActive ? 'warn' : 'primary'"
-          (click)="toggleCollegeStatus(college)">
-          {{ college.isActive ? 'Deactivate' : 'Reactivate' }}
-        </button>
-      </div>
+          <button type="button" class="icon-button" aria-label="Export colleges">
+            <mat-icon>download</mat-icon>
+          </button>
+        </div>
+      </section>
+
+      <section class="directory-table-shell">
+        <div class="table-header-row" *ngIf="colleges.length > 0">
+          <span>College Name</span>
+          <span>Location</span>
+          <span>Admin Contact</span>
+          <span>Total Users</span>
+          <span>Status</span>
+        </div>
+
+        <div *ngIf="!isLoading && colleges.length === 0" class="empty-state">
+          No colleges match the current filters.
+        </div>
+
+        <article *ngFor="let college of colleges; let index = index; trackBy: trackByCollegeId" class="college-row">
+          <div class="college-name-cell">
+            <div class="college-icon">
+              <mat-icon>{{ getCollegeIcon(index) }}</mat-icon>
+            </div>
+            <div>
+              <div class="college-name">{{ college.name }}</div>
+              <div class="college-meta-id">ID: {{ college.collegeId }}</div>
+            </div>
+          </div>
+
+          <div class="location-cell">{{ getLocationLabel(college) }}</div>
+
+          <div class="admin-cell">
+            <div class="admin-name">{{ college.adminName || 'Admin not assigned' }}</div>
+            <div class="admin-email">{{ college.adminEmail || 'No contact email' }}</div>
+          </div>
+
+          <div class="users-cell">{{ college.totalUsers | number }}</div>
+
+          <div class="status-cell">
+            <span class="status-pill" [ngClass]="'status-pill-' + getStatusClass(college.status)">{{ college.status }}</span>
+          </div>
+        </article>
+      </section>
     </div>
   </div>
 </div>

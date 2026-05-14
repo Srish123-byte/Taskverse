@@ -1,5 +1,8 @@
-import { Component, OnInit } from '@angular/core';
-import { College } from '../../../common/models/super-admin.model';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { NavigationEnd, Router } from '@angular/router';
+import { Subscription, filter } from 'rxjs';
+import { finalize, take, timeout } from 'rxjs/operators';
+import { CollegeSearchResult } from '../../../common/models/super-admin.model';
 import { SuperAdminService } from '../../../common/services/api/super-admin.service';
 
 @Component({
@@ -8,57 +11,97 @@ import { SuperAdminService } from '../../../common/services/api/super-admin.serv
   templateUrl: './colleges.component.html',
   styleUrl: './colleges.component.scss'
 })
-export class CollegesComponent implements OnInit {
-  colleges: College[] = [];
+export class CollegesComponent implements OnInit, OnDestroy {
+  readonly statusTabs = ['All', 'Pending', 'Suspended'];
+
+  colleges: CollegeSearchResult[] = [];
+  searchTerm = '';
+  activeStatus = 'All';
   isLoading = false;
   errorMessage = '';
+  actionMessage = '';
+  private routeSubscription?: Subscription;
 
-  constructor(private readonly superAdminService: SuperAdminService) {}
+  constructor(
+    private readonly superAdminService: SuperAdminService,
+    private readonly router: Router,
+    private readonly changeDetectorRef: ChangeDetectorRef
+  ) {}
 
   ngOnInit(): void {
-    this.loadColleges();
+    this.routeSubscription = this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe(event => {
+        if (event.urlAfterRedirects.endsWith('/super-admin/colleges') && (this.colleges.length === 0 || this.errorMessage)) {
+          this.searchColleges();
+        }
+      });
+
+    if (this.router.url.endsWith('/super-admin/colleges')) {
+      this.searchColleges();
+    }
   }
 
-  approveCollege(collegeId: string): void {
-    this.superAdminService.approveCollege(collegeId, { reason: 'Approved from Super Admin console' }).subscribe({
-      next: updated => this.replaceCollege(updated),
-      error: () => {
-        this.errorMessage = 'Unable to approve college right now.';
-      }
-    });
+  ngOnDestroy(): void {
+    this.routeSubscription?.unsubscribe();
   }
 
-  toggleCollegeStatus(college: College): void {
-    const request = { reason: college.isActive ? 'Deactivated from Super Admin console' : 'Reactivated from Super Admin console' };
-    const action = college.isActive
-      ? this.superAdminService.deactivateCollege(college.collegeId, request)
-      : this.superAdminService.reactivateCollege(college.collegeId, request);
-
-    action.subscribe({
-      next: updated => this.replaceCollege(updated),
-      error: () => {
-        this.errorMessage = 'Unable to update college status right now.';
-      }
-    });
+  trackByCollegeId(_: number, college: CollegeSearchResult): string {
+    return college.collegeId;
   }
 
-  private loadColleges(): void {
+  setStatusTab(tab: string): void {
+    if (this.activeStatus === tab) {
+      return;
+    }
+
+    this.activeStatus = tab;
+    this.searchColleges();
+  }
+
+  onSearchTermChange(): void {
+    this.searchColleges();
+  }
+
+  getLocationLabel(college: CollegeSearchResult): string {
+    return [college.city, college.state].filter(Boolean).join(', ') || 'Region not set';
+  }
+
+  getStatusClass(status: string): string {
+    return status.trim().toLowerCase().replace(/\s+/g, '-');
+  }
+
+  getCollegeIcon(index: number): string {
+    const icons = ['account_balance', 'architecture', 'science'];
+    return icons[index % icons.length];
+  }
+
+  private searchColleges(): void {
     this.isLoading = true;
     this.errorMessage = '';
+    this.actionMessage = '';
 
-    this.superAdminService.getColleges().subscribe({
-      next: colleges => {
-        this.colleges = colleges;
-        this.isLoading = false;
-      },
-      error: () => {
-        this.errorMessage = 'Unable to load colleges right now.';
-        this.isLoading = false;
-      }
-    });
-  }
-
-  private replaceCollege(updated: College): void {
-    this.colleges = this.colleges.map(college => college.collegeId === updated.collegeId ? updated : college);
+    this.superAdminService.searchColleges({
+      query: this.searchTerm.trim() || undefined,
+      status: this.activeStatus.toLowerCase()
+    })
+      .pipe(
+        take(1),
+        timeout(15000),
+        finalize(() => {
+          this.isLoading = false;
+          this.changeDetectorRef.detectChanges();
+        })
+      )
+      .subscribe({
+        next: colleges => {
+          this.colleges = colleges;
+          this.changeDetectorRef.detectChanges();
+        },
+        error: () => {
+          this.errorMessage = 'Unable to load colleges right now.';
+          this.changeDetectorRef.detectChanges();
+        }
+      });
   }
 }

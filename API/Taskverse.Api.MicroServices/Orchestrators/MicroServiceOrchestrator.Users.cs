@@ -12,6 +12,12 @@ public partial class MicroServiceOrchestrator
         return await Get<UserModel>(url);
     }
 
+    public async Task<ObjectResult> GetPendingUsers()
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Users)}api/users/pending";
+        return await Get<List<PendingUserModel>>(url);
+    }
+
     public async Task<ObjectResult> SearchUsers(UserSearchCriteriaModel criteria)
     {
         var url = $"{GetMicroServiceUrl(MicroService.Users)}users/search";
