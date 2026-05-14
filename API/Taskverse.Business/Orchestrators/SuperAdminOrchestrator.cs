@@ -76,6 +76,18 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
         return models.Select(c => c.ToDto()).ToList();
     }
 
+    public async Task<List<CollegeSearchResultDto>> SearchColleges(CollegeSearchDto dto)
+    {
+        _log.Debug($"SuperAdminOrchestrator.SearchColleges: query={dto.Query}, status={dto.Status}");
+        var result = await _microServiceOrchestrator.SearchColleges(dto.ToMicroServiceModel());
+        result.EnsureSuccess(nameof(SearchColleges));
+
+        var models = result.DeserializeValue<List<CollegeSearchResultModel>>()
+            ?? throw new InvalidOperationException("SearchColleges returned empty.");
+
+        return models.Select(model => model.ToDto()).ToList();
+    }
+
     public async Task<List<CollegeDto>> GetPendingColleges()
     {
         _log.Debug("SuperAdminOrchestrator.GetPendingColleges");

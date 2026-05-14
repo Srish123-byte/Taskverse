@@ -58,6 +58,7 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
 
     // College
     Task<ObjectResult> GetColleges();
+    Task<ObjectResult> SearchColleges(CollegeSearchModel model);
     Task<ObjectResult> GetPendingColleges();
     Task<ObjectResult> GetCollege(string collegeId);
     Task<ObjectResult> GetApprovedRegistrationColleges();

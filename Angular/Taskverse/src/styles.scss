@@ -128,7 +128,7 @@ a {
   width: 100%;
 
   .mdc-text-field {
-    background-color: transparent !important;
+    background-color: var(--bg-card) !important;
   }
 }
 
@@ -158,6 +158,35 @@ a {
 .mat-mdc-input-element {
   color: var(--text-primary) !important;
   caret-color: var(--accent-cyan) !important;
+}
+
+.mat-mdc-select-value,
+.mat-mdc-select-arrow,
+.mat-mdc-select-min-line {
+  color: var(--text-primary) !important;
+}
+
+.mat-mdc-select-panel,
+.mat-mdc-option .mdc-list-item,
+.mat-mdc-option,
+.cdk-overlay-pane .mat-mdc-select-panel {
+  background-color: var(--bg-card) !important;
+}
+
+.mat-mdc-option.mdc-list-item--selected,
+.mat-mdc-option.mat-mdc-option-active,
+.mat-mdc-option:hover:not(.mdc-list-item--disabled) {
+  background-color: var(--bg-section-alt) !important;
+}
+
+.mat-mdc-option .mdc-list-item__primary-text {
+  color: var(--text-primary) !important;
+}
+
+select,
+option {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
 }
 
 /* ------------------------------------------------------------

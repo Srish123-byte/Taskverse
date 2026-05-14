@@ -22,6 +22,24 @@ public class CollegeActionDto
     public string? Reason { get; set; }
 }
 
+public class CollegeSearchDto
+{
+    public string? Query { get; set; }
+    public string Status { get; set; } = "all";
+}
+
+public class CollegeSearchResultDto
+{
+    public string CollegeId { get; set; } = default!;
+    public string Name { get; set; } = default!;
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public string? AdminName { get; set; }
+    public string? AdminEmail { get; set; }
+    public int TotalUsers { get; set; }
+    public string Status { get; set; } = default!;
+}
+
 public class UserActionDto
 {
     public string PerformedBy { get; set; } = default!;

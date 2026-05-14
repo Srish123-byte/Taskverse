@@ -47,6 +47,14 @@ public class CollegesController : ControllerBase
         return Ok(_collegeService.GetColleges());
     }
 
+    [HttpPost("colleges/search")]
+    [ProducesResponseType(typeof(List<CollegeSearchResultRecord>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<CollegeSearchResultRecord>>> SearchColleges([FromBody] CollegeSearchRequest request)
+    {
+        var colleges = await _collegeService.SearchColleges(request);
+        return Ok(colleges);
+    }
+
     [HttpGet("colleges/pending")]
     [ProducesResponseType(typeof(List<CollegeRecord>), StatusCodes.Status200OK)]
     public ActionResult<List<CollegeRecord>> GetPendingColleges()

@@ -29,3 +29,17 @@ public record CollegeRecord(
     DateTime? ApprovedAt,
     string? ApprovedBy,
     string? Notes);
+
+public record CollegeSearchRequest(
+    string? Query,
+    string Status = "all");
+
+public record CollegeSearchResultRecord(
+    string CollegeId,
+    string Name,
+    string? City,
+    string? State,
+    string? AdminName,
+    string? AdminEmail,
+    int TotalUsers,
+    string Status);

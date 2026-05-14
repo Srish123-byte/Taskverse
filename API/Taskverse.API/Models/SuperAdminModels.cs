@@ -21,6 +21,24 @@ public class CollegeActionRequestModel
     public string? Reason { get; set; }
 }
 
+public class CollegeSearchRequestModel
+{
+    public string? Query { get; set; }
+    public string Status { get; set; } = "all";
+}
+
+public class CollegeSearchResponseModel
+{
+    public string CollegeId { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public string? AdminName { get; set; }
+    public string? AdminEmail { get; set; }
+    public int TotalUsers { get; set; }
+    public string Status { get; set; } = string.Empty;
+}
+
 public class UserActionRequestModel
 {
     public string? Reason { get; set; }

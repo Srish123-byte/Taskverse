@@ -7,6 +7,7 @@ public interface ICollegeService
     Task<List<RegistrationCollegeRecord>> GetApprovedRegistrationColleges();
     Task<List<RegistrationClassRecord>> GetRegistrationClasses(Guid collegeId);
     Task<List<RegistrationBatchRecord>> GetRegistrationBatches(Guid classId);
+    Task<List<CollegeSearchResultRecord>> SearchColleges(CollegeSearchRequest request);
     IReadOnlyList<CollegeRecord> GetColleges();
     List<CollegeRecord> GetPendingColleges();
     CollegeRecord? GetCollege(Guid collegeId);

@@ -11,11 +11,29 @@ public static class SuperAdminMappings
         Reason = model.Reason
     };
 
+    public static CollegeSearchDto ToDto(this CollegeSearchRequestModel model) => new()
+    {
+        Query = model.Query,
+        Status = string.IsNullOrWhiteSpace(model.Status) ? "all" : model.Status
+    };
+
     public static UserActionDto ToDto(this UserActionRequestModel model, string performedBy, Guid? performedByUserId) => new()
     {
         PerformedBy = performedBy,
         PerformedByUserId = performedByUserId,
         Reason = model.Reason
+    };
+
+    public static CollegeSearchResponseModel ToResponseModel(this CollegeSearchResultDto dto) => new()
+    {
+        CollegeId = dto.CollegeId,
+        Name = dto.Name,
+        City = dto.City,
+        State = dto.State,
+        AdminName = dto.AdminName,
+        AdminEmail = dto.AdminEmail,
+        TotalUsers = dto.TotalUsers,
+        Status = dto.Status
     };
 
     public static CollegeResponseModel ToResponseModel(this CollegeDto dto) => new()

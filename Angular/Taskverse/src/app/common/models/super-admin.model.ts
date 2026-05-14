@@ -2,6 +2,22 @@ export interface CollegeActionRequest {
   reason?: string;
 }
 
+export interface CollegeSearchRequest {
+  query?: string;
+  status: string;
+}
+
+export interface CollegeSearchResult {
+  collegeId: string;
+  name: string;
+  city?: string;
+  state?: string;
+  adminName?: string;
+  adminEmail?: string;
+  totalUsers: number;
+  status: string;
+}
+
 export interface UserActionRequest {
   reason?: string;
 }

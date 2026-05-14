@@ -4,7 +4,13 @@
   <p class="page-welcome">Manage pending registration requests across institutions.</p>
 
   <div class="page-content">
-    <div *ngIf="isLoading" class="page-state">Loading pending users...</div>
+    <div *ngIf="isLoading" class="page-loader" aria-live="polite" aria-busy="true">
+      <mat-spinner diameter="42"></mat-spinner>
+      <div>
+        <div class="page-loader-title">Loading pending users</div>
+        <div class="page-loader-copy">Fetching approval requests across institutions.</div>
+      </div>
+    </div>
     <div *ngIf="errorMessage" class="page-state page-state-error">{{ errorMessage }}</div>
     <div *ngIf="actionMessage && !errorMessage" class="page-state">{{ actionMessage }}</div>
 
@@ -51,7 +57,7 @@
           <span>Actions</span>
         </div>
 
-        <div *ngIf="filteredUsers.length === 0" class="empty-state">
+        <div *ngIf="!isLoading && filteredUsers.length === 0" class="empty-state">
           No pending users match the current filters.
         </div>
 
@@ -80,13 +86,15 @@
               color="primary"
               [disabled]="isActingOn(user.userId)"
               (click)="approveUser(user)">
-              {{ isActingOn(user.userId) ? 'Working...' : 'Approve' }}
+              <mat-spinner *ngIf="isActingOn(user.userId)" diameter="18" class="button-spinner"></mat-spinner>
+              <span>{{ isActingOn(user.userId) ? 'Working...' : 'Approve' }}</span>
             </button>
             <button
               mat-stroked-button
               [disabled]="isActingOn(user.userId)"
               (click)="rejectUser(user)">
-              Reject
+              <mat-spinner *ngIf="isActingOn(user.userId)" diameter="18" class="button-spinner"></mat-spinner>
+              <span>Reject</span>
             </button>
           </div>
         </article>

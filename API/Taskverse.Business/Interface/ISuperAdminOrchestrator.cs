@@ -6,6 +6,7 @@ public interface ISuperAdminOrchestrator
 {
     Task<SuperAdminDashboardDto> GetDashboard();
     Task<List<CollegeDto>> GetColleges();
+    Task<List<CollegeSearchResultDto>> SearchColleges(CollegeSearchDto dto);
     Task<List<CollegeDto>> GetPendingColleges();
     Task<List<PendingUserDto>> GetPendingUsers();
     Task<CollegeDto> ApproveCollege(string collegeId, CollegeActionDto dto);

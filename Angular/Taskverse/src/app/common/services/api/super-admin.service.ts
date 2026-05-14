@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { College, CollegeActionRequest, PendingUser, SuperAdminDashboard, UserActionRequest } from '../../models/super-admin.model';
+import { map } from 'rxjs/operators';
+import { College, CollegeActionRequest, CollegeSearchRequest, CollegeSearchResult, PendingUser, SuperAdminDashboard, UserActionRequest } from '../../models/super-admin.model';
 import { HttpClientService } from '../http/http-client.service';
 
 @Injectable({ providedIn: 'root' })
@@ -15,6 +16,12 @@ export class SuperAdminService {
 
   getColleges(): Observable<College[]> {
     return this.http.get<College[]>(`${this.url}/colleges`);
+  }
+
+  searchColleges(request: CollegeSearchRequest): Observable<CollegeSearchResult[]> {
+    return this.http
+      .post<any[]>(`${this.url}/colleges/search`, request)
+      .pipe(map(colleges => (colleges ?? []).map(college => this.mapCollegeSearchResult(college))));
   }
 
   getPendingUsers(): Observable<PendingUser[]> {
@@ -43,5 +50,18 @@ export class SuperAdminService {
 
   reactivateCollege(collegeId: string, request: CollegeActionRequest = {}): Observable<College> {
     return this.http.post<College>(`${this.url}/colleges/${collegeId}/reactivate`, request);
+  }
+
+  private mapCollegeSearchResult(college: any): CollegeSearchResult {
+    return {
+      collegeId: college?.collegeId ?? college?.CollegeId ?? '',
+      name: college?.name ?? college?.Name ?? '',
+      city: college?.city ?? college?.City,
+      state: college?.state ?? college?.State,
+      adminName: college?.adminName ?? college?.AdminName,
+      adminEmail: college?.adminEmail ?? college?.AdminEmail,
+      totalUsers: college?.totalUsers ?? college?.TotalUsers ?? 0,
+      status: college?.status ?? college?.Status ?? ''
+    };
   }
 }
