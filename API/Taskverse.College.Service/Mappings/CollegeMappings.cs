@@ -15,6 +15,7 @@ public static class CollegeMappings
     public static CreateCollegeBatchDto ToDto(this CreateCollegeBatchRequest model) => new()
     {
         Name = model.Name,
+        Description = model.Description,
         Capacity = model.Capacity
     };
 
@@ -41,6 +42,7 @@ public static class CollegeMappings
         dto.ClassId,
         dto.CollegeId,
         dto.Name,
+        dto.Description,
         dto.Capacity,
         dto.StudentCount,
         dto.CreatedAt);

@@ -39,10 +39,13 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
 
   isLoading = true;
   isCreateClassOpen = false;
+  isCreateBatchOpen = false;
   isSubmittingClass = false;
+  isSubmittingBatch = false;
   isSuccessDialogOpen = false;
   errorMessage = '';
   createClassErrorMessage = '';
+  createBatchErrorMessage = '';
   successMessage = '';
   private hasBroughtFirstClassIntoView = false;
   private routeSubscription?: Subscription;
@@ -62,6 +65,13 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     name: ['', [Validators.required, Validators.minLength(2), classOrBatchNameValidator()]],
     academicYear: ['', [Validators.required]],
     description: ['']
+  });
+
+  readonly createBatchForm = this.fb.group({
+    classId: ['', [Validators.required]],
+    name: ['', [Validators.required, Validators.minLength(2), classOrBatchNameValidator()]],
+    description: [''],
+    capacity: [null as number | null, [Validators.required, Validators.min(1)]]
   });
 
   constructor(
@@ -109,6 +119,23 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     this.isCreateClassOpen = true;
   }
 
+  openCreateBatchForm(classId = ''): void {
+    if (this.classConfiguration.classes.length === 0) {
+      return;
+    }
+
+    this.createBatchErrorMessage = '';
+    this.successMessage = '';
+    this.isCreateClassOpen = false;
+    this.isCreateBatchOpen = true;
+    this.createBatchForm.reset({
+      classId,
+      name: '',
+      description: '',
+      capacity: null
+    });
+  }
+
   closeCreateClassForm(): void {
     this.isCreateClassOpen = false;
     this.isSubmittingClass = false;
@@ -117,6 +144,18 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
       name: '',
       academicYear: '',
       description: ''
+    });
+  }
+
+  closeCreateBatchForm(): void {
+    this.isCreateBatchOpen = false;
+    this.isSubmittingBatch = false;
+    this.createBatchErrorMessage = '';
+    this.createBatchForm.reset({
+      classId: '',
+      name: '',
+      description: '',
+      capacity: null
     });
   }
 
@@ -161,6 +200,48 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
         },
         error: err => {
           this.createClassErrorMessage = err?.error?.message || 'Unable to create the class right now.';
+        }
+      });
+  }
+
+  submitCreateBatch(): void {
+    if (this.createBatchForm.invalid) {
+      this.createBatchForm.markAllAsTouched();
+      return;
+    }
+
+    const formValue = this.createBatchForm.getRawValue();
+    const classId = formValue.classId?.trim() || '';
+
+    this.isSubmittingBatch = true;
+    this.createBatchErrorMessage = '';
+    this.successMessage = '';
+
+    this.collegeAdminService.createBatch(classId, {
+      name: formValue.name?.trim() || '',
+      description: formValue.description?.trim() || undefined,
+      capacity: Number(formValue.capacity) || undefined
+    })
+      .pipe(
+        take(1),
+        finalize(() => {
+          this.isSubmittingBatch = false;
+        }))
+      .subscribe({
+        next: createdBatch => {
+          const selectedClass = this.classConfiguration.classes.find(item => item.classId === classId);
+          if (selectedClass) {
+            selectedClass.batches = [...selectedClass.batches, createdBatch].sort((left, right) => left.name.localeCompare(right.name));
+            selectedClass.totalCapacity += createdBatch.capacity || 0;
+          }
+
+          this.recalculateTotals();
+          this.successMessage = `Batch "${createdBatch.name}" was created successfully.`;
+          this.closeCreateBatchForm();
+          this.isSuccessDialogOpen = true;
+        },
+        error: err => {
+          this.createBatchErrorMessage = err?.error?.message || 'Unable to create the batch right now.';
         }
       });
   }

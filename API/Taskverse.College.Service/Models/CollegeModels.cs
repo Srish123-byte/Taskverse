@@ -23,6 +23,7 @@ public record CreateCollegeClassRequest(
 
 public record CreateCollegeBatchRequest(
     string Name,
+    string? Description,
     int? Capacity);
 
 public record CollegeClassSummaryRecord(
@@ -41,6 +42,7 @@ public record CollegeBatchSummaryRecord(
     string ClassId,
     string CollegeId,
     string Name,
+    string? Description,
     int Capacity,
     int StudentCount,
     DateTime CreatedAt);

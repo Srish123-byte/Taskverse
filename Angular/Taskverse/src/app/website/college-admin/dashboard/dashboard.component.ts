@@ -1,6 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { RouteAddress } from '../../../common/constants/routes.constants';
+import { CollegeAdminService } from '../../../common/services/api/college-admin.service';
 import { Session } from '../../../common/services/session/session.service';
+import { Subscription } from 'rxjs';
 
 interface DashboardMetricCard {
   label: string;
@@ -32,10 +34,11 @@ interface BatchRanking {
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   readonly routeAddress = RouteAddress;
   userName = '';
   isLoading = false;
+  private readonly subscriptions = new Subscription();
 
   readonly metricCards: DashboardMetricCard[] = [
     { label: 'Total Students', value: '4,829', caption: '+12% this month', icon: 'groups', accent: 'blue' },
@@ -92,15 +95,31 @@ export class DashboardComponent implements OnInit {
     { rank: '17', name: 'Batch B.Arch 2nd Yr', average: 'Avg: 48.9%', trend: 'down', tone: 'alert' }
   ];
 
-  constructor(private readonly session: Session) {}
+  constructor(
+    private readonly collegeAdminService: CollegeAdminService,
+    private readonly session: Session
+  ) {}
 
   ngOnInit(): void {
     this.isLoading = true;
     const user = this.session.user;
     this.userName = user ? `${user.firstName} ${user.lastName}` : '';
+    this.subscriptions.add(
+      this.collegeAdminService.pendingUsers$.subscribe(users => {
+        const pendingUsers = users.filter(item => item.role === 'Student' || item.role === 'Trainer');
+        this.pendingApprovals.value = `${pendingUsers.length}`;
+        this.pendingApprovals.caption = pendingUsers.length > 0
+          ? 'Students and trainers awaiting review'
+          : 'No pending student or trainer approvals';
+      })
+    );
     window.setTimeout(() => {
       this.isLoading = false;
     }, 400);
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
   }
 
   get pendingApprovals(): DashboardMetricCard {

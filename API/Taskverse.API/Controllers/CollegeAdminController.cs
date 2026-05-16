@@ -107,38 +107,29 @@ public class CollegeAdminController : TaskverseBaseController
 
     [HttpGet("users/pending")]
     [SwaggerResponse(200, "Pending users for the college", typeof(List<PendingUserResponseModel>))]
+    [SwaggerResponse(400, "CollegeId header is missing or invalid")]
     [SwaggerResponse(403, "Forbidden")]
-    [SwaggerResponse(404, "College admin user not found")]
     public async Task<IActionResult> GetPendingUsers()
     {
         var accessCheck = EnsureCollegeAdminAccess();
         if (accessCheck is not null) return accessCheck;
 
-        var performedByUserId = GetPerformedByUserId();
-        if (!performedByUserId.HasValue)
-        {
-            _log.Warn("CollegeAdminController.GetPendingUsers: authenticated college admin token is missing a valid user id claim.");
-            return Unauthorized(new { message = "Authenticated user id is missing or invalid." });
-        }
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
 
         try
         {
-            var dto = await _collegeAdminOrchestrator.GetPendingUsersForCollegeAdmin(performedByUserId.Value);
+            var dto = await _collegeAdminOrchestrator.GetPendingUsers(collegeId);
             return Ok(dto.Select(x => x.ToResponseModel()).ToList());
-        }
-        catch (KeyNotFoundException ex)
-        {
-            _log.Warn($"CollegeAdminController.GetPendingUsers: no college admin user found for userId={performedByUserId.Value}", ex);
-            return NotFound(new { message = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
-            _log.Warn($"CollegeAdminController.GetPendingUsers: invalid college mapping for userId={performedByUserId.Value}", ex);
+            _log.Warn($"CollegeAdminController.GetPendingUsers: invalid college mapping for collegeId={collegeId}", ex);
             return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
-            _log.Error($"CollegeAdminController.GetPendingUsers: unexpected error for userId={performedByUserId.Value}", ex);
+            _log.Error($"CollegeAdminController.GetPendingUsers: unexpected error for collegeId={collegeId}", ex);
             return Problem("An unexpected error occurred while fetching pending users.");
         }
     }

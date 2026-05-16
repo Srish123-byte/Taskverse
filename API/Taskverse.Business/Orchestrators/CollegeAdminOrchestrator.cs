@@ -89,6 +89,7 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
                 item.ClassId,
                 item.CollegeId,
                 item.Name,
+                item.Description,
                 Capacity = item.Capacity ?? 0,
                 item.CreatedAt
             })
@@ -116,6 +117,7 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
                         ClassId = item.ClassId.ToString(),
                         CollegeId = item.CollegeId.ToString(),
                         Name = item.Name,
+                        Description = item.Description,
                         Capacity = item.Capacity,
                         StudentCount = studentCountsByBatch.TryGetValue(item.BatchId, out var count) ? count : 0,
                         CreatedAt = item.CreatedAt
@@ -177,6 +179,12 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
             $"CollegeAdminOrchestrator.GetPendingUsersForCollegeAdmin: collegeAdminUserId={collegeAdminUserId}, count={models.Count}");
 
         return models.Select(model => model.ToDto()).ToList();
+    }
+
+    public Task<List<PendingUserDto>> GetPendingUsers(Guid collegeId)
+    {
+        _log.Debug($"CollegeAdminOrchestrator.GetPendingUsers: collegeId={collegeId}");
+        return GetPendingUsersForCollege(collegeId);
     }
 
     private async Task<List<PendingUserDto>> GetPendingUsersForCollege(Guid collegeId)

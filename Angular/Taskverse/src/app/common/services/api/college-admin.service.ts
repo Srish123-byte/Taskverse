@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { map, tap } from 'rxjs/operators';
+import { PendingUser, UserActionRequest } from '../../models/super-admin.model';
 import { HttpClientService } from '../http/http-client.service';
 
 export interface ClassConfigurationTotals {
@@ -15,6 +16,7 @@ export interface CollegeBatchSummary {
   classId: string;
   collegeId: string;
   name: string;
+  description?: string;
   capacity: number;
   studentCount: number;
   createdAt: string;
@@ -45,12 +47,16 @@ export interface CreateCollegeClassRequest {
 
 export interface CreateCollegeBatchRequest {
   name: string;
+  description?: string;
   capacity?: number;
 }
 
 @Injectable({ providedIn: 'root' })
 export class CollegeAdminService {
   private readonly url = 'college-admin';
+  private readonly pendingUsersSubject = new BehaviorSubject<PendingUser[]>([]);
+
+  readonly pendingUsers$ = this.pendingUsersSubject.asObservable();
 
   constructor(private readonly http: HttpClientService) {}
 
@@ -70,6 +76,29 @@ export class CollegeAdminService {
     return this.http
       .post<any>(`${this.url}/classes/${classId}/batches`, request)
       .pipe(map(item => this.mapBatch(item)));
+  }
+
+  getPendingUsers(): Observable<PendingUser[]> {
+    return this.http.get<PendingUser[]>(`${this.url}/users/pending`).pipe(
+      map(users => users ?? []),
+      tap(users => this.pendingUsersSubject.next(users))
+    );
+  }
+
+  approveUser(userId: string, request: UserActionRequest = {}): Observable<void> {
+    return this.http.post<void>(`${this.url}/users/${userId}/approve`, request).pipe(
+      tap(() => this.removePendingUser(userId))
+    );
+  }
+
+  rejectUser(userId: string, request: UserActionRequest = {}): Observable<void> {
+    return this.http.post<void>(`${this.url}/users/${userId}/reject`, request).pipe(
+      tap(() => this.removePendingUser(userId))
+    );
+  }
+
+  setPendingUsers(users: PendingUser[]): void {
+    this.pendingUsersSubject.next(users);
   }
 
   private mapConfiguration(configuration: any): ClassConfiguration {
@@ -104,9 +133,14 @@ export class CollegeAdminService {
       classId: item?.classId ?? item?.ClassId ?? '',
       collegeId: item?.collegeId ?? item?.CollegeId ?? '',
       name: item?.name ?? item?.Name ?? '',
+      description: item?.description ?? item?.Description ?? undefined,
       capacity: item?.capacity ?? item?.Capacity ?? 0,
       studentCount: item?.studentCount ?? item?.StudentCount ?? 0,
       createdAt: item?.createdAt ?? item?.CreatedAt ?? ''
     };
+  }
+
+  private removePendingUser(userId: string): void {
+    this.pendingUsersSubject.next(this.pendingUsersSubject.value.filter(user => user.userId !== userId));
   }
 }

@@ -223,12 +223,29 @@ export class LoginComponent implements OnInit, OnDestroy {
 
     this.userService.register(request).pipe(take(1)).subscribe({
       next: response => {
+        const normalizedRole = this.normalizeRole(response.role) ?? this.normalizeRole(request.role);
+        const normalizedStatus = this.normalizeStatus(response.status);
+        const shouldRedirectToApprovalStatus =
+          normalizedStatus === 'PENDING_APPROVAL' &&
+          (normalizedRole === RoleType.CollegeAdmin ||
+            normalizedRole === RoleType.Trainer ||
+            normalizedRole === RoleType.Student);
+
+        if (normalizedRole && shouldRedirectToApprovalStatus) {
+          this.redirectToApprovalStatus(normalizedRole, normalizedStatus);
+          return;
+        }
+
         this.isLoading = false;
-        const isPending = response.status === 'PENDING_APPROVAL';
+        const isPending = normalizedStatus === 'PENDING_APPROVAL';
         this.successMessage = isPending
           ? 'Account created! Your request is pending admin approval. You will be notified once approved.'
           : 'Account created successfully! You can now sign in.';
-        this.switchMode('login');
+        this.mode = 'login';
+        this.errorMessage = '';
+        this.loginForm.reset();
+        this.registerForm.reset({ role: 'Student', collegeId: '', collegeName: '', classId: '', batchId: '' });
+        this.handleRegistrationRoleChange(RoleType.Student);
       },
       error: err => {
         this.isLoading = false;

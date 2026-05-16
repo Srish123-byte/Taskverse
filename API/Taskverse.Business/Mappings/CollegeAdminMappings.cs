@@ -12,6 +12,7 @@ public static class CollegeAdminMappings
 
     public static CreateCollegeBatchModel ToMicroServiceModel(this CreateCollegeBatchDto dto) => new(
         dto.Name,
+        dto.Description,
         dto.Capacity);
 
     public static CollegeUserActionModel ToMicroServiceModel(this UserActionDto dto) => new(
@@ -38,6 +39,7 @@ public static class CollegeAdminMappings
         ClassId = model.ClassId,
         CollegeId = model.CollegeId,
         Name = model.Name,
+        Description = model.Description,
         Capacity = model.Capacity,
         StudentCount = model.StudentCount,
         CreatedAt = model.CreatedAt

@@ -1,6 +1,97 @@
 <div class="page-container">
+  <div class="page-eyebrow">College Admin</div>
   <h2 class="page-title">User Management</h2>
+  <p class="page-welcome">
+    Review pending student and trainer accounts for your institution.
+    <strong>{{ pendingApprovalCount }}</strong> approval{{ pendingApprovalCount === 1 ? '' : 's' }} waiting.
+  </p>
+
   <div class="page-content">
-    Manage active users, roles, and access policies for your institution here.
+    <div *ngIf="isLoading" class="page-loader" aria-live="polite" aria-busy="true">
+      <mat-spinner diameter="42"></mat-spinner>
+      <div>
+        <div class="page-loader-title">Loading pending users</div>
+        <div class="page-loader-copy">Fetching student and trainer approval requests for your college.</div>
+      </div>
+    </div>
+
+    <div *ngIf="errorMessage" class="page-state page-state-error">{{ errorMessage }}</div>
+    <div *ngIf="actionMessage && !errorMessage" class="page-state">{{ actionMessage }}</div>
+
+    <div *ngIf="!isLoading && !errorMessage" class="users-page-shell">
+      <section class="filters-shell">
+        <div class="filter-field">
+          <label for="roleFilter">Role Type</label>
+          <select id="roleFilter" [(ngModel)]="selectedRole">
+            <option value="all">All Roles</option>
+            <option *ngFor="let role of availableRoles" [value]="role">
+              {{ getRoleLabel(role) }}
+            </option>
+          </select>
+        </div>
+
+        <div class="filter-field">
+          <label for="searchFilter">Search Name/Email</label>
+          <input
+            id="searchFilter"
+            type="text"
+            [(ngModel)]="searchTerm"
+            placeholder="e.g. Alex Johnson" />
+        </div>
+
+        <button type="button" class="reset-button" (click)="resetFilters()">Reset Filters</button>
+      </section>
+
+      <div class="users-table-shell">
+        <div class="table-header-row" *ngIf="filteredUsers.length > 0">
+          <span>Full Name</span>
+          <span>Role</span>
+          <span>Email</span>
+          <span>Requested On</span>
+          <span>Actions</span>
+        </div>
+
+        <div *ngIf="filteredUsers.length === 0" class="empty-state">
+          No pending student or trainer approvals match the current filters.
+        </div>
+
+        <article *ngFor="let user of filteredUsers; trackBy: trackByUserId" class="user-row">
+          <div class="user-name-cell">
+            <span class="user-accent" [ngClass]="'user-accent-' + getRoleClass(user.role)"></span>
+            <div>
+              <div class="user-name">{{ user.fullName }}</div>
+            </div>
+          </div>
+
+          <div class="role-cell">
+            <span class="role-pill" [ngClass]="'role-pill-' + getRoleClass(user.role)">{{ getRoleLabel(user.role) }}</span>
+          </div>
+
+          <div class="email-cell">{{ user.email }}</div>
+
+          <div class="institution-cell">
+            <div class="institution-meta">Requested {{ user.createdAt | date: 'mediumDate' }}</div>
+          </div>
+
+          <div class="actions-cell">
+            <button
+              mat-flat-button
+              color="primary"
+              [disabled]="isActingOn(user.userId)"
+              (click)="approveUser(user)">
+              <mat-spinner *ngIf="isActingOn(user.userId)" diameter="18" class="button-spinner"></mat-spinner>
+              <span>{{ isActingOn(user.userId) ? 'Working...' : 'Approve' }}</span>
+            </button>
+            <button
+              mat-stroked-button
+              [disabled]="isActingOn(user.userId)"
+              (click)="rejectUser(user)">
+              <mat-spinner *ngIf="isActingOn(user.userId)" diameter="18" class="button-spinner"></mat-spinner>
+              <span>Reject</span>
+            </button>
+          </div>
+        </article>
+      </div>
+    </div>
   </div>
 </div>

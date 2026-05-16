@@ -107,6 +107,7 @@ public class CollegeOrchestrator : ICollegeOrchestrator
     public async Task<CollegeBatchSummaryDto> CreateBatch(Guid collegeId, Guid classId, CreateCollegeBatchDto dto)
     {
         var name = NormalizeRequired(dto.Name, "Batch name");
+        var description = NormalizeOptional(dto.Description);
         var capacity = dto.Capacity.GetValueOrDefault();
         if (capacity < 0)
         {
@@ -134,6 +135,7 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             ClassId = classId,
             CollegeId = collegeId,
             Name = name,
+            Description = description,
             Capacity = capacity,
             CreatedAt = DateTime.UtcNow,
             ModifiedAt = DateTime.UtcNow
@@ -148,6 +150,7 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             ClassId = entity.ClassId.ToString(),
             CollegeId = entity.CollegeId.ToString(),
             Name = entity.Name,
+            Description = entity.Description,
             Capacity = entity.Capacity ?? 0,
             StudentCount = 0,
             CreatedAt = entity.CreatedAt

@@ -50,6 +50,7 @@ public class CollegeBatchSummaryResponseModel
     public string ClassId { get; set; } = string.Empty;
     public string CollegeId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public int Capacity { get; set; }
     public int StudentCount { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -65,5 +66,6 @@ public class CreateCollegeClassRequestModel
 public class CreateCollegeBatchRequestModel
 {
     public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public int? Capacity { get; set; }
 }

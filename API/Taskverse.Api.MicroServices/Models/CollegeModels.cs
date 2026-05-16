@@ -56,6 +56,7 @@ public record CreateCollegeClassModel(
 
 public record CreateCollegeBatchModel(
     string Name,
+    string? Description,
     int? Capacity);
 
 public record CollegeUserActionModel(
@@ -79,6 +80,7 @@ public record CollegeBatchSummaryModel(
     string ClassId,
     string CollegeId,
     string Name,
+    string? Description,
     int Capacity,
     int StudentCount,
     DateTime CreatedAt);

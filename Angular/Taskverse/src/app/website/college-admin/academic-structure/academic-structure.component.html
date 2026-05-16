@@ -8,11 +8,11 @@
       <div class="hero-copy">
         <span class="hero-kicker">Classes Management</span>
         <h3>Organize classes, batches, and seat utilization from one dashboard.</h3>
-        <p>Use the live create flow to add a class now, and wire the remaining batch actions afterward.</p>
+        <p>Use the live create flows to add classes, create batches, and keep seat utilization updated in one place.</p>
       </div>
 
       <div class="hero-actions">
-        <button type="button" class="ghost-action">
+        <button type="button" class="ghost-action" [disabled]="isLoading || classes.length === 0" (click)="openCreateBatchForm()">
           <mat-icon>add_circle</mat-icon>
           <span>Create Batch</span>
         </button>
@@ -97,7 +97,9 @@
             <article
               *ngFor="let batchCard of getBatchCards(classItem)"
               class="batch-card"
-              [ngClass]="'batch-card-' + batchCard.variant">
+              [ngClass]="'batch-card-' + batchCard.variant"
+              [class.batch-card-clickable]="batchCard.variant === 'draft'"
+              (click)="batchCard.variant === 'draft' ? openCreateBatchForm(classItem.classId) : null">
               <ng-container *ngIf="batchCard.variant === 'live'; else draftBatch">
                 <div class="batch-card-top">
                   <div>
@@ -218,12 +220,103 @@
     </section>
   </div>
 
+  <div *ngIf="isCreateBatchOpen" class="modal-backdrop" (click)="closeCreateBatchForm()">
+    <section class="create-class-modal create-batch-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-title-icon">
+            <mat-icon>groups_2</mat-icon>
+          </div>
+          <div>
+            <h3>Create New Batch</h3>
+            <p>Configure a new group of students for proctored assessments.</p>
+          </div>
+        </div>
+        <button type="button" class="close-button" (click)="closeCreateBatchForm()" aria-label="Close create batch form">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <form [formGroup]="createBatchForm" (ngSubmit)="submitCreateBatch()">
+        <div class="modal-body">
+          <div *ngIf="createBatchErrorMessage" class="form-error-banner">
+            {{ createBatchErrorMessage }}
+          </div>
+
+          <label class="form-field">
+            <span>Select Class</span>
+            <select formControlName="classId">
+              <option value="" disabled>Choose target class...</option>
+              <option *ngFor="let classItem of classes; trackBy: trackByClassId" [value]="classItem.classId">
+                {{ classItem.name }}<ng-container *ngIf="classItem.academicYear"> - {{ classItem.academicYear }}</ng-container>
+              </option>
+            </select>
+            <small *ngIf="createBatchForm.controls.classId.touched && createBatchForm.controls.classId.invalid">
+              Please select a class.
+            </small>
+          </label>
+
+          <label class="form-field form-field-half">
+            <span>Batch Name</span>
+            <input
+              type="text"
+              formControlName="name"
+              [attr.maxlength]="classNameMaxLength"
+              placeholder="Batch A">
+            <small *ngIf="createBatchForm.controls.name.touched && createBatchForm.controls.name.errors?.['required']">
+              Batch name is required.
+            </small>
+            <small *ngIf="createBatchForm.controls.name.touched && createBatchForm.controls.name.errors?.['minlength']">
+              Batch name must be at least 2 characters.
+            </small>
+            <small *ngIf="createBatchForm.controls.name.touched && createBatchForm.controls.name.errors?.['restrictedNameLength']">
+              Batch name can be at most {{ classNameMaxLength }} characters.
+            </small>
+            <small *ngIf="createBatchForm.controls.name.touched && createBatchForm.controls.name.errors?.['restrictedNamePattern']">
+              Only letters, numbers, "/" and "-" are allowed.
+            </small>
+          </label>
+
+          <label class="form-field">
+            <span>Description</span>
+            <textarea
+              rows="4"
+              formControlName="description"
+              placeholder="Detailed description of the batch..."></textarea>
+          </label>
+
+          <label class="form-field form-field-half">
+            <span>Student Capacity</span>
+            <input
+              type="number"
+              min="1"
+              formControlName="capacity"
+              placeholder="40">
+            <small *ngIf="createBatchForm.controls.capacity.touched && createBatchForm.controls.capacity.errors?.['required']">
+              Capacity is required.
+            </small>
+            <small *ngIf="createBatchForm.controls.capacity.touched && createBatchForm.controls.capacity.errors?.['min']">
+              Capacity must be at least 1.
+            </small>
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="footer-action footer-action-muted" (click)="closeCreateBatchForm()">Cancel</button>
+          <button type="submit" class="footer-action footer-action-primary" [disabled]="isSubmittingBatch">
+            {{ isSubmittingBatch ? 'Submitting...' : 'Create Batch' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+
   <div *ngIf="isSuccessDialogOpen" class="modal-backdrop" (click)="closeSuccessDialog()">
     <section class="success-dialog" (click)="$event.stopPropagation()">
       <div class="success-dialog-icon">
         <mat-icon>check_circle</mat-icon>
       </div>
-      <h3>Class Created</h3>
+      <h3>Saved Successfully</h3>
       <p>{{ successMessage }}</p>
       <button type="button" class="footer-action footer-action-primary success-dialog-action" (click)="closeSuccessDialog()">
         Continue

@@ -10,6 +10,7 @@ public class CreateCollegeClassDto
 public class CreateCollegeBatchDto
 {
     public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public int? Capacity { get; set; }
 }
 
@@ -32,6 +33,7 @@ public class CollegeBatchSummaryDto
     public string ClassId { get; set; } = string.Empty;
     public string CollegeId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public int Capacity { get; set; }
     public int StudentCount { get; set; }
     public DateTime CreatedAt { get; set; }
