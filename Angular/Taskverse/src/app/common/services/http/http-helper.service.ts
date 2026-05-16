@@ -51,6 +51,21 @@ export class HttpHelperService {
       headers = headers.append('Authorization', 'Bearer ' + token);
     }
 
+    const userId = this.session.userId;
+    if (userId && userId !== 'null' && userId.trim().length > 0) {
+      headers = headers.append('UserId', userId);
+    }
+
+    const role = this.session.role;
+    if (role && role.trim().length > 0) {
+      headers = headers.append('UserRole', role);
+    }
+
+    const collegeId = this.session.user?.collegeId;
+    if (collegeId && collegeId !== 'null' && collegeId.trim().length > 0) {
+      headers = headers.append('CollegeId', collegeId);
+    }
+
     return headers;
   }
 }

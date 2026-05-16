@@ -1,6 +1,7 @@
 using log4net;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using Taskverse.API.College.Service.Orchestrators;
 using Taskverse.API.College.Service.Filters;
 using Taskverse.API.College.Service.Services;
 using Taskverse.Data.DataAccess;
@@ -81,6 +82,7 @@ public class Startup
 
     private void ConfigureDependencyInjection(IServiceCollection services)
     {
+        services.AddScoped<ICollegeOrchestrator, CollegeOrchestrator>();
         services.AddScoped<ICollegeService, CollegeService>();
     }
 

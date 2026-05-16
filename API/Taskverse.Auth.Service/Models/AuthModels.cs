@@ -16,6 +16,7 @@ public class LoginResponse
     public string Email { get; set; } = default!;
     public string FirstName { get; set; } = default!;
     public string LastName { get; set; } = default!;
+    public string? CollegeId { get; set; }
     public string? CollegeName { get; set; }
     public List<string> Roles { get; set; } = [];
     public string Status { get; set; }

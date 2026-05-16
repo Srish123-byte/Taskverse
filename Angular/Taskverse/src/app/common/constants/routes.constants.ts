@@ -16,14 +16,14 @@ export const RouteAddress = {
   },
 
   CollegeAdmin: {
-    Root:              'college-admin',
-    Dashboard:         'college-admin/dashboard',
-    Approvals:         'college-admin/approvals',
-    Users:             'college-admin/users',
-    AcademicStructure: 'college-admin/academic-structure',
-    AssessmentBuilder: 'college-admin/assessment-builder',
-    Reports:           'college-admin/reports',
-    Settings:          'college-admin/settings'
+    Root:               'college-admin',
+    Dashboard:          'college-admin/dashboard',
+    Approvals:          'college-admin/approvals',
+    Users:              'college-admin/users',
+    ClassesManagement:  'college-admin/classes-management',
+    AssessmentBuilder:  'college-admin/assessment-builder',
+    Reports:            'college-admin/reports',
+    Settings:           'college-admin/settings'
   },
 
   Trainer: {

@@ -12,7 +12,7 @@ public abstract class TaskverseBaseController : Controller
 {
     private const string UserIdHeaderKey = "UserId";
     private const string UserRoleHeaderKey = "UserRole";
-    private const string TenantIdHeaderKey = "TenantId";
+    private const string CollegeIdHeaderKey = "CollegeId";
 
     /// <summary>
     /// Gets the UserId from the request header. Throws if missing.
@@ -35,8 +35,8 @@ public abstract class TaskverseBaseController : Controller
         Request?.Headers[UserRoleHeaderKey].ToString() ?? string.Empty;
 
     /// <summary>
-    /// Gets the TenantId from the request header. Returns empty string if missing.
+    /// Gets the CollegeId from the request header. Returns empty string if missing.
     /// </summary>
-    protected string TenantId =>
-        Request?.Headers[TenantIdHeaderKey].ToString() ?? string.Empty;
+    protected string CollegeId =>
+        Request?.Headers[CollegeIdHeaderKey].ToString() ?? string.Empty;
 }

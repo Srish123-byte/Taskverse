@@ -79,6 +79,7 @@ public class AuthenticationService : IAuthenticationService
                 Email = user.Email,
                 FirstName = firstName,
                 LastName = lastName,
+                CollegeId = user.CollegeId?.ToString(),
                 CollegeName = user.CollegeName,
                 Roles = [user.Role],
                 Status = user.Status.ToString()

@@ -8,6 +8,7 @@ public class Student
     public Guid StudentId { get; set; }
     public Guid UserId { get; set; }
     public Guid CollegeId { get; set; }
+    public Guid? ClassId { get; set; }
     public Guid BatchId { get; set; }
     public string FullName { get; set; }
     public string Email { get; set; }
@@ -19,6 +20,7 @@ public class Student
     // Navigation properties
     public User User { get; set; }
     public College College { get; set; }
+    public Class? Class { get; set; }
     public Batch Batch { get; set; }
     public UserStatus Status { get; set; }
 }

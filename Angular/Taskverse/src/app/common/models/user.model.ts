@@ -5,6 +5,7 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
+  collegeId?: string;
   collegeName?: string;
   role: RoleType;
   isActive: boolean;

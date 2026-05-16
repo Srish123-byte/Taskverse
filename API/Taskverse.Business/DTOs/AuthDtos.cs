@@ -10,6 +10,7 @@ public record LoginResponseDto(
     string Email,
     string FirstName,
     string LastName,
+    string? CollegeId,
     string? CollegeName,
     List<string> Roles,
     string Status);

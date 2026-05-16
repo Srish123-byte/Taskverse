@@ -228,6 +228,7 @@ public class Startup
         services.AddScoped<IProctorOrchestrator, ProctorOrchestrator>();
         services.AddScoped<IReportsOrchestrator, ReportsOrchestrator>();
         services.AddScoped<ISuperAdminOrchestrator, SuperAdminOrchestrator>();
+        services.AddScoped<ICollegeAdminOrchestrator, CollegeAdminOrchestrator>();
     }
 
     private void ConfigureSwagger(IServiceCollection services)

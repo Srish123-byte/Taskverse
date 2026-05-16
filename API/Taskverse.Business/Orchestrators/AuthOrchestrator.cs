@@ -45,6 +45,7 @@ public class AuthOrchestrator : IAuthOrchestrator
             model.Email,
             model.FirstName,
             model.LastName,
+            string.IsNullOrWhiteSpace(model.CollegeId) ? null : model.CollegeId,
             model.CollegeName,
             model.Roles,
             model.Status);

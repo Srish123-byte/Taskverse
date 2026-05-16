@@ -118,6 +118,7 @@ public static class MockData
         FirstName: "Test",
         LastName: "User",
         CollegeName: "TestCollege",
+        CollegeId: "college-123",
         Roles: ["Student"],
         Status: "APPROVED");
 

@@ -295,6 +295,7 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 
         if (existingStudent is not null)
         {
+            existingStudent.ClassId = user.ClassId;
             existingStudent.Status = UserStatus.APPROVED;
             existingStudent.StatusId = (int)UserStatus.APPROVED;
             existingStudent.ModifiedAt = DateTime.UtcNow;
@@ -307,6 +308,7 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             StudentId = Guid.NewGuid(),
             UserId = user.Id,
             CollegeId = user.CollegeId.Value,
+            ClassId = user.ClassId,
             BatchId = user.BatchId.Value,
             FullName = user.FullName,
             Email = user.Email,

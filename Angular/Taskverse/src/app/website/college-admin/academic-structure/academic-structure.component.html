@@ -1,6 +1,171 @@
-<div class="page-container">
-  <h2 class="page-title">Academic Structure</h2>
-  <div class="page-content">
-    Departments, classes, batches, and curriculum structure can be administered here.
-  </div>
+<div class="class-management-page">
+  <app-dashboard-loader
+    *ngIf="isLoading"
+    tone="dark"
+    title="Loading classes"
+    copy="Preparing your class and batch configuration view.">
+  </app-dashboard-loader>
+
+  <ng-container *ngIf="!isLoading">
+    <header class="page-hero">
+      <div class="hero-copy">
+        <span class="hero-eyebrow">Classes Management</span>
+        <h1>Class &amp; Batch Configuration</h1>
+        <p>Organize {{ institutionName }} by creating classes and managing student batches for assessments.</p>
+      </div>
+
+      <div class="hero-actions">
+        <button type="button" class="secondary-action" (click)="toggleClassForm()">
+          <mat-icon>add_circle</mat-icon>
+          <span>{{ isClassFormOpen ? 'Hide Class Form' : 'Add New Class' }}</span>
+        </button>
+      </div>
+    </header>
+
+    <section class="metrics-grid">
+      <article *ngFor="let card of metricCards" class="metric-card" [ngClass]="'metric-card-' + card.accent">
+        <div class="metric-icon">
+          <mat-icon>{{ card.icon }}</mat-icon>
+        </div>
+        <div class="metric-copy">
+          <strong>{{ card.value }}</strong>
+          <span>{{ card.label }}</span>
+        </div>
+      </article>
+    </section>
+
+    <section *ngIf="isClassFormOpen" class="form-panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Create Class</h2>
+          <p>Add a new class and assign its academic year and department.</p>
+        </div>
+      </div>
+
+      <form class="form-grid" [formGroup]="classForm" (ngSubmit)="createClass()">
+        <mat-form-field appearance="outline">
+          <mat-label>Class name</mat-label>
+          <input matInput formControlName="name" placeholder="CSE 2025">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Academic year</mat-label>
+          <input matInput formControlName="academicYear" placeholder="2025">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Department</mat-label>
+          <input matInput formControlName="department" placeholder="Engineering">
+        </mat-form-field>
+
+        <div class="form-actions">
+          <button type="submit" class="primary-action" [disabled]="isSubmittingClass">
+            <mat-icon>school</mat-icon>
+            <span>{{ isSubmittingClass ? 'Creating...' : 'Create Class' }}</span>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <div *ngIf="successMessage" class="alert alert-success">{{ successMessage }}</div>
+    <div *ngIf="errorMessage" class="alert alert-error">{{ errorMessage }}</div>
+
+    <section class="toolbar">
+      <div class="filter-tabs">
+        <button
+          *ngFor="let department of departmentFilters"
+          type="button"
+          class="filter-tab"
+          [class.filter-tab-active]="selectedDepartment === department"
+          (click)="selectDepartment(department)">
+          {{ department }}
+        </button>
+      </div>
+
+      <mat-form-field appearance="outline" class="sort-field">
+        <mat-label>Sort by</mat-label>
+        <mat-select [(value)]="selectedSort">
+          <mat-option *ngFor="let option of sortOptions" [value]="option.value">
+            {{ option.label }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </section>
+
+    <section class="classes-table">
+      <div class="table-head">
+        <span>Class Name &amp; Year</span>
+        <span>Department</span>
+        <span>Batches</span>
+        <span>Total Students</span>
+        <span>Action</span>
+      </div>
+
+      <article *ngFor="let item of visibleClasses; trackBy: trackByClassId" class="class-row">
+        <div class="class-cell class-copy">
+          <div class="class-icon">
+            <mat-icon>library_books</mat-icon>
+          </div>
+          <div>
+            <strong>{{ item.name }}</strong>
+            <span>{{ item.academicYear || 'Year not set' }}</span>
+            <small>ID: {{ item.classId | slice:0:8 }}</small>
+          </div>
+        </div>
+
+        <div class="class-cell">
+          <span class="department-chip">{{ item.department || 'General' }}</span>
+        </div>
+
+        <div class="class-cell batch-cluster">
+          <span *ngFor="let batch of item.batches | slice:0:4; trackBy: trackByBatchId" class="batch-pill">
+            {{ batch.name }}
+          </span>
+          <span *ngIf="item.batches.length === 0" class="batch-empty">No batches yet</span>
+        </div>
+
+        <div class="class-cell student-summary">
+          <strong>{{ item.totalStudents }}</strong>
+          <div class="progress-track">
+            <span class="progress-bar" [style.width.%]="getCapacityUsage(item)"></span>
+          </div>
+          <small>{{ item.totalCapacity > 0 ? getCapacityUsage(item) + '% capacity used' : 'No capacity set yet' }}</small>
+        </div>
+
+        <div class="class-cell action-cell">
+          <button type="button" class="row-action" (click)="openBatchForm(item.classId)">
+            <mat-icon>group_add</mat-icon>
+            <span>{{ isBatchFormOpenFor(item.classId) ? 'Close Batch Form' : 'Add Batch' }}</span>
+          </button>
+        </div>
+
+        <div *ngIf="isBatchFormOpenFor(item.classId)" class="batch-form-row">
+          <form class="form-grid batch-form-grid" [formGroup]="batchForm" (ngSubmit)="createBatch(item)">
+            <mat-form-field appearance="outline">
+              <mat-label>Batch name</mat-label>
+              <input matInput formControlName="name" placeholder="A">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Capacity</mat-label>
+              <input matInput type="number" formControlName="capacity" placeholder="60">
+            </mat-form-field>
+
+            <div class="form-actions">
+              <button type="submit" class="primary-action" [disabled]="isSubmittingBatch">
+                <mat-icon>groups</mat-icon>
+                <span>{{ isSubmittingBatch ? 'Creating...' : 'Create Batch' }}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </article>
+
+      <div *ngIf="visibleClasses.length === 0" class="empty-state">
+        <mat-icon>account_tree</mat-icon>
+        <strong>No classes found</strong>
+        <p>Create your first class to start organizing batches.</p>
+      </div>
+    </section>
+  </ng-container>
 </div>

@@ -21,7 +21,7 @@ export class CollegeAdminShellComponent {
     { label: 'Dashboard', route: `/${RouteAddress.CollegeAdmin.Dashboard}`, icon: 'space_dashboard' },
     { label: 'User Approvals', route: `/${RouteAddress.CollegeAdmin.Approvals}`, icon: 'how_to_reg', badge: '12' },
     { label: 'User Management', route: `/${RouteAddress.CollegeAdmin.Users}`, icon: 'groups_2' },
-    { label: 'Academic Structure', route: `/${RouteAddress.CollegeAdmin.AcademicStructure}`, icon: 'account_tree' },
+    { label: 'Classes Management', route: `/${RouteAddress.CollegeAdmin.ClassesManagement}`, icon: 'account_tree' },
     { label: 'Assessment Builder', route: `/${RouteAddress.CollegeAdmin.AssessmentBuilder}`, icon: 'assignment' },
     { label: 'Reports', route: `/${RouteAddress.CollegeAdmin.Reports}`, icon: 'bar_chart' }
   ];

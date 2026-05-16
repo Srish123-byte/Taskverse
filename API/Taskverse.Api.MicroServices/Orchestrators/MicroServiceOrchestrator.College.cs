@@ -48,6 +48,42 @@ public partial class MicroServiceOrchestrator
         return await Get<List<RegistrationBatchModel>>(url);
     }
 
+    public async Task<ObjectResult> GetCollegePendingUsers(string collegeId)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/users/pending";
+        return await Get<List<PendingUserModel>>(url);
+    }
+
+    public async Task<ObjectResult> GetCollegeAdminPendingUsers(string collegeAdminUserId)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/college-admins/{collegeAdminUserId}/users/pending";
+        return await Get<List<PendingUserModel>>(url);
+    }
+
+    public async Task<ObjectResult> CreateCollegeClass(string collegeId, CreateCollegeClassModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/classes";
+        return await Post<CollegeClassSummaryModel>(url, model);
+    }
+
+    public async Task<ObjectResult> CreateCollegeBatch(string collegeId, string classId, CreateCollegeBatchModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/classes/{classId}/batches";
+        return await Post<CollegeBatchSummaryModel>(url, model);
+    }
+
+    public async Task<ObjectResult> ApproveCollegeUser(string collegeId, string userId, CollegeUserActionModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/users/{userId}/approve";
+        return await Post<object>(url, model);
+    }
+
+    public async Task<ObjectResult> RejectCollegeUser(string collegeId, string userId, CollegeUserActionModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/users/{userId}/reject";
+        return await Post<object>(url, model);
+    }
+
     public async Task<ObjectResult> ApproveCollege(string collegeId, CollegeActionModel model)
     {
         var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/approve";

@@ -38,6 +38,8 @@ public class AuthControllerTests
             UserId: "user-123",
             Email: "john.doe@example.com",
             FirstName: "John",
+            CollegeName: "Test University",
+            CollegeId: "college-456",
             LastName: "Doe",
             Roles: ["Student"],
             Status: "APPROVED");

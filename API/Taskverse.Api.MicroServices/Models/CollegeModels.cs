@@ -48,3 +48,37 @@ public record RegistrationBatchModel(
     string ClassId,
     string CollegeId,
     string Name);
+
+public record CreateCollegeClassModel(
+    string Name,
+    string? AcademicYear,
+    string? Department);
+
+public record CreateCollegeBatchModel(
+    string Name,
+    int? Capacity);
+
+public record CollegeUserActionModel(
+    string PerformedBy,
+    Guid? PerformedByUserId,
+    string? Reason);
+
+public record CollegeClassSummaryModel(
+    string ClassId,
+    string CollegeId,
+    string Name,
+    string? AcademicYear,
+    string? Department,
+    int TotalStudents,
+    int TotalCapacity,
+    DateTime CreatedAt,
+    List<CollegeBatchSummaryModel> Batches);
+
+public record CollegeBatchSummaryModel(
+    string BatchId,
+    string ClassId,
+    string CollegeId,
+    string Name,
+    int Capacity,
+    int StudentCount,
+    DateTime CreatedAt);

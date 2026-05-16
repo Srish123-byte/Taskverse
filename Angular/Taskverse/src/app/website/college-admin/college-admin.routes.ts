@@ -17,7 +17,7 @@ const routes: Routes = [
       { path: 'dashboard', component: DashboardComponent },
       { path: 'approvals', component: UserApprovalsComponent },
       { path: 'users', component: UserManagementComponent },
-      { path: 'academic-structure', component: AcademicStructureComponent },
+      { path: 'classes-management', component: AcademicStructureComponent },
       { path: 'assessment-builder', component: AssessmentBuilderComponent },
       { path: 'reports', component: ReportsComponent },
       { path: 'settings', component: SettingsComponent }

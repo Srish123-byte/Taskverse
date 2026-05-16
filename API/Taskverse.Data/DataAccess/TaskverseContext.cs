@@ -131,6 +131,7 @@ public class TaskverseContext : DbContext
                 .HasForeignKey(c => c.CollegeId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_classes_college");
+
         });
 
         // Configure Batch entity
@@ -151,7 +152,7 @@ public class TaskverseContext : DbContext
 
             // Foreign key: batches.class_id -> classes.class_id
             entity.HasOne<Class>()
-                .WithMany()
+                .WithMany(c => c.Batches)
                 .HasForeignKey(b => b.ClassId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_batches_class");
@@ -238,6 +239,19 @@ public class TaskverseContext : DbContext
         {
             entity.ToTable("students");
             entity.HasKey(s => s.StudentId);
+            entity.Property(s => s.StudentId).HasColumnName("student_id");
+            entity.Property(s => s.UserId).HasColumnName("user_id");
+            entity.Property(s => s.CollegeId).HasColumnName("college_id");
+            entity.Property(s => s.ClassId).HasColumnName("class_id");
+            entity.Property(s => s.BatchId).HasColumnName("batch_id");
+            entity.Property(s => s.FullName).HasColumnName("full_name");
+            entity.Property(s => s.Email).HasColumnName("email");
+            entity.Property(s => s.StatusId).HasColumnName("status_id");
+            entity.Property(s => s.CreatedAt).HasColumnName("created_at");
+            entity.Property(s => s.ModifiedAt).HasColumnName("modified_at");
+            entity.Property(s => s.ApprovedBy).HasColumnName("approved_by");
+
+            entity.HasIndex(s => s.ClassId).IsUnique();
 
             entity.HasOne(s => s.User)
                   .WithOne()
@@ -247,8 +261,14 @@ public class TaskverseContext : DbContext
                   .WithMany()
                   .HasForeignKey(s => s.CollegeId);
 
+            entity.HasOne(s => s.Class)
+                  .WithOne(c => c.Student)
+                  .HasForeignKey<Student>(s => s.ClassId)
+                  .OnDelete(DeleteBehavior.SetNull)
+                  .HasConstraintName("fk_students_class");
+
             entity.HasOne(s => s.Batch)
-                  .WithMany()
+                  .WithMany(b => b.Students)
                   .HasForeignKey(s => s.BatchId);
 
             // Map enum to int column
@@ -262,6 +282,15 @@ public class TaskverseContext : DbContext
         {
             entity.ToTable("trainers");
             entity.HasKey(t => t.TrainerId);
+            entity.Property(t => t.TrainerId).HasColumnName("trainer_id");
+            entity.Property(t => t.UserId).HasColumnName("user_id");
+            entity.Property(t => t.CollegeId).HasColumnName("college_id");
+            entity.Property(t => t.FullName).HasColumnName("full_name");
+            entity.Property(t => t.Email).HasColumnName("email");
+            entity.Property(t => t.StatusId).HasColumnName("status_id");
+            entity.Property(t => t.ApprovedBy).HasColumnName("approved_by");
+            entity.Property(t => t.CreatedAt).HasColumnName("created_at");
+            entity.Property(t => t.ModifiedAt).HasColumnName("modified_at");
 
             entity.HasOne(t => t.User)
                   .WithOne()
@@ -282,6 +311,8 @@ public class TaskverseContext : DbContext
         {
             entity.ToTable("trainer_classes");
             entity.HasKey(tc => new { tc.TrainerId, tc.ClassId });
+            entity.Property(tc => tc.TrainerId).HasColumnName("trainer_id");
+            entity.Property(tc => tc.ClassId).HasColumnName("class_id");
 
             entity.HasOne(tc => tc.Trainer)
                   .WithMany(t => t.TrainerClasses)
@@ -296,6 +327,8 @@ public class TaskverseContext : DbContext
         {
             entity.ToTable("trainer_batches");
             entity.HasKey(tb => new { tb.TrainerId, tb.BatchId });
+            entity.Property(tb => tb.TrainerId).HasColumnName("trainer_id");
+            entity.Property(tb => tb.BatchId).HasColumnName("batch_id");
 
             entity.HasOne(tb => tb.Trainer)
                   .WithMany(t => t.TrainerBatches)
