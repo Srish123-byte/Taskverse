@@ -223,10 +223,6 @@ public class Startup
         // Business Orchestrators
         services.AddScoped<IAuthOrchestrator, AuthOrchestrator>();
         services.AddScoped<IUsersOrchestrator, UsersOrchestrator>();
-        services.AddScoped<IExamOrchestrator, ExamOrchestrator>();
-        services.AddScoped<IAssessmentOrchestrator, AssessmentOrchestrator>();
-        services.AddScoped<IProctorOrchestrator, ProctorOrchestrator>();
-        services.AddScoped<IReportsOrchestrator, ReportsOrchestrator>();
         services.AddScoped<ISuperAdminOrchestrator, SuperAdminOrchestrator>();
         services.AddScoped<ICollegeAdminOrchestrator, CollegeAdminOrchestrator>();
     }

@@ -33,32 +33,6 @@ public class CreateUserRequestModel
     public string Password { get; set; } = string.Empty;
 }
 
-public class UpdateUserRequestModel
-{
-    public string? FullName { get; set; }
-    public string? Phone { get; set; }
-    public Guid? CollegeId { get; set; }
-    public Guid? BatchId { get; set; }
-    public Guid? ClassId { get; set; }
-    public string? Status { get; set; }
-}
-
-public class UserSearchRequestModel
-{
-    public string? Email { get; set; }
-    public string? Role { get; set; }
-    public bool? IsActive { get; set; }
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
-}
-
-public class PagedUserResponseModel
-{
-    public List<UserResponseModel> Items { get; set; } = [];
-    public int TotalCount { get; set; }
-    public int PageNumber { get; set; }
-    public int PageSize { get; set; }
-}
 
 public class RegistrationCollegeResponseModel
 {

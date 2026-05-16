@@ -18,16 +18,6 @@ public static class UserMappings
         Password  = model.Password
     };
 
-    public static UpdateUserDto ToDto(this UpdateUserRequestModel model) => new()
-    {
-        FullName  = model.FullName,
-        Phone     = model.Phone,
-        CollegeId = model.CollegeId,
-        BatchId   = model.BatchId,
-        ClassId   = model.ClassId,
-        Status    = model.Status
-    };
-
     public static UserResponseModel ToResponseModel(this UserDto dto) => new()
     {
         UserId    = dto.UserId,
@@ -42,14 +32,6 @@ public static class UserMappings
         Status    = dto.Status,
         CreatedAt = dto.CreatedAt,
         ModifiedAt = dto.ModifiedAt
-    };
-
-    public static PagedUserResponseModel ToResponseModel(this PagedUserDto dto) => new()
-    {
-        Items      = dto.Items.Select(u => u.ToResponseModel()).ToList(),
-        TotalCount = dto.TotalCount,
-        PageNumber = dto.PageNumber,
-        PageSize   = dto.PageSize
     };
 
     public static RegistrationCollegeResponseModel ToResponseModel(this RegistrationCollegeDto dto) => new()
