@@ -14,7 +14,7 @@ import {
   CLASS_OR_BATCH_NAME_HINT,
   CLASS_OR_BATCH_NAME_MAX_LENGTH,
   classOrBatchNameValidator
-} from '../../../common/validators/name-restrictions.validator';
+} from '../../../common/validators/class-batch-name-creation.validators';
 
 interface BatchViewModel {
   name: string;

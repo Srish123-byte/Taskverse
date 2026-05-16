@@ -1,5 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { take } from 'rxjs/operators';
@@ -17,11 +17,14 @@ import { Session } from '../../../common/services/session/session.service';
 
 export type AuthMode = 'login' | 'register';
 
-const passwordMatchValidator: ValidatorFn = (group: AbstractControl): ValidationErrors | null => {
-  const pw = group.get('password')?.value;
-  const cpw = group.get('confirmPassword')?.value;
-  return pw && cpw && pw !== cpw ? { passwordMismatch: true } : null;
-};
+import {
+  noSpecialCharsValidator,
+  strictEmailValidator,
+  passwordMatchValidator,
+  phoneValidator,
+  FULL_NAME_MAX_LENGTH,
+  PHONE_MAX_LENGTH
+} from '../../../common/validators/registration.validators';
 
 @Component({
   selector: 'app-login',
@@ -73,9 +76,21 @@ export class LoginComponent implements OnInit, OnDestroy {
     });
 
     this.registerForm = this.fb.group({
-      fullName: ['', [Validators.required, Validators.minLength(2)]],
-      email: ['', [Validators.required, Validators.email]],
-      phone: [''],
+      fullName: ['', [
+        Validators.required,
+        Validators.minLength(2),
+        Validators.maxLength(FULL_NAME_MAX_LENGTH),
+        noSpecialCharsValidator
+      ]],
+      email: ['', [
+        Validators.required,
+        Validators.email,
+        strictEmailValidator
+      ]],
+      phone: ['', [
+        Validators.required,
+        phoneValidator
+      ]],
       role: ['Student', Validators.required],
       collegeId: [''],
       collegeName: [''],

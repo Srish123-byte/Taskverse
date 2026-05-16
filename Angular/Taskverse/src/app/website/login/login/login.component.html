@@ -36,21 +36,26 @@
     <form *ngIf="mode === 'register'" [formGroup]="registerForm" (ngSubmit)="onRegister()" novalidate>
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Full Name</mat-label>
-        <input matInput formControlName="fullName" autocomplete="name" id="reg-full-name" />
+        <input matInput formControlName="fullName" autocomplete="name" id="reg-full-name" maxlength="50" />
+        <mat-hint align="end">{{ rFullName?.value?.length ?? 0 }}/50</mat-hint>
         <mat-error *ngIf="rFullName?.hasError('required')">Full name is required</mat-error>
         <mat-error *ngIf="rFullName?.hasError('minlength')">Minimum 2 characters</mat-error>
+        <mat-error *ngIf="rFullName?.hasError('maxlength')">Full name must not exceed 50 characters</mat-error>
+        <mat-error *ngIf="rFullName?.hasError('specialChars')">Special characters are not allowed</mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Email</mat-label>
         <input matInput type="email" formControlName="email" autocomplete="email" id="reg-email" />
         <mat-error *ngIf="rEmail?.hasError('required')">Email is required</mat-error>
-        <mat-error *ngIf="rEmail?.hasError('email')">Enter a valid email address</mat-error>
+        <mat-error *ngIf="rEmail?.hasError('email') || rEmail?.hasError('strictEmail')">Enter a valid email address containing @ and ending with .com</mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Phone (optional)</mat-label>
-        <input matInput type="tel" formControlName="phone" autocomplete="tel" id="reg-phone" />
+        <mat-label>Phone</mat-label>
+        <input matInput type="tel" formControlName="phone" autocomplete="tel" id="reg-phone" maxlength="11" />
+        <mat-error *ngIf="rPhone?.hasError('required')">Phone number is required</mat-error>
+        <mat-error *ngIf="rPhone?.hasError('pattern')">Phone must be digits only, maximum 11 digits</mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="full-width">
