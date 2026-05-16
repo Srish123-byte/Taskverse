@@ -1,171 +1,233 @@
-<div class="class-management-page">
-  <app-dashboard-loader
-    *ngIf="isLoading"
-    tone="dark"
-    title="Loading classes"
-    copy="Preparing your class and batch configuration view.">
-  </app-dashboard-loader>
+<div class="page-container">
+  <div class="page-eyebrow">College Admin</div>
+  <h2 class="page-title">Class &amp; Batch Configuration</h2>
+  <p class="page-welcome">Manage institutional hierarchy and capacity mapping with live class data from the college admin service.</p>
 
-  <ng-container *ngIf="!isLoading">
-    <header class="page-hero">
+  <div class="page-content classes-management-page">
+    <section class="hero-shell">
       <div class="hero-copy">
-        <span class="hero-eyebrow">Classes Management</span>
-        <h1>Class &amp; Batch Configuration</h1>
-        <p>Organize {{ institutionName }} by creating classes and managing student batches for assessments.</p>
+        <span class="hero-kicker">Classes Management</span>
+        <h3>Organize classes, batches, and seat utilization from one dashboard.</h3>
+        <p>Use the live create flow to add a class now, and wire the remaining batch actions afterward.</p>
       </div>
 
       <div class="hero-actions">
-        <button type="button" class="secondary-action" (click)="toggleClassForm()">
+        <button type="button" class="ghost-action">
           <mat-icon>add_circle</mat-icon>
-          <span>{{ isClassFormOpen ? 'Hide Class Form' : 'Add New Class' }}</span>
+          <span>Create Batch</span>
+        </button>
+        <button type="button" class="primary-action" (click)="openCreateClassForm()">
+          <mat-icon>school</mat-icon>
+          <span>Create Class</span>
         </button>
       </div>
-    </header>
-
-    <section class="metrics-grid">
-      <article *ngFor="let card of metricCards" class="metric-card" [ngClass]="'metric-card-' + card.accent">
-        <div class="metric-icon">
-          <mat-icon>{{ card.icon }}</mat-icon>
-        </div>
-        <div class="metric-copy">
-          <strong>{{ card.value }}</strong>
-          <span>{{ card.label }}</span>
-        </div>
-      </article>
     </section>
 
-    <section *ngIf="isClassFormOpen" class="form-panel">
-      <div class="panel-heading">
-        <div>
-          <h2>Create Class</h2>
-          <p>Add a new class and assign its academic year and department.</p>
+    <div *ngIf="errorMessage && !isLoading" class="page-alert page-alert-error">{{ errorMessage }}</div>
+
+    <section class="table-shell">
+      <div class="table-header">
+        <div class="section-title">
+          <h3>Active Classes</h3>
+          <p>Live classes returned by the current CollegeAdminController and MS-backed flow.</p>
+        </div>
+
+        <div class="header-actions" aria-label="Table actions">
+          <button type="button" class="icon-button">
+            <mat-icon>filter_alt</mat-icon>
+          </button>
+          <button type="button" class="icon-button">
+            <mat-icon>download</mat-icon>
+          </button>
         </div>
       </div>
 
-      <form class="form-grid" [formGroup]="classForm" (ngSubmit)="createClass()">
-        <mat-form-field appearance="outline">
-          <mat-label>Class name</mat-label>
-          <input matInput formControlName="name" placeholder="CSE 2025">
-        </mat-form-field>
+      <app-dashboard-loader
+        *ngIf="isLoading"
+        class="classes-loader"
+        tone="dark"
+        title="Loading classes"
+        copy="Preparing your live class management workspace.">
+      </app-dashboard-loader>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Academic year</mat-label>
-          <input matInput formControlName="academicYear" placeholder="2025">
-        </mat-form-field>
+      <ng-container *ngIf="!isLoading">
+        <div *ngIf="classes.length > 0" class="table-head">
+          <span>Class Name &amp; Year</span>
+          <span>Description</span>
+          <span>Batches</span>
+          <span>Student Capacity</span>
+          <span>Actions</span>
+        </div>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Department</mat-label>
-          <input matInput formControlName="department" placeholder="Engineering">
-        </mat-form-field>
+        <article *ngFor="let classItem of classes; trackBy: trackByClassId" #classBlock class="class-block">
+          <div class="class-row">
+            <div class="class-cell class-title-cell">
+              <div class="class-icon">{{ getBadge(classItem) }}</div>
+              <div>
+                <strong>{{ classItem.name }}</strong>
+                <span>{{ classItem.academicYear || 'Academic year not set' }}</span>
+              </div>
+            </div>
 
-        <div class="form-actions">
-          <button type="submit" class="primary-action" [disabled]="isSubmittingClass">
-            <mat-icon>school</mat-icon>
-            <span>{{ isSubmittingClass ? 'Creating...' : 'Create Class' }}</span>
+            <div class="class-cell">
+              <span class="department-pill">{{ classItem.department || 'No description added' }}</span>
+            </div>
+
+            <div class="class-cell batch-pill-group">
+              <span *ngFor="let batch of getBatchTokens(classItem)" class="batch-pill">{{ batch }}</span>
+              <span *ngIf="classItem.batches.length === 0" class="empty-inline-copy">No batches yet</span>
+            </div>
+
+            <div class="class-cell capacity-cell">
+              <strong>{{ getCapacitySummary(classItem) }}</strong>
+              <span>{{ getCapacityPercent(classItem) }}%</span>
+              <div class="progress-track">
+                <span class="progress-bar" [style.width.%]="getCapacityPercent(classItem)"></span>
+              </div>
+            </div>
+
+            <div class="class-cell class-actions-cell">
+              <button type="button" class="icon-button icon-button-plain">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <div class="batch-cards">
+            <article
+              *ngFor="let batchCard of getBatchCards(classItem)"
+              class="batch-card"
+              [ngClass]="'batch-card-' + batchCard.variant">
+              <ng-container *ngIf="batchCard.variant === 'live'; else draftBatch">
+                <div class="batch-card-top">
+                  <div>
+                    <strong>{{ batchCard.name }}</strong>
+                    <span>{{ batchCard.subtitle }}</span>
+                  </div>
+                  <mat-icon>verified</mat-icon>
+                </div>
+
+                <div class="batch-metrics">
+                  <div>
+                    <label>Students</label>
+                    <strong>{{ batchCard.students }}</strong>
+                  </div>
+                  <div>
+                    <label>Status</label>
+                    <strong class="status-live">{{ batchCard.status }}</strong>
+                  </div>
+                </div>
+
+                <div class="batch-actions">
+                  <button type="button" class="mini-action mini-action-muted">Settings</button>
+                  <button type="button" class="mini-action mini-action-primary">Manage</button>
+                </div>
+              </ng-container>
+
+              <ng-template #draftBatch>
+                <div class="draft-batch-copy">
+                  <div class="draft-badge">
+                    <mat-icon>add</mat-icon>
+                  </div>
+                  <strong>{{ batchCard.name }}</strong>
+                  <span>{{ batchCard.subtitle }}</span>
+                </div>
+              </ng-template>
+            </article>
+          </div>
+        </article>
+
+        <div *ngIf="classes.length === 0" class="empty-state">
+          <mat-icon>school</mat-icon>
+          <strong>No classes found</strong>
+          <p>Create your first class to begin using the live college admin flow.</p>
+        </div>
+      </ng-container>
+    </section>
+  </div>
+
+  <div *ngIf="isCreateClassOpen" class="modal-backdrop" (click)="closeCreateClassForm()">
+    <section class="create-class-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>Create New Class</h3>
+          <p>Configure structural details for the new academic batch.</p>
+        </div>
+        <button type="button" class="close-button" (click)="closeCreateClassForm()" aria-label="Close create class form">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <form [formGroup]="createClassForm" (ngSubmit)="submitCreateClass()">
+        <div class="modal-body">
+          <div *ngIf="createClassErrorMessage" class="form-error-banner">
+            {{ createClassErrorMessage }}
+          </div>
+
+          <label class="form-field">
+            <span>Class Name</span>
+            <input
+              type="text"
+              formControlName="name"
+              [attr.maxlength]="classNameMaxLength"
+              placeholder="e.g. CSE-AI/ML">
+            <small class="field-hint">
+              {{ classNameHint }}
+            </small>
+            <small *ngIf="createClassForm.controls.name.touched && createClassForm.controls.name.errors?.['required']">
+              Class name is required.
+            </small>
+            <small *ngIf="createClassForm.controls.name.touched && createClassForm.controls.name.errors?.['minlength']">
+              Class name must be at least 2 characters.
+            </small>
+            <small *ngIf="createClassForm.controls.name.touched && createClassForm.controls.name.errors?.['restrictedNameLength']">
+              Class name can be at most {{ classNameMaxLength }} characters.
+            </small>
+            <small *ngIf="createClassForm.controls.name.touched && createClassForm.controls.name.errors?.['restrictedNamePattern']">
+              Only letters, numbers, "/" and "-" are allowed.
+            </small>
+          </label>
+
+          <label class="form-field">
+            <span>Academic Year</span>
+            <select formControlName="academicYear">
+              <option value="" disabled>Select academic year</option>
+              <option *ngFor="let year of yearOptions" [value]="year">{{ year }}</option>
+            </select>
+            <small *ngIf="createClassForm.controls.academicYear.touched && createClassForm.controls.academicYear.invalid">
+              Academic year is required.
+            </small>
+          </label>
+
+          <label class="form-field">
+            <span>Description (Optional)</span>
+            <textarea
+              rows="4"
+              formControlName="description"
+              placeholder="Brief details about the class curriculum or specific requirements..."></textarea>
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="footer-action footer-action-muted" (click)="closeCreateClassForm()">Cancel</button>
+          <button type="submit" class="footer-action footer-action-primary" [disabled]="isSubmittingClass">
+            {{ isSubmittingClass ? 'Submitting...' : 'Create Class' }}
           </button>
         </div>
       </form>
     </section>
+  </div>
 
-    <div *ngIf="successMessage" class="alert alert-success">{{ successMessage }}</div>
-    <div *ngIf="errorMessage" class="alert alert-error">{{ errorMessage }}</div>
-
-    <section class="toolbar">
-      <div class="filter-tabs">
-        <button
-          *ngFor="let department of departmentFilters"
-          type="button"
-          class="filter-tab"
-          [class.filter-tab-active]="selectedDepartment === department"
-          (click)="selectDepartment(department)">
-          {{ department }}
-        </button>
+  <div *ngIf="isSuccessDialogOpen" class="modal-backdrop" (click)="closeSuccessDialog()">
+    <section class="success-dialog" (click)="$event.stopPropagation()">
+      <div class="success-dialog-icon">
+        <mat-icon>check_circle</mat-icon>
       </div>
-
-      <mat-form-field appearance="outline" class="sort-field">
-        <mat-label>Sort by</mat-label>
-        <mat-select [(value)]="selectedSort">
-          <mat-option *ngFor="let option of sortOptions" [value]="option.value">
-            {{ option.label }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
+      <h3>Class Created</h3>
+      <p>{{ successMessage }}</p>
+      <button type="button" class="footer-action footer-action-primary success-dialog-action" (click)="closeSuccessDialog()">
+        Continue
+      </button>
     </section>
-
-    <section class="classes-table">
-      <div class="table-head">
-        <span>Class Name &amp; Year</span>
-        <span>Department</span>
-        <span>Batches</span>
-        <span>Total Students</span>
-        <span>Action</span>
-      </div>
-
-      <article *ngFor="let item of visibleClasses; trackBy: trackByClassId" class="class-row">
-        <div class="class-cell class-copy">
-          <div class="class-icon">
-            <mat-icon>library_books</mat-icon>
-          </div>
-          <div>
-            <strong>{{ item.name }}</strong>
-            <span>{{ item.academicYear || 'Year not set' }}</span>
-            <small>ID: {{ item.classId | slice:0:8 }}</small>
-          </div>
-        </div>
-
-        <div class="class-cell">
-          <span class="department-chip">{{ item.department || 'General' }}</span>
-        </div>
-
-        <div class="class-cell batch-cluster">
-          <span *ngFor="let batch of item.batches | slice:0:4; trackBy: trackByBatchId" class="batch-pill">
-            {{ batch.name }}
-          </span>
-          <span *ngIf="item.batches.length === 0" class="batch-empty">No batches yet</span>
-        </div>
-
-        <div class="class-cell student-summary">
-          <strong>{{ item.totalStudents }}</strong>
-          <div class="progress-track">
-            <span class="progress-bar" [style.width.%]="getCapacityUsage(item)"></span>
-          </div>
-          <small>{{ item.totalCapacity > 0 ? getCapacityUsage(item) + '% capacity used' : 'No capacity set yet' }}</small>
-        </div>
-
-        <div class="class-cell action-cell">
-          <button type="button" class="row-action" (click)="openBatchForm(item.classId)">
-            <mat-icon>group_add</mat-icon>
-            <span>{{ isBatchFormOpenFor(item.classId) ? 'Close Batch Form' : 'Add Batch' }}</span>
-          </button>
-        </div>
-
-        <div *ngIf="isBatchFormOpenFor(item.classId)" class="batch-form-row">
-          <form class="form-grid batch-form-grid" [formGroup]="batchForm" (ngSubmit)="createBatch(item)">
-            <mat-form-field appearance="outline">
-              <mat-label>Batch name</mat-label>
-              <input matInput formControlName="name" placeholder="A">
-            </mat-form-field>
-
-            <mat-form-field appearance="outline">
-              <mat-label>Capacity</mat-label>
-              <input matInput type="number" formControlName="capacity" placeholder="60">
-            </mat-form-field>
-
-            <div class="form-actions">
-              <button type="submit" class="primary-action" [disabled]="isSubmittingBatch">
-                <mat-icon>groups</mat-icon>
-                <span>{{ isSubmittingBatch ? 'Creating...' : 'Create Batch' }}</span>
-              </button>
-            </div>
-          </form>
-        </div>
-      </article>
-
-      <div *ngIf="visibleClasses.length === 0" class="empty-state">
-        <mat-icon>account_tree</mat-icon>
-        <strong>No classes found</strong>
-        <p>Create your first class to start organizing batches.</p>
-      </div>
-    </section>
-  </ng-container>
+  </div>
 </div>

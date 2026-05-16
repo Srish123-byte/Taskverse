@@ -1,5 +1,6 @@
 import { HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
+import { RoleType } from '../../enums/role-type.enum';
 import { Session } from '../session/session.service';
 import { AppConfig } from '../../../app.config';
 
@@ -61,8 +62,13 @@ export class HttpHelperService {
       headers = headers.append('UserRole', role);
     }
 
-    const collegeId = this.session.user?.collegeId;
-    if (collegeId && collegeId !== 'null' && collegeId.trim().length > 0) {
+    const collegeId = this.session.collegeId;
+    const shouldSendCollegeId =
+      this.session.role === RoleType.CollegeAdmin ||
+      this.session.role === RoleType.Trainer ||
+      this.session.role === RoleType.Student;
+
+    if (shouldSendCollegeId && collegeId && collegeId !== 'null' && collegeId.trim().length > 0) {
       headers = headers.append('CollegeId', collegeId);
     }
 

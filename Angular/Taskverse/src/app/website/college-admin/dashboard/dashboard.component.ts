@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { RouteAddress } from '../../../common/constants/routes.constants';
 import { Session } from '../../../common/services/session/session.service';
 
 interface DashboardMetricCard {
@@ -32,6 +33,7 @@ interface BatchRanking {
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit {
+  readonly routeAddress = RouteAddress;
   userName = '';
   isLoading = false;
 

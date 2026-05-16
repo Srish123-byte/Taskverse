@@ -1,23 +1,27 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, ElementRef, OnDestroy, OnInit, QueryList, ViewChildren, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, Validators } from '@angular/forms';
-import { finalize, take } from 'rxjs/operators';
+import { NavigationEnd, Router } from '@angular/router';
+import { Subscription, filter, startWith } from 'rxjs';
+import { finalize, take, timeout } from 'rxjs/operators';
 import {
   ClassConfiguration,
   CollegeAdminService,
   CollegeBatchSummary,
-  CollegeClassSummary,
-  CreateCollegeBatchRequest,
-  CreateCollegeClassRequest
+  CollegeClassSummary
 } from '../../../common/services/api/college-admin.service';
-import { Session } from '../../../common/services/session/session.service';
+import {
+  CLASS_OR_BATCH_NAME_HINT,
+  CLASS_OR_BATCH_NAME_MAX_LENGTH,
+  classOrBatchNameValidator
+} from '../../../common/validators/name-restrictions.validator';
 
-type ClassSortOption = 'latest' | 'name' | 'students';
-
-interface MetricCard {
-  label: string;
-  value: string;
-  icon: string;
-  accent: 'blue' | 'gold' | 'sky' | 'teal';
+interface BatchViewModel {
+  name: string;
+  subtitle: string;
+  students: number;
+  status: 'Active' | 'Pending';
+  variant: 'live' | 'draft';
 }
 
 @Component({
@@ -26,18 +30,22 @@ interface MetricCard {
   templateUrl: './academic-structure.component.html',
   styleUrl: './academic-structure.component.scss'
 })
-export class AcademicStructureComponent implements OnInit {
+export class AcademicStructureComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
+  @ViewChildren('classBlock') private classBlocks!: QueryList<ElementRef<HTMLElement>>;
+  readonly classNameHint = CLASS_OR_BATCH_NAME_HINT;
+  readonly classNameMaxLength = CLASS_OR_BATCH_NAME_MAX_LENGTH;
 
   isLoading = true;
+  isCreateClassOpen = false;
   isSubmittingClass = false;
-  isSubmittingBatch = false;
-  isClassFormOpen = false;
-  selectedDepartment = 'All Classes';
-  selectedSort: ClassSortOption = 'latest';
-  batchFormClassId: string | null = null;
+  isSuccessDialogOpen = false;
   errorMessage = '';
+  createClassErrorMessage = '';
   successMessage = '';
+  private hasBroughtFirstClassIntoView = false;
+  private routeSubscription?: Subscription;
   classConfiguration: ClassConfiguration = {
     totals: {
       totalClasses: 0,
@@ -48,116 +56,93 @@ export class AcademicStructureComponent implements OnInit {
     classes: []
   };
 
-  readonly sortOptions: { value: ClassSortOption; label: string }[] = [
-    { value: 'latest', label: 'Latest Created' },
-    { value: 'name', label: 'Class Name' },
-    { value: 'students', label: 'Students' }
-  ];
+  readonly yearOptions = Array.from({ length: 9 }, (_, index) => `${2024 + index}`);
 
-  readonly classForm = this.fb.group({
-    name: ['', [Validators.required, Validators.minLength(2)]],
-    academicYear: ['', [Validators.required, Validators.minLength(4)]],
-    department: ['', [Validators.required, Validators.minLength(2)]]
-  });
-
-  readonly batchForm = this.fb.group({
-    name: ['', [Validators.required, Validators.minLength(1)]],
-    capacity: [null as number | null, [Validators.min(0)]]
+  readonly createClassForm = this.fb.group({
+    name: ['', [Validators.required, Validators.minLength(2), classOrBatchNameValidator()]],
+    academicYear: ['', [Validators.required]],
+    description: ['']
   });
 
   constructor(
     private readonly collegeAdminService: CollegeAdminService,
-    private readonly session: Session
+    private readonly router: Router,
+    private readonly changeDetectorRef: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
-    this.loadConfiguration();
-  }
+    this.routeSubscription = this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe(event => {
+        if (event.urlAfterRedirects.endsWith('/college-admin/classes-management') &&
+            (this.classConfiguration.classes.length === 0 || this.errorMessage)) {
+          this.loadConfiguration();
+        }
+      });
 
-  get metricCards(): MetricCard[] {
-    return [
-      { label: 'Total Classes', value: `${this.classConfiguration.totals.totalClasses}`, icon: 'school', accent: 'blue' },
-      { label: 'Total Batches', value: `${this.classConfiguration.totals.totalBatches}`, icon: 'groups', accent: 'gold' },
-      { label: 'Total Students', value: this.formatNumber(this.classConfiguration.totals.totalStudents), icon: 'person', accent: 'sky' },
-      { label: 'Capacity Utilization', value: `${this.classConfiguration.totals.capacityUtilization}%`, icon: 'verified', accent: 'teal' }
-    ];
-  }
-
-  get departmentFilters(): string[] {
-    const departments = this.classConfiguration.classes
-      .map(item => item.department?.trim())
-      .filter((item): item is string => !!item);
-
-    return ['All Classes', ...new Set(departments)];
-  }
-
-  get visibleClasses(): CollegeClassSummary[] {
-    const items = this.classConfiguration.classes.filter(item =>
-      this.selectedDepartment === 'All Classes'
-        ? true
-        : (item.department ?? '').toLowerCase() === this.selectedDepartment.toLowerCase());
-
-    return [...items].sort((left, right) => {
-      switch (this.selectedSort) {
-        case 'name':
-          return left.name.localeCompare(right.name);
-        case 'students':
-          return right.totalStudents - left.totalStudents;
-        case 'latest':
-        default:
-          return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
-      }
-    });
-  }
-
-  get institutionName(): string {
-    return this.session.user?.collegeName?.trim() || 'your college';
-  }
-
-  selectDepartment(department: string): void {
-    this.selectedDepartment = department;
-  }
-
-  toggleClassForm(): void {
-    this.successMessage = '';
-    this.errorMessage = '';
-
-    this.isClassFormOpen = !this.isClassFormOpen;
-
-    if (!this.isClassFormOpen) {
-      this.classForm.reset();
-      return;
+    if (this.router.url.endsWith('/college-admin/classes-management')) {
+      this.loadConfiguration();
     }
+  }
 
-    this.classForm.reset({
+  ngAfterViewInit(): void {
+    this.classBlocks.changes
+      .pipe(
+        startWith(this.classBlocks),
+        takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.bringFirstClassIntoView();
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.routeSubscription?.unsubscribe();
+  }
+
+  get classes(): CollegeClassSummary[] {
+    return this.classConfiguration.classes;
+  }
+
+  openCreateClassForm(): void {
+    this.createClassErrorMessage = '';
+    this.successMessage = '';
+    this.isCreateClassOpen = true;
+  }
+
+  closeCreateClassForm(): void {
+    this.isCreateClassOpen = false;
+    this.isSubmittingClass = false;
+    this.createClassErrorMessage = '';
+    this.createClassForm.reset({
       name: '',
       academicYear: '',
-      department: ''
+      description: ''
     });
   }
 
-  openBatchForm(classId: string): void {
+  closeSuccessDialog(): void {
+    this.isSuccessDialogOpen = false;
     this.successMessage = '';
-    this.errorMessage = '';
-    this.batchFormClassId = this.batchFormClassId === classId ? null : classId;
-    this.batchForm.reset({
-      name: '',
-      capacity: null
-    });
   }
 
-  createClass(): void {
-    if (this.classForm.invalid) {
-      this.classForm.markAllAsTouched();
+  submitCreateClass(): void {
+    if (this.createClassForm.invalid) {
+      this.createClassForm.markAllAsTouched();
       return;
     }
 
+    const formValue = this.createClassForm.getRawValue();
     this.isSubmittingClass = true;
-    this.errorMessage = '';
+    this.createClassErrorMessage = '';
     this.successMessage = '';
 
-    const request = this.classForm.getRawValue() as CreateCollegeClassRequest;
-    this.collegeAdminService.createClass(request)
+    this.collegeAdminService.createClass({
+      name: formValue.name?.trim() || '',
+      academicYear: formValue.academicYear?.trim() || '',
+      // The current API contract exposes this field as "department",
+      // while the backend reads it back as class description.
+      department: formValue.description?.trim() || undefined
+    })
       .pipe(
         take(1),
         finalize(() => {
@@ -165,59 +150,71 @@ export class AcademicStructureComponent implements OnInit {
         }))
       .subscribe({
         next: createdClass => {
-          this.classConfiguration.classes = [createdClass, ...this.classConfiguration.classes];
+          this.classConfiguration = {
+            ...this.classConfiguration,
+            classes: [createdClass, ...this.classConfiguration.classes]
+          };
           this.recalculateTotals();
-          this.classForm.reset({
-            name: '',
-            academicYear: '',
-            department: ''
-          });
-          this.isClassFormOpen = false;
           this.successMessage = `Class "${createdClass.name}" was created successfully.`;
+          this.closeCreateClassForm();
+          this.isSuccessDialogOpen = true;
         },
         error: err => {
-          this.errorMessage = err?.error?.message || 'Unable to create the class right now.';
+          this.createClassErrorMessage = err?.error?.message || 'Unable to create the class right now.';
         }
       });
   }
 
-  createBatch(classItem: CollegeClassSummary): void {
-    if (this.batchForm.invalid) {
-      this.batchForm.markAllAsTouched();
-      return;
+  getCapacityPercent(classItem: CollegeClassSummary): number {
+    if (!classItem.totalCapacity) {
+      return 0;
     }
 
-    this.isSubmittingBatch = true;
-    this.errorMessage = '';
-    this.successMessage = '';
+    return Math.min(100, Math.round((classItem.totalStudents / classItem.totalCapacity) * 100));
+  }
 
-    const request = this.batchForm.getRawValue() as CreateCollegeBatchRequest;
-    this.collegeAdminService.createBatch(classItem.classId, request)
-      .pipe(
-        take(1),
-        finalize(() => {
-          this.isSubmittingBatch = false;
-        }))
-      .subscribe({
-        next: createdBatch => {
-          const targetClass = this.classConfiguration.classes.find(item => item.classId === classItem.classId);
-          if (targetClass) {
-            targetClass.batches = [...targetClass.batches, createdBatch].sort((left, right) => left.name.localeCompare(right.name));
-            targetClass.totalCapacity += createdBatch.capacity;
-          }
+  getCapacitySummary(classItem: CollegeClassSummary): string {
+    return `${classItem.totalStudents}/${classItem.totalCapacity}`;
+  }
 
-          this.recalculateTotals();
-          this.batchFormClassId = null;
-          this.batchForm.reset({
-            name: '',
-            capacity: null
-          });
-          this.successMessage = `Batch "${createdBatch.name}" was created for ${classItem.name}.`;
-        },
-        error: err => {
-          this.errorMessage = err?.error?.message || 'Unable to create the batch right now.';
-        }
-      });
+  getBadge(classItem: CollegeClassSummary): string {
+    return classItem.name
+      .split(/\s+/)
+      .map(token => token[0] ?? '')
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'CL';
+  }
+
+  getBatchTokens(classItem: CollegeClassSummary): string[] {
+    const tokens = classItem.batches.slice(0, 3).map(batch => batch.name);
+    const remaining = classItem.batches.length - tokens.length;
+
+    if (remaining > 0) {
+      tokens.push(`+${remaining}`);
+    }
+
+    return tokens;
+  }
+
+  getBatchCards(classItem: CollegeClassSummary): BatchViewModel[] {
+    const liveCards = classItem.batches.slice(0, 2).map(batch => this.mapBatchCard(batch));
+
+    if (classItem.batches.length >= 3) {
+      liveCards.push(this.mapBatchCard(classItem.batches[2]));
+      return liveCards;
+    }
+
+    return [
+      ...liveCards,
+      {
+        name: `Create ${classItem.batches.length === 0 ? 'First Batch' : 'Next Batch'}`,
+        subtitle: 'Set up remaining students later',
+        students: 0,
+        status: 'Pending',
+        variant: 'draft'
+      }
+    ];
   }
 
   trackByClassId(_: number, item: CollegeClassSummary): string {
@@ -228,34 +225,33 @@ export class AcademicStructureComponent implements OnInit {
     return item.batchId;
   }
 
-  getCapacityUsage(item: CollegeClassSummary): number {
-    if (!item.totalCapacity) {
-      return 0;
-    }
-
-    return Math.min(100, Math.round((item.totalStudents / item.totalCapacity) * 100));
-  }
-
-  isBatchFormOpenFor(classId: string): boolean {
-    return this.batchFormClassId === classId;
+  private mapBatchCard(batch: CollegeBatchSummary): BatchViewModel {
+    return {
+      name: batch.name,
+      subtitle: `Capacity: ${batch.capacity || 0} seats`,
+      students: batch.studentCount,
+      status: 'Active',
+      variant: 'live'
+    };
   }
 
   private loadConfiguration(): void {
     this.isLoading = true;
     this.errorMessage = '';
+    this.hasBroughtFirstClassIntoView = false;
 
     this.collegeAdminService.getClassConfiguration()
       .pipe(
         take(1),
+        timeout(15000),
         finalize(() => {
           this.isLoading = false;
+          this.changeDetectorRef.detectChanges();
         }))
       .subscribe({
         next: configuration => {
           this.classConfiguration = configuration;
-          if (!this.departmentFilters.includes(this.selectedDepartment)) {
-            this.selectedDepartment = 'All Classes';
-          }
+          this.changeDetectorRef.detectChanges();
         },
         error: err => {
           this.classConfiguration = {
@@ -267,7 +263,8 @@ export class AcademicStructureComponent implements OnInit {
             },
             classes: []
           };
-          this.errorMessage = err?.error?.message || 'Unable to load classes and batches right now.';
+          this.errorMessage = err?.error?.message || 'Unable to load classes right now.';
+          this.changeDetectorRef.detectChanges();
         }
       });
   }
@@ -290,7 +287,23 @@ export class AcademicStructureComponent implements OnInit {
     };
   }
 
-  private formatNumber(value: number): string {
-    return new Intl.NumberFormat('en-US').format(value);
+  private bringFirstClassIntoView(): void {
+    if (this.hasBroughtFirstClassIntoView || this.classConfiguration.classes.length === 0) {
+      return;
+    }
+
+    const firstClass = this.classBlocks?.first?.nativeElement;
+    if (!firstClass) {
+      return;
+    }
+
+    const firstClassTop = firstClass.getBoundingClientRect().top;
+    const viewportBottomThreshold = window.innerHeight - 96;
+
+    if (firstClassTop > viewportBottomThreshold) {
+      firstClass.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    this.hasBroughtFirstClassIntoView = true;
   }
 }

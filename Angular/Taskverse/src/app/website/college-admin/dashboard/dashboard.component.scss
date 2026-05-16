@@ -11,6 +11,13 @@
   gap: 18px;
 }
 
+.intro-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .intro-eyebrow {
   display: inline-block;
   margin-bottom: 8px;
@@ -49,6 +56,13 @@
   text-decoration: none;
   cursor: pointer;
   box-shadow: 0 16px 24px rgba(39, 125, 178, 0.24);
+}
+
+.secondary-action-shell {
+  border: 1px solid rgba(143, 176, 255, 0.18);
+  background: rgba(18, 28, 52, 0.82);
+  color: #dbe7f3;
+  box-shadow: none;
 }
 
 .metrics-grid {
@@ -366,6 +380,10 @@
 @media (max-width: 780px) {
   .dashboard-intro {
     flex-direction: column;
+  }
+
+  .intro-actions {
+    width: 100%;
   }
 
   .metrics-grid {

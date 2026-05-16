@@ -18,7 +18,14 @@ public class TokenService : ITokenService
         _logger = logger;
     }
 
-    public async Task<string> GenerateTokenAsync(Guid userId, string email, string role, string firstName, string lastName)
+    public async Task<string> GenerateTokenAsync(
+        Guid userId,
+        string email,
+        string role,
+        string firstName,
+        string lastName,
+        Guid? collegeId = null,
+        string? collegeName = null)
     {
         try
         {
@@ -30,17 +37,29 @@ public class TokenService : ITokenService
             var expirationMinutes = ResolveExpiryMinutes(jwtSettings);
             var expiresAt = DateTime.UtcNow.AddMinutes(expirationMinutes);
 
+            var claims = new List<Claim>
+            {
+                new(ClaimTypes.NameIdentifier, userId.ToString()),
+                new(ClaimTypes.Email, email),
+                new(ClaimTypes.Role, role),
+                new(ClaimTypes.GivenName, firstName),
+                new(ClaimTypes.Surname, lastName),
+                new("service", "taskverse-api")
+            };
+
+            if (collegeId.HasValue)
+            {
+                claims.Add(new Claim("college_id", collegeId.Value.ToString()));
+            }
+
+            if (!string.IsNullOrWhiteSpace(collegeName))
+            {
+                claims.Add(new Claim("college_name", collegeName));
+            }
+
             var tokenDescriptor = new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity(new[]
-                {
-                    new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
-                    new Claim(ClaimTypes.Email, email),
-                    new Claim(ClaimTypes.Role, role),
-                    new Claim(ClaimTypes.GivenName, firstName),
-                    new Claim(ClaimTypes.Surname, lastName),
-                    new Claim("service", "taskverse-api")
-                }),
+                Subject = new ClaimsIdentity(claims),
                 Expires = expiresAt,
                 Issuer = jwtSettings["Issuer"],
                 Audience = jwtSettings["Audience"],

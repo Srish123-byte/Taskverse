@@ -12,10 +12,16 @@
       <span class="intro-eyebrow">Institution Dashboard</span>
       <h1>Welcome back{{ userName ? ', ' + userName : '' }}</h1>
     </div>
-    <button type="button" class="primary-action">
-      <mat-icon>add</mat-icon>
-      <span>Create New Assessment</span>
-    </button>
+    <div class="intro-actions">
+      <a class="secondary-action secondary-action-shell" [routerLink]="'/' + routeAddress.CollegeAdmin.ClassesManagement">
+        <mat-icon>add_circle</mat-icon>
+        <span>Create Batch</span>
+      </a>
+      <a class="primary-action" [routerLink]="'/' + routeAddress.CollegeAdmin.ClassesManagement">
+        <mat-icon>school</mat-icon>
+        <span>Create Class</span>
+      </a>
+    </div>
   </header>
 
   <section class="metrics-grid">

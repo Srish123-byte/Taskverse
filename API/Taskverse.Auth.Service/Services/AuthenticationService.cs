@@ -65,7 +65,14 @@ public class AuthenticationService : IAuthenticationService
 
             _logger.LogInformation($"[Login] Password verified. Generating tokens for user: {normalizedEmail}");
             var (firstName, lastName) = SplitName(user.FullName);
-            var token = await _tokenService.GenerateTokenAsync(user.Id, user.Email, user.Role, firstName, lastName);
+            var token = await _tokenService.GenerateTokenAsync(
+                user.Id,
+                user.Email,
+                user.Role,
+                firstName,
+                lastName,
+                user.CollegeId,
+                user.CollegeName);
             var refreshToken = await _tokenService.GenerateRefreshTokenAsync();
 
             _logger.LogInformation($"User logged in: {request.Email}");
@@ -108,7 +115,12 @@ public class AuthenticationService : IAuthenticationService
             }
 
             // TODO: Get user from refresh token and generate new access token
-            var newAccessToken = await _tokenService.GenerateTokenAsync(Guid.NewGuid(), "user@example.com", "Student", "Taskverse", "User");
+            var newAccessToken = await _tokenService.GenerateTokenAsync(
+                Guid.NewGuid(),
+                "user@example.com",
+                "Student",
+                "Taskverse",
+                "User");
             var newRefreshToken = await _tokenService.GenerateRefreshTokenAsync();
 
             return new RefreshTokenResponse

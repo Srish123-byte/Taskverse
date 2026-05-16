@@ -1,6 +1,7 @@
 using log4net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json.Linq;
 using Npgsql;
 using Taskverse.Api.MicroServices.Interfaces;
 using Taskverse.Api.MicroServices.Models;
@@ -395,7 +396,22 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
             return null;
         }
 
-        var property = value.GetType().GetProperty("Message");
-        return property?.GetValue(value)?.ToString();
+        if (value is string json)
+        {
+            try
+            {
+                var parsed = JObject.Parse(json);
+                return parsed["message"]?.ToString()
+                    ?? parsed["Message"]?.ToString()
+                    ?? json;
+            }
+            catch
+            {
+                return json;
+            }
+        }
+
+        var token = JToken.FromObject(value);
+        return token["message"]?.ToString() ?? token["Message"]?.ToString();
     }
 }
