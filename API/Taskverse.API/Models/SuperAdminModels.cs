@@ -45,6 +45,15 @@ public class UserActionRequestModel
     public string? Reason { get; set; }
 }
 
+public class UserSearchRequestModel
+{
+    public string? Status { get; set; }
+    public string? Role { get; set; }
+    public string? SearchTerm { get; set; }
+    public int PageNumber { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
+}
+
 public class PendingUserResponseModel
 {
     public string UserId { get; set; } = string.Empty;
@@ -54,6 +63,14 @@ public class PendingUserResponseModel
     public string Status { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public string? InstitutionName { get; set; }
+}
+
+public class PagedUserSearchResponseModel
+{
+    public List<PendingUserResponseModel> Items { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
 }
 
 public class SuperAdminDashboardResponseModel

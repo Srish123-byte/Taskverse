@@ -124,6 +124,20 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
         return models.Select(user => user.ToDto()).ToList();
     }
 
+    public async Task<PagedUsersResultDto> SearchUsers(UserSearchCriteriaDto dto)
+    {
+        _log.Debug($"SuperAdminOrchestrator.SearchUsers: status={dto.Status}, role={dto.Role}, searchTerm={dto.SearchTerm}, page={dto.PageNumber}, pageSize={dto.PageSize}");
+        var result = await _microServiceOrchestrator.SearchUsers(dto.ToMicroServiceModel());
+        result.EnsureSuccess(nameof(SearchUsers));
+
+        var model = result.DeserializeValue<PagedPendingUserResultModel>()
+            ?? throw new InvalidOperationException("SearchUsers returned empty.");
+
+        _log.Debug($"SuperAdminOrchestrator.SearchUsers: received {model.Items.Count} users, totalCount={model.TotalCount}");
+
+        return model.ToDto();
+    }
+
     public async Task<CollegeDto> ApproveCollege(string collegeId, CollegeActionDto dto) =>
         await ExecuteCollegeAction(nameof(ApproveCollege), collegeId, dto, _microServiceOrchestrator.ApproveCollege);
 

@@ -80,6 +80,18 @@ public class SuperAdminController : TaskverseBaseController
         return Ok(dto.Select(x => x.ToResponseModel()).ToList());
     }
 
+    [HttpPost("users/search")]
+    [SwaggerResponse(200, "Paged users search result", typeof(PagedUserSearchResponseModel))]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> SearchUsers([FromBody] UserSearchRequestModel model)
+    {
+        var roleCheck = EnsureSuperAdmin();
+        if (roleCheck is not null) return roleCheck;
+
+        var dto = await _superAdminOrchestrator.SearchUsers(model.ToDto());
+        return Ok(dto.ToResponseModel());
+    }
+
     [HttpPost("users/{userId}/approve")]
     [SwaggerResponse(204, "User approved")]
     [SwaggerResponse(403, "Forbidden")]

@@ -58,6 +58,21 @@ public static class SuperAdminMappings
         InstitutionName = model.InstitutionName
     };
 
+    public static UserSearchCriteriaModel ToMicroServiceModel(this UserSearchCriteriaDto dto) => new(
+        Status: dto.Status,
+        Role: dto.Role,
+        SearchTerm: dto.SearchTerm,
+        PageNumber: dto.PageNumber,
+        PageSize: dto.PageSize);
+
+    public static PagedUsersResultDto ToDto(this PagedPendingUserResultModel model) => new()
+    {
+        Items = model.Items.Select(item => item.ToDto()).ToList(),
+        TotalCount = model.TotalCount,
+        PageNumber = model.PageNumber,
+        PageSize = model.PageSize
+    };
+
     public static RecentActivityDto ToDto(this AuditLog auditLog, string performedBy) => new()
     {
         Action = auditLog.Action,

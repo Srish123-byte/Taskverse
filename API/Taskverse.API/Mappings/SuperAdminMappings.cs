@@ -24,6 +24,23 @@ public static class SuperAdminMappings
         Reason = model.Reason
     };
 
+    public static UserSearchCriteriaDto ToDto(this UserSearchRequestModel model) => new()
+    {
+        Status    = model.Status,
+        Role      = model.Role,
+        SearchTerm = model.SearchTerm,
+        PageNumber = model.PageNumber > 0 ? model.PageNumber : 1,
+        PageSize   = model.PageSize   > 0 ? model.PageSize   : 10
+    };
+
+    public static PagedUserSearchResponseModel ToResponseModel(this PagedUsersResultDto dto) => new()
+    {
+        Items      = dto.Items.Select(x => x.ToResponseModel()).ToList(),
+        TotalCount = dto.TotalCount,
+        PageNumber = dto.PageNumber,
+        PageSize   = dto.PageSize
+    };
+
     public static CollegeSearchResponseModel ToResponseModel(this CollegeSearchResultDto dto) => new()
     {
         CollegeId = dto.CollegeId,

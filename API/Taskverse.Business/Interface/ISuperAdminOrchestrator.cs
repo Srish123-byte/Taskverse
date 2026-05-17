@@ -9,6 +9,7 @@ public interface ISuperAdminOrchestrator
     Task<List<CollegeSearchResultDto>> SearchColleges(CollegeSearchDto dto);
     Task<List<CollegeDto>> GetPendingColleges();
     Task<List<PendingUserDto>> GetPendingUsers();
+    Task<PagedUsersResultDto> SearchUsers(UserSearchCriteriaDto dto);
     Task<CollegeDto> ApproveCollege(string collegeId, CollegeActionDto dto);
     Task<CollegeDto> RejectCollege(string collegeId, CollegeActionDto dto);
     Task<CollegeDto> DeactivateCollege(string collegeId, CollegeActionDto dto);

@@ -24,4 +24,13 @@ public class UsersController : ControllerBase
         var pendingUsers = await _pendingUserService.GetPendingUsers();
         return Ok(pendingUsers.Select(x => x.ToPendingUserResponseModel()).ToList());
     }
+
+    [HttpPost("search")]
+    [ProducesResponseType(typeof(PagedPendingUsersResponseModel), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedPendingUsersResponseModel>> SearchUsers(
+        [FromBody] UserSearchRequestModel request)
+    {
+        var result = await _pendingUserService.SearchUsers(request);
+        return Ok(result.ToPagedResponseModel());
+    }
 }

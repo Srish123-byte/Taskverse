@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { College, CollegeActionRequest, CollegeSearchRequest, CollegeSearchResult, PendingUser, SuperAdminDashboard, UserActionRequest } from '../../models/super-admin.model';
+import { College, CollegeActionRequest, CollegeSearchRequest, CollegeSearchResult, PagedUsersResult, PendingUser, SuperAdminDashboard, UserActionRequest, UserSearchRequest } from '../../models/super-admin.model';
 import { HttpClientService } from '../http/http-client.service';
 
 @Injectable({ providedIn: 'root' })
@@ -26,6 +26,10 @@ export class SuperAdminService {
 
   getPendingUsers(): Observable<PendingUser[]> {
     return this.http.get<PendingUser[]>(`${this.url}/users/pending`);
+  }
+
+  searchUsers(request: UserSearchRequest): Observable<PagedUsersResult> {
+    return this.http.post<PagedUsersResult>(`${this.url}/users/search`, request);
   }
 
   approveUser(userId: string, request: UserActionRequest = {}): Observable<void> {

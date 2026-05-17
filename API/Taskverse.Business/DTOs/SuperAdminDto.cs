@@ -108,3 +108,20 @@ public class UsageTrendPointDto
     public int Assessments { get; set; }
     public int StudentsAssessed { get; set; }
 }
+
+public class UserSearchCriteriaDto
+{
+    public string? Status { get; set; }
+    public string? Role { get; set; }
+    public string? SearchTerm { get; set; }
+    public int PageNumber { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
+}
+
+public class PagedUsersResultDto
+{
+    public List<PendingUserDto> Items { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+}
