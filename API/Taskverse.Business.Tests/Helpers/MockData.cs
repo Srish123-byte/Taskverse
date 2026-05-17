@@ -16,23 +16,6 @@ public static class MockData
         CreatedAt: new DateTime(2025, 1, 15, 0, 0, 0, DateTimeKind.Utc),
         UpdatedAt: null);
 
-    public static PagedUserResultModel GetPagedUserResultModel() => new(
-        Items:
-        [
-            GetUserModel(),
-            new UserModel(
-                UserId: "user-456",
-                Email: "jane.smith@example.com",
-                FirstName: "Jane",
-                LastName: "Smith",
-                Role: "Trainer",
-                IsActive: true,
-                CreatedAt: new DateTime(2025, 2, 1, 0, 0, 0, DateTimeKind.Utc),
-                UpdatedAt: null)
-        ],
-        TotalCount: 2,
-        PageNumber: 1,
-        PageSize: 20);
 
     public static ExamModel GetExamModel() => new(
         ExamId: TestConstants.ExamId,
