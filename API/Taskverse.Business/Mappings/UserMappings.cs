@@ -53,7 +53,7 @@ public static class UserMappings
             CollegeName = model.InstitutionName
         };
 
-    public static PagedUserDto ToDto(this PagedPendingUserResultModel model)
+    public static PagedUserDto ToPagedUserDto(this PagedPendingUserResultModel model)
         => new()
         {
             Items      = model.Items.Select(u => u.ToUserDto()).ToList(),
