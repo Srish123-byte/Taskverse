@@ -229,17 +229,13 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             throw new InvalidOperationException($"Student user '{user.Id}' cannot be approved without a college.");
         }
 
-        if (!user.BatchId.HasValue)
-        {
-            throw new InvalidOperationException($"Student user '{user.Id}' cannot be approved without a batch.");
-        }
-
         var existingStudent = await _context.Students
             .FirstOrDefaultAsync(student => student.UserId == user.Id);
 
         if (existingStudent is not null)
         {
             existingStudent.ClassId = user.ClassId;
+            existingStudent.BatchId = user.BatchId;
             existingStudent.Status = UserStatus.APPROVED;
             existingStudent.StatusId = (int)UserStatus.APPROVED;
             existingStudent.ModifiedAt = DateTime.UtcNow;
@@ -253,9 +249,10 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             UserId = user.Id,
             CollegeId = user.CollegeId.Value,
             ClassId = user.ClassId,
-            BatchId = user.BatchId.Value,
+            BatchId = user.BatchId,       // nullable – allowed to be null
             FullName = user.FullName,
             Email = user.Email,
+            Phone = user.Phone,
             Status = UserStatus.APPROVED,
             StatusId = (int)UserStatus.APPROVED,
             CreatedAt = DateTime.UtcNow,
@@ -290,6 +287,7 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             CollegeId = user.CollegeId.Value,
             FullName = user.FullName,
             Email = user.Email,
+            Phone = user.Phone,
             Status = UserStatus.APPROVED,
             StatusId = (int)UserStatus.APPROVED,
             CreatedAt = DateTime.UtcNow,

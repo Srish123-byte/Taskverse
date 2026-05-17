@@ -244,14 +244,23 @@ public class TaskverseContext : DbContext
             entity.Property(s => s.CollegeId).HasColumnName("college_id");
             entity.Property(s => s.ClassId).HasColumnName("class_id");
             entity.Property(s => s.BatchId).HasColumnName("batch_id");
+            entity.Property(s => s.EnrollmentNumber).HasColumnName("enrollment_number").HasMaxLength(50);
             entity.Property(s => s.FullName).HasColumnName("full_name");
             entity.Property(s => s.Email).HasColumnName("email");
+            entity.Property(s => s.Phone).HasColumnName("phone").HasMaxLength(20);
+            entity.Property(s => s.DateOfBirth).HasColumnName("date_of_birth");
             entity.Property(s => s.StatusId).HasColumnName("status_id");
+            entity.Property(s => s.CurrentStreak).HasColumnName("current_streak");
+            entity.Property(s => s.LongestStreak).HasColumnName("longest_streak");
+            entity.Property(s => s.LastAssessmentDate).HasColumnName("last_assessment_date");
+            entity.Property(s => s.TotalAssessmentsTaken).HasColumnName("total_assessments_taken");
             entity.Property(s => s.CreatedAt).HasColumnName("created_at");
             entity.Property(s => s.ModifiedAt).HasColumnName("modified_at");
             entity.Property(s => s.ApprovedBy).HasColumnName("approved_by");
 
-            entity.HasIndex(s => s.ClassId).IsUnique();
+            // class_id is NOT unique – many students belong to the same class
+            entity.HasIndex(s => s.ClassId);
+            entity.HasIndex(s => s.BatchId);
 
             entity.HasOne(s => s.User)
                   .WithOne()
@@ -262,14 +271,17 @@ public class TaskverseContext : DbContext
                   .HasForeignKey(s => s.CollegeId);
 
             entity.HasOne(s => s.Class)
-                  .WithOne(c => c.Student)
-                  .HasForeignKey<Student>(s => s.ClassId)
+                  .WithMany()
+                  .HasForeignKey(s => s.ClassId)
                   .OnDelete(DeleteBehavior.SetNull)
                   .HasConstraintName("fk_students_class");
 
+            // batch_id is nullable – a student may not have a batch when approved
             entity.HasOne(s => s.Batch)
                   .WithMany(b => b.Students)
-                  .HasForeignKey(s => s.BatchId);
+                  .HasForeignKey(s => s.BatchId)
+                  .OnDelete(DeleteBehavior.SetNull)
+                  .HasConstraintName("fk_students_batch");
 
             // Map enum to int column
             entity.Property(s => s.Status)
@@ -287,7 +299,12 @@ public class TaskverseContext : DbContext
             entity.Property(t => t.CollegeId).HasColumnName("college_id");
             entity.Property(t => t.FullName).HasColumnName("full_name");
             entity.Property(t => t.Email).HasColumnName("email");
+            entity.Property(t => t.Phone).HasColumnName("phone").HasMaxLength(20);
+            entity.Property(t => t.DateOfBirth).HasColumnName("date_of_birth");
             entity.Property(t => t.StatusId).HasColumnName("status_id");
+            entity.Property(t => t.UpcomingAssessmentsCount).HasColumnName("upcoming_assessments_count");
+            entity.Property(t => t.LiveAssessmentsCount).HasColumnName("live_assessments_count");
+            entity.Property(t => t.CompletedAssessmentsCount).HasColumnName("completed_assessments_count");
             entity.Property(t => t.ApprovedBy).HasColumnName("approved_by");
             entity.Property(t => t.CreatedAt).HasColumnName("created_at");
             entity.Property(t => t.ModifiedAt).HasColumnName("modified_at");
@@ -301,7 +318,7 @@ public class TaskverseContext : DbContext
                   .HasForeignKey(t => t.CollegeId);
 
             // Map enum to int column
-            entity.Property(s => s.Status)
+            entity.Property(t => t.Status)
                   .HasColumnName("status")
                   .HasConversion<int>();
         });

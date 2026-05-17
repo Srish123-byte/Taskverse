@@ -32,8 +32,8 @@ public class Class
     // Navigation to batches
     public ICollection<Batch> Batches { get; set; }
 
-    // Navigation to student
-    public Student? Student { get; set; }
+    // Navigation to students (one class → many students)
+    public ICollection<Student> Students { get; set; }
 
     // Navigation to trainer assignments
     public ICollection<TrainerClass> TrainerClasses { get; set; }
