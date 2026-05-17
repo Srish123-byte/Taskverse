@@ -20,8 +20,8 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             .Where(user =>
                 user.Status == UserStatus.PENDING_APPROVAL &&
                 user.CollegeId == collegeId &&
-                NormalizeRole(user.Role) != "collegeadmin" &&
-                NormalizeRole(user.Role) != "superadmin")
+                user.Role.Trim().ToLower() != "collegeadmin" &&
+                user.Role.Trim().ToLower() != "superadmin")
             .OrderBy(user => user.CreatedAt)
             .Select(user => new PendingUserDto
             {

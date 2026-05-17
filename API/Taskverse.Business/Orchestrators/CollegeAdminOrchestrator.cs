@@ -270,8 +270,8 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
                 .CountAsync(user =>
                     user.CollegeId == collegeId &&
                     user.Status == UserStatus.PENDING_APPROVAL &&
-                    NormalizeRole(user.Role) != "collegeadmin" &&
-                    NormalizeRole(user.Role) != "superadmin");
+                    user.Role.Trim().ToLower() != "collegeadmin" &&
+                    user.Role.Trim().ToLower() != "superadmin");
 
             var assessmentsThisMonthTask = (
                 from assessment in context.Assessments.AsNoTracking()
