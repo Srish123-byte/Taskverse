@@ -113,18 +113,27 @@
 .table-header-row,
 .user-row {
   display: grid;
-  grid-template-columns: 1.2fr 0.85fr 1.1fr 1.1fr 0.75fr 0.9fr;
-  gap: 18px;
+  grid-template-columns: 1.2fr 0.9fr 1.2fr 1.1fr 0.8fr 1fr;
+  gap: 16px;
   align-items: center;
+  min-width: 0; // critical: allows cells to shrink below content size
 }
 
 .table-header-row {
-  padding: 20px 28px;
+  padding: 16px 28px;
   color: #d8e6f4;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   background: rgba(30, 41, 59, 0.82);
   border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+
+  > span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
 }
 
 .user-row {
@@ -141,7 +150,9 @@
 .user-name-cell {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
+  min-width: 0; // allow text truncation
+  overflow: hidden;
 }
 
 .user-accent {
@@ -160,28 +171,53 @@
 .user-name,
 .email-cell,
 .institution-name { color: #f8fafc; }
-.user-name { font-weight: 700; }
+.user-name {
+  font-weight: 700;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 
-.institution-cell { color: #9fb2c8; line-height: 1.45; }
-.institution-meta { margin-top: 5px; color: #9fb2c8; font-size: 0.84rem; }
+.institution-cell { color: #9fb2c8; line-height: 1.45; min-width: 0; }
+.institution-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.institution-meta { margin-top: 4px; color: #9fb2c8; font-size: 0.82rem; white-space: nowrap; }
 
-.email-cell,
-.institution-cell { word-break: break-word; }
+.email-cell {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-width: 0;
+  font-size: 0.9rem;
+}
 
 // ── Role pill ─────────────────────────────────────────────────────────────────
+
+.role-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
 
 .role-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 28px;
-  padding: 0 11px;
+  min-height: 26px;
+  padding: 0 10px;
   border-radius: 999px;
   background: rgba(51, 65, 85, 0.9);
   color: #e2e8f0;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .role-pill-student       { background: rgba(56, 189, 248, 0.16);  color: #7dd3fc;  }
@@ -191,6 +227,12 @@
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
+.status-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -198,11 +240,12 @@
   min-height: 26px;
   padding: 0 11px;
   border-radius: 999px;
-  font-size: 0.74rem;
+  font-size: 0.73rem;
   font-weight: 700;
   letter-spacing: 0.03em;
   background: rgba(51, 65, 85, 0.7);
   color: #cbd5e1;
+  white-space: nowrap;
 }
 
 .status-pending  { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
@@ -213,14 +256,19 @@
 
 .actions-cell {
   display: flex;
-  gap: 10px;
+  flex-wrap: nowrap;
+  gap: 8px;
   align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
 }
 
 .actions-cell button {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .actions-cell button[disabled] { opacity: 0.72; }
