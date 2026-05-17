@@ -40,10 +40,15 @@ public class UsersOrchestrator : IUsersOrchestrator
     public async Task<PagedUserDto?> SearchUsers(string? email, string? role, bool? isActive, int pageNumber, int pageSize)
     {
         _log.Debug($"UsersOrchestrator.SearchUsers: email={email}, role={role}");
-        var criteria = new UserSearchCriteriaModel(email, role, isActive, pageNumber, pageSize);
+s        var criteria = new UserSearchCriteriaModel(
+            Status:     null,
+            Role:       role,
+            SearchTerm: email,
+            PageNumber: pageNumber,
+            PageSize:   pageSize);
         var result = await _microServiceOrchestrator.SearchUsers(criteria);
         result.EnsureSuccess(nameof(SearchUsers));
-        PagedUserResultModel model = result.DeserializeValue<PagedUserResultModel>()
+        PagedPendingUserResultModel model = result.DeserializeValue<PagedPendingUserResultModel>()
             ?? throw new InvalidOperationException("SearchUsers returned empty.");
         return model.ToDto();
     }
