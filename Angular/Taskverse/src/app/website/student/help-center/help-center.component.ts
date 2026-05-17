@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { AppConfig } from '../../../../app.config';
 
 @Component({
-  selector: 'app-college-admin-help-center',
+  selector: 'app-student-help-center',
   standalone: false,
   templateUrl: './help-center.component.html',
   styleUrl: './help-center.component.scss'

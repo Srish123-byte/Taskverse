@@ -1,7 +1,5 @@
 @use '../../../common/styles/page' as *;
 
-// ── Layout ────────────────────────────────────────────────────────────────────
-
 .page-subtitle {
   max-width: 560px;
   margin: 0 auto 48px;
@@ -11,15 +9,8 @@
   text-align: center;
 }
 
-.page-title {
-  text-align: center;
-}
-
-.page-eyebrow {
-  text-align: center;
-}
-
-// ── Contact grid ──────────────────────────────────────────────────────────────
+.page-title  { text-align: center; }
+.page-eyebrow { text-align: center; }
 
 .contact-grid {
   display: grid;
@@ -28,12 +19,8 @@
   max-width: 860px;
   margin: 0 auto;
 
-  @media (max-width: 640px) {
-    grid-template-columns: 1fr;
-  }
+  @media (max-width: 640px) { grid-template-columns: 1fr; }
 }
-
-// ── Contact card ──────────────────────────────────────────────────────────────
 
 .contact-card {
   display: flex;
@@ -56,8 +43,6 @@
   }
 }
 
-// ── Icon ──────────────────────────────────────────────────────────────────────
-
 .contact-icon-wrap {
   display: flex;
   align-items: center;
@@ -70,17 +55,7 @@
   flex-shrink: 0;
 }
 
-.contact-icon-wrap--email {
-  background: rgba(56, 189, 248, 0.18);
-  color: #38bdf8;
-}
-
-.contact-icon {
-  width: 30px;
-  height: 30px;
-}
-
-// ── Card body ─────────────────────────────────────────────────────────────────
+.contact-icon { width: 30px; height: 30px; }
 
 .contact-card-body {
   display: flex;
@@ -93,7 +68,6 @@
   color: #f8fafc;
   font-size: 1.08rem;
   font-weight: 700;
-  letter-spacing: 0.01em;
 }
 
 .contact-hours {
@@ -112,12 +86,9 @@
   transition: opacity 0.18s ease;
 
   &:hover { opacity: 0.8; }
-
-  &--phone { color: #38bdf8; }
+  &--phone,
   &--email { color: #38bdf8; }
 }
-
-// ── Security note ─────────────────────────────────────────────────────────────
 
 .security-note {
   margin-top: 40px;

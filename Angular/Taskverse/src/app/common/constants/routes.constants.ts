@@ -28,18 +28,20 @@ export const RouteAddress = {
   },
 
   Trainer: {
-    Root:      'trainer',
-    Dashboard: 'trainer/dashboard',
-    Courses:   'trainer/courses',
-    Students:  'trainer/students',
-    Manage:    'trainer/manage'
+    Root:       'trainer',
+    Dashboard:  'trainer/dashboard',
+    Courses:    'trainer/courses',
+    Students:   'trainer/students',
+    Manage:     'trainer/manage',
+    HelpCenter: 'trainer/help-center'
   },
 
   Student: {
-    Root:      'student',
-    Dashboard: 'student/dashboard',
-    Courses:   'student/courses',
-    Tasks:     'student/tasks',
-    Manage:    'student/manage'
+    Root:       'student',
+    Dashboard:  'student/dashboard',
+    Courses:    'student/courses',
+    Tasks:      'student/tasks',
+    Manage:     'student/manage',
+    HelpCenter: 'student/help-center'
   }
 };

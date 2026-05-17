@@ -4,6 +4,7 @@ import { DashboardComponent } from './dashboard/dashboard.component';
 import { CoursesComponent } from './courses/courses.component';
 import { TasksComponent } from './tasks/tasks.component';
 import { ManageComponent } from './manage/manage.component';
+import { HelpCenterComponent } from './help-center/help-center.component';
 
 const routes: Routes = [
   {
@@ -14,7 +15,8 @@ const routes: Routes = [
       { path: 'dashboard', component: DashboardComponent },
       { path: 'courses', component: CoursesComponent },
       { path: 'tasks', component: TasksComponent },
-      { path: 'manage', component: ManageComponent }
+      { path: 'manage', component: ManageComponent },
+      { path: 'help-center', component: HelpCenterComponent }
     ]
   }
 ];
