@@ -7,6 +7,7 @@ import { AcademicStructureComponent } from './academic-structure/academic-struct
 import { AssessmentBuilderComponent } from './assessment-builder/assessment-builder.component';
 import { ReportsComponent } from './reports/reports.component';
 import { SettingsComponent } from './settings/settings.component';
+import { HelpCenterComponent } from './help-center/help-center.component';
 
 const routes: Routes = [
   {
@@ -20,6 +21,7 @@ const routes: Routes = [
       { path: 'classes-management', component: AcademicStructureComponent },
       { path: 'assessment-builder', component: AssessmentBuilderComponent },
       { path: 'reports', component: ReportsComponent },
+      { path: 'help-center', component: HelpCenterComponent },
       { path: 'settings', component: SettingsComponent }
     ]
   }

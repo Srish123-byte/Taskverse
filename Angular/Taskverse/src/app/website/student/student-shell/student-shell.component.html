@@ -14,13 +14,13 @@
         class="nav-link"
         [routerLink]="item.route"
         routerLinkActive="nav-link-active">
-        <mat-icon>{{ item.icon }}</mat-icon>
+        <img [src]="item.iconPath" [alt]="item.label" class="nav-icon" aria-hidden="true" />
         <span>{{ item.label }}</span>
       </a>
     </nav>
 
     <button type="button" class="logout-button" (click)="logout()">
-      <mat-icon>logout</mat-icon>
+      <img src="assets/icons/nav/logout.svg" alt="Logout" class="nav-icon" aria-hidden="true" />
       <span>Logout</span>
     </button>
   </aside>

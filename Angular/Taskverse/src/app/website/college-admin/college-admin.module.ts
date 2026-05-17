@@ -10,6 +10,7 @@ import { AcademicStructureComponent } from './academic-structure/academic-struct
 import { AssessmentBuilderComponent } from './assessment-builder/assessment-builder.component';
 import { ReportsComponent } from './reports/reports.component';
 import { SettingsComponent } from './settings/settings.component';
+import { HelpCenterComponent } from './help-center/help-center.component';
 
 @NgModule({
   declarations: [
@@ -20,7 +21,8 @@ import { SettingsComponent } from './settings/settings.component';
     AcademicStructureComponent,
     AssessmentBuilderComponent,
     ReportsComponent,
-    SettingsComponent
+    SettingsComponent,
+    HelpCenterComponent
   ],
   imports: [
     CommonModule,

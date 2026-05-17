@@ -6,6 +6,7 @@ interface SuperAdminNavItem {
   label: string;
   route: string;
   icon: string;
+  iconPath: string;
 }
 
 @Component({
@@ -18,12 +19,12 @@ export class SuperAdminShellComponent {
   constructor(private readonly authSessionService: AuthSessionService) {}
 
   readonly navItems: SuperAdminNavItem[] = [
-    { label: 'Dashboard', route: `/${RouteAddress.SuperAdmin.Dashboard}`, icon: 'dashboard' },
-    { label: 'Colleges', route: `/${RouteAddress.SuperAdmin.Colleges}`, icon: 'school' },
-    { label: 'Users', route: `/${RouteAddress.SuperAdmin.Users}`, icon: 'groups' },
-    { label: 'Analytics', route: `/${RouteAddress.SuperAdmin.Analytics}`, icon: 'query_stats' },
-    { label: 'Assessments', route: `/${RouteAddress.SuperAdmin.Assessments}`, icon: 'assignment' },
-    { label: 'Settings', route: `/${RouteAddress.SuperAdmin.Settings}`, icon: 'settings' }
+    { label: 'Dashboard',   route: `/${RouteAddress.SuperAdmin.Dashboard}`,   icon: 'dashboard',   iconPath: 'assets/icons/nav/dashboard.svg' },
+    { label: 'Colleges',    route: `/${RouteAddress.SuperAdmin.Colleges}`,    icon: 'school',      iconPath: 'assets/icons/nav/colleges.svg' },
+    { label: 'Users',       route: `/${RouteAddress.SuperAdmin.Users}`,       icon: 'groups',      iconPath: 'assets/icons/nav/users.svg' },
+    { label: 'Analytics',   route: `/${RouteAddress.SuperAdmin.Analytics}`,   icon: 'query_stats', iconPath: 'assets/icons/nav/analytics.svg' },
+    { label: 'Assessments', route: `/${RouteAddress.SuperAdmin.Assessments}`, icon: 'assignment',  iconPath: 'assets/icons/nav/assessments.svg' },
+    { label: 'Settings',    route: `/${RouteAddress.SuperAdmin.Settings}`,    icon: 'settings',    iconPath: 'assets/icons/nav/settings.svg' }
   ];
 
   logout(): void {

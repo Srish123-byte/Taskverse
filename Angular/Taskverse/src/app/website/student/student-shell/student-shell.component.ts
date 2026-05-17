@@ -5,6 +5,7 @@ interface StudentNavItem {
   label: string;
   route: string;
   icon: string;
+  iconPath: string;
 }
 
 @Component({
@@ -15,10 +16,10 @@ interface StudentNavItem {
 })
 export class StudentShellComponent {
   readonly navItems: StudentNavItem[] = [
-    { label: 'Dashboard', route: 'dashboard', icon: 'dashboard' },
-    { label: 'Courses', route: 'courses', icon: 'menu_book' },
-    { label: 'Tasks', route: 'tasks', icon: 'task_alt' },
-    { label: 'Manage', route: 'manage', icon: 'tune' }
+    { label: 'Dashboard', route: 'dashboard', icon: 'dashboard', iconPath: 'assets/icons/nav/dashboard.svg' },
+    { label: 'Courses',   route: 'courses',   icon: 'menu_book', iconPath: 'assets/icons/nav/courses.svg' },
+    { label: 'Tasks',     route: 'tasks',     icon: 'task_alt',  iconPath: 'assets/icons/nav/tasks.svg' },
+    { label: 'Manage',    route: 'manage',    icon: 'tune',      iconPath: 'assets/icons/nav/manage.svg' }
   ];
 
   constructor(private readonly authSessionService: AuthSessionService) {}

@@ -9,6 +9,7 @@ interface CollegeAdminNavItem {
   label: string;
   route: string;
   icon: string;
+  iconPath: string;
   badge?: string | null;
 }
 
@@ -20,16 +21,16 @@ interface CollegeAdminNavItem {
 })
 export class CollegeAdminShellComponent implements OnInit, OnDestroy {
   readonly navItems: CollegeAdminNavItem[] = [
-    { label: 'Dashboard', route: `/${RouteAddress.CollegeAdmin.Dashboard}`, icon: 'space_dashboard' },
-    { label: 'User Management', route: `/${RouteAddress.CollegeAdmin.Users}`, icon: 'groups_2', badge: null },
-    { label: 'Classes Management', route: `/${RouteAddress.CollegeAdmin.ClassesManagement}`, icon: 'account_tree' },
-    { label: 'Assessment Builder', route: `/${RouteAddress.CollegeAdmin.AssessmentBuilder}`, icon: 'assignment' },
-    { label: 'Reports', route: `/${RouteAddress.CollegeAdmin.Reports}`, icon: 'bar_chart' }
+    { label: 'Dashboard',           route: `/${RouteAddress.CollegeAdmin.Dashboard}`,         icon: 'space_dashboard',  iconPath: 'assets/icons/nav/dashboard.svg' },
+    { label: 'User Management',     route: `/${RouteAddress.CollegeAdmin.Users}`,              icon: 'groups_2',         iconPath: 'assets/icons/nav/user-management.svg', badge: null },
+    { label: 'Classes Management',  route: `/${RouteAddress.CollegeAdmin.ClassesManagement}`,  icon: 'account_tree',     iconPath: 'assets/icons/nav/classes.svg' },
+    { label: 'Assessment Builder',  route: `/${RouteAddress.CollegeAdmin.AssessmentBuilder}`,  icon: 'assignment',       iconPath: 'assets/icons/nav/assessment-builder.svg' },
+    { label: 'Reports',             route: `/${RouteAddress.CollegeAdmin.Reports}`,            icon: 'bar_chart',        iconPath: 'assets/icons/nav/reports.svg' }
   ];
 
   readonly supportItems: CollegeAdminNavItem[] = [
-    { label: 'Help Center', route: `/${RouteAddress.CollegeAdmin.Reports}`, icon: 'help_outline' },
-    { label: 'Settings', route: `/${RouteAddress.CollegeAdmin.Settings}`, icon: 'settings' }
+    { label: 'Help Center', route: `/${RouteAddress.CollegeAdmin.HelpCenter}`, icon: 'help_outline', iconPath: 'assets/icons/nav/help-center.svg' },
+    { label: 'Settings',    route: `/${RouteAddress.CollegeAdmin.Settings}`,   icon: 'settings',     iconPath: 'assets/icons/nav/settings.svg' }
   ];
   private readonly subscriptions = new Subscription();
 

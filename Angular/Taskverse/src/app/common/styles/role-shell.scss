@@ -18,20 +18,20 @@
   #{$root-selector} {
     display: grid;
     grid-template-columns: 280px minmax(0, 1fr);
-    min-height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
     background:
       radial-gradient(circle at top left, $background-start, transparent 26%),
       linear-gradient(180deg, $background-end 0%, #edf3f8 100%);
   }
 
   #{$root-selector} .shell-sidebar {
-    position: sticky;
-    top: 0;
     display: flex;
     flex-direction: column;
     gap: 28px;
-    min-height: 100vh;
+    height: 100%;
     padding: 28px 22px;
+    overflow-y: auto;
     background: linear-gradient(180deg, $sidebar-start 0%, $sidebar-end 100%);
     box-shadow: 10px 0 30px rgba(15, 23, 42, 0.14);
   }
@@ -114,18 +114,47 @@
 
   #{$root-selector} .shell-main {
     min-width: 0;
+    height: 100%;
+    overflow-y: auto;
     padding: 18px 0 36px;
+  }
+
+  #{$root-selector} .nav-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    opacity: 0.7;
+    transition: opacity 180ms ease, filter 180ms ease;
+    // SVGs use currentColor — tint via filter
+    filter: brightness(0) invert(1);
+  }
+
+  #{$root-selector} .nav-link:hover .nav-icon,
+  #{$root-selector} .logout-button:hover .nav-icon {
+    opacity: 1;
+  }
+
+  #{$root-selector} .nav-link-active .nav-icon {
+    opacity: 1;
+    filter: brightness(0) saturate(100%) invert(74%) sepia(36%) saturate(400%) hue-rotate(148deg) brightness(100%) contrast(90%);
   }
 
   @media (max-width: 980px) {
     #{$root-selector} {
       grid-template-columns: 1fr;
+      height: auto;
+      overflow: visible;
     }
 
     #{$root-selector} .shell-sidebar {
-      position: static;
-      min-height: auto;
+      height: auto;
+      overflow-y: visible;
       padding-bottom: 18px;
+    }
+
+    #{$root-selector} .shell-main {
+      height: auto;
+      overflow-y: visible;
     }
 
     #{$root-selector} .shell-nav {

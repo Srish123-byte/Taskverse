@@ -23,6 +23,7 @@ export const RouteAddress = {
     ClassesManagement:  'college-admin/classes-management',
     AssessmentBuilder:  'college-admin/assessment-builder',
     Reports:            'college-admin/reports',
+    HelpCenter:         'college-admin/help-center',
     Settings:           'college-admin/settings'
   },
 
