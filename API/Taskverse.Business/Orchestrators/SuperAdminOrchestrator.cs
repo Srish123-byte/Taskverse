@@ -311,7 +311,6 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
         {
             existingStudent.ClassId = user.ClassId;
             existingStudent.Status = UserStatus.APPROVED;
-            existingStudent.StatusId = (int)UserStatus.APPROVED;
             existingStudent.ModifiedAt = DateTime.UtcNow;
             existingStudent.ApprovedBy = approvedByUserId;
             return;
@@ -327,7 +326,6 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             FullName = user.FullName,
             Email = user.Email,
             Status = UserStatus.APPROVED,
-            StatusId = (int)UserStatus.APPROVED,
             CreatedAt = DateTime.UtcNow,
             ModifiedAt = DateTime.UtcNow,
             ApprovedBy = approvedByUserId
@@ -347,7 +345,6 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
         if (existingTrainer is not null)
         {
             existingTrainer.Status = UserStatus.APPROVED;
-            existingTrainer.StatusId = (int)UserStatus.APPROVED;
             existingTrainer.ModifiedAt = DateTime.UtcNow;
             existingTrainer.ApprovedBy = approvedByUserId;
             return;
@@ -361,7 +358,6 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             FullName = user.FullName,
             Email = user.Email,
             Status = UserStatus.APPROVED,
-            StatusId = (int)UserStatus.APPROVED,
             CreatedAt = DateTime.UtcNow,
             ModifiedAt = DateTime.UtcNow,
             ApprovedBy = approvedByUserId

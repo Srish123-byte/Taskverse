@@ -237,7 +237,6 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             existingStudent.ClassId = user.ClassId;
             existingStudent.BatchId = user.BatchId;
             existingStudent.Status = UserStatus.APPROVED;
-            existingStudent.StatusId = (int)UserStatus.APPROVED;
             existingStudent.ModifiedAt = DateTime.UtcNow;
             existingStudent.ApprovedBy = approvedByUserId;
             return;
@@ -254,7 +253,6 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             Email = user.Email,
             Phone = user.Phone,
             Status = UserStatus.APPROVED,
-            StatusId = (int)UserStatus.APPROVED,
             CreatedAt = DateTime.UtcNow,
             ModifiedAt = DateTime.UtcNow,
             ApprovedBy = approvedByUserId
@@ -274,7 +272,6 @@ public class CollegeOrchestrator : ICollegeOrchestrator
         if (existingTrainer is not null)
         {
             existingTrainer.Status = UserStatus.APPROVED;
-            existingTrainer.StatusId = (int)UserStatus.APPROVED;
             existingTrainer.ModifiedAt = DateTime.UtcNow;
             existingTrainer.ApprovedBy = approvedByUserId;
             return;
@@ -289,7 +286,6 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             Email = user.Email,
             Phone = user.Phone,
             Status = UserStatus.APPROVED,
-            StatusId = (int)UserStatus.APPROVED,
             CreatedAt = DateTime.UtcNow,
             ModifiedAt = DateTime.UtcNow,
             ApprovedBy = approvedByUserId

@@ -249,7 +249,6 @@ public class TaskverseContext : DbContext
             entity.Property(s => s.Email).HasColumnName("email");
             entity.Property(s => s.Phone).HasColumnName("phone").HasMaxLength(20);
             entity.Property(s => s.DateOfBirth).HasColumnName("date_of_birth");
-            entity.Property(s => s.StatusId).HasColumnName("status_id");
             entity.Property(s => s.CurrentStreak).HasColumnName("current_streak");
             entity.Property(s => s.LongestStreak).HasColumnName("longest_streak");
             entity.Property(s => s.LastAssessmentDate).HasColumnName("last_assessment_date");
@@ -301,7 +300,6 @@ public class TaskverseContext : DbContext
             entity.Property(t => t.Email).HasColumnName("email");
             entity.Property(t => t.Phone).HasColumnName("phone").HasMaxLength(20);
             entity.Property(t => t.DateOfBirth).HasColumnName("date_of_birth");
-            entity.Property(t => t.StatusId).HasColumnName("status_id");
             entity.Property(t => t.UpcomingAssessmentsCount).HasColumnName("upcoming_assessments_count");
             entity.Property(t => t.LiveAssessmentsCount).HasColumnName("live_assessments_count");
             entity.Property(t => t.CompletedAssessmentsCount).HasColumnName("completed_assessments_count");

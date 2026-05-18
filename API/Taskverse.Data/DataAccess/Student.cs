@@ -17,7 +17,6 @@ public class Student
     public string? Phone { get; set; }
     public DateTime? DateOfBirth { get; set; }
 
-    public int StatusId { get; set; }
     public UserStatus Status { get; set; }
 
     // Assessment / streak columns – nullable so approval works before any activity

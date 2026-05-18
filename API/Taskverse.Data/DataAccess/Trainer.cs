@@ -14,7 +14,6 @@ public class Trainer
     public string? Phone { get; set; }
     public DateTime? DateOfBirth { get; set; }
 
-    public int StatusId { get; set; }
     public UserStatus Status { get; set; }
 
     // Assessment count columns – nullable so approval works before any assessments are assigned
