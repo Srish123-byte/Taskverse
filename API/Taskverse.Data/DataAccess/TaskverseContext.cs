@@ -271,7 +271,7 @@ public class TaskverseContext : DbContext
                   .HasForeignKey(s => s.CollegeId);
 
             entity.HasOne(s => s.Class)
-                  .WithMany()
+                  .WithMany(c => c.Students)
                   .HasForeignKey(s => s.ClassId)
                   .OnDelete(DeleteBehavior.SetNull)
                   .HasConstraintName("fk_students_class");
