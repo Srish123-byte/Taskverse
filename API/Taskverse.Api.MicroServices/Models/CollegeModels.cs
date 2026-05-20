@@ -83,4 +83,14 @@ public record CollegeBatchSummaryModel(
     string? Description,
     int Capacity,
     int StudentCount,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    List<ApprovedTrainerModel> AssignedTrainers);
+
+public record ApprovedTrainerModel(
+    string TrainerId,
+    string UserId,
+    string FullName,
+    string Email);
+
+public record AssignBatchTrainersModel(
+    List<string> TrainerIds);

@@ -45,7 +45,19 @@ public static class CollegeMappings
         dto.Description,
         dto.Capacity,
         dto.StudentCount,
-        dto.CreatedAt);
+        dto.CreatedAt,
+        dto.AssignedTrainers.Select(trainer => trainer.ToModel()).ToList());
+
+    public static ApprovedTrainerRecord ToModel(this ApprovedTrainerDto dto) => new(
+        dto.TrainerId,
+        dto.UserId,
+        dto.FullName,
+        dto.Email);
+
+    public static AssignBatchTrainersDto ToDto(this AssignBatchTrainersRequest model) => new()
+    {
+        TrainerIds = model.TrainerIds ?? []
+    };
 
     public static PendingUserRecord ToModel(this PendingUserDto dto) => new(
         dto.UserId,

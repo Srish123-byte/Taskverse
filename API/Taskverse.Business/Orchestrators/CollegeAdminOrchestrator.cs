@@ -106,6 +106,36 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
             })
             .ToDictionaryAsync(item => item.BatchId, item => item.Count);
 
+        var batchIds = batches.Select(item => item.BatchId).ToList();
+        var assignedTrainersByBatch = await context.TrainerBatches
+            .AsNoTracking()
+            .Where(item => batchIds.Contains(item.BatchId) && item.Trainer.CollegeId == collegeId && item.Trainer.Status == UserStatus.APPROVED)
+            .Select(item => new
+            {
+                item.BatchId,
+                item.Trainer.TrainerId,
+                item.Trainer.UserId,
+                item.Trainer.FullName,
+                item.Trainer.Email
+            })
+            .ToListAsync();
+
+        var trainersLookup = assignedTrainersByBatch
+            .GroupBy(item => item.BatchId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderBy(item => item.FullName)
+                    .ThenBy(item => item.Email)
+                    .Select(item => new ApprovedTrainerDto
+                    {
+                        TrainerId = item.TrainerId.ToString(),
+                        UserId = item.UserId.ToString(),
+                        FullName = item.FullName,
+                        Email = item.Email
+                    })
+                    .ToList());
+
         var batchesByClass = batches
             .GroupBy(item => item.ClassId)
             .ToDictionary(
@@ -120,7 +150,10 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
                         Description = item.Description,
                         Capacity = item.Capacity,
                         StudentCount = studentCountsByBatch.TryGetValue(item.BatchId, out var count) ? count : 0,
-                        CreatedAt = item.CreatedAt
+                        CreatedAt = item.CreatedAt,
+                        AssignedTrainers = trainersLookup.TryGetValue(item.BatchId, out var trainers)
+                            ? trainers
+                            : []
                     })
                     .OrderBy(item => item.Name)
                     .ToList());
@@ -187,6 +220,19 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
         return GetPendingUsersForCollege(collegeId);
     }
 
+    public async Task<List<ApprovedTrainerDto>> GetApprovedTrainers(Guid collegeId)
+    {
+        _log.Debug($"CollegeAdminOrchestrator.GetApprovedTrainers: collegeId={collegeId}");
+
+        var result = await _microServiceOrchestrator.GetApprovedCollegeTrainers(collegeId.ToString());
+        EnsureMicroServiceSuccess(result, nameof(GetApprovedTrainers));
+
+        var models = result.DeserializeValue<List<ApprovedTrainerModel>>()
+            ?? throw new InvalidOperationException($"GetApprovedTrainers returned empty for collegeId={collegeId}.");
+
+        return models.Select(model => model.ToDto()).ToList();
+    }
+
     private async Task<List<PendingUserDto>> GetPendingUsersForCollege(Guid collegeId)
     {
         _log.Debug($"CollegeAdminOrchestrator.GetPendingUsersForCollege: collegeId={collegeId}");
@@ -229,6 +275,33 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
 
         var model = result.DeserializeValue<CollegeBatchSummaryModel>()
             ?? throw new InvalidOperationException($"CreateBatch returned empty for collegeId={collegeId}, classId={classId}.");
+
+        return model.ToDto();
+    }
+
+    public async Task<CollegeBatchSummaryDto> AssignBatchTrainers(Guid collegeId, string classId, string batchId, AssignBatchTrainersDto dto)
+    {
+        _log.Debug($"CollegeAdminOrchestrator.AssignBatchTrainers: collegeId={collegeId}, classId={classId}, batchId={batchId}, trainerCount={dto.TrainerIds.Count}");
+
+        if (!Guid.TryParse(classId, out _))
+        {
+            throw new InvalidOperationException("Class id is invalid.");
+        }
+
+        if (!Guid.TryParse(batchId, out _))
+        {
+            throw new InvalidOperationException("Batch id is invalid.");
+        }
+
+        var result = await _microServiceOrchestrator.AssignCollegeBatchTrainers(
+            collegeId.ToString(),
+            classId,
+            batchId,
+            dto.ToMicroServiceModel());
+        EnsureMicroServiceSuccess(result, nameof(AssignBatchTrainers));
+
+        var model = result.DeserializeValue<CollegeBatchSummaryModel>()
+            ?? throw new InvalidOperationException($"AssignBatchTrainers returned empty for collegeId={collegeId}, classId={classId}, batchId={batchId}.");
 
         return model.ToDto();
     }

@@ -8,8 +8,10 @@ public interface ICollegeAdminOrchestrator
     Task<ClassConfigurationDto> GetClassConfiguration(Guid collegeId);
     Task<List<PendingUserDto>> GetPendingUsers(Guid collegeId);
     Task<List<PendingUserDto>> GetPendingUsersForCollegeAdmin(Guid collegeAdminUserId);
+    Task<List<ApprovedTrainerDto>> GetApprovedTrainers(Guid collegeId);
     Task<CollegeClassSummaryDto> CreateClass(Guid collegeId, CreateCollegeClassDto dto);
     Task<CollegeBatchSummaryDto> CreateBatch(Guid collegeId, string classId, CreateCollegeBatchDto dto);
+    Task<CollegeBatchSummaryDto> AssignBatchTrainers(Guid collegeId, string classId, string batchId, AssignBatchTrainersDto dto);
     Task ApproveUser(Guid collegeId, string userId, UserActionDto dto);
     Task RejectUser(Guid collegeId, string userId, UserActionDto dto);
 }

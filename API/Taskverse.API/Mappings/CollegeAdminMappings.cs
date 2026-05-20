@@ -67,7 +67,16 @@ public static class CollegeAdminMappings
         Description = dto.Description,
         Capacity = dto.Capacity,
         StudentCount = dto.StudentCount,
-        CreatedAt = dto.CreatedAt
+        CreatedAt = dto.CreatedAt,
+        AssignedTrainers = dto.AssignedTrainers.Select(x => x.ToResponseModel()).ToList()
+    };
+
+    public static ApprovedTrainerResponseModel ToResponseModel(this ApprovedTrainerDto dto) => new()
+    {
+        TrainerId = dto.TrainerId,
+        UserId = dto.UserId,
+        FullName = dto.FullName,
+        Email = dto.Email
     };
 
     public static CreateCollegeClassDto ToDto(this CreateCollegeClassRequestModel model) => new()
@@ -82,5 +91,10 @@ public static class CollegeAdminMappings
         Name = model.Name,
         Description = model.Description,
         Capacity = model.Capacity
+    };
+
+    public static AssignBatchTrainersDto ToDto(this AssignBatchTrainersRequestModel model) => new()
+    {
+        TrainerIds = model.TrainerIds ?? []
     };
 }

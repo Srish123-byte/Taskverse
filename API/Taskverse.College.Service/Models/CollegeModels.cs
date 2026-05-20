@@ -45,7 +45,17 @@ public record CollegeBatchSummaryRecord(
     string? Description,
     int Capacity,
     int StudentCount,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    List<ApprovedTrainerRecord> AssignedTrainers);
+
+public record ApprovedTrainerRecord(
+    string TrainerId,
+    string UserId,
+    string FullName,
+    string Email);
+
+public record AssignBatchTrainersRequest(
+    List<string> TrainerIds);
 
 public record PendingUserRecord(
     string UserId,

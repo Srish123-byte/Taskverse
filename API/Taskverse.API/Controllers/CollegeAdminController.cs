@@ -54,6 +54,22 @@ public class CollegeAdminController : TaskverseBaseController
         return Ok(dto.ToResponseModel());
     }
 
+    [HttpGet("trainers/approved")]
+    [SwaggerResponse(200, "Approved trainers for the college", typeof(List<ApprovedTrainerResponseModel>))]
+    [SwaggerResponse(400, "CollegeId header is missing or invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> GetApprovedTrainers()
+    {
+        var accessCheck = EnsureCollegeAdminAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        var dtos = await _collegeAdminOrchestrator.GetApprovedTrainers(collegeId);
+        return Ok(dtos.Select(dto => dto.ToResponseModel()).ToList());
+    }
+
     [HttpPost("classes")]
     [SwaggerResponse(200, "Class created", typeof(CollegeClassSummaryResponseModel))]
     [SwaggerResponse(400, "CollegeId header is missing or invalid")]
@@ -93,6 +109,37 @@ public class CollegeAdminController : TaskverseBaseController
         try
         {
             var dto = await _collegeAdminOrchestrator.CreateBatch(collegeId, classId, model.ToDto());
+            return Ok(dto.ToResponseModel());
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("classes/{classId}/batches/{batchId}/trainers")]
+    [SwaggerResponse(200, "Batch trainers assigned", typeof(CollegeBatchSummaryResponseModel))]
+    [SwaggerResponse(400, "CollegeId header is missing or invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Class or batch not found")]
+    public async Task<IActionResult> AssignBatchTrainers(
+        string classId,
+        string batchId,
+        [FromBody] AssignBatchTrainersRequestModel model)
+    {
+        var accessCheck = EnsureCollegeAdminAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        try
+        {
+            var dto = await _collegeAdminOrchestrator.AssignBatchTrainers(collegeId, classId, batchId, model.ToDto());
             return Ok(dto.ToResponseModel());
         }
         catch (KeyNotFoundException ex)

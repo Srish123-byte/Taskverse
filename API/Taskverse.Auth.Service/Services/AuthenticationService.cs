@@ -168,13 +168,23 @@ public class AuthenticationService : IAuthenticationService
 
     private static string? GetLoginBlockMessage(User user)
     {
-        // Only block SuperAdmin if rejected
-        if (string.Equals(user.Role, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
+        var normalizedRole = (user.Role ?? string.Empty).Trim().Replace(" ", string.Empty).ToLowerInvariant();
+
+        if (user.Status == UserStatus.REJECTED)
         {
-            return user.Status == UserStatus.REJECTED ? "Your account is not allowed to sign in." : null;
+            return "Your account is not allowed to sign in.";
         }
 
-        // For other roles, allow login but frontend will check status and show message
+        if (user.Status == UserStatus.PENDING_APPROVAL)
+        {
+            return normalizedRole switch
+            {
+                "collegeadmin" => "Your account is awaiting approval from the super administrator.",
+                "trainer" or "student" => "Your account is awaiting approval from your college administrator.",
+                _ => "Your account is awaiting approval."
+            };
+        }
+
         return null;
     }
 

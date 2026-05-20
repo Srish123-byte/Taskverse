@@ -35,6 +35,21 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             })
             .ToListAsync();
 
+    public Task<List<ApprovedTrainerDto>> GetApprovedTrainersByCollege(Guid collegeId) =>
+        _context.Trainers
+            .AsNoTracking()
+            .Where(trainer => trainer.CollegeId == collegeId && trainer.Status == UserStatus.APPROVED)
+            .OrderBy(trainer => trainer.FullName)
+            .ThenBy(trainer => trainer.Email)
+            .Select(trainer => new ApprovedTrainerDto
+            {
+                TrainerId = trainer.TrainerId.ToString(),
+                UserId = trainer.UserId.ToString(),
+                FullName = trainer.FullName,
+                Email = trainer.Email
+            })
+            .ToListAsync();
+
     public async Task<List<PendingUserDto>> GetPendingUsersForCollegeAdmin(Guid collegeAdminUserId)
     {
         var collegeAdmin = await _context.Users
@@ -143,18 +158,145 @@ public class CollegeOrchestrator : ICollegeOrchestrator
 
         _context.Batches.Add(entity);
         await _context.SaveChangesAsync();
+        return await BuildBatchSummary(entity);
+    }
 
-        return new CollegeBatchSummaryDto
+    public async Task<CollegeBatchSummaryDto> AssignBatchTrainers(Guid collegeId, Guid classId, Guid batchId, AssignBatchTrainersDto dto)
+    {
+        var batch = await _context.Batches
+            .FirstOrDefaultAsync(item =>
+                item.BatchId == batchId &&
+                item.ClassId == classId &&
+                item.CollegeId == collegeId);
+
+        if (batch is null)
         {
-            BatchId = entity.BatchId.ToString(),
-            ClassId = entity.ClassId.ToString(),
-            CollegeId = entity.CollegeId.ToString(),
-            Name = entity.Name,
-            Description = entity.Description,
-            Capacity = entity.Capacity ?? 0,
-            StudentCount = 0,
-            CreatedAt = entity.CreatedAt
-        };
+            throw new KeyNotFoundException($"Batch '{batchId}' was not found for class '{classId}' in this college.");
+        }
+
+        var requestedTrainerIds = (dto.TrainerIds ?? [])
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id =>
+            {
+                if (!Guid.TryParse(id, out var parsedId))
+                {
+                    throw new InvalidOperationException($"Trainer id '{id}' is invalid.");
+                }
+
+                return parsedId;
+            })
+            .Distinct()
+            .ToList();
+
+        var approvedTrainers = await _context.Trainers
+            .Where(trainer =>
+                trainer.CollegeId == collegeId &&
+                trainer.Status == UserStatus.APPROVED &&
+                requestedTrainerIds.Contains(trainer.TrainerId))
+            .ToListAsync();
+
+        if (approvedTrainers.Count != requestedTrainerIds.Count)
+        {
+            var approvedTrainerIds = approvedTrainers.Select(trainer => trainer.TrainerId).ToHashSet();
+            var missingTrainerIds = requestedTrainerIds
+                .Where(trainerId => !approvedTrainerIds.Contains(trainerId))
+                .Select(trainerId => trainerId.ToString())
+                .ToList();
+
+            throw new InvalidOperationException($"Some selected trainers are not approved for this college: {string.Join(", ", missingTrainerIds)}.");
+        }
+
+        var existingBatchAssignments = await _context.TrainerBatches
+            .Where(item => item.BatchId == batchId)
+            .ToListAsync();
+
+        var existingBatchTrainerIds = existingBatchAssignments
+            .Select(item => item.TrainerId)
+            .ToHashSet();
+
+        var requestedTrainerIdSet = requestedTrainerIds.ToHashSet();
+        var trainerBatchAssignmentsToRemove = existingBatchAssignments
+            .Where(item => !requestedTrainerIdSet.Contains(item.TrainerId))
+            .ToList();
+
+        if (trainerBatchAssignmentsToRemove.Count > 0)
+        {
+            _context.TrainerBatches.RemoveRange(trainerBatchAssignmentsToRemove);
+        }
+
+        var trainerBatchAssignmentsToAdd = requestedTrainerIds
+            .Where(trainerId => !existingBatchTrainerIds.Contains(trainerId))
+            .Select(trainerId => new TrainerBatch
+            {
+                TrainerId = trainerId,
+                BatchId = batchId
+            })
+            .ToList();
+
+        if (trainerBatchAssignmentsToAdd.Count > 0)
+        {
+            _context.TrainerBatches.AddRange(trainerBatchAssignmentsToAdd);
+        }
+
+        var existingClassAssignments = await _context.TrainerClasses
+            .Where(item => item.ClassId == classId)
+            .ToListAsync();
+
+        var existingClassTrainerIds = existingClassAssignments
+            .Select(item => item.TrainerId)
+            .ToHashSet();
+
+        var trainerClassAssignmentsToAdd = requestedTrainerIds
+            .Where(trainerId => !existingClassTrainerIds.Contains(trainerId))
+            .Select(trainerId => new TrainerClass
+            {
+                TrainerId = trainerId,
+                ClassId = classId
+            })
+            .ToList();
+
+        if (trainerClassAssignmentsToAdd.Count > 0)
+        {
+            _context.TrainerClasses.AddRange(trainerClassAssignmentsToAdd);
+        }
+
+        var removedTrainerIds = trainerBatchAssignmentsToRemove
+            .Select(item => item.TrainerId)
+            .Distinct()
+            .ToList();
+
+        if (removedTrainerIds.Count > 0)
+        {
+            var remainingAssignedTrainerIdsForClass = await _context.TrainerBatches
+                .Where(item =>
+                    item.Batch.ClassId == classId &&
+                    removedTrainerIds.Contains(item.TrainerId) &&
+                    item.BatchId != batchId)
+                .Select(item => item.TrainerId)
+                .Distinct()
+                .ToListAsync();
+
+            var trainerIdsToRemoveFromClass = removedTrainerIds
+                .Except(remainingAssignedTrainerIdsForClass)
+                .ToList();
+
+            if (trainerIdsToRemoveFromClass.Count > 0)
+            {
+                var classAssignmentsToRemove = existingClassAssignments
+                    .Where(item => trainerIdsToRemoveFromClass.Contains(item.TrainerId))
+                    .ToList();
+
+                if (classAssignmentsToRemove.Count > 0)
+                {
+                    _context.TrainerClasses.RemoveRange(classAssignmentsToRemove);
+                }
+            }
+        }
+
+        batch.ModifiedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return await BuildBatchSummary(batch);
     }
 
     public async Task ApproveUser(Guid collegeId, string userId, CollegeUserActionDto dto)
@@ -318,6 +460,71 @@ public class CollegeOrchestrator : ICollegeOrchestrator
         user.CollegeName = string.IsNullOrWhiteSpace(collegeName)
             ? null
             : collegeName.Trim();
+    }
+
+    private async Task<CollegeBatchSummaryDto> BuildBatchSummary(Batch batch)
+    {
+        var studentCount = await _context.Students
+            .AsNoTracking()
+            .CountAsync(student =>
+                student.BatchId == batch.BatchId &&
+                student.CollegeId == batch.CollegeId &&
+                student.Status == UserStatus.APPROVED);
+
+        var assignedTrainers = await GetAssignedTrainersByBatch([batch.BatchId]);
+
+        return new CollegeBatchSummaryDto
+        {
+            BatchId = batch.BatchId.ToString(),
+            ClassId = batch.ClassId.ToString(),
+            CollegeId = batch.CollegeId.ToString(),
+            Name = batch.Name,
+            Description = batch.Description,
+            Capacity = batch.Capacity ?? 0,
+            StudentCount = studentCount,
+            CreatedAt = batch.CreatedAt,
+            AssignedTrainers = assignedTrainers.TryGetValue(batch.BatchId, out var trainers)
+                ? trainers
+                : []
+        };
+    }
+
+    private async Task<Dictionary<Guid, List<ApprovedTrainerDto>>> GetAssignedTrainersByBatch(IEnumerable<Guid> batchIds)
+    {
+        var batchIdList = batchIds.Distinct().ToList();
+        if (batchIdList.Count == 0)
+        {
+            return [];
+        }
+
+        var assignments = await _context.TrainerBatches
+            .AsNoTracking()
+            .Where(item => batchIdList.Contains(item.BatchId) && item.Trainer.Status == UserStatus.APPROVED)
+            .Select(item => new
+            {
+                item.BatchId,
+                item.Trainer.TrainerId,
+                item.Trainer.UserId,
+                item.Trainer.FullName,
+                item.Trainer.Email
+            })
+            .ToListAsync();
+
+        return assignments
+            .GroupBy(item => item.BatchId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderBy(item => item.FullName)
+                    .ThenBy(item => item.Email)
+                    .Select(item => new ApprovedTrainerDto
+                    {
+                        TrainerId = item.TrainerId.ToString(),
+                        UserId = item.UserId.ToString(),
+                        FullName = item.FullName,
+                        Email = item.Email
+                    })
+                    .ToList());
     }
 
     private static string NormalizeRole(string role) =>

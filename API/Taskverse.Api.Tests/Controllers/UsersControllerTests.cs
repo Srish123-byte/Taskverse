@@ -46,7 +46,6 @@ public class UsersControllerTests : TestControllerBase
 
         // Act
         IActionResult result = await _controller.GetUser("user-123");
-
         // Assert
         Assert.IsInstanceOfType(result, typeof(OkObjectResult));
         var ok = (OkObjectResult)result;

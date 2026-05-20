@@ -34,9 +34,13 @@ public class UsersController : TaskverseBaseController
             var dto = await _usersOrchestrator.RegisterUser(model.ToDto());
             return Created($"api/users/{dto.UserId}", dto.ToResponseModel());
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("User with this email already exists"))
+        catch (InvalidOperationException ex) when (ex.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
         {
             return Conflict(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {

@@ -169,20 +169,38 @@ export class LoginComponent implements OnInit, OnDestroy {
         this.navigateToLandingPage();
       },
       error: err => {
-        this.isLoading = false;
-        this.errorMessage =
+        const message =
           err?.error?.message ||
           (typeof err?.error === 'string' ? err.error : '') ||
+          '';
+
+        const normalizedMessage = message.toLowerCase();
+        if (normalizedMessage.includes('awaiting approval') || normalizedMessage.includes('pending approval')) {
+          this.redirectToApprovalStatus('', 'PENDING_APPROVAL');
+          return;
+        }
+
+        if (normalizedMessage.includes('not allowed to sign in') || normalizedMessage.includes('access restricted')) {
+          this.redirectToApprovalStatus('', 'REJECTED');
+          return;
+        }
+
+        this.isLoading = false;
+        this.errorMessage =
+          message ||
           'Invalid email or password. Please try again.';
       }
     });
   }
 
-  private redirectToApprovalStatus(role: RoleType, status: string): void {
+  private redirectToApprovalStatus(role: RoleType | '', status: string): void {
+    this.isLoading = false;
+    this.errorMessage = '';
+
     void this.router.navigate([`/${RouteAddress.ApprovalStatus}`], {
       queryParams: { role, status }
-    }).finally(() => {
-      this.isLoading = false;
+    }).catch(() => {
+      this.errorMessage = 'We could not open the approval status page. Please try again.';
     });
   }
 
@@ -211,12 +229,10 @@ export class LoginComponent implements OnInit, OnDestroy {
   }
 
   private navigateToLandingPage(): void {
+    this.isLoading = false;
     void this.router.navigateByUrl(`/${RouteAddress.RoleDirector}`)
       .catch(() => {
         this.errorMessage = 'Signed in, but we could not open your dashboard.';
-      })
-      .finally(() => {
-        this.isLoading = false;
       });
   }
 
@@ -275,6 +291,14 @@ export class LoginComponent implements OnInit, OnDestroy {
     return this.isInstitutionLinkedRole(this.rRole?.value);
   }
 
+  get requiresClassSelection(): boolean {
+    return this.rRole?.value === RoleType.Student;
+  }
+
+  get requiresBatchSelection(): boolean {
+    return this.rRole?.value === RoleType.Student;
+  }
+
   get requiresCollegeName(): boolean {
     return this.rRole?.value === RoleType.CollegeAdmin;
   }
@@ -296,7 +320,7 @@ export class LoginComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.applyInstitutionValidators();
+    this.applyInstitutionValidators(role);
     if (this.colleges.length === 0 && !this.isCollegeOptionsLoading) {
       this.loadApprovedColleges();
     }
@@ -309,13 +333,17 @@ export class LoginComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (!this.requiresClassSelection) {
+      return;
+    }
+
     this.loadClasses(collegeId);
   }
 
   private handleClassChange(classId: string | null | undefined): void {
     this.resetBatches();
 
-    if (!this.requiresInstitutionSelection || !classId) {
+    if (!this.requiresInstitutionSelection || !this.requiresBatchSelection || !classId) {
       return;
     }
 
@@ -367,10 +395,20 @@ export class LoginComponent implements OnInit, OnDestroy {
     });
   }
 
-  private applyInstitutionValidators(): void {
+  private applyInstitutionValidators(role: string | null | undefined): void {
     this.collegeControl?.setValidators([Validators.required]);
-    this.classControl?.setValidators([Validators.required]);
-    this.batchControl?.setValidators([Validators.required]);
+    this.classControl?.setValidators(role === RoleType.Student ? [Validators.required] : []);
+    this.batchControl?.setValidators(role === RoleType.Student ? [Validators.required] : []);
+
+    if (role !== RoleType.Student) {
+      this.registerForm.patchValue({
+        classId: '',
+        batchId: ''
+      }, { emitEvent: false });
+      this.classes = [];
+      this.batches = [];
+    }
+
     this.collegeControl?.updateValueAndValidity({ emitEvent: false });
     this.classControl?.updateValueAndValidity({ emitEvent: false });
     this.batchControl?.updateValueAndValidity({ emitEvent: false });

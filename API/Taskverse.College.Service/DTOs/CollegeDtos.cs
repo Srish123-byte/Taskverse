@@ -37,6 +37,20 @@ public class CollegeBatchSummaryDto
     public int Capacity { get; set; }
     public int StudentCount { get; set; }
     public DateTime CreatedAt { get; set; }
+    public List<ApprovedTrainerDto> AssignedTrainers { get; set; } = [];
+}
+
+public class ApprovedTrainerDto
+{
+    public string TrainerId { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+}
+
+public class AssignBatchTrainersDto
+{
+    public List<string> TrainerIds { get; set; } = [];
 }
 
 public class CollegeUserActionDto

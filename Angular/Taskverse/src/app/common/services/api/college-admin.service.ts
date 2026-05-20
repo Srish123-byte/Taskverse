@@ -20,6 +20,14 @@ export interface CollegeBatchSummary {
   capacity: number;
   studentCount: number;
   createdAt: string;
+  assignedTrainers: ApprovedTrainer[];
+}
+
+export interface ApprovedTrainer {
+  trainerId: string;
+  userId: string;
+  fullName: string;
+  email: string;
 }
 
 export interface CollegeClassSummary {
@@ -51,6 +59,10 @@ export interface CreateCollegeBatchRequest {
   capacity?: number;
 }
 
+export interface AssignBatchTrainersRequest {
+  trainerIds: string[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class CollegeAdminService {
   private readonly url = 'college-admin';
@@ -75,6 +87,22 @@ export class CollegeAdminService {
   createBatch(classId: string, request: CreateCollegeBatchRequest): Observable<CollegeBatchSummary> {
     return this.http
       .post<any>(`${this.url}/classes/${classId}/batches`, request)
+      .pipe(map(item => this.mapBatch(item)));
+  }
+
+  getApprovedTrainers(): Observable<ApprovedTrainer[]> {
+    return this.http
+      .get<any[]>(`${this.url}/trainers/approved`)
+      .pipe(map(items => (items ?? []).map(item => this.mapTrainer(item))));
+  }
+
+  assignBatchTrainers(
+    classId: string,
+    batchId: string,
+    request: AssignBatchTrainersRequest
+  ): Observable<CollegeBatchSummary> {
+    return this.http
+      .post<any>(`${this.url}/classes/${classId}/batches/${batchId}/trainers`, request)
       .pipe(map(item => this.mapBatch(item)));
   }
 
@@ -136,7 +164,17 @@ export class CollegeAdminService {
       description: item?.description ?? item?.Description ?? undefined,
       capacity: item?.capacity ?? item?.Capacity ?? 0,
       studentCount: item?.studentCount ?? item?.StudentCount ?? 0,
-      createdAt: item?.createdAt ?? item?.CreatedAt ?? ''
+      createdAt: item?.createdAt ?? item?.CreatedAt ?? '',
+      assignedTrainers: (item?.assignedTrainers ?? item?.AssignedTrainers ?? []).map((trainer: any) => this.mapTrainer(trainer))
+    };
+  }
+
+  private mapTrainer(item: any): ApprovedTrainer {
+    return {
+      trainerId: item?.trainerId ?? item?.TrainerId ?? '',
+      userId: item?.userId ?? item?.UserId ?? '',
+      fullName: item?.fullName ?? item?.FullName ?? '',
+      email: item?.email ?? item?.Email ?? ''
     };
   }
 

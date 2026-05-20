@@ -75,6 +75,14 @@ public class CollegesController : ControllerBase
         return Ok(dtos.Select(dto => dto.ToModel()).ToList());
     }
 
+    [HttpGet("colleges/{collegeId:guid}/trainers/approved")]
+    [ProducesResponseType(typeof(List<ApprovedTrainerRecord>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<ApprovedTrainerRecord>>> GetApprovedTrainers(Guid collegeId)
+    {
+        var dtos = await _collegeOrchestrator.GetApprovedTrainersByCollege(collegeId);
+        return Ok(dtos.Select(dto => dto.ToModel()).ToList());
+    }
+
     [HttpGet("colleges")]
     [ProducesResponseType(typeof(IReadOnlyList<CollegeRecord>), StatusCodes.Status200OK)]
     public ActionResult<IReadOnlyList<CollegeRecord>> GetColleges()
@@ -118,6 +126,31 @@ public class CollegesController : ControllerBase
         try
         {
             var dto = await _collegeOrchestrator.CreateBatch(collegeId, classId, request.ToDto());
+            return Ok(dto.ToModel());
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("colleges/{collegeId:guid}/classes/{classId:guid}/batches/{batchId:guid}/trainers")]
+    [ProducesResponseType(typeof(CollegeBatchSummaryRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CollegeBatchSummaryRecord>> AssignBatchTrainers(
+        Guid collegeId,
+        Guid classId,
+        Guid batchId,
+        [FromBody] AssignBatchTrainersRequest request)
+    {
+        try
+        {
+            var dto = await _collegeOrchestrator.AssignBatchTrainers(collegeId, classId, batchId, request.ToDto());
             return Ok(dto.ToModel());
         }
         catch (KeyNotFoundException ex)

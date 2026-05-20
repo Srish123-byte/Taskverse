@@ -66,8 +66,10 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> GetRegistrationBatches(string classId);
     Task<ObjectResult> GetCollegePendingUsers(string collegeId);
     Task<ObjectResult> GetCollegeAdminPendingUsers(string collegeAdminUserId);
+    Task<ObjectResult> GetApprovedCollegeTrainers(string collegeId);
     Task<ObjectResult> CreateCollegeClass(string collegeId, CreateCollegeClassModel model);
     Task<ObjectResult> CreateCollegeBatch(string collegeId, string classId, CreateCollegeBatchModel model);
+    Task<ObjectResult> AssignCollegeBatchTrainers(string collegeId, string classId, string batchId, AssignBatchTrainersModel model);
     Task<ObjectResult> ApproveCollegeUser(string collegeId, string userId, CollegeUserActionModel model);
     Task<ObjectResult> RejectCollegeUser(string collegeId, string userId, CollegeUserActionModel model);
     Task<ObjectResult> ApproveCollege(string collegeId, CollegeActionModel model);

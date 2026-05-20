@@ -37,7 +37,10 @@ export class AccountService {
       `${this.appConfig.api_url}/${this.url}/login`,
       request,
       {
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Skip-Global-Error-Redirect': 'true'
+        }
       }
     );
   }

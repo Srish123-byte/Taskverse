@@ -5,6 +5,8 @@ import { NavigationEnd, Router } from '@angular/router';
 import { Subscription, filter, startWith } from 'rxjs';
 import { finalize, take, timeout } from 'rxjs/operators';
 import {
+  ApprovedTrainer,
+  AssignBatchTrainersRequest,
   ClassConfiguration,
   CollegeAdminService,
   CollegeBatchSummary,
@@ -17,8 +19,10 @@ import {
 } from '../../../common/validators/class-batch-name-creation.validators';
 
 interface BatchViewModel {
+  batch?: CollegeBatchSummary;
   name: string;
   subtitle: string;
+  assignedTrainerSummary: string;
   students: number;
   status: 'Active' | 'Pending';
   variant: 'live' | 'draft';
@@ -40,15 +44,26 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
   isLoading = true;
   isCreateClassOpen = false;
   isCreateBatchOpen = false;
+  isTrainerAssignmentOpen = false;
+  isTrainerDropdownOpen = false;
   isSubmittingClass = false;
   isSubmittingBatch = false;
+  isLoadingApprovedTrainers = false;
+  isSubmittingTrainerAssignment = false;
   isSuccessDialogOpen = false;
   errorMessage = '';
   createClassErrorMessage = '';
   createBatchErrorMessage = '';
+  trainerAssignmentErrorMessage = '';
   successMessage = '';
   private hasBroughtFirstClassIntoView = false;
   private routeSubscription?: Subscription;
+  approvedTrainers: ApprovedTrainer[] = [];
+  selectedTrainerIds = new Set<string>();
+  activeTrainerAssignmentClassId = '';
+  activeTrainerAssignmentClassName = '';
+  activeTrainerAssignmentBatchId = '';
+  activeTrainerAssignmentBatchName = '';
   classConfiguration: ClassConfiguration = {
     totals: {
       totalClasses: 0,
@@ -127,6 +142,7 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     this.createBatchErrorMessage = '';
     this.successMessage = '';
     this.isCreateClassOpen = false;
+    this.closeTrainerAssignmentModal();
     this.isCreateBatchOpen = true;
     this.createBatchForm.reset({
       classId,
@@ -162,6 +178,37 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
   closeSuccessDialog(): void {
     this.isSuccessDialogOpen = false;
     this.successMessage = '';
+  }
+
+  openAssignTrainerModal(classItem: CollegeClassSummary, batch: CollegeBatchSummary): void {
+    this.isCreateClassOpen = false;
+    this.isCreateBatchOpen = false;
+    this.isTrainerAssignmentOpen = true;
+    this.isTrainerDropdownOpen = true;
+    this.trainerAssignmentErrorMessage = '';
+    this.successMessage = '';
+    this.activeTrainerAssignmentClassId = classItem.classId;
+    this.activeTrainerAssignmentClassName = classItem.name;
+    this.activeTrainerAssignmentBatchId = batch.batchId;
+    this.activeTrainerAssignmentBatchName = batch.name;
+    this.selectedTrainerIds = new Set(batch.assignedTrainers.map(trainer => trainer.trainerId));
+
+    if (this.approvedTrainers.length === 0) {
+      this.loadApprovedTrainers();
+    }
+  }
+
+  closeTrainerAssignmentModal(): void {
+    this.isTrainerAssignmentOpen = false;
+    this.isTrainerDropdownOpen = false;
+    this.isSubmittingTrainerAssignment = false;
+    this.isLoadingApprovedTrainers = false;
+    this.trainerAssignmentErrorMessage = '';
+    this.selectedTrainerIds = new Set<string>();
+    this.activeTrainerAssignmentClassId = '';
+    this.activeTrainerAssignmentClassName = '';
+    this.activeTrainerAssignmentBatchId = '';
+    this.activeTrainerAssignmentBatchName = '';
   }
 
   submitCreateClass(): void {
@@ -291,6 +338,7 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
       {
         name: `Create ${classItem.batches.length === 0 ? 'First Batch' : 'Next Batch'}`,
         subtitle: 'Set up remaining students later',
+        assignedTrainerSummary: '',
         students: 0,
         status: 'Pending',
         variant: 'draft'
@@ -306,10 +354,101 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     return item.batchId;
   }
 
+  trackByTrainerId(_: number, item: ApprovedTrainer): string {
+    return item.trainerId;
+  }
+
+  toggleTrainerDropdown(): void {
+    if (this.isLoadingApprovedTrainers || this.approvedTrainers.length === 0) {
+      return;
+    }
+
+    this.isTrainerDropdownOpen = !this.isTrainerDropdownOpen;
+  }
+
+  toggleTrainerSelection(trainerId: string): void {
+    if (this.selectedTrainerIds.has(trainerId)) {
+      this.selectedTrainerIds.delete(trainerId);
+      return;
+    }
+
+    this.selectedTrainerIds.add(trainerId);
+  }
+
+  isTrainerSelected(trainerId: string): boolean {
+    return this.selectedTrainerIds.has(trainerId);
+  }
+
+  getSelectedTrainerCount(): number {
+    return this.selectedTrainerIds.size;
+  }
+
+  getTrainerDropdownLabel(): string {
+    if (this.isLoadingApprovedTrainers) {
+      return 'Loading approved trainers...';
+    }
+
+    const selectedCount = this.getSelectedTrainerCount();
+    if (selectedCount > 0) {
+      return `${selectedCount} trainer${selectedCount === 1 ? '' : 's'} selected`;
+    }
+
+    if (this.approvedTrainers.length === 0) {
+      return 'No approved trainers available';
+    }
+
+    return 'Choose approved trainers';
+  }
+
+  getSelectedTrainerNames(): string[] {
+    return this.approvedTrainers
+      .filter(trainer => this.selectedTrainerIds.has(trainer.trainerId))
+      .map(trainer => trainer.fullName);
+  }
+
+  submitTrainerAssignment(): void {
+    if (!this.activeTrainerAssignmentClassId || !this.activeTrainerAssignmentBatchId) {
+      this.trainerAssignmentErrorMessage = 'Unable to identify the selected batch right now.';
+      return;
+    }
+
+    const request: AssignBatchTrainersRequest = {
+      trainerIds: Array.from(this.selectedTrainerIds)
+    };
+
+    this.isSubmittingTrainerAssignment = true;
+    this.trainerAssignmentErrorMessage = '';
+
+    this.collegeAdminService.assignBatchTrainers(
+      this.activeTrainerAssignmentClassId,
+      this.activeTrainerAssignmentBatchId,
+      request)
+      .pipe(
+        take(1),
+        finalize(() => {
+          this.isSubmittingTrainerAssignment = false;
+        }))
+      .subscribe({
+        next: updatedBatch => {
+          this.replaceBatchSummary(updatedBatch);
+          this.successMessage = `Trainer assignments were updated for "${updatedBatch.name}".`;
+          this.closeTrainerAssignmentModal();
+          this.isSuccessDialogOpen = true;
+        },
+        error: err => {
+          this.trainerAssignmentErrorMessage = err?.error?.message || 'Unable to assign trainers right now.';
+        }
+      });
+  }
+
   private mapBatchCard(batch: CollegeBatchSummary): BatchViewModel {
     return {
+      batch,
       name: batch.name,
       subtitle: `Capacity: ${batch.capacity || 0} seats`,
+      assignedTrainerSummary: batch.assignedTrainers.length > 0
+        ? batch.assignedTrainers.map(trainer => trainer.fullName).join(', ')
+        : 'Not assigned',
       students: batch.studentCount,
       status: 'Active',
       variant: 'live'
@@ -350,6 +489,27 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
       });
   }
 
+  private loadApprovedTrainers(): void {
+    this.isLoadingApprovedTrainers = true;
+    this.trainerAssignmentErrorMessage = '';
+
+    this.collegeAdminService.getApprovedTrainers()
+      .pipe(
+        take(1),
+        finalize(() => {
+          this.isLoadingApprovedTrainers = false;
+        }))
+      .subscribe({
+        next: trainers => {
+          this.approvedTrainers = trainers;
+        },
+        error: err => {
+          this.approvedTrainers = [];
+          this.trainerAssignmentErrorMessage = err?.error?.message || 'Unable to load approved trainers right now.';
+        }
+      });
+  }
+
   private recalculateTotals(): void {
     const totalClasses = this.classConfiguration.classes.length;
     const totalBatches = this.classConfiguration.classes.reduce((sum, item) => sum + item.batches.length, 0);
@@ -365,6 +525,22 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
         totalStudents,
         capacityUtilization: totalCapacity > 0 ? Math.round((totalStudents / totalCapacity) * 100) : 0
       }
+    };
+  }
+
+  private replaceBatchSummary(updatedBatch: CollegeBatchSummary): void {
+    this.classConfiguration = {
+      ...this.classConfiguration,
+      classes: this.classConfiguration.classes.map(classItem => {
+        if (classItem.classId !== updatedBatch.classId) {
+          return classItem;
+        }
+
+        return {
+          ...classItem,
+          batches: classItem.batches.map(batch => batch.batchId === updatedBatch.batchId ? updatedBatch : batch)
+        };
+      })
     };
   }
 
