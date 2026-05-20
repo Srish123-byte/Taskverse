@@ -318,7 +318,7 @@
     </section>
   </div>
 
-  <div *ngIf="isSuccessDialogOpen" class="modal-backdrop" (click)="closeSuccessDialog()">
+  <div *ngIf="isSuccessDialogOpen" class="modal-backdrop success-backdrop" (click)="closeSuccessDialog()">
     <section class="success-dialog" (click)="$event.stopPropagation()">
       <div class="success-dialog-icon">
         <mat-icon>check_circle</mat-icon>
@@ -331,7 +331,7 @@
     </section>
   </div>
 
-  <div *ngIf="isTrainerAssignmentOpen" class="modal-backdrop" (click)="closeTrainerAssignmentModal()">
+  <div *ngIf="isTrainerAssignmentOpen && !isSuccessDialogOpen" class="modal-backdrop" (click)="!isSubmittingTrainerAssignment && closeTrainerAssignmentModal()">
     <section class="create-class-modal trainer-assignment-modal" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <div class="modal-title-wrap">
@@ -343,7 +343,7 @@
             <p>Select one or more approved trainers for {{ activeTrainerAssignmentBatchName }} in {{ activeTrainerAssignmentClassName }}.</p>
           </div>
         </div>
-        <button type="button" class="close-button" (click)="closeTrainerAssignmentModal()" aria-label="Close trainer assignment form">
+        <button type="button" class="close-button" [disabled]="isSubmittingTrainerAssignment" (click)="closeTrainerAssignmentModal()" aria-label="Close trainer assignment form">
           <mat-icon>close</mat-icon>
         </button>
       </div>
@@ -356,7 +356,7 @@
         <div class="assignment-summary-card">
           <span class="assignment-summary-kicker">{{ activeTrainerAssignmentClassName }}</span>
           <strong>{{ activeTrainerAssignmentBatchName }}</strong>
-          <p>Approved trainers can be reused across multiple classes and batches. Your selections will be synced to both class-level and batch-level trainer mapping tables.</p>
+          <p>Assign or unassign approved trainers here. Saving will sync the selection to both the batch-level and class-level trainer mapping tables for this class.</p>
         </div>
 
         <div class="trainer-dropdown-shell">
@@ -389,7 +389,7 @@
                 <span>{{ trainer.email }}</span>
               </div>
               <span class="trainer-option-action">
-                {{ isTrainerSelected(trainer.trainerId) ? 'Selected' : 'Select' }}
+                {{ isTrainerSelected(trainer.trainerId) ? 'Unassign' : 'Assign' }}
               </span>
             </button>
           </div>
@@ -398,17 +398,27 @@
         <div *ngIf="getSelectedTrainerCount() > 0" class="selected-trainers-shell">
           <span class="selected-trainers-label">Selected trainers</span>
           <div class="selected-trainers-list">
-            <span *ngFor="let trainerName of getSelectedTrainerNames()" class="selected-trainer-chip">
-              {{ trainerName }}
-            </span>
+            <button
+              *ngFor="let trainer of getSelectedTrainers(); trackBy: trackByTrainerId"
+              type="button"
+              class="selected-trainer-chip"
+              [disabled]="isSubmittingTrainerAssignment"
+              (click)="toggleTrainerSelection(trainer.trainerId)">
+              <span>{{ trainer.fullName }}</span>
+              <mat-icon>close</mat-icon>
+            </button>
           </div>
         </div>
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="footer-action footer-action-muted" (click)="closeTrainerAssignmentModal()">Cancel</button>
-        <button type="button" class="footer-action footer-action-primary" [disabled]="isSubmittingTrainerAssignment" (click)="submitTrainerAssignment()">
-          {{ isSubmittingTrainerAssignment ? 'Saving...' : 'Submit' }}
+        <button type="button" class="footer-action footer-action-muted" [disabled]="isSubmittingTrainerAssignment" (click)="closeTrainerAssignmentModal()">Cancel</button>
+        <button
+          type="button"
+          class="footer-action footer-action-primary"
+          [disabled]="isSubmittingTrainerAssignment || isLoadingApprovedTrainers || !hasTrainerSelectionChanges()"
+          (click)="submitTrainerAssignment()">
+          {{ isSubmittingTrainerAssignment ? 'Saving...' : 'Save Changes' }}
         </button>
       </div>
     </section>
