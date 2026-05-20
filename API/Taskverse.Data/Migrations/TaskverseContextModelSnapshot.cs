@@ -296,6 +296,14 @@ namespace Taskverse.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("city");
 
+                    b.Property<string>("AdminName")
+                        .HasColumnType("text")
+                        .HasColumnName("admin_name");
+
+                    b.Property<string>("CollegeName")
+                        .HasColumnType("text")
+                        .HasColumnName("college_name");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -305,11 +313,6 @@ namespace Taskverse.Data.Migrations
                     b.Property<DateTime?>("ModifiedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("modified_at");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name");
 
                     b.Property<string>("State")
                         .HasColumnType("text")
@@ -323,7 +326,7 @@ namespace Taskverse.Data.Migrations
 
                     b.HasKey("CollegeId");
 
-                    b.HasIndex("Name")
+                    b.HasIndex("CollegeName")
                         .IsUnique();
 
                     b.ToTable("colleges", (string)null);
@@ -512,6 +515,10 @@ namespace Taskverse.Data.Migrations
                     b.Property<Guid?>("CollegeId")
                         .HasColumnType("uuid")
                         .HasColumnName("college_id");
+
+                    b.Property<string>("CollegeName")
+                        .HasColumnType("text")
+                        .HasColumnName("college_name");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()

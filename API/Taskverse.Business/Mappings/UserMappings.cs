@@ -31,6 +31,7 @@ public static class UserMappings
             Email      = entity.Email,
             Phone      = entity.Phone,
             CollegeId  = entity.CollegeId,
+            CollegeName = entity.CollegeName,
             ClassId    = entity.ClassId,
             BatchId    = entity.BatchId,
             Role       = entity.Role,
@@ -39,10 +40,23 @@ public static class UserMappings
             ModifiedAt = entity.ModifiedAt
         };
 
-    public static PagedUserDto ToDto(this PagedUserResultModel model)
+    /// <summary>Maps a PendingUserModel (from the search microservice result) to a UserDto.</summary>
+    public static UserDto ToUserDto(this PendingUserModel model)
         => new()
         {
-            Items      = model.Items.Select(u => u.ToDto()).ToList(),
+            UserId     = model.UserId,
+            FullName   = model.FullName,
+            Email      = model.Email,
+            Role       = model.Role,
+            Status     = model.Status,
+            CreatedAt  = model.CreatedAt,
+            CollegeName = model.InstitutionName
+        };
+
+    public static PagedUserDto ToPagedUserDto(this PagedPendingUserResultModel model)
+        => new()
+        {
+            Items      = model.Items.Select(u => u.ToUserDto()).ToList(),
             TotalCount = model.TotalCount,
             PageNumber = model.PageNumber,
             PageSize   = model.PageSize

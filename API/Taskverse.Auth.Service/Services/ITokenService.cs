@@ -8,7 +8,14 @@ public interface ITokenService
     /// <summary>
     /// Generates a JWT token for the given user claims
     /// </summary>
-    Task<string> GenerateTokenAsync(Guid userId, string email, string role, string firstName, string lastName);
+    Task<string> GenerateTokenAsync(
+        Guid userId,
+        string email,
+        string role,
+        string firstName,
+        string lastName,
+        Guid? collegeId = null,
+        string? collegeName = null);
 
     /// <summary>
     /// Validates a JWT token and returns the principal if valid

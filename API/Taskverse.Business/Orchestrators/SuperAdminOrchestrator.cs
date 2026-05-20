@@ -41,6 +41,10 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 
         var totals = await totalsTask;
         var colleges = await collegesTask;
+        var pendingApprovals = await pendingTask;
+
+        _log.Debug(
+            $"SuperAdminOrchestrator.GetDashboard: colleges={colleges.Count}, activeColleges={colleges.Count(c => c.IsActive)}, pendingApprovals={pendingApprovals.Count}, assessmentsThisMonth={totals.ThisMonth}, assessmentsPreviousMonth={totals.PreviousMonth}");
 
         return new SuperAdminDashboardDto
         {
@@ -51,7 +55,7 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
                 AssessmentsThisMonth = totals.ThisMonth,
                 AssessmentsPreviousMonth = totals.PreviousMonth
             },
-            PendingApprovals = await pendingTask,
+            PendingApprovals = pendingApprovals,
             PlatformHealth = new PlatformHealthDto
             {
                 UptimePercent = 99.95,
@@ -73,6 +77,8 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
         var models = result.DeserializeValue<List<CollegeModel>>()
             ?? throw new InvalidOperationException("GetColleges returned empty.");
 
+        _log.Debug($"SuperAdminOrchestrator.GetColleges: received {models.Count} colleges from college service");
+
         return models.Select(c => c.ToDto()).ToList();
     }
 
@@ -84,6 +90,8 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 
         var models = result.DeserializeValue<List<CollegeSearchResultModel>>()
             ?? throw new InvalidOperationException("SearchColleges returned empty.");
+
+        _log.Debug($"SuperAdminOrchestrator.SearchColleges: received {models.Count} search results");
 
         return models.Select(model => model.ToDto()).ToList();
     }
@@ -97,6 +105,8 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
         var models = result.DeserializeValue<List<CollegeModel>>()
             ?? throw new InvalidOperationException("GetPendingColleges returned empty.");
 
+        _log.Debug($"SuperAdminOrchestrator.GetPendingColleges: received {models.Count} pending colleges");
+
         return models.Select(c => c.ToDto()).ToList();
     }
 
@@ -109,7 +119,23 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
         var models = result.DeserializeValue<List<PendingUserModel>>()
             ?? throw new InvalidOperationException("GetPendingUsers returned empty.");
 
+        _log.Debug($"SuperAdminOrchestrator.GetPendingUsers: received {models.Count} pending users");
+
         return models.Select(user => user.ToDto()).ToList();
+    }
+
+    public async Task<PagedUsersResultDto> SearchUsers(UserSearchCriteriaDto dto)
+    {
+        _log.Debug($"SuperAdminOrchestrator.SearchUsers: status={dto.Status}, role={dto.Role}, searchTerm={dto.SearchTerm}, page={dto.PageNumber}, pageSize={dto.PageSize}");
+        var result = await _microServiceOrchestrator.SearchUsers(dto.ToMicroServiceModel());
+        result.EnsureSuccess(nameof(SearchUsers));
+
+        var model = result.DeserializeValue<PagedPendingUserResultModel>()
+            ?? throw new InvalidOperationException("SearchUsers returned empty.");
+
+        _log.Debug($"SuperAdminOrchestrator.SearchUsers: received {model.Items.Count} users, totalCount={model.TotalCount}");
+
+        return model.ToDto();
     }
 
     public async Task<CollegeDto> ApproveCollege(string collegeId, CollegeActionDto dto) =>
@@ -128,6 +154,7 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
     {
         _log.Debug($"SuperAdminOrchestrator.ApproveUser: userId={userId}");
 
+        _log.Debug($"SuperAdminOrchestrator.ApproveUser: opening db context and transaction for userId={userId}");
         await using var context = await _dbContextFactory.CreateDbContextAsync();
         await using var transaction = await context.Database.BeginTransactionAsync();
 
@@ -137,7 +164,11 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             throw new KeyNotFoundException($"Pending user not found for userId={userId}.");
         }
 
-        switch (NormalizeRole(user.Role))
+        var normalizedRole = NormalizeRole(user.Role);
+        _log.Debug(
+            $"SuperAdminOrchestrator.ApproveUser: loaded pending user entity id={user.Id}, role={normalizedRole}, collegeId={user.CollegeId}, classId={user.ClassId}, batchId={user.BatchId}");
+
+        switch (normalizedRole)
         {
             case "collegeadmin":
                 await EnsureCollegeAdminApprovalRecord(context, user);
@@ -155,14 +186,17 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
         user.Status = UserStatus.APPROVED;
         user.ModifiedAt = DateTime.UtcNow;
 
-        await context.SaveChangesAsync();
+        var affectedRows = await context.SaveChangesAsync();
+        _log.Debug($"SuperAdminOrchestrator.ApproveUser: persisted approval changes for userId={userId}, affectedRows={affectedRows}");
         await transaction.CommitAsync();
+        _log.Debug($"SuperAdminOrchestrator.ApproveUser: committed transaction for userId={userId}");
     }
 
     public async Task RejectUser(string userId, UserActionDto _)
     {
         _log.Debug($"SuperAdminOrchestrator.RejectUser: userId={userId}");
 
+        _log.Debug($"SuperAdminOrchestrator.RejectUser: opening db context for userId={userId}");
         await using var context = await _dbContextFactory.CreateDbContextAsync();
         var user = await GetPendingUserEntity(context, userId);
         if (user is null)
@@ -173,7 +207,8 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
         user.Status = UserStatus.REJECTED;
         user.ModifiedAt = DateTime.UtcNow;
 
-        await context.SaveChangesAsync();
+        var affectedRows = await context.SaveChangesAsync();
+        _log.Debug($"SuperAdminOrchestrator.RejectUser: persisted rejection for userId={userId}, affectedRows={affectedRows}");
     }
 
     private async Task<CollegeDto> ExecuteCollegeAction(
@@ -188,6 +223,9 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 
         var model = result.DeserializeValue<CollegeModel>()
             ?? throw new InvalidOperationException($"{operationName} returned empty for collegeId={collegeId}.");
+
+        _log.Debug(
+            $"SuperAdminOrchestrator.{operationName}: completed for collegeId={collegeId}, status={model.Status}, isActive={model.IsActive}");
 
         return model.ToDto();
     }
@@ -208,22 +246,43 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 
     private static async Task EnsureCollegeAdminApprovalRecord(TaskverseContext context, User user)
     {
+        var adminName = string.IsNullOrWhiteSpace(user.FullName)
+            ? null
+            : user.FullName.Trim();
+        var collegeName = string.IsNullOrWhiteSpace(user.CollegeName)
+            ? null
+            : user.CollegeName.Trim();
+
+        if (string.IsNullOrWhiteSpace(adminName))
+        {
+            throw new InvalidOperationException($"College admin user '{user.Id}' cannot be approved without an admin name.");
+        }
+
+        if (string.IsNullOrWhiteSpace(collegeName))
+        {
+            throw new InvalidOperationException($"College admin user '{user.Id}' cannot be approved without a college name.");
+        }
+
         if (user.CollegeId.HasValue)
         {
             var existingCollege = await context.Colleges
-                .AsNoTracking()
                 .FirstOrDefaultAsync(college => college.CollegeId == user.CollegeId.Value);
 
             if (existingCollege is not null)
             {
+                existingCollege.AdminName = adminName;
+                existingCollege.CollegeName = collegeName;
+                existingCollege.ModifiedAt = DateTime.UtcNow;
+                user.CollegeId = existingCollege.CollegeId;
                 return;
             }
         }
 
         var college = new College
         {
-            CollegeId = Guid.NewGuid(),
-            Name = user.FullName.Trim(),
+            CollegeId = user.CollegeId ?? Guid.NewGuid(),
+            CollegeName = collegeName,
+            AdminName = adminName,
             Status = ActiveCollegeStatus,
             CreatedAt = DateTime.UtcNow,
             ModifiedAt = DateTime.UtcNow
@@ -240,6 +299,8 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             throw new InvalidOperationException($"Student user '{user.Id}' cannot be approved without a college.");
         }
 
+        await EnsureUserCollegeName(context, user);
+
         if (!user.BatchId.HasValue)
         {
             throw new InvalidOperationException($"Student user '{user.Id}' cannot be approved without a batch.");
@@ -250,8 +311,8 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 
         if (existingStudent is not null)
         {
+            existingStudent.ClassId = user.ClassId;
             existingStudent.Status = UserStatus.APPROVED;
-            existingStudent.StatusId = (int)UserStatus.APPROVED;
             existingStudent.ModifiedAt = DateTime.UtcNow;
             existingStudent.ApprovedBy = approvedByUserId;
             return;
@@ -262,11 +323,11 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             StudentId = Guid.NewGuid(),
             UserId = user.Id,
             CollegeId = user.CollegeId.Value,
+            ClassId = user.ClassId,
             BatchId = user.BatchId.Value,
             FullName = user.FullName,
             Email = user.Email,
             Status = UserStatus.APPROVED,
-            StatusId = (int)UserStatus.APPROVED,
             CreatedAt = DateTime.UtcNow,
             ModifiedAt = DateTime.UtcNow,
             ApprovedBy = approvedByUserId
@@ -280,13 +341,14 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             throw new InvalidOperationException($"Trainer user '{user.Id}' cannot be approved without a college.");
         }
 
+        await EnsureUserCollegeName(context, user);
+
         var existingTrainer = await context.Trainers
             .FirstOrDefaultAsync(trainer => trainer.UserId == user.Id);
 
         if (existingTrainer is not null)
         {
             existingTrainer.Status = UserStatus.APPROVED;
-            existingTrainer.StatusId = (int)UserStatus.APPROVED;
             existingTrainer.ModifiedAt = DateTime.UtcNow;
             existingTrainer.ApprovedBy = approvedByUserId;
             return;
@@ -300,17 +362,41 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             FullName = user.FullName,
             Email = user.Email,
             Status = UserStatus.APPROVED,
-            StatusId = (int)UserStatus.APPROVED,
             CreatedAt = DateTime.UtcNow,
             ModifiedAt = DateTime.UtcNow,
             ApprovedBy = approvedByUserId
         });
     }
 
+    private static async Task EnsureUserCollegeName(TaskverseContext context, User user)
+    {
+        if (!user.CollegeId.HasValue)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(user.CollegeName))
+        {
+            user.CollegeName = user.CollegeName.Trim();
+            return;
+        }
+
+        var collegeName = await context.Colleges
+            .AsNoTracking()
+            .Where(college => college.CollegeId == user.CollegeId.Value)
+            .Select(college => college.CollegeName)
+            .FirstOrDefaultAsync();
+
+        user.CollegeName = string.IsNullOrWhiteSpace(collegeName)
+            ? null
+            : collegeName.Trim();
+    }
+
     private async Task<(int ThisMonth, int PreviousMonth)> GetAssessmentTotals()
     {
         try
         {
+            _log.Debug("SuperAdminOrchestrator.GetAssessmentTotals: opening db context");
             await using var context = await _dbContextFactory.CreateDbContextAsync();
 
             var utcNow = DateTime.UtcNow;
@@ -320,6 +406,9 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             var thisMonth = await context.Assessments.CountAsync(a => a.CreatedAt >= startOfThisMonth);
             var previousMonth = await context.Assessments.CountAsync(a =>
                 a.CreatedAt >= startOfPreviousMonth && a.CreatedAt < startOfThisMonth);
+
+            _log.Debug(
+                $"SuperAdminOrchestrator.GetAssessmentTotals: thisMonth={thisMonth}, previousMonth={previousMonth}, startOfThisMonth={startOfThisMonth:O}, startOfPreviousMonth={startOfPreviousMonth:O}");
 
             return (thisMonth, previousMonth);
         }
@@ -334,6 +423,7 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
     {
         try
         {
+            _log.Debug("SuperAdminOrchestrator.GetRecentActivity: opening db context");
             await using var context = await _dbContextFactory.CreateDbContextAsync();
 
             var recentLogs = await context.AuditLogs
@@ -346,6 +436,8 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
                     user => user.Id,
                     (audit, user) => new { audit, user.FullName })
                 .ToListAsync();
+
+            _log.Debug($"SuperAdminOrchestrator.GetRecentActivity: fetched {recentLogs.Count} activity rows");
 
             return recentLogs
                 .Select(x => x.audit.ToDto(x.FullName))
@@ -362,9 +454,10 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
     {
         try
         {
+            _log.Debug("SuperAdminOrchestrator.GetAverageScoresByCollege: opening db context");
             await using var context = await _dbContextFactory.CreateDbContextAsync();
 
-            return await context.AssessmentResults
+            var scores = await context.AssessmentResults
                 .AsNoTracking()
                 .Join(context.Users.AsNoTracking(),
                     result => result.UserId,
@@ -375,17 +468,20 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
                     x => x.user.CollegeId!.Value,
                     college => college.CollegeId,
                     (x, college) => new { x.result, x.user, college })
-                .GroupBy(x => new { x.college.CollegeId, x.college.Name })
+                .GroupBy(x => new { x.college.CollegeId, CollegeName = x.college.CollegeName ?? "Unknown College" })
                 .Select(group => new CollegeScoreSummaryDto
                 {
                     CollegeId = group.Key.CollegeId.ToString(),
-                    CollegeName = group.Key.Name,
+                    CollegeName = group.Key.CollegeName,
                     AverageScore = Math.Round(group.Average(x => x.result.Score ?? 0), 2),
                     StudentsAssessed = group.Select(x => x.user.Id).Distinct().Count()
                 })
                 .OrderByDescending(x => x.AverageScore)
                 .Take(10)
                 .ToListAsync();
+
+            _log.Debug($"SuperAdminOrchestrator.GetAverageScoresByCollege: computed {scores.Count} college score summaries");
+            return scores;
         }
         catch (PostgresException ex) when (IsMissingRelation(ex))
         {
@@ -398,12 +494,13 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
     {
         try
         {
+            _log.Debug("SuperAdminOrchestrator.GetUsageTrends: opening db context");
             await using var context = await _dbContextFactory.CreateDbContextAsync();
 
             var utcToday = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
             var rangeStart = utcToday.AddDays(-29);
 
-            return await context.AssessmentResults
+            var trends = await context.AssessmentResults
                 .AsNoTracking()
                 .Where(result => result.CreatedAt >= rangeStart)
                 .GroupBy(result => result.CreatedAt.Date)
@@ -415,6 +512,9 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
                 })
                 .OrderBy(point => point.Date)
                 .ToListAsync();
+
+            _log.Debug($"SuperAdminOrchestrator.GetUsageTrends: computed {trends.Count} trend points from rangeStart={rangeStart:O}");
+            return trends;
         }
         catch (PostgresException ex) when (IsMissingRelation(ex))
         {

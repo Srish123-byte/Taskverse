@@ -32,6 +32,16 @@ internal static class PendingUserMappings
             dto.CreatedAt,
             dto.InstitutionName);
     }
+
+    public static PagedPendingUsersResponseModel ToPagedResponseModel(
+        this PagedPendingUsersDto dto)
+    {
+        return new PagedPendingUsersResponseModel(
+            dto.Items.Select(item => item.ToPendingUserResponseModel()).ToList(),
+            dto.TotalCount,
+            dto.PageNumber,
+            dto.PageSize);
+    }
 }
 
 internal record PendingUserProjection(

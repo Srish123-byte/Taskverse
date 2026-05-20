@@ -1,24 +1,33 @@
 <div class="page-container">
   <div class="page-eyebrow">Super Admin</div>
-  <h2 class="page-title">Pending User Approvals</h2>
-  <p class="page-welcome">Manage pending registration requests across institutions.</p>
+  <h2 class="page-title">User Management</h2>
+  <p class="page-welcome">Browse and manage all registered users across all institutions and statuses.</p>
 
   <div class="page-content">
     <div *ngIf="isLoading" class="page-loader" aria-live="polite" aria-busy="true">
       <mat-spinner diameter="42"></mat-spinner>
       <div>
-        <div class="page-loader-title">Loading pending users</div>
-        <div class="page-loader-copy">Fetching approval requests across institutions.</div>
+        <div class="page-loader-title">Loading users</div>
+        <div class="page-loader-copy">Fetching users across institutions.</div>
       </div>
     </div>
+
     <div *ngIf="errorMessage" class="page-state page-state-error">{{ errorMessage }}</div>
     <div *ngIf="actionMessage && !errorMessage" class="page-state">{{ actionMessage }}</div>
 
-    <div *ngIf="!isLoading && !errorMessage" class="users-page-shell">
+    <div class="users-page-shell">
+      <!-- Filters -->
       <section class="filters-shell">
         <div class="filter-field">
+          <label for="statusFilter">Status</label>
+          <select id="statusFilter" [(ngModel)]="selectedStatus" (ngModelChange)="onStatusChange()">
+            <option *ngFor="let opt of statusOptions" [value]="opt.value">{{ opt.label }}</option>
+          </select>
+        </div>
+
+        <div class="filter-field">
           <label for="roleFilter">Role Type</label>
-          <select id="roleFilter" [(ngModel)]="selectedRole">
+          <select id="roleFilter" [(ngModel)]="selectedRole" (ngModelChange)="onRoleChange()">
             <option value="all">All Roles</option>
             <option *ngFor="let role of availableRoles" [value]="role">
               {{ getRoleLabel(role) }}
@@ -27,77 +36,113 @@
         </div>
 
         <div class="filter-field">
-          <label for="institutionFilter">Institution</label>
-          <select id="institutionFilter" [(ngModel)]="selectedInstitution">
-            <option value="all">All Institutions</option>
-            <option *ngFor="let institution of availableInstitutions" [value]="institution">
-              {{ institution }}
-            </option>
-          </select>
-        </div>
-
-        <div class="filter-field">
-          <label for="searchFilter">Search Name/Email</label>
+          <label for="searchFilter">Search Name / Email</label>
           <input
             id="searchFilter"
             type="text"
             [(ngModel)]="searchTerm"
+            (ngModelChange)="onSearchChange()"
             placeholder="e.g. Alex Johnson" />
         </div>
 
         <button type="button" class="reset-button" (click)="resetFilters()">Reset Filters</button>
       </section>
 
-      <div class="users-table-shell">
-        <div class="table-header-row" *ngIf="filteredUsers.length > 0">
+      <!-- Table -->
+      <div *ngIf="!isLoading" class="users-table-shell">
+        <div class="table-header-row" *ngIf="users.length > 0">
           <span>Full Name</span>
           <span>Role</span>
           <span>Email</span>
           <span>Institution &amp; Details</span>
+          <span>Status</span>
           <span>Actions</span>
         </div>
 
-        <div *ngIf="!isLoading && filteredUsers.length === 0" class="empty-state">
-          No pending users match the current filters.
+        <div *ngIf="!isLoading && users.length === 0" class="empty-state">
+          No users match the current filters.
         </div>
 
-        <article *ngFor="let user of filteredUsers; trackBy: trackByUserId" class="user-row">
+        <article *ngFor="let user of users; trackBy: trackByUserId" class="user-row">
           <div class="user-name-cell">
             <span class="user-accent" [ngClass]="'user-accent-' + getRoleClass(user.role)"></span>
-            <div>
-              <div class="user-name">{{ user.fullName }}</div>
-            </div>
+            <div class="user-name">{{ user.fullName }}</div>
           </div>
 
           <div class="role-cell">
-            <span class="role-pill" [ngClass]="'role-pill-' + getRoleClass(user.role)">{{ getRoleLabel(user.role) }}</span>
+            <span class="role-pill" [ngClass]="'role-pill-' + getRoleClass(user.role)">
+              {{ getRoleLabel(user.role) }}
+            </span>
           </div>
 
           <div class="email-cell">{{ user.email }}</div>
 
           <div class="institution-cell">
             <div class="institution-name">{{ user.institutionName || 'Global System Access' }}</div>
-            <div class="institution-meta">Requested {{ user.createdAt | date: 'mediumDate' }}</div>
+            <div class="institution-meta">Joined {{ user.createdAt | date: 'mediumDate' }}</div>
+          </div>
+
+          <div class="status-cell">
+            <span class="status-badge" [ngClass]="getStatusClass(user.status)">
+              {{ getStatusLabel(user.status) }}
+            </span>
           </div>
 
           <div class="actions-cell">
-            <button
-              mat-flat-button
-              color="primary"
-              [disabled]="isActingOn(user.userId)"
-              (click)="approveUser(user)">
-              <mat-spinner *ngIf="isActingOn(user.userId)" diameter="18" class="button-spinner"></mat-spinner>
-              <span>{{ isActingOn(user.userId) ? 'Working...' : 'Approve' }}</span>
-            </button>
-            <button
-              mat-stroked-button
-              [disabled]="isActingOn(user.userId)"
-              (click)="rejectUser(user)">
-              <mat-spinner *ngIf="isActingOn(user.userId)" diameter="18" class="button-spinner"></mat-spinner>
-              <span>Reject</span>
-            </button>
+            <ng-container *ngIf="isPending(user); else noActions">
+              <button
+                mat-flat-button
+                color="primary"
+                [disabled]="isActingOn(user.userId)"
+                (click)="approveUser(user)">
+                <mat-spinner *ngIf="isActingOn(user.userId)" diameter="16" class="button-spinner"></mat-spinner>
+                <span>{{ isActingOn(user.userId) ? '…' : 'Approve' }}</span>
+              </button>
+              <button
+                mat-stroked-button
+                [disabled]="isActingOn(user.userId)"
+                (click)="rejectUser(user)">
+                <span>Reject</span>
+              </button>
+            </ng-container>
+            <ng-template #noActions>
+              <span class="no-action-label">—</span>
+            </ng-template>
           </div>
         </article>
+      </div>
+
+      <!-- Pagination -->
+      <div *ngIf="!isLoading && totalCount > 0" class="pagination-shell">
+        <span class="pagination-info">
+          Showing {{ pageStart }}–{{ pageEnd }} of {{ totalCount }} users
+        </span>
+
+        <div class="pagination-controls">
+          <button
+            class="page-btn page-btn-nav"
+            [disabled]="currentPage === 1"
+            (click)="prevPage()"
+            aria-label="Previous page">
+            &#8249;
+          </button>
+
+          <button
+            *ngFor="let p of pageNumbers"
+            class="page-btn"
+            [class.page-btn-active]="p === currentPage"
+            (click)="goToPage(p)">
+            {{ p }}
+          </button>
+
+          <button
+            class="page-btn page-btn-nav"
+            [disabled]="currentPage === totalPages"
+            (click)="nextPage()"
+            aria-label="Next page">
+            &#8250;
+          </button>
+        </div>
       </div>
     </div>
   </div>

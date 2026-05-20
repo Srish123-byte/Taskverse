@@ -23,14 +23,14 @@ public record UpdateUserModel(
     bool? IsActive);
 
 public record UserSearchCriteriaModel(
-    string? Email = null,
+    string? Status = null,
     string? Role = null,
-    bool? IsActive = null,
+    string? SearchTerm = null,
     int PageNumber = 1,
-    int PageSize = 20);
+    int PageSize = 10);
 
-public record PagedUserResultModel(
-    List<UserModel> Items,
+public record PagedPendingUserResultModel(
+    List<PendingUserModel> Items,
     int TotalCount,
     int PageNumber,
     int PageSize);

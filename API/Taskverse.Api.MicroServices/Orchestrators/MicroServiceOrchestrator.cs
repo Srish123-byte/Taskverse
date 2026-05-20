@@ -3,6 +3,7 @@ using log4net;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using System.Diagnostics;
 using System.Net;
 using System.Text;
 using Taskverse.Api.MicroServices.Enums;
@@ -40,7 +41,7 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
         _baseUrl = NormalizeBaseUrl(settings.BaseUrl);
         _baseUrlDev = NormalizeBaseUrl(settings.BaseUrlDev);
         _useLocalMicroservices = settings.UseLocalMicroservices;
-        _serviceTimeoutSeconds = settings.ServiceTimeoutSeconds > 0 ? settings.ServiceTimeoutSeconds : 36000;
+        _serviceTimeoutSeconds = settings.ServiceTimeoutSeconds > 0 ? settings.ServiceTimeoutSeconds : 60;
     }
 
     public string GetMicroServiceUrl(MicroService microService)
@@ -92,6 +93,32 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
         }
 
         client.DefaultRequestHeaders.Add(XCorrelationIdKey, correlationId);
+    }
+
+    private string GetCorrelationId() =>
+        _correlationContextAccessor.CorrelationContext?.CorrelationId ?? string.Empty;
+
+    private void LogRequestStart(HttpMethod method, Uri uri, object? payload = null)
+    {
+        if (!_log.IsDebugEnabled)
+        {
+            return;
+        }
+
+        var payloadType = payload?.GetType().Name ?? "none";
+        _log.Debug(
+            $"[MicroServiceOrchestrator] {method} -> {uri} | correlationId={GetCorrelationId()} | timeoutSeconds={_serviceTimeoutSeconds} | payloadType={payloadType}");
+    }
+
+    private void LogRequestCompletion(HttpMethod method, Uri uri, HttpStatusCode statusCode, long elapsedMilliseconds)
+    {
+        if (!_log.IsDebugEnabled)
+        {
+            return;
+        }
+
+        _log.Debug(
+            $"[MicroServiceOrchestrator] {method} <- {uri} | statusCode={(int)statusCode} ({statusCode}) | elapsedMs={elapsedMilliseconds} | correlationId={GetCorrelationId()}");
     }
 
     private Uri GetValidatedUri(string url)
@@ -159,19 +186,25 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
         var uri = GetValidatedUri(url);
         var client = _httpClientFactory.CreateClient(ClientName);
         PrepareClient(client, uri);
+        LogRequestStart(HttpMethod.Get, uri);
+        var stopwatch = Stopwatch.StartNew();
 
         try
         {
             var response = await client.GetAsync(uri);
+            stopwatch.Stop();
+            LogRequestCompletion(HttpMethod.Get, uri, response.StatusCode, stopwatch.ElapsedMilliseconds);
             return await GetResult<T>(response, url);
         }
         catch (HttpRequestException ex)
         {
+            stopwatch.Stop();
             _log.Error($"[MicroServiceOrchestrator] GET connection failed for URL {url}: {ex.Message}", ex);
             return CreateServiceUnavailableResult(url, ex);
         }
         catch (Exception ex)
         {
+            stopwatch.Stop();
             _log.Error($"[MicroServiceOrchestrator] GET request failed for URL {url}: {ex.Message}", ex);
             throw;
         }
@@ -182,6 +215,8 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
         var uri = GetValidatedUri(url);
         var client = _httpClientFactory.CreateClient(ClientName);
         PrepareClient(client, uri);
+        LogRequestStart(HttpMethod.Post, uri, postData);
+        var stopwatch = Stopwatch.StartNew();
 
         try
         {
@@ -192,15 +227,19 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
             };
 
             var response = await client.SendAsync(request);
+            stopwatch.Stop();
+            LogRequestCompletion(HttpMethod.Post, uri, response.StatusCode, stopwatch.ElapsedMilliseconds);
             return await GetResult<T>(response, url);
         }
         catch (HttpRequestException ex)
         {
+            stopwatch.Stop();
             _log.Error($"[MicroServiceOrchestrator] POST connection failed for URL {url}: {ex.Message}", ex);
             return CreateServiceUnavailableResult(url, ex);
         }
         catch (Exception ex)
         {
+            stopwatch.Stop();
             _log.Error($"[MicroServiceOrchestrator] POST request failed for URL {url}: {ex.Message}", ex);
             throw;
         }
@@ -211,6 +250,8 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
         var uri = GetValidatedUri(url);
         var client = _httpClientFactory.CreateClient(ClientName);
         PrepareClient(client, uri);
+        LogRequestStart(HttpMethod.Put, uri, postData);
+        var stopwatch = Stopwatch.StartNew();
 
         try
         {
@@ -221,15 +262,19 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
             };
 
             var response = await client.SendAsync(request);
+            stopwatch.Stop();
+            LogRequestCompletion(HttpMethod.Put, uri, response.StatusCode, stopwatch.ElapsedMilliseconds);
             return await GetResult<T>(response, url);
         }
         catch (HttpRequestException ex)
         {
+            stopwatch.Stop();
             _log.Error($"[MicroServiceOrchestrator] PUT connection failed for URL {url}: {ex.Message}", ex);
             return CreateServiceUnavailableResult(url, ex);
         }
         catch (Exception ex)
         {
+            stopwatch.Stop();
             _log.Error($"[MicroServiceOrchestrator] PUT request failed for URL {url}: {ex.Message}", ex);
             throw;
         }
@@ -240,6 +285,8 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
         var uri = GetValidatedUri(url);
         var client = _httpClientFactory.CreateClient(ClientName);
         PrepareClient(client, uri);
+        LogRequestStart(HttpMethod.Patch, uri, patchData);
+        var stopwatch = Stopwatch.StartNew();
 
         try
         {
@@ -250,15 +297,19 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
             };
 
             var response = await client.SendAsync(request);
+            stopwatch.Stop();
+            LogRequestCompletion(HttpMethod.Patch, uri, response.StatusCode, stopwatch.ElapsedMilliseconds);
             return await GetResult<T>(response, url);
         }
         catch (HttpRequestException ex)
         {
+            stopwatch.Stop();
             _log.Error($"[MicroServiceOrchestrator] PATCH connection failed for URL {url}: {ex.Message}", ex);
             return CreateServiceUnavailableResult(url, ex);
         }
         catch (Exception ex)
         {
+            stopwatch.Stop();
             _log.Error($"[MicroServiceOrchestrator] PATCH request failed for URL {url}: {ex.Message}", ex);
             throw;
         }
@@ -269,19 +320,25 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
         var uri = GetValidatedUri(url);
         var client = _httpClientFactory.CreateClient(ClientName);
         PrepareClient(client, uri);
+        LogRequestStart(HttpMethod.Delete, uri);
+        var stopwatch = Stopwatch.StartNew();
 
         try
         {
             var response = await client.DeleteAsync(uri);
+            stopwatch.Stop();
+            LogRequestCompletion(HttpMethod.Delete, uri, response.StatusCode, stopwatch.ElapsedMilliseconds);
             return new ObjectResult(null) { StatusCode = (int)response.StatusCode };
         }
         catch (HttpRequestException ex)
         {
+            stopwatch.Stop();
             _log.Error($"[MicroServiceOrchestrator] DELETE connection failed for URL {url}: {ex.Message}", ex);
             return CreateServiceUnavailableResult(url, ex);
         }
         catch (Exception ex)
         {
+            stopwatch.Stop();
             _log.Error($"[MicroServiceOrchestrator] DELETE request failed for URL {url}: {ex.Message}", ex);
             throw;
         }

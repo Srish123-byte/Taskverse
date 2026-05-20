@@ -4,6 +4,7 @@ public class CollegeDto
 {
     public string CollegeId { get; set; } = default!;
     public string Name { get; set; } = default!;
+    public string? AdminName { get; set; }
     public string? City { get; set; }
     public string? State { get; set; }
     public string Status { get; set; } = default!;
@@ -106,4 +107,21 @@ public class UsageTrendPointDto
     public DateTime Date { get; set; }
     public int Assessments { get; set; }
     public int StudentsAssessed { get; set; }
+}
+
+public class UserSearchCriteriaDto
+{
+    public string? Status { get; set; }
+    public string? Role { get; set; }
+    public string? SearchTerm { get; set; }
+    public int PageNumber { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
+}
+
+public class PagedUsersResultDto
+{
+    public List<PendingUserDto> Items { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
 }

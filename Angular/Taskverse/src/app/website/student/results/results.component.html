@@ -1,0 +1,25 @@
+<section class="student-page">
+  <header class="page-header">
+    <div>
+      <span class="page-eyebrow">Student Portal</span>
+      <h1>Results</h1>
+      <p>Review your latest scores and see how you rank against your batch.</p>
+    </div>
+  </header>
+
+  <section class="page-panel">
+    <div class="table-head">
+      <span>Assessment</span>
+      <span>Date</span>
+      <span>Score</span>
+      <span>Rank</span>
+    </div>
+
+    <div *ngFor="let result of results" class="table-row">
+      <strong>{{ result.assessment }}</strong>
+      <span>{{ result.date }}</span>
+      <span class="score-pill">{{ result.score }}</span>
+      <strong>{{ result.rank }}</strong>
+    </div>
+  </section>
+</section>

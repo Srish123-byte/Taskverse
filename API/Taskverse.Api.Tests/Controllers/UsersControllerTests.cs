@@ -46,7 +46,6 @@ public class UsersControllerTests : TestControllerBase
 
         // Act
         IActionResult result = await _controller.GetUser("user-123");
-
         // Assert
         Assert.IsInstanceOfType(result, typeof(OkObjectResult));
         var ok = (OkObjectResult)result;
@@ -99,6 +98,7 @@ public class UsersControllerTests : TestControllerBase
             FullName = "Jane Smith",
             Email    = "jane.smith@example.com",
             Phone    = "+919876543210",
+            CollegeName = "Horizon Institute of Tech",
             Role     = "Student",
             Password = "SecurePass123!"
         };

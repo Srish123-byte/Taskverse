@@ -8,6 +8,7 @@ export interface RegisterRequest {
   email: string;
   phone?: string;
   collegeId?: string;
+  collegeName?: string;
   classId?: string;
   batchId?: string;
   role: string;
@@ -20,6 +21,7 @@ export interface RegisterResponse {
   email: string;
   phone?: string;
   collegeId?: string;
+  collegeName?: string;
   classId?: string;
   batchId?: string;
   role: string;
@@ -48,16 +50,22 @@ export interface RegistrationBatchOption {
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
+  private readonly rawHttp: HttpClient;
 
   constructor(
     private readonly http: HttpClient,
     private readonly appConfig: AppConfig
-  ) {}
+  ) {
+    this.rawHttp = http;
+  }
 
   register(request: RegisterRequest): Observable<RegisterResponse> {
     const url = `${this.appConfig.api_url}/users/register`;
-    return this.http.post<RegisterResponse>(url, request, {
-      headers: { 'Content-Type': 'application/json' }
+    return this.rawHttp.post<RegisterResponse>(url, request, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Skip-Global-Error-Redirect': 'true'
+      }
     });
   }
 

@@ -49,6 +49,16 @@ export class Session {
   }
   set role(value: RoleType) {
     this.storage.setItem(SessionKey.Role, value);
+    if (!this.isCollegeScopedRole(value)) {
+      this.storage.removeItem(SessionKey.CollegeId);
+    }
+  }
+
+  get collegeId(): string {
+    return this.storage.getItem(SessionKey.CollegeId) as string;
+  }
+  set collegeId(value: string) {
+    this.storage.setItem(SessionKey.CollegeId, value);
   }
 
   // In-memory user profile (reactive)
@@ -57,6 +67,7 @@ export class Session {
   }
   set user(value: User | null) {
     this._user$.next(value);
+    this.syncCollegeId(value);
   }
 
   isLoggedIn(): boolean {
@@ -70,5 +81,24 @@ export class Session {
     this.storage.removeItem(SessionKey.UserEmail);
     this.storage.removeItem(SessionKey.UserId);
     this.storage.removeItem(SessionKey.Role);
+    this.storage.removeItem(SessionKey.CollegeId);
+  }
+
+  private syncCollegeId(user: User | null): void {
+    const role = user?.role ?? this.role;
+    const collegeId = user?.collegeId?.trim();
+
+    if (this.isCollegeScopedRole(role) && collegeId) {
+      this.collegeId = collegeId;
+      return;
+    }
+
+    if (!this.isCollegeScopedRole(role)) {
+      this.storage.removeItem(SessionKey.CollegeId);
+    }
+  }
+
+  private isCollegeScopedRole(role: RoleType | null | undefined): boolean {
+    return role === RoleType.CollegeAdmin || role === RoleType.Trainer || role === RoleType.Student;
   }
 }

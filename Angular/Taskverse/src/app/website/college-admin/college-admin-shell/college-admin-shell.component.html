@@ -1,12 +1,18 @@
-<div class="role-shell">
+<div class="college-admin-shell">
   <aside class="shell-sidebar">
     <div class="shell-brand">
-      <div class="brand-mark">TV</div>
+      <div class="brand-mark">
+        <mat-icon>school</mat-icon>
+      </div>
       <div>
-        <div class="brand-eyebrow">Campus Console</div>
-        <div class="brand-title">College Admin</div>
+        <div class="brand-title">TASKVERSE</div>
       </div>
     </div>
+
+    <section class="institution-card" aria-label="Institution summary">
+      <span class="institution-label">Institution</span>
+      <strong class="institution-name">{{ institutionName }}</strong>
+    </section>
 
     <nav class="shell-nav" aria-label="College admin navigation">
       <a
@@ -14,18 +20,45 @@
         class="nav-link"
         [routerLink]="item.route"
         routerLinkActive="nav-link-active">
-        <mat-icon>{{ item.icon }}</mat-icon>
-        <span>{{ item.label }}</span>
+        <span class="nav-link-copy">
+          <img [src]="item.iconPath" [alt]="item.label" class="nav-icon" aria-hidden="true" />
+          <span>{{ item.label }}</span>
+        </span>
+        <span *ngIf="item.badge" class="nav-badge">{{ item.badge }}</span>
       </a>
     </nav>
 
-    <button type="button" class="logout-button" (click)="logout()">
-      <mat-icon>logout</mat-icon>
-      <span>Logout</span>
-    </button>
+    <div class="sidebar-footer">
+      <nav class="shell-nav shell-nav-support" aria-label="Support navigation">
+        <a
+          *ngFor="let item of supportItems"
+          class="nav-link nav-link-support"
+          [routerLink]="item.route"
+          routerLinkActive="nav-link-active">
+          <span class="nav-link-copy">
+            <img [src]="item.iconPath" [alt]="item.label" class="nav-icon" aria-hidden="true" />
+            <span>{{ item.label }}</span>
+          </span>
+        </a>
+      </nav>
+
+      <button type="button" class="logout-button" (click)="logout()">
+        <img src="assets/icons/nav/logout.svg" alt="Logout" class="nav-icon" aria-hidden="true" />
+        <span>Logout</span>
+      </button>
+    </div>
   </aside>
 
   <main class="shell-main">
-    <router-outlet></router-outlet>
+    <header class="shell-header">
+      <label class="search-shell" for="collegeAdminSearch">
+        <mat-icon>search</mat-icon>
+        <input id="collegeAdminSearch" type="search" placeholder="Search assessments, students, or batches..." />
+      </label>
+    </header>
+
+    <section class="shell-content">
+      <router-outlet></router-outlet>
+    </section>
   </main>
 </div>

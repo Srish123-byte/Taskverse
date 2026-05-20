@@ -12,6 +12,7 @@ public class User
         public string? Phone { get; set; }
 
         public Guid? CollegeId { get; set; }
+        public string? CollegeName { get; set; }
 
         public string Role { get; set; } = null!;
 

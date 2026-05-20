@@ -65,7 +65,14 @@ public class AuthenticationService : IAuthenticationService
 
             _logger.LogInformation($"[Login] Password verified. Generating tokens for user: {normalizedEmail}");
             var (firstName, lastName) = SplitName(user.FullName);
-            var token = await _tokenService.GenerateTokenAsync(user.Id, user.Email, user.Role, firstName, lastName);
+            var token = await _tokenService.GenerateTokenAsync(
+                user.Id,
+                user.Email,
+                user.Role,
+                firstName,
+                lastName,
+                user.CollegeId,
+                user.CollegeName);
             var refreshToken = await _tokenService.GenerateRefreshTokenAsync();
 
             _logger.LogInformation($"User logged in: {request.Email}");
@@ -79,6 +86,8 @@ public class AuthenticationService : IAuthenticationService
                 Email = user.Email,
                 FirstName = firstName,
                 LastName = lastName,
+                CollegeId = user.CollegeId?.ToString(),
+                CollegeName = user.CollegeName,
                 Roles = [user.Role],
                 Status = user.Status.ToString()
             };
@@ -106,7 +115,12 @@ public class AuthenticationService : IAuthenticationService
             }
 
             // TODO: Get user from refresh token and generate new access token
-            var newAccessToken = await _tokenService.GenerateTokenAsync(Guid.NewGuid(), "user@example.com", "Student", "Taskverse", "User");
+            var newAccessToken = await _tokenService.GenerateTokenAsync(
+                Guid.NewGuid(),
+                "user@example.com",
+                "Student",
+                "Taskverse",
+                "User");
             var newRefreshToken = await _tokenService.GenerateRefreshTokenAsync();
 
             return new RefreshTokenResponse
@@ -154,13 +168,23 @@ public class AuthenticationService : IAuthenticationService
 
     private static string? GetLoginBlockMessage(User user)
     {
-        // Only block SuperAdmin if rejected
-        if (string.Equals(user.Role, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
+        var normalizedRole = (user.Role ?? string.Empty).Trim().Replace(" ", string.Empty).ToLowerInvariant();
+
+        if (user.Status == UserStatus.REJECTED)
         {
-            return user.Status == UserStatus.REJECTED ? "Your account is not allowed to sign in." : null;
+            return "Your account is not allowed to sign in.";
         }
 
-        // For other roles, allow login but frontend will check status and show message
+        if (user.Status == UserStatus.PENDING_APPROVAL)
+        {
+            return normalizedRole switch
+            {
+                "collegeadmin" => "Your account is awaiting approval from the super administrator.",
+                "trainer" or "student" => "Your account is awaiting approval from your college administrator.",
+                _ => "Your account is awaiting approval."
+            };
+        }
+
         return null;
     }
 

@@ -32,6 +32,21 @@ export interface PendingUser {
   institutionName?: string;
 }
 
+export interface UserSearchRequest {
+  status?: string;
+  role?: string;
+  searchTerm?: string;
+  pageNumber: number;
+  pageSize: number;
+}
+
+export interface PagedUsersResult {
+  items: PendingUser[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+}
+
 export interface College {
   collegeId: string;
   name: string;

@@ -16,27 +16,31 @@ export const RouteAddress = {
   },
 
   CollegeAdmin: {
-    Root:      'college-admin',
-    Dashboard: 'college-admin/dashboard',
-    Courses:   'college-admin/courses',
-    Trainers:  'college-admin/trainers',
-    Students:  'college-admin/students',
-    Manage:    'college-admin/manage'
+    Root:               'college-admin',
+    Dashboard:          'college-admin/dashboard',
+    Approvals:          'college-admin/approvals',
+    Users:              'college-admin/users',
+    ClassesManagement:  'college-admin/classes-management',
+    AssessmentBuilder:  'college-admin/assessment-builder',
+    Reports:            'college-admin/reports',
+    HelpCenter:         'college-admin/help-center',
+    Settings:           'college-admin/settings'
   },
 
   Trainer: {
-    Root:      'trainer',
-    Dashboard: 'trainer/dashboard',
-    Courses:   'trainer/courses',
-    Students:  'trainer/students',
-    Manage:    'trainer/manage'
+    Root:       'trainer',
+    Dashboard:  'trainer/dashboard',
+    Courses:    'trainer/courses',
+    Students:   'trainer/students',
+    Manage:     'trainer/manage',
+    HelpCenter: 'trainer/help-center'
   },
 
   Student: {
-    Root:      'student',
-    Dashboard: 'student/dashboard',
-    Courses:   'student/courses',
-    Tasks:     'student/tasks',
-    Manage:    'student/manage'
+    Root:          'student',
+    Dashboard:     'student/dashboard',
+    MyAssessments: 'student/my-assessments',
+    Results:       'student/results',
+    HelpCenter:    'student/help-center'
   }
 };

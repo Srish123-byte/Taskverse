@@ -1,7 +1,123 @@
-<div class="page-container">
-  <h2 class="page-title">College Admin Dashboard</h2>
-  <p class="page-welcome">Welcome, {{ userName }}</p>
-  <div class="page-content">
-    <!-- Dashboard widgets go here -->
-  </div>
+<div class="college-dashboard">
+  <app-dashboard-loader
+    *ngIf="isLoading"
+    tone="dark"
+    title="Loading dashboard"
+    copy="Preparing the latest college overview.">
+  </app-dashboard-loader>
+
+  <ng-container *ngIf="!isLoading">
+  <header class="dashboard-intro">
+    <div>
+      <span class="intro-eyebrow">Institution Dashboard</span>
+      <h1>Welcome back{{ userName ? ', ' + userName : '' }}</h1>
+    </div>
+    <div class="intro-actions">
+      <a class="secondary-action secondary-action-shell" [routerLink]="'/' + routeAddress.CollegeAdmin.ClassesManagement">
+        <mat-icon>add_circle</mat-icon>
+        <span>Create Batch</span>
+      </a>
+      <a class="primary-action" [routerLink]="'/' + routeAddress.CollegeAdmin.ClassesManagement">
+        <mat-icon>school</mat-icon>
+        <span>Create Class</span>
+      </a>
+    </div>
+  </header>
+
+  <section class="metrics-grid">
+    <article *ngFor="let card of metricCards" class="metric-card" [ngClass]="'metric-card-' + card.accent">
+      <div class="metric-card-top">
+        <div class="metric-icon">
+          <mat-icon>{{ card.icon }}</mat-icon>
+        </div>
+        <span class="metric-caption" [class.metric-caption-action]="card.accent === 'action'">
+          {{ card.caption }}
+        </span>
+      </div>
+      <div class="metric-copy">
+        <span class="metric-label">{{ card.label }}</span>
+        <strong class="metric-value">{{ card.value }}</strong>
+      </div>
+      <a *ngIf="card.accent === 'action'" class="metric-link" routerLink="/college-admin/users">
+        Review approvals
+        <mat-icon>arrow_forward</mat-icon>
+      </a>
+    </article>
+  </section>
+
+  <section class="content-grid">
+    <article class="dashboard-panel assessments-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Recent Assessments</h2>
+          <p>Live and upcoming assessments across departments.</p>
+        </div>
+        <a routerLink="/college-admin/assessment-builder">View All Assessments</a>
+      </div>
+
+      <div class="assessment-table">
+        <div class="table-head">
+          <span>Assessment Title</span>
+          <span>Department</span>
+          <span>Status</span>
+          <span>Progress</span>
+        </div>
+
+        <div *ngFor="let assessment of recentAssessments" class="table-row">
+          <div class="table-title">
+            <strong>{{ assessment.title }}</strong>
+            <span>{{ assessment.subtitle }}</span>
+          </div>
+          <div>
+            <span class="department-chip">{{ assessment.department }}</span>
+          </div>
+          <div class="status-cell">
+            <span class="status-dot" [ngClass]="'status-' + assessment.status.toLowerCase()"></span>
+            <span>{{ assessment.status }}</span>
+          </div>
+          <div class="progress-cell">{{ assessment.progress }}</div>
+        </div>
+      </div>
+    </article>
+
+    <aside class="dashboard-panel ranking-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Batch Ranking</h2>
+          <p>Top performers and critical review groups.</p>
+        </div>
+        <mat-icon>tune</mat-icon>
+      </div>
+
+      <div class="ranking-group">
+        <span class="ranking-label">Top Performers</span>
+        <div *ngFor="let batch of topBatches" class="ranking-card" [ngClass]="'ranking-card-' + batch.tone">
+          <div class="rank-badge">{{ batch.rank }}</div>
+          <div class="ranking-copy">
+            <strong>{{ batch.name }}</strong>
+            <span>{{ batch.average }}</span>
+          </div>
+          <mat-icon>{{ batch.trend === 'up' ? 'trending_up' : 'trending_down' }}</mat-icon>
+        </div>
+      </div>
+
+      <div class="ranking-group">
+        <span class="ranking-label ranking-label-alert">Critical Review</span>
+        <div *ngFor="let batch of criticalBatches" class="ranking-card" [ngClass]="'ranking-card-' + batch.tone">
+          <div class="rank-badge">{{ batch.rank }}</div>
+          <div class="ranking-copy">
+            <strong>{{ batch.name }}</strong>
+            <span>{{ batch.average }}</span>
+          </div>
+          <mat-icon>{{ batch.trend === 'up' ? 'trending_up' : 'trending_down' }}</mat-icon>
+        </div>
+      </div>
+
+      <a class="secondary-action" routerLink="/college-admin/reports">
+        <mat-icon>add</mat-icon>
+        <span>Create New Assessment</span>
+      </a>
+    </aside>
+  </section>
+  </ng-container>
 </div>

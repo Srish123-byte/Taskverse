@@ -1,5 +1,7 @@
+using log4net;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using Taskverse.API.Users.Service.Filters;
 using Taskverse.Data.DataAccess;
 using Taskverse.API.Users.Service.Services;
 
@@ -7,6 +9,7 @@ namespace Taskverse.API.Users.Service;
 
 public class Startup
 {
+    private static readonly ILog Log = LogManager.GetLogger(typeof(Startup));
     private readonly IConfigurationBuilder _builder;
 
     public IConfigurationRoot Configuration { get; }
@@ -20,6 +23,16 @@ public class Startup
             .AddEnvironmentVariables();
 
         Configuration = _builder.Build();
+
+        var logConfigPath = Path.Combine(
+            environment.ContentRootPath,
+            Configuration["Logging:Log4NetConfigFileRelativePath"] ?? "Log4Net.config");
+
+        log4net.Config.XmlConfigurator.Configure(
+            LogManager.GetRepository(System.Reflection.Assembly.GetEntryAssembly()!),
+            new FileInfo(logConfigPath));
+
+        Log.Info("Taskverse.API.Users.Service startup initialized.");
     }
 
     public void ConfigureServices(IServiceCollection services)
@@ -76,7 +89,10 @@ public class Startup
 
     private void ConfigureMvc(IServiceCollection services)
     {
-        services.AddControllers();
+        services.AddControllers(options =>
+        {
+            options.Filters.Add<AuditLoggingFilter>();
+        });
         services.AddEndpointsApiExplorer();
     }
 

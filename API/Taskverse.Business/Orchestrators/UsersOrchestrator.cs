@@ -40,12 +40,17 @@ public class UsersOrchestrator : IUsersOrchestrator
     public async Task<PagedUserDto?> SearchUsers(string? email, string? role, bool? isActive, int pageNumber, int pageSize)
     {
         _log.Debug($"UsersOrchestrator.SearchUsers: email={email}, role={role}");
-        var criteria = new UserSearchCriteriaModel(email, role, isActive, pageNumber, pageSize);
+        var criteria = new UserSearchCriteriaModel(
+            Status:     null,
+            Role:       role,
+            SearchTerm: email,
+            PageNumber: pageNumber,
+            PageSize:   pageSize);
         var result = await _microServiceOrchestrator.SearchUsers(criteria);
         result.EnsureSuccess(nameof(SearchUsers));
-        PagedUserResultModel model = result.DeserializeValue<PagedUserResultModel>()
+        PagedPendingUserResultModel model = result.DeserializeValue<PagedPendingUserResultModel>()
             ?? throw new InvalidOperationException("SearchUsers returned empty.");
-        return model.ToDto();
+        return model.ToPagedUserDto();
     }
 
     public async Task<UserDto?> CreateUser(CreateUserDto dto)
@@ -144,7 +149,8 @@ public class UsersOrchestrator : IUsersOrchestrator
     {
         _log.Debug($"UsersOrchestrator.RegisterUser: email={dto.Email}, role={dto.Role}");
 
-        // 1. Duplicate check
+        // Duplicate check
+        _log.Debug($"UsersOrchestrator.RegisterUser: checking existing user by email={dto.Email}");
         User? existing = await _usersManager.GetByEmail(dto.Email);
         if (existing is not null)
             throw new InvalidOperationException($"An account with email '{dto.Email}' already exists.");
@@ -152,14 +158,16 @@ public class UsersOrchestrator : IUsersOrchestrator
         // 2. Determine status
         bool isSuperAdmin = dto.Role.Equals(SuperAdminRole, StringComparison.OrdinalIgnoreCase);
         dto.Status = isSuperAdmin ? UserStatus.APPROVED : UserStatus.PENDING_APPROVAL;
+        _log.Debug($"UsersOrchestrator.RegisterUser: resolved status={dto.Status} for role={dto.Role}");
 
-        // 3. Build entity + hash password
+        // Build entity + hash password
         var newUser = new User
         {
             FullName   = dto.FullName.Trim(),
             Email      = dto.Email.Trim().ToLowerInvariant(),
             Phone      = dto.Phone?.Trim(),
             CollegeId  = dto.CollegeId,
+            CollegeName = dto.CollegeName?.Trim(),
             Role       = dto.Role,
             Status     = dto.Status,
             BatchId    = dto.BatchId,
@@ -173,7 +181,8 @@ public class UsersOrchestrator : IUsersOrchestrator
             newUser.PasswordHash = hasher.HashPassword(newUser, dto.Password);
         }
 
-        // 4. Persist
+        // Persist
+        _log.Debug($"UsersOrchestrator.RegisterUser: persisting user record for email={newUser.Email}");
         User created = await _usersManager.Create(newUser);
 
         _log.Info($"UsersOrchestrator.RegisterUser: created id={created.Id}, status={created.Status}");

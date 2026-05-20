@@ -1,5 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { take } from 'rxjs/operators';
@@ -17,11 +17,14 @@ import { Session } from '../../../common/services/session/session.service';
 
 export type AuthMode = 'login' | 'register';
 
-const passwordMatchValidator: ValidatorFn = (group: AbstractControl): ValidationErrors | null => {
-  const pw = group.get('password')?.value;
-  const cpw = group.get('confirmPassword')?.value;
-  return pw && cpw && pw !== cpw ? { passwordMismatch: true } : null;
-};
+import {
+  noSpecialCharsValidator,
+  strictEmailValidator,
+  passwordMatchValidator,
+  phoneValidator,
+  FULL_NAME_MAX_LENGTH,
+  PHONE_MAX_LENGTH
+} from '../../../common/validators/registration.validators';
 
 @Component({
   selector: 'app-login',
@@ -73,11 +76,24 @@ export class LoginComponent implements OnInit, OnDestroy {
     });
 
     this.registerForm = this.fb.group({
-      fullName: ['', [Validators.required, Validators.minLength(2)]],
-      email: ['', [Validators.required, Validators.email]],
-      phone: [''],
+      fullName: ['', [
+        Validators.required,
+        Validators.minLength(2),
+        Validators.maxLength(FULL_NAME_MAX_LENGTH),
+        noSpecialCharsValidator
+      ]],
+      email: ['', [
+        Validators.required,
+        Validators.email,
+        strictEmailValidator
+      ]],
+      phone: ['', [
+        Validators.required,
+        phoneValidator
+      ]],
       role: ['Student', Validators.required],
       collegeId: [''],
+      collegeName: [''],
       classId: [''],
       batchId: [''],
       password: ['', [Validators.required, Validators.minLength(8)]],
@@ -111,7 +127,7 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.errorMessage = '';
     this.successMessage = '';
     this.loginForm.reset();
-    this.registerForm.reset({ role: 'Student', collegeId: '', classId: '', batchId: '' });
+    this.registerForm.reset({ role: 'Student', collegeId: '', collegeName: '', classId: '', batchId: '' });
     this.handleRegistrationRoleChange(RoleType.Student);
   }
 
@@ -153,20 +169,38 @@ export class LoginComponent implements OnInit, OnDestroy {
         this.navigateToLandingPage();
       },
       error: err => {
-        this.isLoading = false;
-        this.errorMessage =
+        const message =
           err?.error?.message ||
           (typeof err?.error === 'string' ? err.error : '') ||
+          '';
+
+        const normalizedMessage = message.toLowerCase();
+        if (normalizedMessage.includes('awaiting approval') || normalizedMessage.includes('pending approval')) {
+          this.redirectToApprovalStatus('', 'PENDING_APPROVAL');
+          return;
+        }
+
+        if (normalizedMessage.includes('not allowed to sign in') || normalizedMessage.includes('access restricted')) {
+          this.redirectToApprovalStatus('', 'REJECTED');
+          return;
+        }
+
+        this.isLoading = false;
+        this.errorMessage =
+          message ||
           'Invalid email or password. Please try again.';
       }
     });
   }
 
-  private redirectToApprovalStatus(role: RoleType, status: string): void {
+  private redirectToApprovalStatus(role: RoleType | '', status: string): void {
+    this.isLoading = false;
+    this.errorMessage = '';
+
     void this.router.navigate([`/${RouteAddress.ApprovalStatus}`], {
       queryParams: { role, status }
-    }).finally(() => {
-      this.isLoading = false;
+    }).catch(() => {
+      this.errorMessage = 'We could not open the approval status page. Please try again.';
     });
   }
 
@@ -195,12 +229,10 @@ export class LoginComponent implements OnInit, OnDestroy {
   }
 
   private navigateToLandingPage(): void {
+    this.isLoading = false;
     void this.router.navigateByUrl(`/${RouteAddress.RoleDirector}`)
       .catch(() => {
         this.errorMessage = 'Signed in, but we could not open your dashboard.';
-      })
-      .finally(() => {
-        this.isLoading = false;
       });
   }
 
@@ -214,17 +246,37 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.errorMessage = '';
     this.successMessage = '';
 
-    const { confirmPassword, ...formValue } = this.registerForm.value;
-    const request: RegisterRequest = formValue;
+    const { confirmPassword, collegeName, ...formValue } = this.registerForm.value;
+    const request: RegisterRequest = {
+      ...formValue,
+      collegeName: collegeName || undefined
+    };
 
     this.userService.register(request).pipe(take(1)).subscribe({
       next: response => {
+        const normalizedRole = this.normalizeRole(response.role) ?? this.normalizeRole(request.role);
+        const normalizedStatus = this.normalizeStatus(response.status);
+        const shouldRedirectToApprovalStatus =
+          normalizedStatus === 'PENDING_APPROVAL' &&
+          (normalizedRole === RoleType.CollegeAdmin ||
+            normalizedRole === RoleType.Trainer ||
+            normalizedRole === RoleType.Student);
+
+        if (normalizedRole && shouldRedirectToApprovalStatus) {
+          this.redirectToApprovalStatus(normalizedRole, normalizedStatus);
+          return;
+        }
+
         this.isLoading = false;
-        const isPending = response.status === 'PENDING_APPROVAL';
+        const isPending = normalizedStatus === 'PENDING_APPROVAL';
         this.successMessage = isPending
           ? 'Account created! Your request is pending admin approval. You will be notified once approved.'
           : 'Account created successfully! You can now sign in.';
-        this.switchMode('login');
+        this.mode = 'login';
+        this.errorMessage = '';
+        this.loginForm.reset();
+        this.registerForm.reset({ role: 'Student', collegeId: '', collegeName: '', classId: '', batchId: '' });
+        this.handleRegistrationRoleChange(RoleType.Student);
       },
       error: err => {
         this.isLoading = false;
@@ -239,14 +291,36 @@ export class LoginComponent implements OnInit, OnDestroy {
     return this.isInstitutionLinkedRole(this.rRole?.value);
   }
 
+  get requiresClassSelection(): boolean {
+    return this.rRole?.value === RoleType.Student;
+  }
+
+  get requiresBatchSelection(): boolean {
+    return this.rRole?.value === RoleType.Student;
+  }
+
+  get requiresCollegeName(): boolean {
+    return this.rRole?.value === RoleType.CollegeAdmin;
+  }
+
   private handleRegistrationRoleChange(role: string | null | undefined): void {
+    if (role === RoleType.CollegeAdmin) {
+      this.clearInstitutionSelections();
+      this.clearInstitutionValidators();
+      this.applyCollegeNameValidator();
+      return;
+    }
+
+    this.clearCollegeNameValue();
+    this.clearCollegeNameValidator();
+
     if (!this.isInstitutionLinkedRole(role)) {
       this.clearInstitutionSelections();
       this.clearInstitutionValidators();
       return;
     }
 
-    this.applyInstitutionValidators();
+    this.applyInstitutionValidators(role);
     if (this.colleges.length === 0 && !this.isCollegeOptionsLoading) {
       this.loadApprovedColleges();
     }
@@ -259,13 +333,17 @@ export class LoginComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (!this.requiresClassSelection) {
+      return;
+    }
+
     this.loadClasses(collegeId);
   }
 
   private handleClassChange(classId: string | null | undefined): void {
     this.resetBatches();
 
-    if (!this.requiresInstitutionSelection || !classId) {
+    if (!this.requiresInstitutionSelection || !this.requiresBatchSelection || !classId) {
       return;
     }
 
@@ -317,13 +395,28 @@ export class LoginComponent implements OnInit, OnDestroy {
     });
   }
 
-  private applyInstitutionValidators(): void {
+  private applyInstitutionValidators(role: string | null | undefined): void {
     this.collegeControl?.setValidators([Validators.required]);
-    this.classControl?.setValidators([Validators.required]);
-    this.batchControl?.setValidators([Validators.required]);
+    this.classControl?.setValidators(role === RoleType.Student ? [Validators.required] : []);
+    this.batchControl?.setValidators(role === RoleType.Student ? [Validators.required] : []);
+
+    if (role !== RoleType.Student) {
+      this.registerForm.patchValue({
+        classId: '',
+        batchId: ''
+      }, { emitEvent: false });
+      this.classes = [];
+      this.batches = [];
+    }
+
     this.collegeControl?.updateValueAndValidity({ emitEvent: false });
     this.classControl?.updateValueAndValidity({ emitEvent: false });
     this.batchControl?.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private applyCollegeNameValidator(): void {
+    this.collegeNameControl?.setValidators([Validators.required, Validators.minLength(2)]);
+    this.collegeNameControl?.updateValueAndValidity({ emitEvent: false });
   }
 
   private clearInstitutionValidators(): void {
@@ -333,6 +426,17 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.collegeControl?.updateValueAndValidity({ emitEvent: false });
     this.classControl?.updateValueAndValidity({ emitEvent: false });
     this.batchControl?.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private clearCollegeNameValidator(): void {
+    this.collegeNameControl?.clearValidators();
+    this.collegeNameControl?.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private clearCollegeNameValue(): void {
+    this.registerForm.patchValue({
+      collegeName: ''
+    }, { emitEvent: false });
   }
 
   private clearInstitutionSelections(): void {
@@ -382,9 +486,11 @@ export class LoginComponent implements OnInit, OnDestroy {
   get rPhone()           { return this.registerForm.get('phone'); }
   get rRole()            { return this.registerForm.get('role'); }
   get rCollegeId()       { return this.registerForm.get('collegeId'); }
+  get rCollegeName()     { return this.registerForm.get('collegeName'); }
   get rClassId()         { return this.registerForm.get('classId'); }
   get rBatchId()         { return this.registerForm.get('batchId'); }
   get collegeControl()   { return this.registerForm.get('collegeId'); }
+  get collegeNameControl(){ return this.registerForm.get('collegeName'); }
   get classControl()     { return this.registerForm.get('classId'); }
   get batchControl()     { return this.registerForm.get('batchId'); }
   get rPassword()        { return this.registerForm.get('password'); }

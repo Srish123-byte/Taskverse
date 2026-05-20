@@ -6,6 +6,7 @@ import { RouterModule } from '@angular/router';
 import { PageNotFoundComponent } from './components/page-not-found/page-not-found.component';
 import { HeaderComponent } from './components/header/header.component';
 import { FooterComponent } from './components/footer/footer.component';
+import { DashboardLoaderComponent } from './components/dashboard-loader/dashboard-loader.component';
 
 import { FormatPhone } from './pipes/format-phone.pipe';
 import { ToLowerCaseText } from './pipes/to-lower-case-text.pipe';
@@ -26,6 +27,7 @@ import { MaterialModule } from '../material.module';
     PageNotFoundComponent,
     HeaderComponent,
     FooterComponent,
+    DashboardLoaderComponent,
     FormatPhone,
     ToLowerCaseText,
     ToUpperCaseText
@@ -34,6 +36,7 @@ import { MaterialModule } from '../material.module';
     PageNotFoundComponent,
     HeaderComponent,
     FooterComponent,
+    DashboardLoaderComponent,
     FormatPhone,
     ToLowerCaseText,
     ToUpperCaseText,

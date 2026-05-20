@@ -18,6 +18,7 @@ public class UserMappingTests
             FullName = "Jane Smith",
             Email    = "jane.smith@example.com",
             Phone    = "+919876543210",
+            CollegeName = "Horizon Institute of Tech",
             Role     = "Student",
             Password = "SecurePass123!"
         };
@@ -29,6 +30,7 @@ public class UserMappingTests
         Assert.AreEqual(model.FullName,  dto.FullName);
         Assert.AreEqual(model.Email,     dto.Email);
         Assert.AreEqual(model.Phone,     dto.Phone);
+        Assert.AreEqual(model.CollegeName, dto.CollegeName);
         Assert.AreEqual(model.Role,      dto.Role);
         Assert.AreEqual(model.Password,  dto.Password);
     }
@@ -68,6 +70,7 @@ public class UserMappingTests
             FullName   = "John Doe",
             Email      = "john.doe@example.com",
             Phone      = "+911234567890",
+            CollegeName = "Horizon Institute of Tech",
             Role       = "Student",
             Status     = "PENDING_APPROVAL",
             CreatedAt  = createdAt,
@@ -82,6 +85,7 @@ public class UserMappingTests
         Assert.AreEqual(dto.FullName,   model.FullName);
         Assert.AreEqual(dto.Email,      model.Email);
         Assert.AreEqual(dto.Phone,      model.Phone);
+        Assert.AreEqual(dto.CollegeName, model.CollegeName);
         Assert.AreEqual(dto.Role,       model.Role);
         Assert.AreEqual(dto.Status,     model.Status);
         Assert.AreEqual(dto.CreatedAt,  model.CreatedAt);

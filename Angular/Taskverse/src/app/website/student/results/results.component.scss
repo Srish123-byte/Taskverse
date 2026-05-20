@@ -1,0 +1,78 @@
+.student-page {
+  display: grid;
+  gap: 20px;
+  padding: 24px 28px 30px;
+  color: #edf2ff;
+}
+
+.page-header h1 {
+  margin: 8px 0 10px;
+  font-size: 2rem;
+}
+
+.page-header p {
+  margin: 0;
+  color: #adc0de;
+  max-width: 700px;
+}
+
+.page-eyebrow {
+  color: #67c9ff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.page-panel {
+  border: 1px solid rgba(122, 145, 191, 0.16);
+  border-radius: 18px;
+  background: #26324b;
+  overflow: hidden;
+}
+
+.table-head,
+.table-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(120px, 1fr) minmax(120px, 0.9fr) minmax(120px, 0.9fr);
+  gap: 16px;
+  align-items: center;
+  padding: 18px 20px;
+}
+
+.table-head {
+  background: #18233a;
+  color: #bdd0f2;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.table-row {
+  border-top: 1px solid rgba(122, 145, 191, 0.12);
+}
+
+.score-pill {
+  display: inline-flex;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.14);
+  color: #6ee7b7;
+  font-weight: 800;
+}
+
+@media (max-width: 760px) {
+  .student-page {
+    padding-inline: 18px;
+  }
+
+  .table-head {
+    display: none;
+  }
+
+  .table-row {
+    grid-template-columns: 1fr;
+  }
+}

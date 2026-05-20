@@ -1,0 +1,25 @@
+<section class="student-page">
+  <header class="page-header">
+    <div>
+      <span class="page-eyebrow">Student Portal</span>
+      <h1>My Assessments</h1>
+      <p>Track upcoming exams, launch available tests, and review completed assessment activity.</p>
+    </div>
+  </header>
+
+  <section class="page-panel">
+    <div class="table-head">
+      <span>Assessment</span>
+      <span>Type</span>
+      <span>Schedule</span>
+      <span>Status</span>
+    </div>
+
+    <div *ngFor="let assessment of assessments" class="table-row">
+      <strong>{{ assessment.title }}</strong>
+      <span>{{ assessment.type }}</span>
+      <span>{{ assessment.schedule }}</span>
+      <span class="status-pill" [ngClass]="'status-pill-' + assessment.status.toLowerCase()">{{ assessment.status }}</span>
+    </div>
+  </section>
+</section>

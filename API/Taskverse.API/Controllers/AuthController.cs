@@ -43,6 +43,8 @@ public class AuthController : Controller
                     Email = result.Email,
                     FirstName = result.FirstName,
                     LastName = result.LastName,
+                    CollegeId = result.CollegeId,
+                    CollegeName = result.CollegeName,
                     Role = result.Roles.FirstOrDefault() ?? string.Empty,
                     IsActive = true,
                     Status = result.Status
@@ -136,6 +138,8 @@ public class AuthController : Controller
             Email = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty,
             FirstName = User.FindFirstValue(ClaimTypes.GivenName) ?? string.Empty,
             LastName = User.FindFirstValue(ClaimTypes.Surname) ?? string.Empty,
+            CollegeId = User.FindFirstValue("college_id"),
+            CollegeName = User.FindFirstValue("college_name"),
             Role = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty,
             IsActive = true
         });

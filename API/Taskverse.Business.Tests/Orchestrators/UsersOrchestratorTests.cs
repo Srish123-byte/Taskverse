@@ -56,6 +56,7 @@ public class UsersOrchestratorTests
             FullName = "John Doe",
             Email    = "john.doe@example.com",
             Phone    = "+911234567890",
+            CollegeName = "Horizon Institute of Tech",
             Role     = "Student",
             Password = "SecurePass123!"
         };

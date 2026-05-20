@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Taskverse.API.College.Service.Mappings;
 using Taskverse.API.College.Service.Models;
+using Taskverse.API.College.Service.Orchestrators;
 using Taskverse.API.College.Service.Services;
 
 namespace Taskverse.API.College.Service.Controllers;
@@ -9,10 +11,14 @@ namespace Taskverse.API.College.Service.Controllers;
 [Produces("application/json")]
 public class CollegesController : ControllerBase
 {
+    private readonly ICollegeOrchestrator _collegeOrchestrator;
     private readonly ICollegeService _collegeService;
 
-    public CollegesController(ICollegeService collegeService)
+    public CollegesController(
+        ICollegeOrchestrator collegeOrchestrator,
+        ICollegeService collegeService)
     {
+        _collegeOrchestrator = collegeOrchestrator;
         _collegeService = collegeService;
     }
 
@@ -40,6 +46,43 @@ public class CollegesController : ControllerBase
         return Ok(batches);
     }
 
+    [HttpGet("college-admins/{collegeAdminUserId:guid}/users/pending")]
+    [ProducesResponseType(typeof(List<PendingUserRecord>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<List<PendingUserRecord>>> GetPendingUsers(Guid collegeAdminUserId)
+    {
+        try
+        {
+            var dtos = await _collegeOrchestrator.GetPendingUsersForCollegeAdmin(collegeAdminUserId);
+            return Ok(dtos.Select(dto => dto.ToModel()).ToList());
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("colleges/{collegeId:guid}/users/pending")]
+    [ProducesResponseType(typeof(List<PendingUserRecord>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<PendingUserRecord>>> GetPendingUsersByCollege(Guid collegeId)
+    {
+        var dtos = await _collegeOrchestrator.GetPendingUsersByCollege(collegeId);
+        return Ok(dtos.Select(dto => dto.ToModel()).ToList());
+    }
+
+    [HttpGet("colleges/{collegeId:guid}/trainers/approved")]
+    [ProducesResponseType(typeof(List<ApprovedTrainerRecord>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<ApprovedTrainerRecord>>> GetApprovedTrainers(Guid collegeId)
+    {
+        var dtos = await _collegeOrchestrator.GetApprovedTrainersByCollege(collegeId);
+        return Ok(dtos.Select(dto => dto.ToModel()).ToList());
+    }
+
     [HttpGet("colleges")]
     [ProducesResponseType(typeof(IReadOnlyList<CollegeRecord>), StatusCodes.Status200OK)]
     public ActionResult<IReadOnlyList<CollegeRecord>> GetColleges()
@@ -53,6 +96,119 @@ public class CollegesController : ControllerBase
     {
         var colleges = await _collegeService.SearchColleges(request);
         return Ok(colleges);
+    }
+
+    [HttpPost("colleges/{collegeId:guid}/classes")]
+    [ProducesResponseType(typeof(CollegeClassSummaryRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<CollegeClassSummaryRecord>> CreateClass(Guid collegeId, [FromBody] CreateCollegeClassRequest request)
+    {
+        try
+        {
+            var dto = await _collegeOrchestrator.CreateClass(collegeId, request.ToDto());
+            return Ok(dto.ToModel());
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("colleges/{collegeId:guid}/classes/{classId:guid}/batches")]
+    [ProducesResponseType(typeof(CollegeBatchSummaryRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CollegeBatchSummaryRecord>> CreateBatch(
+        Guid collegeId,
+        Guid classId,
+        [FromBody] CreateCollegeBatchRequest request)
+    {
+        try
+        {
+            var dto = await _collegeOrchestrator.CreateBatch(collegeId, classId, request.ToDto());
+            return Ok(dto.ToModel());
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("colleges/{collegeId:guid}/classes/{classId:guid}/batches/{batchId:guid}/trainers")]
+    [ProducesResponseType(typeof(CollegeBatchSummaryRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CollegeBatchSummaryRecord>> AssignBatchTrainers(
+        Guid collegeId,
+        Guid classId,
+        Guid batchId,
+        [FromBody] AssignBatchTrainersRequest request)
+    {
+        try
+        {
+            var dto = await _collegeOrchestrator.AssignBatchTrainers(collegeId, classId, batchId, request.ToDto());
+            return Ok(dto.ToModel());
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("colleges/{collegeId:guid}/users/{userId}/approve")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ApproveUser(
+        Guid collegeId,
+        string userId,
+        [FromBody] CollegeUserActionRequest request)
+    {
+        try
+        {
+            await _collegeOrchestrator.ApproveUser(collegeId, userId, request.ToDto());
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("colleges/{collegeId:guid}/users/{userId}/reject")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RejectUser(
+        Guid collegeId,
+        string userId,
+        [FromBody] CollegeUserActionRequest request)
+    {
+        try
+        {
+            await _collegeOrchestrator.RejectUser(collegeId, userId, request.ToDto());
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpGet("colleges/pending")]

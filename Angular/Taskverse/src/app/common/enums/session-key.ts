@@ -4,4 +4,5 @@ export class SessionKey {
   static UserEmail = 'user-email';
   static UserId    = 'user-id';
   static Role      = 'role';
+  static CollegeId = 'college-id';
 }

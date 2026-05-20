@@ -20,8 +20,8 @@ public partial class MicroServiceOrchestrator
 
     public async Task<ObjectResult> SearchUsers(UserSearchCriteriaModel criteria)
     {
-        var url = $"{GetMicroServiceUrl(MicroService.Users)}users/search";
-        return await Post<PagedUserResultModel>(url, criteria);
+        var url = $"{GetMicroServiceUrl(MicroService.Users)}api/users/search";
+        return await Post<PagedPendingUserResultModel>(url, criteria);
     }
 
     public async Task<ObjectResult> CreateUser(CreateUserModel model)

@@ -26,6 +26,14 @@ export class AppConfig {
     return this.config?.['local_csp_meta_tag'] || '';
   }
 
+  get supportPhone(): string {
+    return this.config?.['support_phone'] || '';
+  }
+
+  get supportEmail(): string {
+    return this.config?.['support_email'] || '';
+  }
+
   get isConfigLoaded(): boolean {
     return this.configLoaded;
   }

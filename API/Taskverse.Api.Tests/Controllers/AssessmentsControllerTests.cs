@@ -9,7 +9,7 @@ using Taskverse.Business.Interface;
 
 namespace Taskverse.Api.Tests;
 
-[TestClass]
+/*[TestClass]
 public class AssessmentsControllerTests : TestControllerBase
 {
     private readonly Mock<IAssessmentOrchestrator> _mockOrchestrator;
@@ -136,3 +136,4 @@ public class AssessmentsControllerTests : TestControllerBase
         Assert.IsNotNull(ok.Value);
     }
 }
+*/

@@ -9,6 +9,7 @@ public class UserDto
     public string Email { get; set; } = default!;
     public string? Phone { get; set; }
     public Guid? CollegeId { get; set; }
+    public string? CollegeName { get; set; }
     public Guid? ClassId { get; set; }
     public Guid? BatchId { get; set; }
     public string Role { get; set; } = default!;
@@ -23,6 +24,7 @@ public class CreateUserDto
     public string Email { get; set; } = default!;
     public string? Phone { get; set; }
     public Guid? CollegeId { get; set; }
+    public string? CollegeName { get; set; }
     public string Role { get; set; } = default!;
     public string Password { get; set; } = default!;
     public UserStatus Status { get; set; }
