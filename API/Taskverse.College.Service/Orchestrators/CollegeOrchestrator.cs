@@ -229,6 +229,8 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             throw new InvalidOperationException($"Student user '{user.Id}' cannot be approved without a college.");
         }
 
+        await EnsureUserCollegeName(user);
+
         var existingStudent = await _context.Students
             .FirstOrDefaultAsync(student => student.UserId == user.Id);
 
@@ -266,6 +268,8 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             throw new InvalidOperationException($"Trainer user '{user.Id}' cannot be approved without a college.");
         }
 
+        await EnsureUserCollegeName(user);
+
         var existingTrainer = await _context.Trainers
             .FirstOrDefaultAsync(trainer => trainer.UserId == user.Id);
 
@@ -290,6 +294,30 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             ModifiedAt = DateTime.UtcNow,
             ApprovedBy = approvedByUserId
         });
+    }
+
+    private async Task EnsureUserCollegeName(User user)
+    {
+        if (!user.CollegeId.HasValue)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(user.CollegeName))
+        {
+            user.CollegeName = user.CollegeName.Trim();
+            return;
+        }
+
+        var collegeName = await _context.Colleges
+            .AsNoTracking()
+            .Where(college => college.CollegeId == user.CollegeId.Value)
+            .Select(college => college.CollegeName)
+            .FirstOrDefaultAsync();
+
+        user.CollegeName = string.IsNullOrWhiteSpace(collegeName)
+            ? null
+            : collegeName.Trim();
     }
 
     private static string NormalizeRole(string role) =>

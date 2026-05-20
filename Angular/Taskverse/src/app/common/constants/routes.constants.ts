@@ -37,11 +37,10 @@ export const RouteAddress = {
   },
 
   Student: {
-    Root:       'student',
-    Dashboard:  'student/dashboard',
-    Courses:    'student/courses',
-    Tasks:      'student/tasks',
-    Manage:     'student/manage',
-    HelpCenter: 'student/help-center'
+    Root:          'student',
+    Dashboard:     'student/dashboard',
+    MyAssessments: 'student/my-assessments',
+    Results:       'student/results',
+    HelpCenter:    'student/help-center'
   }
 };

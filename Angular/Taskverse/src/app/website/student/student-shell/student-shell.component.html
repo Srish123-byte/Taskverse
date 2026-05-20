@@ -1,10 +1,9 @@
 <div class="role-shell">
   <aside class="shell-sidebar">
     <div class="shell-brand">
-      <div class="brand-mark">TV</div>
-      <div>
-        <div class="brand-eyebrow">Workspace</div>
-        <div class="brand-title">Student</div>
+      <div class="brand-copy">
+        <div class="brand-title">Student Portal</div>
+        <div class="brand-eyebrow">Secure Session Active</div>
       </div>
     </div>
 
@@ -13,16 +12,27 @@
         *ngFor="let item of navItems"
         class="nav-link"
         [routerLink]="item.route"
-        routerLinkActive="nav-link-active">
+        routerLinkActive="nav-link-active"
+        [routerLinkActiveOptions]="{ exact: true }">
         <img [src]="item.iconPath" [alt]="item.label" class="nav-icon" aria-hidden="true" />
         <span>{{ item.label }}</span>
       </a>
     </nav>
 
-    <button type="button" class="logout-button" (click)="logout()">
-      <img src="assets/icons/nav/logout.svg" alt="Logout" class="nav-icon" aria-hidden="true" />
-      <span>Logout</span>
-    </button>
+    <div class="sidebar-footer">
+      <a
+        class="footer-action footer-action-primary"
+        [routerLink]="'/' + routeAddress.Student.HelpCenter"
+        routerLinkActive="footer-action-active">
+        <img src="assets/icons/nav/help-center.svg" alt="Help Center" class="footer-icon" aria-hidden="true" />
+        <span>Help Center</span>
+      </a>
+
+      <button type="button" class="footer-action footer-action-secondary" (click)="logout()">
+        <img src="assets/icons/nav/logout.svg" alt="Logout" class="footer-icon" aria-hidden="true" />
+        <span>Logout</span>
+      </button>
+    </div>
   </aside>
 
   <main class="shell-main">

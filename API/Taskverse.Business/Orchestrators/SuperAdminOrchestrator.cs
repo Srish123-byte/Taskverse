@@ -299,6 +299,8 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             throw new InvalidOperationException($"Student user '{user.Id}' cannot be approved without a college.");
         }
 
+        await EnsureUserCollegeName(context, user);
+
         if (!user.BatchId.HasValue)
         {
             throw new InvalidOperationException($"Student user '{user.Id}' cannot be approved without a batch.");
@@ -339,6 +341,8 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             throw new InvalidOperationException($"Trainer user '{user.Id}' cannot be approved without a college.");
         }
 
+        await EnsureUserCollegeName(context, user);
+
         var existingTrainer = await context.Trainers
             .FirstOrDefaultAsync(trainer => trainer.UserId == user.Id);
 
@@ -362,6 +366,30 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             ModifiedAt = DateTime.UtcNow,
             ApprovedBy = approvedByUserId
         });
+    }
+
+    private static async Task EnsureUserCollegeName(TaskverseContext context, User user)
+    {
+        if (!user.CollegeId.HasValue)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(user.CollegeName))
+        {
+            user.CollegeName = user.CollegeName.Trim();
+            return;
+        }
+
+        var collegeName = await context.Colleges
+            .AsNoTracking()
+            .Where(college => college.CollegeId == user.CollegeId.Value)
+            .Select(college => college.CollegeName)
+            .FirstOrDefaultAsync();
+
+        user.CollegeName = string.IsNullOrWhiteSpace(collegeName)
+            ? null
+            : collegeName.Trim();
     }
 
     private async Task<(int ThisMonth, int PreviousMonth)> GetAssessmentTotals()
