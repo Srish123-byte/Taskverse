@@ -57,8 +57,10 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
   trainerAssignmentErrorMessage = '';
   successMessage = '';
   private hasBroughtFirstClassIntoView = false;
+  private hasLoadedApprovedTrainers = false;
   private routeSubscription?: Subscription;
   approvedTrainers: ApprovedTrainer[] = [];
+  initialSelectedTrainerIds = new Set<string>();
   selectedTrainerIds = new Set<string>();
   activeTrainerAssignmentClassId = '';
   activeTrainerAssignmentClassName = '';
@@ -191,19 +193,25 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     this.activeTrainerAssignmentClassName = classItem.name;
     this.activeTrainerAssignmentBatchId = batch.batchId;
     this.activeTrainerAssignmentBatchName = batch.name;
-    this.selectedTrainerIds = new Set(batch.assignedTrainers.map(trainer => trainer.trainerId));
+    this.initialSelectedTrainerIds = new Set(batch.assignedTrainers.map(trainer => trainer.trainerId));
+    this.selectedTrainerIds = new Set(this.initialSelectedTrainerIds);
 
-    if (this.approvedTrainers.length === 0) {
-      this.loadApprovedTrainers();
+    if (!this.hasLoadedApprovedTrainers && !this.isLoadingApprovedTrainers) {
+      this.loadApprovedTrainers(true);
     }
   }
 
-  closeTrainerAssignmentModal(): void {
+  closeTrainerAssignmentModal(force = false): void {
+    if (this.isSubmittingTrainerAssignment && !force) {
+      return;
+    }
+
     this.isTrainerAssignmentOpen = false;
     this.isTrainerDropdownOpen = false;
     this.isSubmittingTrainerAssignment = false;
     this.isLoadingApprovedTrainers = false;
     this.trainerAssignmentErrorMessage = '';
+    this.initialSelectedTrainerIds = new Set<string>();
     this.selectedTrainerIds = new Set<string>();
     this.activeTrainerAssignmentClassId = '';
     this.activeTrainerAssignmentClassName = '';
@@ -367,6 +375,8 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
   }
 
   toggleTrainerSelection(trainerId: string): void {
+    this.trainerAssignmentErrorMessage = '';
+
     if (this.selectedTrainerIds.has(trainerId)) {
       this.selectedTrainerIds.delete(trainerId);
       return;
@@ -406,7 +416,29 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
       .map(trainer => trainer.fullName);
   }
 
+  getSelectedTrainers(): ApprovedTrainer[] {
+    return this.approvedTrainers.filter(trainer => this.selectedTrainerIds.has(trainer.trainerId));
+  }
+
+  hasTrainerSelectionChanges(): boolean {
+    if (this.initialSelectedTrainerIds.size !== this.selectedTrainerIds.size) {
+      return true;
+    }
+
+    for (const trainerId of this.selectedTrainerIds) {
+      if (!this.initialSelectedTrainerIds.has(trainerId)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   submitTrainerAssignment(): void {
+    if (this.isSubmittingTrainerAssignment) {
+      return;
+    }
+
     if (!this.activeTrainerAssignmentClassId || !this.activeTrainerAssignmentBatchId) {
       this.trainerAssignmentErrorMessage = 'Unable to identify the selected batch right now.';
       return;
@@ -432,7 +464,7 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
         next: updatedBatch => {
           this.replaceBatchSummary(updatedBatch);
           this.successMessage = `Trainer assignments were updated for "${updatedBatch.name}".`;
-          this.closeTrainerAssignmentModal();
+          this.closeTrainerAssignmentModal(true);
           this.isSuccessDialogOpen = true;
         },
         error: err => {
@@ -471,6 +503,9 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
       .subscribe({
         next: configuration => {
           this.classConfiguration = configuration;
+          if (!this.hasLoadedApprovedTrainers && !this.isLoadingApprovedTrainers) {
+            this.loadApprovedTrainers(false);
+          }
           this.changeDetectorRef.detectChanges();
         },
         error: err => {
@@ -489,9 +524,11 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
       });
   }
 
-  private loadApprovedTrainers(): void {
+  private loadApprovedTrainers(showError = true): void {
     this.isLoadingApprovedTrainers = true;
-    this.trainerAssignmentErrorMessage = '';
+    if (showError) {
+      this.trainerAssignmentErrorMessage = '';
+    }
 
     this.collegeAdminService.getApprovedTrainers()
       .pipe(
@@ -502,10 +539,14 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
       .subscribe({
         next: trainers => {
           this.approvedTrainers = trainers;
+          this.hasLoadedApprovedTrainers = true;
         },
         error: err => {
           this.approvedTrainers = [];
-          this.trainerAssignmentErrorMessage = err?.error?.message || 'Unable to load approved trainers right now.';
+          this.hasLoadedApprovedTrainers = false;
+          if (showError) {
+            this.trainerAssignmentErrorMessage = err?.error?.message || 'Unable to load approved trainers right now.';
+          }
         }
       });
   }
