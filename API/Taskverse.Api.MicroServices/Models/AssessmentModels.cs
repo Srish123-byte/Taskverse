@@ -39,3 +39,43 @@ public record AssessmentSummaryModel(
     int TotalAssigned,
     int TotalCompleted,
     double? AverageScore);
+
+public record CreateQuestionModel(
+    Guid CollegeId,
+    string CreatedBy,
+    string Stream,
+    string Subject,
+    string Topic,
+    string TopicTag,
+    string QuestionType,
+    string QuestionText,
+    List<string>? Options,
+    string Answer,
+    string? Explanation,
+    decimal Marks,
+    decimal NegativeMarks,
+    int DifficultyLevel);
+
+public record DeleteQuestionsModel(
+    string CreatedBy,
+    List<Guid> QuestionIds);
+
+public record AssessmentQuestionModel(
+    Guid QuestionId,
+    Guid CollegeId,
+    string? Stream,
+    string? Subject,
+    string? Topic,
+    string? TopicTag,
+    string QuestionType,
+    string QuestionText,
+    List<string>? Options,
+    string? Answer,
+    string? Explanation,
+    decimal Marks,
+    decimal NegativeMarks,
+    int DifficultyLevel,
+    int Version,
+    string CreatedBy,
+    DateTime CreatedAt,
+    DateTime? ModifiedAt);

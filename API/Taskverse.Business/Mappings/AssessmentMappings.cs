@@ -42,6 +42,29 @@ public static class AssessmentMappings
             AverageScore = model.AverageScore
         };
 
+    public static AssessmentQuestionDto ToDto(this AssessmentQuestionModel model)
+        => new()
+        {
+            QuestionId = model.QuestionId,
+            CollegeId = model.CollegeId,
+            Stream = model.Stream,
+            Subject = model.Subject,
+            Topic = model.Topic,
+            TopicTag = model.TopicTag,
+            QuestionType = model.QuestionType,
+            QuestionText = model.QuestionText,
+            Options = model.Options,
+            Answer = model.Answer,
+            Explanation = model.Explanation,
+            Marks = model.Marks,
+            NegativeMarks = model.NegativeMarks,
+            DifficultyLevel = model.DifficultyLevel,
+            Version = model.Version,
+            CreatedBy = model.CreatedBy,
+            CreatedAt = model.CreatedAt,
+            ModifiedAt = model.ModifiedAt
+        };
+
     public static CreateAssessmentModel ToMicroServiceModel(this CreateAssessmentDto dto)
         => new(
             dto.Title,
@@ -52,4 +75,29 @@ public static class AssessmentMappings
             dto.AssignedTo,
             dto.DueDate,
             dto.CreatedBy);
+
+    public static CreateQuestionModel ToMicroServiceModel(this CreateQuestionDto dto)
+        => new(
+            dto.CollegeId,
+            dto.CreatedBy,
+            dto.Stream,
+            dto.Subject,
+            dto.Topic,
+            dto.TopicTag,
+            dto.QuestionType,
+            dto.QuestionText,
+            dto.Options,
+            dto.Answer,
+            dto.Explanation,
+            dto.Marks,
+            dto.NegativeMarks,
+            dto.DifficultyLevel);
+
+    public static List<CreateQuestionModel> ToMicroServiceModels(this IEnumerable<CreateQuestionDto> dtos)
+        => dtos.Select(dto => dto.ToMicroServiceModel()).ToList();
+
+    public static DeleteQuestionsModel ToMicroServiceModel(this DeleteQuestionsDto dto)
+        => new(
+            dto.CreatedBy,
+            dto.QuestionIds);
 }

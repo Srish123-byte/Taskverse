@@ -1,3 +1,8 @@
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using Taskverse.API.Assessments.Service.Managers;
+using Taskverse.Data.DataAccess;
+
 namespace Taskverse.API.Assessments.Service;
 
 public class Startup
@@ -19,14 +24,70 @@ public class Startup
 
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddControllers();
+        ConfigureMvc(services);
+        ConfigureDatabase(services);
+        ConfigureDependencyInjection(services);
+        ConfigureSwagger(services);
+        ConfigureCors(services);
         services.AddHealthChecks();
     }
 
     public void Configure(WebApplication app, IWebHostEnvironment env)
     {
+        if (env.IsDevelopment())
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Taskverse Assessments Service v1");
+            });
+        }
+
         app.UseHttpsRedirection();
         app.MapControllers();
+        app.UseCors("AllowTaskverse");
         app.MapHealthChecks("/health");
+    }
+
+    private void ConfigureDatabase(IServiceCollection services)
+    {
+        var connStr = Configuration.GetConnectionString("TaskverseDb")
+            ?? throw new InvalidOperationException("Connection string 'TaskverseDb' is missing.");
+
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connStr);
+        var dataSource = dataSourceBuilder.Build();
+
+        services.AddSingleton(dataSource);
+        services.AddDbContext<TaskverseContext>(options =>
+            options.UseNpgsql(dataSource));
+    }
+
+    private static void ConfigureDependencyInjection(IServiceCollection services)
+    {
+        services.AddScoped<IQuestionManager, QuestionManager>();
+    }
+
+    private static void ConfigureSwagger(IServiceCollection services)
+    {
+        services.AddSwaggerGen();
+    }
+
+    private static void ConfigureMvc(IServiceCollection services)
+    {
+        services.AddControllers();
+        services.AddEndpointsApiExplorer();
+    }
+
+    private static void ConfigureCors(IServiceCollection services)
+    {
+        services.AddCors(options =>
+        {
+            options.AddPolicy("AllowTaskverse", policy =>
+            {
+                policy.AllowAnyOrigin()
+                    .AllowAnyMethod()
+                    .AllowAnyHeader();
+            });
+        });
     }
 }

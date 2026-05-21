@@ -344,6 +344,41 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
         }
     }
 
+    public async Task<ObjectResult> Delete<T>(string url, object deleteData)
+    {
+        var uri = GetValidatedUri(url);
+        var client = _httpClientFactory.CreateClient(ClientName);
+        PrepareClient(client, uri);
+        LogRequestStart(HttpMethod.Delete, uri, deleteData);
+        var stopwatch = Stopwatch.StartNew();
+
+        try
+        {
+            var json = JsonConvert.SerializeObject(deleteData);
+            using var request = new HttpRequestMessage(HttpMethod.Delete, uri)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            };
+
+            var response = await client.SendAsync(request);
+            stopwatch.Stop();
+            LogRequestCompletion(HttpMethod.Delete, uri, response.StatusCode, stopwatch.ElapsedMilliseconds);
+            return await GetResult<T>(response, url);
+        }
+        catch (HttpRequestException ex)
+        {
+            stopwatch.Stop();
+            _log.Error($"[MicroServiceOrchestrator] DELETE connection failed for URL {url}: {ex.Message}", ex);
+            return CreateServiceUnavailableResult(url, ex);
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _log.Error($"[MicroServiceOrchestrator] DELETE request failed for URL {url}: {ex.Message}", ex);
+            throw;
+        }
+    }
+
     private static ObjectResult CreateServiceUnavailableResult(string url, HttpRequestException ex)
     {
         return new ObjectResult(new

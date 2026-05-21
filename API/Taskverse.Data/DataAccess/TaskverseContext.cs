@@ -274,6 +274,7 @@ public class TaskverseContext : DbContext
             entity.HasKey(q => q.QuestionId);
             entity.Property(q => q.QuestionId).HasColumnName("question_id").HasDefaultValueSql("gen_random_uuid()");
             entity.Property(q => q.CollegeId).HasColumnName("college_id");
+            entity.Property(q => q.AssessmentId).HasColumnName("assessment_id");
             entity.Property(q => q.Stream).HasColumnName("stream").HasMaxLength(100);
             entity.Property(q => q.Subject).HasColumnName("subject").HasMaxLength(100);
             entity.Property(q => q.Topic).HasColumnName("topic").HasMaxLength(200);
@@ -285,13 +286,15 @@ public class TaskverseContext : DbContext
             entity.Property(q => q.Explanation).HasColumnName("explanation").HasMaxLength(1000);
             entity.Property(q => q.Marks).HasColumnName("marks").HasColumnType("numeric(5,2)");
             entity.Property(q => q.NegativeMarks).HasColumnName("negative_marks").HasColumnType("numeric(5,2)");
-            entity.Property(q => q.IsActive).HasColumnName("is_active");
-            entity.Property(q => q.CreatedBy).HasColumnName("created_by");
-            entity.Property(q => q.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
-            entity.Property(q => q.ModifiedAt).HasColumnName("modified_at");
+            entity.Property(q => q.IsActive).HasColumnName("is_active").HasDefaultValue(true).ValueGeneratedOnAdd();
+            entity.Property(q => q.CreatedBy).HasColumnName("created_by").HasMaxLength(200);
+            entity.Property(q => q.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("(now() at time zone 'utc')").ValueGeneratedOnAdd();
+            entity.Property(q => q.ModifiedAt).HasColumnName("modified_at").HasDefaultValueSql("(now() at time zone 'utc')").ValueGeneratedOnAdd();
             entity.Property(q => q.DifficultyLevel).HasColumnName("difficulty_level");
+            entity.Property(q => q.Version).HasColumnName("version").HasDefaultValue(1).ValueGeneratedOnAdd();
 
             entity.HasIndex(q => q.CollegeId);
+            entity.HasIndex(q => q.AssessmentId);
             entity.HasIndex(q => q.QuestionType);
             entity.HasIndex(q => q.IsActive);
         });

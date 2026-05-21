@@ -37,6 +37,52 @@ public class AssessmentResultDto
     public DateTime? CompletedAt { get; set; }
 }
 
+public class CreateQuestionDto
+{
+    public Guid CollegeId { get; set; }
+    public string CreatedBy { get; set; } = default!;
+    public string Stream { get; set; } = default!;
+    public string Subject { get; set; } = default!;
+    public string Topic { get; set; } = default!;
+    public string TopicTag { get; set; } = default!;
+    public string QuestionType { get; set; } = default!;
+    public string QuestionText { get; set; } = default!;
+    public List<string>? Options { get; set; }
+    public string Answer { get; set; } = default!;
+    public string? Explanation { get; set; }
+    public decimal Marks { get; set; }
+    public decimal NegativeMarks { get; set; }
+    public int DifficultyLevel { get; set; }
+}
+
+public class DeleteQuestionsDto
+{
+    public string CreatedBy { get; set; } = default!;
+    public List<Guid> QuestionIds { get; set; } = [];
+}
+
+public class AssessmentQuestionDto
+{
+    public Guid QuestionId { get; set; }
+    public Guid CollegeId { get; set; }
+    public string? Stream { get; set; }
+    public string? Subject { get; set; }
+    public string? Topic { get; set; }
+    public string? TopicTag { get; set; }
+    public string QuestionType { get; set; } = default!;
+    public string QuestionText { get; set; } = default!;
+    public List<string>? Options { get; set; }
+    public string? Answer { get; set; }
+    public string? Explanation { get; set; }
+    public decimal Marks { get; set; }
+    public decimal NegativeMarks { get; set; }
+    public int DifficultyLevel { get; set; }
+    public int Version { get; set; }
+    public string CreatedBy { get; set; } = default!;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? ModifiedAt { get; set; }
+}
+
 public class AssessmentSummaryDto
 {
     public string AssessmentId { get; set; } = default!;
