@@ -18,9 +18,9 @@ public class AssessmentManager : IAssessmentManager
     public Task<Assessment> Create(Assessment assessment)
         => throw new NotImplementedException("Assessment tables not yet configured in current DB schema.");
 
-    public Task<AssessmentResult?> GetResult(string assessmentId, string userId)
+    public Task<Result?> GetResult(string assessmentId, string userId)
         => throw new NotImplementedException("Assessment tables not yet configured in current DB schema.");
 
-    public Task UpsertResult(AssessmentResult result)
+    public Task UpsertResult(Result result)
         => throw new NotImplementedException("Assessment tables not yet configured in current DB schema.");
 }

@@ -173,36 +173,6 @@ namespace Taskverse.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "assessment_results",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
-                    assessment_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    score = table.Column<int>(type: "integer", nullable: true),
-                    completed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
-                    modified_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_assessment_results", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_assessment_results_assessment",
-                        column: x => x.assessment_id,
-                        principalTable: "assessments",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_assessment_results_user",
-                        column: x => x.user_id,
-                        principalTable: "users",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "audit_logs",
                 columns: table => new
                 {
@@ -352,16 +322,6 @@ namespace Taskverse.Data.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_assessment_results_assessment_id",
-                table: "assessment_results",
-                column: "assessment_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_assessment_results_user_id",
-                table: "assessment_results",
-                column: "user_id");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_audit_logs_user_id",
                 table: "audit_logs",
                 column: "user_id");
@@ -472,9 +432,6 @@ namespace Taskverse.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "assessment_results");
-
             migrationBuilder.DropTable(
                 name: "audit_logs");
 

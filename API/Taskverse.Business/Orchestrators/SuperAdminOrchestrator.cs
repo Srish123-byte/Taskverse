@@ -457,24 +457,23 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             _log.Debug("SuperAdminOrchestrator.GetAverageScoresByCollege: opening db context");
             await using var context = await _dbContextFactory.CreateDbContextAsync();
 
-            var scores = await context.AssessmentResults
+            var scores = await context.Results
                 .AsNoTracking()
-                .Join(context.Users.AsNoTracking(),
-                    result => result.UserId,
-                    user => user.Id,
-                    (result, user) => new { result, user })
-                .Where(x => x.user.CollegeId.HasValue && x.result.Score.HasValue)
+                .Join(context.Students.AsNoTracking(),
+                    result => result.StudentId,
+                    student => student.StudentId,
+                    (result, student) => new { result, student })
                 .Join(context.Colleges.AsNoTracking(),
-                    x => x.user.CollegeId!.Value,
+                    x => x.student.CollegeId,
                     college => college.CollegeId,
-                    (x, college) => new { x.result, x.user, college })
+                    (x, college) => new { x.result, x.student, college })
                 .GroupBy(x => new { x.college.CollegeId, CollegeName = x.college.CollegeName ?? "Unknown College" })
                 .Select(group => new CollegeScoreSummaryDto
                 {
                     CollegeId = group.Key.CollegeId.ToString(),
                     CollegeName = group.Key.CollegeName,
-                    AverageScore = Math.Round(group.Average(x => x.result.Score ?? 0), 2),
-                    StudentsAssessed = group.Select(x => x.user.Id).Distinct().Count()
+                    AverageScore = (double)Math.Round(group.Average(x => x.result.ObtainedMarks), 2),
+                    StudentsAssessed = group.Select(x => x.student.StudentId).Distinct().Count()
                 })
                 .OrderByDescending(x => x.AverageScore)
                 .Take(10)
@@ -500,15 +499,15 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             var utcToday = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
             var rangeStart = utcToday.AddDays(-29);
 
-            var trends = await context.AssessmentResults
+            var trends = await context.Results
                 .AsNoTracking()
-                .Where(result => result.CreatedAt >= rangeStart)
-                .GroupBy(result => result.CreatedAt.Date)
+                .Where(result => result.GeneratedAt >= rangeStart)
+                .GroupBy(result => result.GeneratedAt.Date)
                 .Select(group => new UsageTrendPointDto
                 {
                     Date = group.Key,
                     Assessments = group.Select(x => x.AssessmentId).Distinct().Count(),
-                    StudentsAssessed = group.Select(x => x.UserId).Distinct().Count()
+                    StudentsAssessed = group.Select(x => x.StudentId).Distinct().Count()
                 })
                 .OrderBy(point => point.Date)
                 .ToListAsync();
@@ -518,7 +517,7 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
         }
         catch (PostgresException ex) when (IsMissingRelation(ex))
         {
-            _log.Warn("SuperAdminOrchestrator.GetUsageTrends: assessment_results table is missing. Returning empty trend data.", ex);
+            _log.Warn("SuperAdminOrchestrator.GetUsageTrends: result tables are missing. Returning empty trend data.", ex);
             return [];
         }
     }

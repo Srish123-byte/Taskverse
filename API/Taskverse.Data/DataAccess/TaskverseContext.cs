@@ -16,8 +16,12 @@ public class TaskverseContext : DbContext
     public DbSet<Class> Classes { get; set; }
     public DbSet<Batch> Batches { get; set; }
     public DbSet<Assessment> Assessments { get; set; }
-    public DbSet<AssessmentResult> AssessmentResults { get; set; }
+    public DbSet<AssessmentQuestion> AssessmentQuestions { get; set; }
+    public DbSet<Attempt> Attempts { get; set; }
+    public DbSet<AttemptAnswer> AttemptAnswers { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<Question> Questions { get; set; }
+    public DbSet<Result> Results { get; set; }
     public DbSet<Student> Students { get; set; }
     public DbSet<Trainer> Trainers { get; set; }
     public DbSet<TrainerClass> TrainerClasses { get; set; }
@@ -169,47 +173,148 @@ public class TaskverseContext : DbContext
         modelBuilder.Entity<Assessment>(entity =>
         {
             entity.ToTable("assessments");
-            entity.HasKey(a => a.Id);
-            entity.Property(a => a.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
-            entity.Property(a => a.Title).HasColumnName("title").IsRequired().HasMaxLength(256);
-            entity.Property(a => a.Description).HasColumnName("description");
-            entity.Property(a => a.Type).HasColumnName("type").IsRequired().HasMaxLength(50);
-            entity.Property(a => a.ExamId).HasColumnName("exam_id");
-            entity.Property(a => a.ChallengeIds).HasColumnName("challenge_ids").HasColumnType("uuid[]");
-            entity.Property(a => a.AssignedTo).HasColumnName("assigned_to").HasColumnType("uuid[]");
-            entity.Property(a => a.DueDate).HasColumnName("due_date");
-            entity.Property(a => a.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.HasKey(a => a.AssessmentId);
+            entity.Property(a => a.AssessmentId).HasColumnName("assessment_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(a => a.CollegeId).HasColumnName("college_id");
+            entity.Property(a => a.SubjectId).HasColumnName("subject_id");
+            entity.Property(a => a.TopicId).HasColumnName("topic_id");
+            entity.Property(a => a.AssessmentName).HasColumnName("assessment_name").IsRequired().HasMaxLength(120);
+            entity.Property(a => a.AssessmentType).HasColumnName("assessment_type").HasConversion<int>();
+            entity.Property(a => a.AssessmentStatus).HasColumnName("assessment_status").HasConversion<int>();
+            entity.Property(a => a.DurationMinutes).HasColumnName("duration_minutes");
+            entity.Property(a => a.TotalMarks).HasColumnName("total_marks");
+            entity.Property(a => a.DifficultyLevel).HasColumnName("difficulty_level");
+            entity.Property(a => a.StartDateTime).HasColumnName("start_datetime");
+            entity.Property(a => a.EndDateTime).HasColumnName("end_datetime");
+            entity.Property(a => a.Instructions).HasColumnName("instructions").HasMaxLength(2000);
+            entity.Property(a => a.AssignedBatchIds).HasColumnName("assigned_batch_ids").HasColumnType("uuid[]");
+            entity.Property(a => a.AllowLateEntry).HasColumnName("allow_late_entry");
+            entity.Property(a => a.ShowResultsImmediately).HasColumnName("show_results_immediately");
+            entity.Property(a => a.AllowQuestionReview).HasColumnName("allow_question_review");
+            entity.Property(a => a.NegativeMarking).HasColumnName("negative_marking");
+            entity.Property(a => a.MarksPerQuestion).HasColumnName("marks_per_question").HasColumnType("numeric(6,2)");
+            entity.Property(a => a.IsTotalMarksAutoCalculated).HasColumnName("is_total_marks_auto_calculated");
             entity.Property(a => a.CreatedBy).HasColumnName("created_by");
             entity.Property(a => a.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
-            entity.Property(a => a.UpdatedAt).HasColumnName("modified_at");
+            entity.Property(a => a.ModifiedAt).HasColumnName("modified_at");
         });
 
-        // Configure AssessmentResult entity
-        modelBuilder.Entity<AssessmentResult>(entity =>
+        // Configure AssessmentQuestion entity
+        modelBuilder.Entity<AssessmentQuestion>(entity =>
         {
-            entity.ToTable("assessment_results");
-            entity.HasKey(ar => ar.Id);
-            entity.Property(ar => ar.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
-            entity.Property(ar => ar.AssessmentId).HasColumnName("assessment_id");
-            entity.Property(ar => ar.UserId).HasColumnName("user_id");
-            entity.Property(ar => ar.Status).HasColumnName("status").IsRequired().HasMaxLength(50);
-            entity.Property(ar => ar.Score).HasColumnName("score");
-            entity.Property(ar => ar.CompletedAt).HasColumnName("completed_at");
-            entity.Property(ar => ar.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
-            entity.Property(ar => ar.UpdatedAt).HasColumnName("modified_at");
+            entity.ToTable("assessment_questions");
+            entity.HasKey(aq => aq.AssessmentQuestionId);
+            entity.Property(aq => aq.AssessmentQuestionId).HasColumnName("assessment_questions_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(aq => aq.AssessmentId).HasColumnName("assessment_id");
+            entity.Property(aq => aq.QuestionId).HasColumnName("question_id");
+            entity.Property(aq => aq.DisplayOrder).HasColumnName("display_order");
+            entity.Property(aq => aq.Marks).HasColumnName("marks").HasColumnType("numeric(5,2)");
+            entity.Property(aq => aq.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(aq => aq.ModifiedAt).HasColumnName("modified_at");
 
-            // Foreign keys
-            entity.HasOne<Assessment>()
-                .WithMany()
-                .HasForeignKey(ar => ar.AssessmentId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("fk_assessment_results_assessment");
+            entity.HasIndex(aq => aq.AssessmentId);
+            entity.HasIndex(aq => aq.QuestionId);
+            entity.HasIndex(aq => new { aq.AssessmentId, aq.QuestionId }).IsUnique();
 
-            entity.HasOne<User>()
-                .WithMany()
-                .HasForeignKey(ar => ar.UserId)
+            entity.HasOne(aq => aq.Assessment)
+                .WithMany(a => a.AssessmentQuestions)
+                .HasForeignKey(aq => aq.AssessmentId)
                 .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("fk_assessment_results_user");
+                .HasConstraintName("fk_assessment_questions_assessment");
+        });
+
+        // Configure AttemptAnswer entity
+        modelBuilder.Entity<AttemptAnswer>(entity =>
+        {
+            entity.ToTable("attempt_answers");
+            entity.HasKey(aa => aa.AttemptAnswerId);
+            entity.Property(aa => aa.AttemptAnswerId).HasColumnName("attempt_answer_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(aa => aa.AttemptId).HasColumnName("attempt_id");
+            entity.Property(aa => aa.QuestionId).HasColumnName("question_id");
+            entity.Property(aa => aa.SelectedAnswer).HasColumnName("selected_answer");
+            entity.Property(aa => aa.IsCorrect).HasColumnName("is_correct");
+            entity.Property(aa => aa.MarksAwarded).HasColumnName("marks_awarded").HasColumnType("numeric(5,2)");
+            entity.Property(aa => aa.AnsweredAt).HasColumnName("answered_at");
+
+            entity.HasIndex(aa => aa.AttemptId);
+            entity.HasIndex(aa => aa.QuestionId);
+            entity.HasIndex(aa => new { aa.AttemptId, aa.QuestionId }).IsUnique();
+        });
+
+        // Configure Attempt entity
+        modelBuilder.Entity<Attempt>(entity =>
+        {
+            entity.ToTable("attempts");
+            entity.HasKey(a => a.AttemptId);
+            entity.Property(a => a.AttemptId).HasColumnName("attempt_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(a => a.AssessmentId).HasColumnName("assessment_id");
+            entity.Property(a => a.StudentId).HasColumnName("student_id");
+            entity.Property(a => a.StartedAt).HasColumnName("started_at");
+            entity.Property(a => a.SubmittedAt).HasColumnName("submitted_at");
+            entity.Property(a => a.AttemptStatus).HasColumnName("attempt_status").HasConversion<int>();
+            entity.Property(a => a.TotalQuestions).HasColumnName("total_questions");
+            entity.Property(a => a.AttemptedQuestions).HasColumnName("attempted_questions");
+            entity.Property(a => a.CorrectAnswers).HasColumnName("correct_answers");
+            entity.Property(a => a.WrongAnswers).HasColumnName("wrong_answers");
+            entity.Property(a => a.UnansweredQuestions).HasColumnName("unanswered_questions");
+            entity.Property(a => a.TotalScore).HasColumnName("total_score").HasColumnType("numeric(6,2)");
+            entity.Property(a => a.Percentage).HasColumnName("percentage").HasColumnType("numeric(5,2)");
+            entity.Property(a => a.TimeTakenSeconds).HasColumnName("time_taken_seconds");
+            entity.Property(a => a.IsPassed).HasColumnName("is_passed");
+            entity.Property(a => a.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+
+            entity.HasIndex(a => a.AssessmentId);
+            entity.HasIndex(a => a.StudentId);
+        });
+
+        // Configure Question entity
+        modelBuilder.Entity<Question>(entity =>
+        {
+            entity.ToTable("questions");
+            entity.HasKey(q => q.QuestionId);
+            entity.Property(q => q.QuestionId).HasColumnName("question_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(q => q.CollegeId).HasColumnName("college_id");
+            entity.Property(q => q.Stream).HasColumnName("stream").HasMaxLength(100);
+            entity.Property(q => q.Subject).HasColumnName("subject").HasMaxLength(100);
+            entity.Property(q => q.Topic).HasColumnName("topic").HasMaxLength(200);
+            entity.Property(q => q.TopicTag).HasColumnName("topic_tag").HasMaxLength(200);
+            entity.Property(q => q.QuestionType).HasColumnName("question_type").IsRequired().HasMaxLength(50);
+            entity.Property(q => q.QuestionText).HasColumnName("question_text").IsRequired();
+            entity.Property(q => q.Options).HasColumnName("options").HasColumnType("jsonb");
+            entity.Property(q => q.Answer).HasColumnName("answer");
+            entity.Property(q => q.Explanation).HasColumnName("explanation").HasMaxLength(1000);
+            entity.Property(q => q.Marks).HasColumnName("marks").HasColumnType("numeric(5,2)");
+            entity.Property(q => q.NegativeMarks).HasColumnName("negative_marks").HasColumnType("numeric(5,2)");
+            entity.Property(q => q.IsActive).HasColumnName("is_active");
+            entity.Property(q => q.CreatedBy).HasColumnName("created_by");
+            entity.Property(q => q.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(q => q.ModifiedAt).HasColumnName("modified_at");
+            entity.Property(q => q.DifficultyLevel).HasColumnName("difficulty_level");
+
+            entity.HasIndex(q => q.CollegeId);
+            entity.HasIndex(q => q.QuestionType);
+            entity.HasIndex(q => q.IsActive);
+        });
+
+        // Configure Result entity
+        modelBuilder.Entity<Result>(entity =>
+        {
+            entity.ToTable("results");
+            entity.HasKey(r => r.ResultId);
+            entity.Property(r => r.ResultId).HasColumnName("result_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(r => r.AssessmentId).HasColumnName("assessment_id");
+            entity.Property(r => r.AttemptId).HasColumnName("attempt_id");
+            entity.Property(r => r.StudentId).HasColumnName("student_id");
+            entity.Property(r => r.TotalMarks).HasColumnName("total_marks").HasColumnType("numeric(6,2)");
+            entity.Property(r => r.ObtainedMarks).HasColumnName("obtained_marks").HasColumnType("numeric(6,2)");
+            entity.Property(r => r.Percentage).HasColumnName("percentage").HasColumnType("numeric(5,2)");
+            entity.Property(r => r.Rank).HasColumnName("rank");
+            entity.Property(r => r.ResultStatus).HasColumnName("result_status").HasConversion<int>();
+            entity.Property(r => r.GeneratedAt).HasColumnName("generated_at").HasDefaultValueSql("now()");
+
+            entity.HasIndex(r => r.AssessmentId);
+            entity.HasIndex(r => r.AttemptId);
+            entity.HasIndex(r => r.StudentId);
         });
 
         // Configure AuditLog entity
