@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Taskverse.Business.Enums;
 
 namespace Taskverse.Data.DataAccess;
 
@@ -7,47 +8,69 @@ namespace Taskverse.Data.DataAccess;
 public class Assessment
 {
     [Key]
-    [Column("id")]
-    public Guid Id { get; set; } = Guid.NewGuid();
+    [Column("assessment_id")]
+    public Guid AssessmentId { get; set; } = Guid.NewGuid();
 
     [Required]
-    [MaxLength(256)]
-    [Column("title")]
-    public string Title { get; set; } = default!;
+    [Column("college_id")]
+    public Guid CollegeId { get; set; }
 
-    [Column("description")]
-    public string? Description { get; set; }
+    [Column("subject_id")]
+    public Guid? SubjectId { get; set; }
 
-    /// <summary>
-    /// Valid values: Exam, Coding, Mixed
-    /// </summary>
+    [Column("topic_id")]
+    public Guid? TopicId { get; set; }
+
     [Required]
-    [MaxLength(50)]
-    [Column("type")]
-    public string Type { get; set; } = default!;
+    [MaxLength(120)]
+    [Column("assessment_name")]
+    public string AssessmentName { get; set; } = default!;
 
-    [Column("exam_id")]
-    public Guid? ExamId { get; set; }
+    [Column("assessment_type")]
+    public AssessmentType AssessmentType { get; set; }
 
-    /// <summary>
-    /// UUIDs of coding challenges linked to this assessment.
-    /// Stored as a native PostgreSQL UUID array.
-    /// </summary>
-    [Column("challenge_ids", TypeName = "uuid[]")]
-    public Guid[] ChallengeIds { get; set; } = [];
+    [Column("assessment_status")]
+    public AssessmentStatus AssessmentStatus { get; set; }
 
-    /// <summary>
-    /// UUIDs of users (students) this assessment is assigned to.
-    /// Stored as a native PostgreSQL UUID array.
-    /// </summary>
-    [Column("assigned_to", TypeName = "uuid[]")]
-    public Guid[] AssignedTo { get; set; } = [];
+    [Column("duration_minutes")]
+    public int DurationMinutes { get; set; }
 
-    [Column("due_date")]
-    public DateTime? DueDate { get; set; }
+    [Column("total_marks")]
+    public int TotalMarks { get; set; }
 
-    [Column("is_active")]
-    public bool IsActive { get; set; } = true;
+    [Column("difficulty_level")]
+    public int DifficultyLevel { get; set; }
+
+    [Column("start_datetime")]
+    public DateTime? StartDateTime { get; set; }
+
+    [Column("end_datetime")]
+    public DateTime? EndDateTime { get; set; }
+
+    [MaxLength(2000)]
+    [Column("instructions")]
+    public string? Instructions { get; set; }
+
+    [Column("assigned_batch_ids", TypeName = "uuid[]")]
+    public Guid[] AssignedBatchIds { get; set; } = [];
+
+    [Column("allow_late_entry")]
+    public bool AllowLateEntry { get; set; }
+
+    [Column("show_results_immediately")]
+    public bool ShowResultsImmediately { get; set; }
+
+    [Column("allow_question_review")]
+    public bool AllowQuestionReview { get; set; }
+
+    [Column("negative_marking")]
+    public bool NegativeMarking { get; set; }
+
+    [Column("marks_per_question", TypeName = "numeric(6,2)")]
+    public decimal MarksPerQuestion { get; set; }
+
+    [Column("is_total_marks_auto_calculated")]
+    public bool IsTotalMarksAutoCalculated { get; set; }
 
     [Required]
     [Column("created_by")]
@@ -57,5 +80,7 @@ public class Assessment
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     [Column("modified_at")]
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime? ModifiedAt { get; set; }
+
+    public ICollection<AssessmentQuestion> AssessmentQuestions { get; set; } = [];
 }

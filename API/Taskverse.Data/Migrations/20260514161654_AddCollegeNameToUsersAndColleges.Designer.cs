@@ -92,55 +92,6 @@ namespace Taskverse.Data.Migrations
                     b.ToTable("assessments", (string)null);
                 });
 
-            modelBuilder.Entity("Taskverse.Data.DataAccess.AssessmentResult", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<Guid>("AssessmentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("assessment_id");
-
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("completed_at");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("now()");
-
-                    b.Property<int?>("Score")
-                        .HasColumnType("integer")
-                        .HasColumnName("score");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("status");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("modified_at");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AssessmentId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("assessment_results", (string)null);
-                });
-
             modelBuilder.Entity("Taskverse.Data.DataAccess.AuditLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -577,23 +528,6 @@ namespace Taskverse.Data.Migrations
                     b.HasIndex("Role");
 
                     b.ToTable("users", (string)null);
-                });
-
-            modelBuilder.Entity("Taskverse.Data.DataAccess.AssessmentResult", b =>
-                {
-                    b.HasOne("Taskverse.Data.DataAccess.Assessment", null)
-                        .WithMany()
-                        .HasForeignKey("AssessmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_assessment_results_assessment");
-
-                    b.HasOne("Taskverse.Data.DataAccess.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_assessment_results_user");
                 });
 
             modelBuilder.Entity("Taskverse.Data.DataAccess.AuditLog", b =>

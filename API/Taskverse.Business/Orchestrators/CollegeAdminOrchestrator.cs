@@ -350,7 +350,7 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
                 from assessment in context.Assessments.AsNoTracking()
                 join user in context.Users.AsNoTracking() on assessment.CreatedBy equals user.Id
                 where user.CollegeId == collegeId && assessment.CreatedAt >= startOfThisMonth
-                select assessment.Id)
+                select assessment.AssessmentId)
                 .Distinct()
                 .CountAsync();
 
@@ -360,7 +360,7 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
                 where user.CollegeId == collegeId &&
                       assessment.CreatedAt >= startOfPreviousMonth &&
                       assessment.CreatedAt < startOfThisMonth
-                select assessment.Id)
+                select assessment.AssessmentId)
                 .Distinct()
                 .CountAsync();
 
@@ -422,20 +422,20 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
             var utcToday = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
             var rangeStart = utcToday.AddDays(-29);
 
-            var trends = await context.AssessmentResults
+            var trends = await context.Results
                 .AsNoTracking()
                 .Join(
-                    context.Users.AsNoTracking().Where(user => user.CollegeId == collegeId),
-                    result => result.UserId,
-                    user => user.Id,
+                    context.Students.AsNoTracking().Where(student => student.CollegeId == collegeId),
+                    result => result.StudentId,
+                    student => student.StudentId,
                     (result, _) => result)
-                .Where(result => result.CreatedAt >= rangeStart)
-                .GroupBy(result => result.CreatedAt.Date)
+                .Where(result => result.GeneratedAt >= rangeStart)
+                .GroupBy(result => result.GeneratedAt.Date)
                 .Select(group => new UsageTrendPointDto
                 {
                     Date = group.Key,
                     Assessments = group.Select(x => x.AssessmentId).Distinct().Count(),
-                    StudentsAssessed = group.Select(x => x.UserId).Distinct().Count()
+                    StudentsAssessed = group.Select(x => x.StudentId).Distinct().Count()
                 })
                 .OrderBy(point => point.Date)
                 .ToListAsync();
