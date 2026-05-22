@@ -7,6 +7,8 @@ import { PageNotFoundComponent } from './components/page-not-found/page-not-foun
 import { HeaderComponent } from './components/header/header.component';
 import { FooterComponent } from './components/footer/footer.component';
 import { DashboardLoaderComponent } from './components/dashboard-loader/dashboard-loader.component';
+import { DeleteActionButtonComponent } from './components/delete-action-button/delete-action-button.component';
+import { ProcessingOverlayComponent } from './components/processing-overlay/processing-overlay.component';
 
 import { FormatPhone } from './pipes/format-phone.pipe';
 import { ToLowerCaseText } from './pipes/to-lower-case-text.pipe';
@@ -28,6 +30,8 @@ import { MaterialModule } from '../material.module';
     HeaderComponent,
     FooterComponent,
     DashboardLoaderComponent,
+    DeleteActionButtonComponent,
+    ProcessingOverlayComponent,
     FormatPhone,
     ToLowerCaseText,
     ToUpperCaseText
@@ -37,6 +41,8 @@ import { MaterialModule } from '../material.module';
     HeaderComponent,
     FooterComponent,
     DashboardLoaderComponent,
+    DeleteActionButtonComponent,
+    ProcessingOverlayComponent,
     FormatPhone,
     ToLowerCaseText,
     ToUpperCaseText,

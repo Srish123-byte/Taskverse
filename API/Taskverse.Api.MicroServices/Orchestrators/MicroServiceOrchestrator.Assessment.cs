@@ -12,10 +12,10 @@ public partial class MicroServiceOrchestrator
         return await Get<AssessmentModel>(url);
     }
 
-    public async Task<ObjectResult> CreateAssessment(CreateAssessmentModel model)
+    public async Task<ObjectResult> CreateAssessment(CreateQuestionBankAssessmentModel model)
     {
-        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}assessments";
-        return await Post<AssessmentModel>(url, model);
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments";
+        return await Post<QuestionBankAssessmentModel>(url, model);
     }
 
     public async Task<ObjectResult> CreateQuestions(List<CreateQuestionModel> models)
@@ -34,6 +34,12 @@ public partial class MicroServiceOrchestrator
     {
         var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/questions";
         return await Delete<List<Guid>>(url, model);
+    }
+
+    public async Task<ObjectResult> SearchQuestionBank(QuestionBankSearchModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/questions/search";
+        return await Post<PagedQuestionBankModel>(url, model);
     }
 
     public async Task<ObjectResult> GetAssessmentsByUser(string userId)

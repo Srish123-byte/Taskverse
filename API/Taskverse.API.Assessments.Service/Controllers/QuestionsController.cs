@@ -54,6 +54,49 @@ public class QuestionsController : ControllerBase
         }
     }
 
+    [HttpPost("search")]
+    [ProducesResponseType(typeof(PagedQuestionRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<PagedQuestionRecord>> SearchQuestionBank([FromBody] QuestionBankSearchRequest request)
+    {
+        if (request is null)
+        {
+            return BadRequest(new { message = "Question bank search request is required." });
+        }
+
+        try
+        {
+            var result = await _questionManager.SearchQuestionBank(
+                request.CollegeId,
+                request.DifficultyLevel,
+                request.SubjectId,
+                request.TopicId,
+                request.Subject,
+                request.Topic,
+                request.PageNumber,
+                request.PageSize);
+
+            return Ok(new PagedQuestionRecord(
+                result.Items.Select(question => question.ToRecord()).ToList(),
+                result.TotalCount,
+                request.PageNumber > 0 ? request.PageNumber : 1,
+                request.PageSize is > 0 and <= 100 ? request.PageSize : 10));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = "An unexpected error occurred while searching the question bank.",
+                detail = ex.Message
+            });
+        }
+    }
+
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(QuestionRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

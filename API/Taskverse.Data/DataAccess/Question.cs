@@ -77,4 +77,10 @@ public class Question
 
     [Column("version")]
     public int Version { get; set; }
+
+    [NotMapped]
+    public Guid? SubjectId { get; set; }
+
+    [NotMapped]
+    public Guid? TopicId { get; set; }
 }

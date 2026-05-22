@@ -70,6 +70,18 @@ public class CollegeAdminController : TaskverseBaseController
         return Ok(dtos.Select(dto => dto.ToResponseModel()).ToList());
     }
 
+    [HttpGet("subjects")]
+    [SwaggerResponse(200, "Available subjects", typeof(List<SubjectOptionResponseModel>))]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> GetSubjects()
+    {
+        var accessCheck = EnsureCollegeAdminAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var dtos = await _collegeAdminOrchestrator.GetSubjects();
+        return Ok(dtos.Select(dto => dto.ToResponseModel()).ToList());
+    }
+
     [HttpPost("classes")]
     [SwaggerResponse(200, "Class created", typeof(CollegeClassSummaryResponseModel))]
     [SwaggerResponse(400, "CollegeId header is missing or invalid")]
@@ -141,6 +153,62 @@ public class CollegeAdminController : TaskverseBaseController
         {
             var dto = await _collegeAdminOrchestrator.AssignBatchTrainers(collegeId, classId, batchId, model.ToDto());
             return Ok(dto.ToResponseModel());
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("classes/{classId}")]
+    [SwaggerResponse(204, "Class deleted")]
+    [SwaggerResponse(400, "CollegeId header is missing or invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Class not found")]
+    public async Task<IActionResult> DeleteClass(string classId)
+    {
+        var accessCheck = EnsureCollegeAdminAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        try
+        {
+            await _collegeAdminOrchestrator.DeleteClass(collegeId, classId);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("classes/{classId}/batches/{batchId}")]
+    [SwaggerResponse(204, "Batch deleted")]
+    [SwaggerResponse(400, "CollegeId header is missing or invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Class or batch not found")]
+    public async Task<IActionResult> DeleteBatch(string classId, string batchId)
+    {
+        var accessCheck = EnsureCollegeAdminAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        try
+        {
+            await _collegeAdminOrchestrator.DeleteBatch(collegeId, classId, batchId);
+            return NoContent();
         }
         catch (KeyNotFoundException ex)
         {

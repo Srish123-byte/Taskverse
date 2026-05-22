@@ -3,6 +3,8 @@ namespace Taskverse.API.Assessments.Service.Models;
 public record QuestionRecord(
     Guid QuestionId,
     Guid CollegeId,
+    Guid? SubjectId,
+    Guid? TopicId,
     string? Stream,
     string? Subject,
     string? Topic,
@@ -19,3 +21,9 @@ public record QuestionRecord(
     string CreatedBy,
     DateTime CreatedAt,
     DateTime? ModifiedAt);
+
+public record PagedQuestionRecord(
+    List<QuestionRecord> Items,
+    int TotalCount,
+    int PageNumber,
+    int PageSize);

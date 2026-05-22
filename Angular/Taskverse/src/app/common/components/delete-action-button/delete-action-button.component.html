@@ -1,0 +1,9 @@
+<button
+  type="button"
+  [ngClass]="appearance === 'icon' ? 'delete-icon-button' : 'delete-action-button'"
+  [disabled]="disabled || loading"
+  [attr.aria-label]="ariaLabel"
+  (click)="handleClick($event)">
+  <mat-icon>{{ loading ? 'hourglass_top' : 'delete' }}</mat-icon>
+  <span *ngIf="appearance === 'button'">{{ loading ? 'Deleting...' : label }}</span>
+</button>

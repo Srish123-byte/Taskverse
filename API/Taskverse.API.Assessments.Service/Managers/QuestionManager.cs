@@ -28,9 +28,13 @@ public class QuestionManager : IQuestionManager
 
         foreach (var question in questions)
         {
+            await NormalizeSubjectTopicAsync(question);
             ValidateQuestion(question);
 
             question.QuestionId = question.QuestionId == Guid.Empty ? Guid.NewGuid() : question.QuestionId;
+            question.IsActive = true;
+            question.CreatedAt = DateTime.UtcNow;
+            question.ModifiedAt = DateTime.UtcNow;
         }
 
         _context.Questions.AddRange(questions);
@@ -49,6 +53,7 @@ public class QuestionManager : IQuestionManager
 
     public async Task<Question> UpdateQuestion(Guid questionId, Question updatedQuestion)
     {
+        await NormalizeSubjectTopicAsync(updatedQuestion);
         ValidateQuestion(updatedQuestion);
 
         var existingQuestion = await _context.Questions.FirstOrDefaultAsync(question => question.QuestionId == questionId);
@@ -131,6 +136,111 @@ public class QuestionManager : IQuestionManager
         }
 
         return questions.Select(question => question.QuestionId).ToList();
+    }
+
+    public async Task<(List<Question> Items, int TotalCount)> SearchQuestionBank(
+        Guid collegeId,
+        int? difficultyLevel,
+        Guid? subjectId,
+        Guid? topicId,
+        string? subject,
+        string? topic,
+        int pageNumber,
+        int pageSize)
+    {
+        if (collegeId == Guid.Empty)
+        {
+            throw new ArgumentException("CollegeId is required.");
+        }
+
+        pageNumber = pageNumber > 0 ? pageNumber : 1;
+        pageSize = pageSize is > 0 and <= 100 ? pageSize : 10;
+
+        var query = _context.Questions
+            .AsNoTracking()
+            .Where(question =>
+                question.CollegeId == collegeId &&
+                question.IsActive);
+
+        if (subjectId.HasValue && subjectId.Value != Guid.Empty)
+        {
+            var resolvedSubject = await _context.Subjects
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.SubjectId == subjectId.Value && item.IsActive);
+
+            if (resolvedSubject is null)
+            {
+                throw new KeyNotFoundException($"Subject with id '{subjectId}' was not found.");
+            }
+
+            subject = resolvedSubject.SubjectName;
+        }
+
+        if (topicId.HasValue && topicId.Value != Guid.Empty)
+        {
+            var resolvedTopic = await _context.Topics
+                .AsNoTracking()
+                .Include(item => item.Subject)
+                .FirstOrDefaultAsync(item => item.TopicId == topicId.Value && item.IsActive);
+
+            if (resolvedTopic is null)
+            {
+                throw new KeyNotFoundException($"Topic with id '{topicId}' was not found.");
+            }
+
+            if (subjectId.HasValue && subjectId.Value != Guid.Empty && resolvedTopic.SubjectId != subjectId.Value)
+            {
+                throw new InvalidOperationException("Topic does not belong to the specified subject.");
+            }
+
+            topic = resolvedTopic.TopicName;
+            subject ??= resolvedTopic.Subject.SubjectName;
+        }
+
+        if (difficultyLevel.HasValue)
+        {
+            query = query.Where(question => question.DifficultyLevel == difficultyLevel.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(subject))
+        {
+            var normalizedSubject = subject.Trim().ToLower();
+            query = query.Where(question => question.Subject != null && question.Subject.ToLower() == normalizedSubject);
+        }
+
+        if (!string.IsNullOrWhiteSpace(topic))
+        {
+            var normalizedTopic = topic.Trim().ToLower();
+            query = query.Where(question => question.Topic != null && question.Topic.ToLower() == normalizedTopic);
+        }
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(question => question.CreatedAt)
+            .ThenBy(question => question.Subject)
+            .ThenBy(question => question.Topic)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        await SubjectTopicResolver.PopulateQuestionSubjectTopicIdsAsync(_context, items);
+
+        return (items, totalCount);
+    }
+
+    private async Task NormalizeSubjectTopicAsync(Question question)
+    {
+        var classification = await SubjectTopicResolver.ResolveAsync(
+            _context,
+            question.SubjectId,
+            question.Subject,
+            question.TopicId,
+            question.Topic);
+
+        question.SubjectId = classification.Subject.SubjectId;
+        question.Subject = classification.Subject.SubjectName;
+        question.TopicId = classification.Topic.TopicId;
+        question.Topic = classification.Topic.TopicName;
     }
 
     private static void ValidateQuestion(Question question)

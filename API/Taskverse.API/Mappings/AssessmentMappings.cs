@@ -5,6 +5,29 @@ namespace Taskverse.Api.Mappings;
 
 public static class AssessmentMappings
 {
+    public static CreateQuestionBankAssessmentDto ToDto(
+        this CreateQuestionBankAssessmentRequestModel model,
+        Guid collegeId,
+        string createdBy)
+    {
+        return new CreateQuestionBankAssessmentDto
+        {
+            CollegeId = collegeId,
+            CreatedBy = createdBy,
+            AssessmentName = model.AssessmentName,
+            SubjectId = model.SubjectId,
+            SubjectName = model.SubjectName,
+            TopicId = model.TopicId,
+            TopicName = model.TopicName,
+            AssignedBatchIds = model.AssignedBatchIds,
+            QuestionIds = model.QuestionIds,
+            DurationMinutes = model.DurationMinutes,
+            TotalMarks = model.TotalMarks,
+            StartDateTime = model.StartDateTime,
+            EndDateTime = model.EndDateTime
+        };
+    }
+
     public static CreateQuestionDto ToDto(
         this CreateQuestionRequestModel model,
         Guid collegeId,
@@ -15,7 +38,9 @@ public static class AssessmentMappings
             CollegeId = collegeId,
             CreatedBy = createdBy,
             Stream = model.Stream,
+            SubjectId = model.SubjectId,
             Subject = model.Subject,
+            TopicId = model.TopicId,
             Topic = model.Topic,
             TopicTag = model.TopicTag,
             QuestionType = model.QuestionType,
@@ -48,12 +73,31 @@ public static class AssessmentMappings
         };
     }
 
+    public static QuestionBankSearchDto ToDto(
+        this QuestionBankSearchRequestModel model,
+        Guid collegeId)
+    {
+        return new QuestionBankSearchDto
+        {
+            CollegeId = collegeId,
+            DifficultyLevel = model.DifficultyLevel,
+            SubjectId = model.SubjectId,
+            TopicId = model.TopicId,
+            Subject = model.Subject,
+            Topic = model.Topic,
+            PageNumber = model.PageNumber > 0 ? model.PageNumber : 1,
+            PageSize = model.PageSize > 0 ? model.PageSize : 10
+        };
+    }
+
     public static QuestionResponseModel ToResponseModel(this AssessmentQuestionDto dto)
     {
         return new QuestionResponseModel
         {
             QuestionId = dto.QuestionId,
             CollegeId = dto.CollegeId,
+            SubjectId = dto.SubjectId,
+            TopicId = dto.TopicId,
             Stream = dto.Stream,
             Subject = dto.Subject,
             Topic = dto.Topic,
@@ -70,6 +114,50 @@ public static class AssessmentMappings
             CreatedBy = dto.CreatedBy,
             CreatedAt = dto.CreatedAt,
             ModifiedAt = dto.ModifiedAt
+        };
+    }
+
+    public static PagedQuestionBankResponseModel ToResponseModel(this PagedQuestionBankDto dto)
+    {
+        return new PagedQuestionBankResponseModel
+        {
+            Items = dto.Items.Select(item => item.ToResponseModel()).ToList(),
+            TotalCount = dto.TotalCount,
+            PageNumber = dto.PageNumber,
+            PageSize = dto.PageSize
+        };
+    }
+
+    public static QuestionBankAssessmentResponseModel ToResponseModel(this QuestionBankAssessmentDto dto)
+    {
+        return new QuestionBankAssessmentResponseModel
+        {
+            AssessmentId = dto.AssessmentId,
+            CollegeId = dto.CollegeId,
+            SubjectId = dto.SubjectId,
+            SubjectName = dto.SubjectName,
+            TopicId = dto.TopicId,
+            TopicName = dto.TopicName,
+            AssessmentName = dto.AssessmentName,
+            AssessmentType = dto.AssessmentType,
+            AssessmentStatus = dto.AssessmentStatus,
+            DurationMinutes = dto.DurationMinutes,
+            TotalMarks = dto.TotalMarks,
+            DifficultyLevel = dto.DifficultyLevel,
+            StartDateTime = dto.StartDateTime,
+            EndDateTime = dto.EndDateTime,
+            Instructions = dto.Instructions,
+            AssignedBatchIds = dto.AssignedBatchIds,
+            AllowLateEntry = dto.AllowLateEntry,
+            ShowResultsImmediately = dto.ShowResultsImmediately,
+            AllowQuestionReview = dto.AllowQuestionReview,
+            NegativeMarking = dto.NegativeMarking,
+            MarksPerQuestion = dto.MarksPerQuestion,
+            IsTotalMarksAutoCalculated = dto.IsTotalMarksAutoCalculated,
+            CreatedBy = dto.CreatedBy,
+            CreatedAt = dto.CreatedAt,
+            ModifiedAt = dto.ModifiedAt,
+            QuestionIds = dto.QuestionIds
         };
     }
 

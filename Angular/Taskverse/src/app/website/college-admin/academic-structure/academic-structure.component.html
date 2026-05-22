@@ -87,9 +87,13 @@
             </div>
 
             <div class="class-cell class-actions-cell">
-              <button type="button" class="icon-button icon-button-plain">
-                <mat-icon>more_vert</mat-icon>
-              </button>
+              <app-delete-action-button
+                appearance="icon"
+                [ariaLabel]="'Delete class ' + classItem.name"
+                [disabled]="isDeletingClass(classItem.classId)"
+                [loading]="isDeletingClass(classItem.classId)"
+                (deleteClick)="promptDeleteClass(classItem)">
+              </app-delete-action-button>
             </div>
           </div>
 
@@ -104,6 +108,7 @@
                 <div class="batch-card-top">
                   <div>
                     <strong>{{ batchCard.name }}</strong>
+                    <small class="batch-card-subject">Subject: {{ batchCard.subjectName }}</small>
                     <span>{{ batchCard.subtitle }}</span>
                     <small class="batch-card-trainer-copy">Trainer: {{ batchCard.assignedTrainerSummary }}</small>
                   </div>
@@ -122,10 +127,17 @@
                 </div>
 
                 <div class="batch-actions">
-                  <button type="button" class="mini-action mini-action-muted">Settings</button>
+                  <app-delete-action-button
+                    label="Delete Batch"
+                    [ariaLabel]="'Delete batch ' + batchCard.batch!.name"
+                    [disabled]="isDeletingBatch(batchCard.batch!.batchId)"
+                    [loading]="isDeletingBatch(batchCard.batch!.batchId)"
+                    (deleteClick)="$event.stopPropagation(); promptDeleteBatch(classItem, batchCard.batch!)">
+                  </app-delete-action-button>
                   <button
                     type="button"
                     class="mini-action mini-action-primary"
+                    [disabled]="isDeletingBatch(batchCard.batch!.batchId)"
                     (click)="$event.stopPropagation(); openAssignTrainerModal(classItem, batchCard.batch!)">
                     <img src="assets/icons/nav/assign-trainer.svg" alt="" class="mini-action-icon" aria-hidden="true">
                     <span>Assign Trainer</span>
@@ -155,7 +167,7 @@
     </section>
   </div>
 
-  <div *ngIf="isCreateClassOpen" class="modal-backdrop" (click)="closeCreateClassForm()">
+  <div *ngIf="isCreateClassOpen && !isSuccessDialogOpen" class="modal-backdrop" (click)="closeCreateClassForm()">
     <section class="create-class-modal" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <div>
@@ -227,7 +239,7 @@
     </section>
   </div>
 
-  <div *ngIf="isCreateBatchOpen" class="modal-backdrop" (click)="closeCreateBatchForm()">
+  <div *ngIf="isCreateBatchOpen && !isSuccessDialogOpen" class="modal-backdrop" (click)="closeCreateBatchForm()">
     <section class="create-class-modal create-batch-modal" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <div class="modal-title-wrap">
@@ -284,6 +296,28 @@
             </small>
           </label>
 
+          <label class="form-field form-field-half">
+            <span>Subject</span>
+            <select formControlName="subjectId" [disabled]="isLoadingSubjects">
+              <option value="">Select existing subject...</option>
+              <option *ngFor="let subject of subjects" [value]="subject.subjectId">
+                {{ subject.subjectName }}
+              </option>
+            </select>
+            <small *ngIf="isLoadingSubjects">Loading available subjects...</small>
+            <small *ngIf="!isLoadingSubjects && subjects.length === 0">
+              No existing subjects found. Add a new subject below.
+            </small>
+          </label>
+
+          <label class="form-field">
+            <span>New Subject (Optional)</span>
+            <input
+              type="text"
+              formControlName="newSubjectName"
+              placeholder="Enter a new subject if it is not listed">
+          </label>
+
           <label class="form-field">
             <span>Description</span>
             <textarea
@@ -330,6 +364,33 @@
       </button>
     </section>
   </div>
+
+  <div *ngIf="deleteConfirmationState && !isDeleteProcessing" class="modal-backdrop success-backdrop" (click)="closeDeleteConfirmation()">
+    <section class="success-dialog delete-confirmation-dialog" (click)="$event.stopPropagation()">
+      <div class="delete-confirmation-icon">
+        <mat-icon>warning_amber</mat-icon>
+      </div>
+      <h3>{{ deleteConfirmationState.title }}</h3>
+      <p class="delete-confirmation-copy">This action is irreversible, are you sure want to delete?</p>
+      <p>{{ deleteConfirmationState.detail }}</p>
+      <div class="delete-confirmation-actions">
+        <button type="button" class="footer-action footer-action-muted" (click)="closeDeleteConfirmation()">
+          Cancel
+        </button>
+        <app-delete-action-button
+          label="Delete"
+          ariaLabel="Confirm delete"
+          (deleteClick)="confirmDelete()">
+        </app-delete-action-button>
+      </div>
+    </section>
+  </div>
+
+  <app-processing-overlay
+    *ngIf="isDeleteProcessing"
+    title="Deleting record"
+    copy="Please wait while we remove the selected item and update the related mappings.">
+  </app-processing-overlay>
 
   <div *ngIf="isTrainerAssignmentOpen && !isSuccessDialogOpen" class="modal-backdrop" (click)="!isSubmittingTrainerAssignment && closeTrainerAssignmentModal()">
     <section class="create-class-modal trainer-assignment-modal" (click)="$event.stopPropagation()">

@@ -16,7 +16,9 @@ public static class CollegeMappings
     {
         Name = model.Name,
         Description = model.Description,
-        Capacity = model.Capacity
+        Capacity = model.Capacity,
+        SubjectId = model.SubjectId,
+        SubjectName = model.SubjectName
     };
 
     public static CollegeUserActionDto ToDto(this CollegeUserActionRequest model) => new()
@@ -43,10 +45,16 @@ public static class CollegeMappings
         dto.CollegeId,
         dto.Name,
         dto.Description,
+        dto.SubjectId,
+        dto.SubjectName,
         dto.Capacity,
         dto.StudentCount,
         dto.CreatedAt,
         dto.AssignedTrainers.Select(trainer => trainer.ToModel()).ToList());
+
+    public static SubjectOptionRecord ToModel(this SubjectOptionDto dto) => new(
+        dto.SubjectId,
+        dto.SubjectName);
 
     public static ApprovedTrainerRecord ToModel(this ApprovedTrainerDto dto) => new(
         dto.TrainerId,

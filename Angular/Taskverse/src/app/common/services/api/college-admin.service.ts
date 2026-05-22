@@ -17,10 +17,17 @@ export interface CollegeBatchSummary {
   collegeId: string;
   name: string;
   description?: string;
+  subjectId?: string;
+  subjectName?: string;
   capacity: number;
   studentCount: number;
   createdAt: string;
   assignedTrainers: ApprovedTrainer[];
+}
+
+export interface SubjectOption {
+  subjectId: string;
+  subjectName: string;
 }
 
 export interface ApprovedTrainer {
@@ -57,6 +64,8 @@ export interface CreateCollegeBatchRequest {
   name: string;
   description?: string;
   capacity?: number;
+  subjectId?: string;
+  subjectName?: string;
 }
 
 export interface AssignBatchTrainersRequest {
@@ -90,10 +99,24 @@ export class CollegeAdminService {
       .pipe(map(item => this.mapBatch(item)));
   }
 
+  deleteClass(classId: string): Observable<void> {
+    return this.http.delete<void>(`${this.url}/classes/${classId}`);
+  }
+
+  deleteBatch(classId: string, batchId: string): Observable<void> {
+    return this.http.delete<void>(`${this.url}/classes/${classId}/batches/${batchId}`);
+  }
+
   getApprovedTrainers(): Observable<ApprovedTrainer[]> {
     return this.http
       .get<any[]>(`${this.url}/trainers/approved`)
       .pipe(map(items => (items ?? []).map(item => this.mapTrainer(item))));
+  }
+
+  getSubjects(): Observable<SubjectOption[]> {
+    return this.http
+      .get<any[]>(`${this.url}/subjects`)
+      .pipe(map(items => (items ?? []).map(item => this.mapSubject(item))));
   }
 
   assignBatchTrainers(
@@ -162,6 +185,8 @@ export class CollegeAdminService {
       collegeId: item?.collegeId ?? item?.CollegeId ?? '',
       name: item?.name ?? item?.Name ?? '',
       description: item?.description ?? item?.Description ?? undefined,
+      subjectId: item?.subjectId ?? item?.SubjectId ?? undefined,
+      subjectName: item?.subjectName ?? item?.SubjectName ?? undefined,
       capacity: item?.capacity ?? item?.Capacity ?? 0,
       studentCount: item?.studentCount ?? item?.StudentCount ?? 0,
       createdAt: item?.createdAt ?? item?.CreatedAt ?? '',
@@ -175,6 +200,13 @@ export class CollegeAdminService {
       userId: item?.userId ?? item?.UserId ?? '',
       fullName: item?.fullName ?? item?.FullName ?? '',
       email: item?.email ?? item?.Email ?? ''
+    };
+  }
+
+  private mapSubject(item: any): SubjectOption {
+    return {
+      subjectId: item?.subjectId ?? item?.SubjectId ?? '',
+      subjectName: item?.subjectName ?? item?.SubjectName ?? ''
     };
   }
 

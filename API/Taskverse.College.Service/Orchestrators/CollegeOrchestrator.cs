@@ -50,6 +50,18 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             })
             .ToListAsync();
 
+    public Task<List<SubjectOptionDto>> GetSubjects() =>
+        _context.Subjects
+            .AsNoTracking()
+            .Where(subject => subject.IsActive)
+            .OrderBy(subject => subject.SubjectName)
+            .Select(subject => new SubjectOptionDto
+            {
+                SubjectId = subject.SubjectId.ToString(),
+                SubjectName = subject.SubjectName
+            })
+            .ToListAsync();
+
     public async Task<List<PendingUserDto>> GetPendingUsersForCollegeAdmin(Guid collegeAdminUserId)
     {
         var collegeAdmin = await _context.Users
@@ -123,11 +135,14 @@ public class CollegeOrchestrator : ICollegeOrchestrator
     {
         var name = NormalizeRequired(dto.Name, "Batch name");
         var description = NormalizeOptional(dto.Description);
+        var requestedSubjectName = NormalizeOptional(dto.SubjectName);
         var capacity = dto.Capacity.GetValueOrDefault();
         if (capacity < 0)
         {
             throw new InvalidOperationException("Batch capacity cannot be negative.");
         }
+
+        var subject = await ResolveSubject(dto.SubjectId, requestedSubjectName);
 
         var classExists = await _context.Classes
             .AsNoTracking()
@@ -157,6 +172,13 @@ public class CollegeOrchestrator : ICollegeOrchestrator
         };
 
         _context.Batches.Add(entity);
+        _context.SubjectBatches.Add(new SubjectBatch
+        {
+            SubjectBatchId = Guid.NewGuid(),
+            SubjectId = subject.SubjectId,
+            BatchId = entity.BatchId,
+            CreatedAt = DateTime.UtcNow
+        });
         await _context.SaveChangesAsync();
         return await BuildBatchSummary(entity);
     }
@@ -297,6 +319,168 @@ public class CollegeOrchestrator : ICollegeOrchestrator
         await _context.SaveChangesAsync();
 
         return await BuildBatchSummary(batch);
+    }
+
+    public async Task DeleteClass(Guid collegeId, Guid classId)
+    {
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+        var classEntity = await _context.Classes
+            .FirstOrDefaultAsync(item => item.ClassId == classId && item.CollegeId == collegeId);
+
+        if (classEntity is null)
+        {
+            throw new KeyNotFoundException($"Class '{classId}' was not found for this college.");
+        }
+
+        var batchIds = await _context.Batches
+            .Where(item => item.ClassId == classId && item.CollegeId == collegeId)
+            .Select(item => item.BatchId)
+            .ToListAsync();
+
+        var affectedStudents = await _context.Students
+            .Where(student =>
+                student.CollegeId == collegeId &&
+                (student.ClassId == classId || (student.BatchId.HasValue && batchIds.Contains(student.BatchId.Value))))
+            .ToListAsync();
+
+        foreach (var student in affectedStudents)
+        {
+            if (student.ClassId == classId)
+            {
+                student.ClassId = null;
+            }
+
+            if (student.BatchId.HasValue && batchIds.Contains(student.BatchId.Value))
+            {
+                student.BatchId = null;
+            }
+
+            student.ModifiedAt = DateTime.UtcNow;
+        }
+
+        if (batchIds.Count > 0)
+        {
+            var trainerBatchMappings = await _context.TrainerBatches
+                .Where(item => batchIds.Contains(item.BatchId))
+                .ToListAsync();
+
+            if (trainerBatchMappings.Count > 0)
+            {
+                _context.TrainerBatches.RemoveRange(trainerBatchMappings);
+            }
+
+            var subjectBatchMappings = await _context.SubjectBatches
+                .Where(item => batchIds.Contains(item.BatchId))
+                .ToListAsync();
+
+            if (subjectBatchMappings.Count > 0)
+            {
+                _context.SubjectBatches.RemoveRange(subjectBatchMappings);
+            }
+
+            var batches = await _context.Batches
+                .Where(item => batchIds.Contains(item.BatchId))
+                .ToListAsync();
+
+            if (batches.Count > 0)
+            {
+                _context.Batches.RemoveRange(batches);
+            }
+        }
+
+        var trainerClassMappings = await _context.TrainerClasses
+            .Where(item => item.ClassId == classId)
+            .ToListAsync();
+
+        if (trainerClassMappings.Count > 0)
+        {
+            _context.TrainerClasses.RemoveRange(trainerClassMappings);
+        }
+
+        _context.Classes.Remove(classEntity);
+
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+    }
+
+    public async Task DeleteBatch(Guid collegeId, Guid classId, Guid batchId)
+    {
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+        var batch = await _context.Batches
+            .FirstOrDefaultAsync(item =>
+                item.BatchId == batchId &&
+                item.ClassId == classId &&
+                item.CollegeId == collegeId);
+
+        if (batch is null)
+        {
+            throw new KeyNotFoundException($"Batch '{batchId}' was not found for class '{classId}' in this college.");
+        }
+
+        var studentsInBatch = await _context.Students
+            .Where(student => student.CollegeId == collegeId && student.BatchId == batchId)
+            .ToListAsync();
+
+        foreach (var student in studentsInBatch)
+        {
+            student.BatchId = null;
+            student.ModifiedAt = DateTime.UtcNow;
+        }
+
+        var trainerBatchMappings = await _context.TrainerBatches
+            .Where(item => item.BatchId == batchId)
+            .ToListAsync();
+
+        var removedTrainerIds = trainerBatchMappings
+            .Select(item => item.TrainerId)
+            .Distinct()
+            .ToList();
+
+        if (trainerBatchMappings.Count > 0)
+        {
+            _context.TrainerBatches.RemoveRange(trainerBatchMappings);
+        }
+
+        var subjectBatchMappings = await _context.SubjectBatches
+            .Where(item => item.BatchId == batchId)
+            .ToListAsync();
+
+        if (subjectBatchMappings.Count > 0)
+        {
+            _context.SubjectBatches.RemoveRange(subjectBatchMappings);
+        }
+
+        if (removedTrainerIds.Count > 0)
+        {
+            var remainingTrainerIds = await _context.TrainerBatches
+                .Where(item => item.Batch.ClassId == classId && item.BatchId != batchId)
+                .Select(item => item.TrainerId)
+                .Distinct()
+                .ToListAsync();
+
+            var trainerIdsToRemoveFromClass = removedTrainerIds
+                .Except(remainingTrainerIds)
+                .ToList();
+
+            if (trainerIdsToRemoveFromClass.Count > 0)
+            {
+                var trainerClassMappings = await _context.TrainerClasses
+                    .Where(item => item.ClassId == classId && trainerIdsToRemoveFromClass.Contains(item.TrainerId))
+                    .ToListAsync();
+
+                if (trainerClassMappings.Count > 0)
+                {
+                    _context.TrainerClasses.RemoveRange(trainerClassMappings);
+                }
+            }
+        }
+
+        _context.Batches.Remove(batch);
+
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
     }
 
     public async Task ApproveUser(Guid collegeId, string userId, CollegeUserActionDto dto)
@@ -472,6 +656,16 @@ public class CollegeOrchestrator : ICollegeOrchestrator
                 student.Status == UserStatus.APPROVED);
 
         var assignedTrainers = await GetAssignedTrainersByBatch([batch.BatchId]);
+        var subject = await _context.SubjectBatches
+            .AsNoTracking()
+            .Where(item => item.BatchId == batch.BatchId)
+            .Select(item => new
+            {
+                item.SubjectId,
+                item.Subject.SubjectName
+            })
+            .OrderBy(item => item.SubjectName)
+            .FirstOrDefaultAsync();
 
         return new CollegeBatchSummaryDto
         {
@@ -480,6 +674,8 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             CollegeId = batch.CollegeId.ToString(),
             Name = batch.Name,
             Description = batch.Description,
+            SubjectId = subject?.SubjectId.ToString(),
+            SubjectName = subject?.SubjectName,
             Capacity = batch.Capacity ?? 0,
             StudentCount = studentCount,
             CreatedAt = batch.CreatedAt,
@@ -487,6 +683,69 @@ public class CollegeOrchestrator : ICollegeOrchestrator
                 ? trainers
                 : []
         };
+    }
+
+    private async Task<Subject> ResolveSubject(string? subjectId, string? subjectName)
+    {
+        Subject? subject = null;
+
+        if (!string.IsNullOrWhiteSpace(subjectId))
+        {
+            if (!Guid.TryParse(subjectId, out var parsedSubjectId))
+            {
+                throw new InvalidOperationException("Subject id is invalid.");
+            }
+
+            subject = await _context.Subjects
+                .FirstOrDefaultAsync(item => item.SubjectId == parsedSubjectId && item.IsActive);
+
+            if (subject is null)
+            {
+                throw new KeyNotFoundException($"Subject '{subjectId}' was not found.");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(subjectName))
+        {
+            var existingSubject = await _context.Subjects
+                .FirstOrDefaultAsync(item => item.SubjectName.ToLower() == subjectName.ToLower());
+
+            if (existingSubject is not null)
+            {
+                if (subject is not null && existingSubject.SubjectId != subject.SubjectId)
+                {
+                    throw new InvalidOperationException("Selected subject and new subject input do not match.");
+                }
+
+                if (!existingSubject.IsActive)
+                {
+                    existingSubject.IsActive = true;
+                    existingSubject.ModifiedAt = DateTime.UtcNow;
+                }
+
+                subject = existingSubject;
+            }
+            else
+            {
+                if (subject is not null)
+                {
+                    throw new InvalidOperationException("Selected subject and new subject input do not match.");
+                }
+
+                subject = new Subject
+                {
+                    SubjectId = Guid.NewGuid(),
+                    SubjectName = subjectName,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    ModifiedAt = DateTime.UtcNow
+                };
+
+                _context.Subjects.Add(subject);
+            }
+        }
+
+        return subject ?? throw new InvalidOperationException("Subject is required.");
     }
 
     private async Task<Dictionary<Guid, List<ApprovedTrainerDto>>> GetAssignedTrainersByBatch(IEnumerable<Guid> batchIds)

@@ -38,17 +38,32 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         return model.ToDto();
     }
 
-    public async Task<AssessmentDto> CreateAssessment(CreateAssessmentDto dto)
+    public async Task<QuestionBankAssessmentDto> CreateAssessment(CreateQuestionBankAssessmentDto dto)
     {
-        _log.Debug($"AssessmentOrchestrator.CreateAssessment: title={dto.Title}");
+        _log.Debug($"AssessmentOrchestrator.CreateAssessment: assessmentName={dto.AssessmentName}, collegeId={dto.CollegeId}, questionCount={dto.QuestionIds.Count}");
 
         var result = await _microServiceOrchestrator.CreateAssessment(dto.ToMicroServiceModel());
-        result.EnsureSuccess(nameof(CreateAssessment));
 
-        AssessmentModel model = result.DeserializeValue<AssessmentModel>()
-            ?? throw new InvalidOperationException("CreateAssessment returned an empty response.");
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<QuestionBankAssessmentModel>()
+                ?? throw new InvalidOperationException("CreateAssessment returned an empty response.");
 
-        return model.ToDto();
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"CreateAssessment failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status403Forbidden => new UnauthorizedAccessException(message),
+            StatusCodes.Status404NotFound => new KeyNotFoundException(message),
+            StatusCodes.Status409Conflict => new InvalidOperationException(message),
+            StatusCodes.Status422UnprocessableEntity => new InvalidDataException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new Exception(message)
+        };
     }
 
     public async Task<List<AssessmentQuestionDto>> CreateQuestions(List<CreateQuestionDto> dtos)
@@ -125,6 +140,30 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
             StatusCodes.Status403Forbidden => new UnauthorizedAccessException(message),
             StatusCodes.Status404NotFound => new KeyNotFoundException(message),
             StatusCodes.Status409Conflict => new InvalidOperationException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new Exception(message)
+        };
+    }
+
+    public async Task<PagedQuestionBankDto> SearchQuestionBank(QuestionBankSearchDto dto)
+    {
+        _log.Debug($"AssessmentOrchestrator.SearchQuestionBank: collegeId={dto.CollegeId}, subject={dto.Subject}, topic={dto.Topic}, difficultyLevel={dto.DifficultyLevel}, page={dto.PageNumber}, pageSize={dto.PageSize}");
+
+        var result = await _microServiceOrchestrator.SearchQuestionBank(dto.ToMicroServiceModel());
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<PagedQuestionBankModel>()
+                ?? throw new InvalidOperationException("SearchQuestionBank returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"SearchQuestionBank failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
             StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
             _ => new Exception(message)
         };

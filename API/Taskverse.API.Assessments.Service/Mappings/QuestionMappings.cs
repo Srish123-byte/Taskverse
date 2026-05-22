@@ -11,8 +11,10 @@ public static class QuestionMappings
         return new Question
         {
             CollegeId = request.CollegeId,
+            SubjectId = request.SubjectId,
             Stream = request.Stream?.Trim(),
             Subject = request.Subject?.Trim(),
+            TopicId = request.TopicId,
             Topic = request.Topic?.Trim(),
             TopicTag = request.TopicTag?.Trim(),
             QuestionType = request.QuestionType?.Trim() ?? string.Empty,
@@ -32,6 +34,8 @@ public static class QuestionMappings
         return new QuestionRecord(
             question.QuestionId,
             question.CollegeId,
+            question.SubjectId,
+            question.TopicId,
             question.Stream,
             question.Subject,
             question.Topic,
@@ -53,8 +57,10 @@ public static class QuestionMappings
     public static void ApplyUpdates(this Question target, Question source)
     {
         target.CollegeId = source.CollegeId;
+        target.SubjectId = source.SubjectId;
         target.Stream = source.Stream;
         target.Subject = source.Subject;
+        target.TopicId = source.TopicId;
         target.Topic = source.Topic;
         target.TopicTag = source.TopicTag;
         target.QuestionType = source.QuestionType;

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Taskverse.API.Assessments.Service.Managers;
+using Taskverse.API.Assessments.Service.Models;
 using Taskverse.Data.DataAccess;
 
 namespace Taskverse.API.Assessments.Service;
@@ -27,6 +28,7 @@ public class Startup
         ConfigureMvc(services);
         ConfigureDatabase(services);
         ConfigureDependencyInjection(services);
+        ConfigureOptions(services);
         ConfigureSwagger(services);
         ConfigureCors(services);
         services.AddHealthChecks();
@@ -65,6 +67,12 @@ public class Startup
     private static void ConfigureDependencyInjection(IServiceCollection services)
     {
         services.AddScoped<IQuestionManager, QuestionManager>();
+        services.AddScoped<IAssessmentManager, AssessmentManager>();
+    }
+
+    private void ConfigureOptions(IServiceCollection services)
+    {
+        services.Configure<AssessmentSettings>(Configuration.GetSection("AssessmentSettings"));
     }
 
     private static void ConfigureSwagger(IServiceCollection services)

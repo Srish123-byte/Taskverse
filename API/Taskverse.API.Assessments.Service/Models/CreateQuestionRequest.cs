@@ -15,13 +15,15 @@ public class CreateQuestionRequest
     [MaxLength(100)]
     public string Stream { get; set; } = string.Empty;
 
-    [Required]
-    [MaxLength(100)]
-    public string Subject { get; set; } = string.Empty;
+    public Guid? SubjectId { get; set; }
 
-    [Required]
+    [MaxLength(100)]
+    public string? Subject { get; set; }
+
+    public Guid? TopicId { get; set; }
+
     [MaxLength(200)]
-    public string Topic { get; set; } = string.Empty;
+    public string? Topic { get; set; }
 
     [Required]
     [MaxLength(200)]
@@ -60,4 +62,29 @@ public class DeleteQuestionsRequest
 
     [Required]
     public List<Guid> QuestionIds { get; set; } = [];
+}
+
+public class QuestionBankSearchRequest
+{
+    [Required]
+    public Guid CollegeId { get; set; }
+
+    [Range(0, int.MaxValue)]
+    public int? DifficultyLevel { get; set; }
+
+    public Guid? SubjectId { get; set; }
+
+    public Guid? TopicId { get; set; }
+
+    [MaxLength(100)]
+    public string? Subject { get; set; }
+
+    [MaxLength(200)]
+    public string? Topic { get; set; }
+
+    [Range(1, int.MaxValue)]
+    public int PageNumber { get; set; } = 1;
+
+    [Range(1, 100)]
+    public int PageSize { get; set; } = 10;
 }
