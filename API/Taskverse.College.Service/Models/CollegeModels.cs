@@ -24,7 +24,9 @@ public record CreateCollegeClassRequest(
 public record CreateCollegeBatchRequest(
     string Name,
     string? Description,
-    int? Capacity);
+    int? Capacity,
+    string? SubjectId,
+    string? SubjectName);
 
 public record CollegeClassSummaryRecord(
     string ClassId,
@@ -43,10 +45,16 @@ public record CollegeBatchSummaryRecord(
     string CollegeId,
     string Name,
     string? Description,
+    string? SubjectId,
+    string? SubjectName,
     int Capacity,
     int StudentCount,
     DateTime CreatedAt,
     List<ApprovedTrainerRecord> AssignedTrainers);
+
+public record SubjectOptionRecord(
+    string SubjectId,
+    string SubjectName);
 
 public record ApprovedTrainerRecord(
     string TrainerId,

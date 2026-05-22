@@ -38,4 +38,11 @@ export class HttpClientService {
       .pipe(map((response: HttpResponse<T>) => response.body as T))
       .pipe(catchError(this.formatErrors));
   }
+
+  delete<T>(path: string, params: HttpParams = new HttpParams()): Observable<T> {
+    return this.http
+      .delete<T>(this.httpHelperService.api + path, this.httpHelperService.getOptions(params))
+      .pipe(map((response: HttpResponse<T>) => response.body as T))
+      .pipe(catchError(this.formatErrors));
+  }
 }

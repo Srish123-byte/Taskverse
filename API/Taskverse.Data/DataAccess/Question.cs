@@ -14,6 +14,9 @@ public class Question
     [Column("college_id")]
     public Guid CollegeId { get; set; }
 
+    [Column("assessment_id")]
+    public Guid? AssessmentId { get; set; }
+
     [MaxLength(100)]
     [Column("stream")]
     public string? Stream { get; set; }
@@ -59,15 +62,25 @@ public class Question
     public bool IsActive { get; set; }
 
     [Required]
+    [MaxLength(200)]
     [Column("created_by")]
-    public Guid CreatedBy { get; set; }
+    public string CreatedBy { get; set; } = default!;
 
     [Column("created_at")]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; }
 
     [Column("modified_at")]
     public DateTime? ModifiedAt { get; set; }
 
     [Column("difficulty_level")]
     public int DifficultyLevel { get; set; }
+
+    [Column("version")]
+    public int Version { get; set; }
+
+    [NotMapped]
+    public Guid? SubjectId { get; set; }
+
+    [NotMapped]
+    public Guid? TopicId { get; set; }
 }

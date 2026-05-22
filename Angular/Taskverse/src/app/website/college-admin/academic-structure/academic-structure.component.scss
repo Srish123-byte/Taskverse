@@ -102,6 +102,17 @@
   transform: translateY(-1px);
 }
 
+.primary-action[disabled],
+.ghost-action[disabled],
+.icon-button[disabled],
+.mini-action[disabled],
+.close-button[disabled],
+.footer-action[disabled] {
+  opacity: 0.62;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .page-alert {
   padding: 16px 18px;
   border-radius: 16px;
@@ -358,6 +369,15 @@
   line-height: 1.5;
 }
 
+.batch-card-subject {
+  display: block;
+  margin-top: 8px;
+  color: #f8fafc;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
 .batch-card-icon,
 .mini-action-icon,
 .modal-title-icon-image {
@@ -486,6 +506,21 @@
 
 .create-batch-modal {
   width: min(100%, 640px);
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+}
+
+.create-batch-modal form {
+  min-height: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.create-batch-modal .modal-body {
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .trainer-assignment-modal {
@@ -528,6 +563,39 @@
 }
 
 .success-dialog-action {
+  margin-top: 24px;
+}
+
+.delete-confirmation-dialog {
+  text-align: left;
+}
+
+.delete-confirmation-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 18px;
+  border-radius: 50%;
+  background: rgba(248, 113, 113, 0.16);
+  color: #fda4af;
+}
+
+.delete-confirmation-icon mat-icon {
+  width: 40px;
+  height: 40px;
+  font-size: 40px;
+}
+
+.delete-confirmation-copy {
+  color: #fecaca;
+  font-weight: 700;
+}
+
+.delete-confirmation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
   margin-top: 24px;
 }
 

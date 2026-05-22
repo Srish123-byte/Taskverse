@@ -73,14 +73,25 @@ public class Assessment
     public bool IsTotalMarksAutoCalculated { get; set; }
 
     [Required]
+    [MaxLength(200)]
     [Column("created_by")]
-    public Guid CreatedBy { get; set; }
+    public string CreatedBy { get; set; } = default!;
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     [Column("modified_at")]
     public DateTime? ModifiedAt { get; set; }
+
+    [NotMapped]
+    public string? SubjectName { get; set; }
+
+    [NotMapped]
+    public string? TopicName { get; set; }
+
+    public Subject? Subject { get; set; }
+
+    public Topic? Topic { get; set; }
 
     public ICollection<AssessmentQuestion> AssessmentQuestions { get; set; } = [];
 }

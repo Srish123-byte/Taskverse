@@ -12,6 +12,8 @@ public class CreateCollegeBatchDto
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public int? Capacity { get; set; }
+    public string? SubjectId { get; set; }
+    public string? SubjectName { get; set; }
 }
 
 public class CollegeClassSummaryDto
@@ -34,10 +36,18 @@ public class CollegeBatchSummaryDto
     public string CollegeId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public string? SubjectId { get; set; }
+    public string? SubjectName { get; set; }
     public int Capacity { get; set; }
     public int StudentCount { get; set; }
     public DateTime CreatedAt { get; set; }
     public List<ApprovedTrainerDto> AssignedTrainers { get; set; } = [];
+}
+
+public class SubjectOptionDto
+{
+    public string SubjectId { get; set; } = string.Empty;
+    public string SubjectName { get; set; } = string.Empty;
 }
 
 public class ApprovedTrainerDto

@@ -95,6 +95,19 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
             })
             .ToListAsync();
 
+        var batchIds = batches.Select(item => item.BatchId).ToList();
+
+        var subjectsByBatch = await context.SubjectBatches
+            .AsNoTracking()
+            .Where(item => batchIds.Contains(item.BatchId))
+            .Select(item => new
+            {
+                item.BatchId,
+                item.SubjectId,
+                item.Subject.SubjectName
+            })
+            .ToListAsync();
+
         var studentCountsByBatch = await context.Students
             .AsNoTracking()
             .Where(item => item.CollegeId == collegeId && item.Status == UserStatus.APPROVED)
@@ -106,7 +119,6 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
             })
             .ToDictionaryAsync(item => item.BatchId, item => item.Count);
 
-        var batchIds = batches.Select(item => item.BatchId).ToList();
         var assignedTrainersByBatch = await context.TrainerBatches
             .AsNoTracking()
             .Where(item => batchIds.Contains(item.BatchId) && item.Trainer.CollegeId == collegeId && item.Trainer.Status == UserStatus.APPROVED)
@@ -119,6 +131,19 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
                 item.Trainer.Email
             })
             .ToListAsync();
+
+        var subjectsLookup = subjectsByBatch
+            .GroupBy(item => item.BatchId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderBy(item => item.SubjectName)
+                    .Select(item => new
+                    {
+                        item.SubjectId,
+                        item.SubjectName
+                    })
+                    .First());
 
         var trainersLookup = assignedTrainersByBatch
             .GroupBy(item => item.BatchId)
@@ -148,6 +173,12 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
                         CollegeId = item.CollegeId.ToString(),
                         Name = item.Name,
                         Description = item.Description,
+                        SubjectId = subjectsLookup.TryGetValue(item.BatchId, out var subject)
+                            ? subject.SubjectId.ToString()
+                            : null,
+                        SubjectName = subjectsLookup.TryGetValue(item.BatchId, out var subjectInfo)
+                            ? subjectInfo.SubjectName
+                            : null,
                         Capacity = item.Capacity,
                         StudentCount = studentCountsByBatch.TryGetValue(item.BatchId, out var count) ? count : 0,
                         CreatedAt = item.CreatedAt,
@@ -233,6 +264,19 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
         return models.Select(model => model.ToDto()).ToList();
     }
 
+    public async Task<List<SubjectOptionDto>> GetSubjects()
+    {
+        _log.Debug("CollegeAdminOrchestrator.GetSubjects");
+
+        var result = await _microServiceOrchestrator.GetCollegeSubjects();
+        EnsureMicroServiceSuccess(result, nameof(GetSubjects));
+
+        var models = result.DeserializeValue<List<SubjectOptionModel>>()
+            ?? throw new InvalidOperationException("GetSubjects returned empty.");
+
+        return models.Select(model => model.ToDto()).ToList();
+    }
+
     private async Task<List<PendingUserDto>> GetPendingUsersForCollege(Guid collegeId)
     {
         _log.Debug($"CollegeAdminOrchestrator.GetPendingUsersForCollege: collegeId={collegeId}");
@@ -306,6 +350,37 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
         return model.ToDto();
     }
 
+    public async Task DeleteClass(Guid collegeId, string classId)
+    {
+        _log.Debug($"CollegeAdminOrchestrator.DeleteClass: collegeId={collegeId}, classId={classId}");
+
+        if (!Guid.TryParse(classId, out _))
+        {
+            throw new InvalidOperationException("Class id is invalid.");
+        }
+
+        var result = await _microServiceOrchestrator.DeleteCollegeClass(collegeId.ToString(), classId);
+        EnsureMicroServiceSuccess(result, nameof(DeleteClass));
+    }
+
+    public async Task DeleteBatch(Guid collegeId, string classId, string batchId)
+    {
+        _log.Debug($"CollegeAdminOrchestrator.DeleteBatch: collegeId={collegeId}, classId={classId}, batchId={batchId}");
+
+        if (!Guid.TryParse(classId, out _))
+        {
+            throw new InvalidOperationException("Class id is invalid.");
+        }
+
+        if (!Guid.TryParse(batchId, out _))
+        {
+            throw new InvalidOperationException("Batch id is invalid.");
+        }
+
+        var result = await _microServiceOrchestrator.DeleteCollegeBatch(collegeId.ToString(), classId, batchId);
+        EnsureMicroServiceSuccess(result, nameof(DeleteBatch));
+    }
+
     public async Task ApproveUser(Guid collegeId, string userId, UserActionDto dto)
     {
         _log.Debug($"CollegeAdminOrchestrator.ApproveUser: collegeId={collegeId}, userId={userId}");
@@ -346,23 +421,18 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
                     user.Role.Trim().ToLower() != "collegeadmin" &&
                     user.Role.Trim().ToLower() != "superadmin");
 
-            var assessmentsThisMonthTask = (
-                from assessment in context.Assessments.AsNoTracking()
-                join user in context.Users.AsNoTracking() on assessment.CreatedBy equals user.Id
-                where user.CollegeId == collegeId && assessment.CreatedAt >= startOfThisMonth
-                select assessment.AssessmentId)
-                .Distinct()
-                .CountAsync();
+            var assessmentsThisMonthTask = context.Assessments
+                .AsNoTracking()
+                .CountAsync(assessment =>
+                    assessment.CollegeId == collegeId &&
+                    assessment.CreatedAt >= startOfThisMonth);
 
-            var assessmentsPreviousMonthTask = (
-                from assessment in context.Assessments.AsNoTracking()
-                join user in context.Users.AsNoTracking() on assessment.CreatedBy equals user.Id
-                where user.CollegeId == collegeId &&
-                      assessment.CreatedAt >= startOfPreviousMonth &&
-                      assessment.CreatedAt < startOfThisMonth
-                select assessment.AssessmentId)
-                .Distinct()
-                .CountAsync();
+            var assessmentsPreviousMonthTask = context.Assessments
+                .AsNoTracking()
+                .CountAsync(assessment =>
+                    assessment.CollegeId == collegeId &&
+                    assessment.CreatedAt >= startOfPreviousMonth &&
+                    assessment.CreatedAt < startOfThisMonth);
 
             await Task.WhenAll(
                 registeredStudentsTask,

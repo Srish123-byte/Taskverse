@@ -57,7 +57,9 @@ public record CreateCollegeClassModel(
 public record CreateCollegeBatchModel(
     string Name,
     string? Description,
-    int? Capacity);
+    int? Capacity,
+    string? SubjectId,
+    string? SubjectName);
 
 public record CollegeUserActionModel(
     string PerformedBy,
@@ -81,10 +83,16 @@ public record CollegeBatchSummaryModel(
     string CollegeId,
     string Name,
     string? Description,
+    string? SubjectId,
+    string? SubjectName,
     int Capacity,
     int StudentCount,
     DateTime CreatedAt,
     List<ApprovedTrainerModel> AssignedTrainers);
+
+public record SubjectOptionModel(
+    string SubjectId,
+    string SubjectName);
 
 public record ApprovedTrainerModel(
     string TrainerId,

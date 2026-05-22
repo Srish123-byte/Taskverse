@@ -15,6 +15,9 @@ public class TaskverseContext : DbContext
     public DbSet<College> Colleges { get; set; }
     public DbSet<Class> Classes { get; set; }
     public DbSet<Batch> Batches { get; set; }
+    public DbSet<Subject> Subjects { get; set; }
+    public DbSet<SubjectBatch> SubjectBatches { get; set; }
+    public DbSet<Topic> Topics { get; set; }
     public DbSet<Assessment> Assessments { get; set; }
     public DbSet<AssessmentQuestion> AssessmentQuestions { get; set; }
     public DbSet<Attempt> Attempts { get; set; }
@@ -169,6 +172,71 @@ public class TaskverseContext : DbContext
                 .HasConstraintName("fk_batches_college");
         });
 
+        // Configure Subject entity
+        modelBuilder.Entity<Subject>(entity =>
+        {
+            entity.ToTable("subjects");
+            entity.HasKey(s => s.SubjectId);
+            entity.Property(s => s.SubjectId).HasColumnName("subject_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(s => s.SubjectName).HasColumnName("subject_name").IsRequired().HasMaxLength(150);
+            entity.Property(s => s.Description).HasColumnName("description");
+            entity.Property(s => s.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(s => s.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(s => s.ModifiedAt).HasColumnName("modified_at");
+
+            entity.HasIndex(s => s.SubjectName).IsUnique();
+        });
+
+        // Configure SubjectBatch entity
+        modelBuilder.Entity<SubjectBatch>(entity =>
+        {
+            entity.ToTable("subject_batches");
+            entity.HasKey(sb => sb.SubjectBatchId);
+            entity.Property(sb => sb.SubjectBatchId).HasColumnName("subject_batch_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(sb => sb.SubjectId).HasColumnName("subject_id");
+            entity.Property(sb => sb.BatchId).HasColumnName("batch_id");
+            entity.Property(sb => sb.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+
+            entity.HasIndex(sb => sb.SubjectId);
+            entity.HasIndex(sb => sb.BatchId);
+            entity.HasIndex(sb => new { sb.SubjectId, sb.BatchId }).IsUnique();
+
+            entity.HasOne(sb => sb.Subject)
+                .WithMany(s => s.SubjectBatches)
+                .HasForeignKey(sb => sb.SubjectId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_subject_batches_subject");
+
+            entity.HasOne(sb => sb.Batch)
+                .WithMany(b => b.SubjectBatches)
+                .HasForeignKey(sb => sb.BatchId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_subject_batches_batch");
+        });
+
+        // Configure Topic entity
+        modelBuilder.Entity<Topic>(entity =>
+        {
+            entity.ToTable("topics");
+            entity.HasKey(t => t.TopicId);
+            entity.Property(t => t.TopicId).HasColumnName("topic_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(t => t.SubjectId).HasColumnName("subject_id");
+            entity.Property(t => t.TopicName).HasColumnName("topic_name").IsRequired().HasMaxLength(150);
+            entity.Property(t => t.Description).HasColumnName("description");
+            entity.Property(t => t.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(t => t.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(t => t.ModifiedAt).HasColumnName("modified_at");
+
+            entity.HasIndex(t => t.SubjectId);
+            entity.HasIndex(t => new { t.SubjectId, t.TopicName }).IsUnique();
+
+            entity.HasOne(t => t.Subject)
+                .WithMany(s => s.Topics)
+                .HasForeignKey(t => t.SubjectId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_topics_subject");
+        });
+
         // Configure Assessment entity
         modelBuilder.Entity<Assessment>(entity =>
         {
@@ -194,9 +262,24 @@ public class TaskverseContext : DbContext
             entity.Property(a => a.NegativeMarking).HasColumnName("negative_marking");
             entity.Property(a => a.MarksPerQuestion).HasColumnName("marks_per_question").HasColumnType("numeric(6,2)");
             entity.Property(a => a.IsTotalMarksAutoCalculated).HasColumnName("is_total_marks_auto_calculated");
-            entity.Property(a => a.CreatedBy).HasColumnName("created_by");
+            entity.Property(a => a.CreatedBy).HasColumnName("created_by").HasMaxLength(200);
             entity.Property(a => a.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(a => a.ModifiedAt).HasColumnName("modified_at");
+
+            entity.HasIndex(a => a.SubjectId);
+            entity.HasIndex(a => a.TopicId);
+
+            entity.HasOne(a => a.Subject)
+                .WithMany(s => s.Assessments)
+                .HasForeignKey(a => a.SubjectId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_assessments_subject");
+
+            entity.HasOne(a => a.Topic)
+                .WithMany(t => t.Assessments)
+                .HasForeignKey(a => a.TopicId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_assessments_topic");
         });
 
         // Configure AssessmentQuestion entity
@@ -274,6 +357,7 @@ public class TaskverseContext : DbContext
             entity.HasKey(q => q.QuestionId);
             entity.Property(q => q.QuestionId).HasColumnName("question_id").HasDefaultValueSql("gen_random_uuid()");
             entity.Property(q => q.CollegeId).HasColumnName("college_id");
+            entity.Property(q => q.AssessmentId).HasColumnName("assessment_id");
             entity.Property(q => q.Stream).HasColumnName("stream").HasMaxLength(100);
             entity.Property(q => q.Subject).HasColumnName("subject").HasMaxLength(100);
             entity.Property(q => q.Topic).HasColumnName("topic").HasMaxLength(200);
@@ -285,13 +369,15 @@ public class TaskverseContext : DbContext
             entity.Property(q => q.Explanation).HasColumnName("explanation").HasMaxLength(1000);
             entity.Property(q => q.Marks).HasColumnName("marks").HasColumnType("numeric(5,2)");
             entity.Property(q => q.NegativeMarks).HasColumnName("negative_marks").HasColumnType("numeric(5,2)");
-            entity.Property(q => q.IsActive).HasColumnName("is_active");
-            entity.Property(q => q.CreatedBy).HasColumnName("created_by");
-            entity.Property(q => q.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
-            entity.Property(q => q.ModifiedAt).HasColumnName("modified_at");
+            entity.Property(q => q.IsActive).HasColumnName("is_active").HasDefaultValue(true).ValueGeneratedOnAdd();
+            entity.Property(q => q.CreatedBy).HasColumnName("created_by").HasMaxLength(200);
+            entity.Property(q => q.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("(now() at time zone 'utc')").ValueGeneratedOnAdd();
+            entity.Property(q => q.ModifiedAt).HasColumnName("modified_at").HasDefaultValueSql("(now() at time zone 'utc')").ValueGeneratedOnAdd();
             entity.Property(q => q.DifficultyLevel).HasColumnName("difficulty_level");
+            entity.Property(q => q.Version).HasColumnName("version").HasDefaultValue(1).ValueGeneratedOnAdd();
 
             entity.HasIndex(q => q.CollegeId);
+            entity.HasIndex(q => q.AssessmentId);
             entity.HasIndex(q => q.QuestionType);
             entity.HasIndex(q => q.IsActive);
         });

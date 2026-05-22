@@ -83,6 +83,14 @@ public class CollegesController : ControllerBase
         return Ok(dtos.Select(dto => dto.ToModel()).ToList());
     }
 
+    [HttpGet("subjects")]
+    [ProducesResponseType(typeof(List<SubjectOptionRecord>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<SubjectOptionRecord>>> GetSubjects()
+    {
+        var dtos = await _collegeOrchestrator.GetSubjects();
+        return Ok(dtos.Select(dto => dto.ToModel()).ToList());
+    }
+
     [HttpGet("colleges")]
     [ProducesResponseType(typeof(IReadOnlyList<CollegeRecord>), StatusCodes.Status200OK)]
     public ActionResult<IReadOnlyList<CollegeRecord>> GetColleges()
@@ -160,6 +168,38 @@ public class CollegesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("colleges/{collegeId:guid}/classes/{classId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteClass(Guid collegeId, Guid classId)
+    {
+        try
+        {
+            await _collegeOrchestrator.DeleteClass(collegeId, classId);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("colleges/{collegeId:guid}/classes/{classId:guid}/batches/{batchId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteBatch(Guid collegeId, Guid classId, Guid batchId)
+    {
+        try
+        {
+            await _collegeOrchestrator.DeleteBatch(collegeId, classId, batchId);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
     }
 

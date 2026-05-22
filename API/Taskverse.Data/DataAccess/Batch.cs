@@ -37,4 +37,7 @@ public class Batch
 
     // Navigation to trainer assignments
     public ICollection<TrainerBatch> TrainerBatches { get; set; }
+
+    // Navigation to subject assignments
+    public ICollection<SubjectBatch> SubjectBatches { get; set; }
 }

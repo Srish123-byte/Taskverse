@@ -12,10 +12,34 @@ public partial class MicroServiceOrchestrator
         return await Get<AssessmentModel>(url);
     }
 
-    public async Task<ObjectResult> CreateAssessment(CreateAssessmentModel model)
+    public async Task<ObjectResult> CreateAssessment(CreateQuestionBankAssessmentModel model)
     {
-        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}assessments";
-        return await Post<AssessmentModel>(url, model);
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments";
+        return await Post<QuestionBankAssessmentModel>(url, model);
+    }
+
+    public async Task<ObjectResult> CreateQuestions(List<CreateQuestionModel> models)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/questions";
+        return await Post<List<AssessmentQuestionModel>>(url, models);
+    }
+
+    public async Task<ObjectResult> UpdateQuestion(Guid questionId, CreateQuestionModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/questions/{questionId}";
+        return await Put<AssessmentQuestionModel>(url, model);
+    }
+
+    public async Task<ObjectResult> DeleteQuestions(DeleteQuestionsModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/questions";
+        return await Delete<List<Guid>>(url, model);
+    }
+
+    public async Task<ObjectResult> SearchQuestionBank(QuestionBankSearchModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/questions/search";
+        return await Post<PagedQuestionBankModel>(url, model);
     }
 
     public async Task<ObjectResult> GetAssessmentsByUser(string userId)

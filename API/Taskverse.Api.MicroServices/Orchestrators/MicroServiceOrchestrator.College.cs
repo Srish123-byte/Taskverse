@@ -66,6 +66,12 @@ public partial class MicroServiceOrchestrator
         return await Get<List<ApprovedTrainerModel>>(url);
     }
 
+    public async Task<ObjectResult> GetCollegeSubjects()
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/subjects";
+        return await Get<List<SubjectOptionModel>>(url);
+    }
+
     public async Task<ObjectResult> CreateCollegeClass(string collegeId, CreateCollegeClassModel model)
     {
         var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/classes";
@@ -82,6 +88,18 @@ public partial class MicroServiceOrchestrator
     {
         var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/classes/{classId}/batches/{batchId}/trainers";
         return await Post<CollegeBatchSummaryModel>(url, model);
+    }
+
+    public async Task<ObjectResult> DeleteCollegeClass(string collegeId, string classId)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/classes/{classId}";
+        return await Delete(url);
+    }
+
+    public async Task<ObjectResult> DeleteCollegeBatch(string collegeId, string classId, string batchId)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/classes/{classId}/batches/{batchId}";
+        return await Delete(url);
     }
 
     public async Task<ObjectResult> ApproveCollegeUser(string collegeId, string userId, CollegeUserActionModel model)

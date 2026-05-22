@@ -10,7 +10,8 @@ import {
   ClassConfiguration,
   CollegeAdminService,
   CollegeBatchSummary,
-  CollegeClassSummary
+  CollegeClassSummary,
+  SubjectOption
 } from '../../../common/services/api/college-admin.service';
 import {
   CLASS_OR_BATCH_NAME_HINT,
@@ -21,11 +22,22 @@ import {
 interface BatchViewModel {
   batch?: CollegeBatchSummary;
   name: string;
+  subjectName: string;
   subtitle: string;
   assignedTrainerSummary: string;
   students: number;
   status: 'Active' | 'Pending';
   variant: 'live' | 'draft';
+}
+
+interface DeleteConfirmationState {
+  type: 'class' | 'batch';
+  classId: string;
+  className: string;
+  batchId?: string;
+  batchName?: string;
+  title: string;
+  detail: string;
 }
 
 @Component({
@@ -48,9 +60,11 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
   isTrainerDropdownOpen = false;
   isSubmittingClass = false;
   isSubmittingBatch = false;
+  isLoadingSubjects = false;
   isLoadingApprovedTrainers = false;
   isSubmittingTrainerAssignment = false;
   isSuccessDialogOpen = false;
+  isDeleteProcessing = false;
   errorMessage = '';
   createClassErrorMessage = '';
   createBatchErrorMessage = '';
@@ -60,6 +74,11 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
   private hasLoadedApprovedTrainers = false;
   private routeSubscription?: Subscription;
   approvedTrainers: ApprovedTrainer[] = [];
+  subjects: SubjectOption[] = [];
+  hasLoadedSubjects = false;
+  deletingClassIds = new Set<string>();
+  deletingBatchIds = new Set<string>();
+  deleteConfirmationState: DeleteConfirmationState | null = null;
   initialSelectedTrainerIds = new Set<string>();
   selectedTrainerIds = new Set<string>();
   activeTrainerAssignmentClassId = '';
@@ -87,6 +106,8 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
   readonly createBatchForm = this.fb.group({
     classId: ['', [Validators.required]],
     name: ['', [Validators.required, Validators.minLength(2), classOrBatchNameValidator()]],
+    subjectId: [''],
+    newSubjectName: [''],
     description: [''],
     capacity: [null as number | null, [Validators.required, Validators.min(1)]]
   });
@@ -149,9 +170,15 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     this.createBatchForm.reset({
       classId,
       name: '',
+      subjectId: '',
+      newSubjectName: '',
       description: '',
       capacity: null
     });
+
+    if (!this.hasLoadedSubjects && !this.isLoadingSubjects) {
+      this.loadSubjects();
+    }
   }
 
   closeCreateClassForm(): void {
@@ -172,6 +199,8 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     this.createBatchForm.reset({
       classId: '',
       name: '',
+      subjectId: '',
+      newSubjectName: '',
       description: '',
       capacity: null
     });
@@ -180,6 +209,14 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
   closeSuccessDialog(): void {
     this.isSuccessDialogOpen = false;
     this.successMessage = '';
+  }
+
+  closeDeleteConfirmation(): void {
+    if (this.isDeleteProcessing) {
+      return;
+    }
+
+    this.deleteConfirmationState = null;
   }
 
   openAssignTrainerModal(classItem: CollegeClassSummary, batch: CollegeBatchSummary): void {
@@ -267,6 +304,15 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
 
     const formValue = this.createBatchForm.getRawValue();
     const classId = formValue.classId?.trim() || '';
+    const subjectId = formValue.subjectId?.trim() || '';
+    const newSubjectName = formValue.newSubjectName?.trim() || '';
+
+    if (!subjectId && !newSubjectName) {
+      this.createBatchErrorMessage = 'Please select an existing subject or enter a new subject.';
+      this.createBatchForm.controls.subjectId.markAsTouched();
+      this.createBatchForm.controls.newSubjectName.markAsTouched();
+      return;
+    }
 
     this.isSubmittingBatch = true;
     this.createBatchErrorMessage = '';
@@ -274,6 +320,8 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
 
     this.collegeAdminService.createBatch(classId, {
       name: formValue.name?.trim() || '',
+      subjectId: subjectId || undefined,
+      subjectName: newSubjectName || undefined,
       description: formValue.description?.trim() || undefined,
       capacity: Number(formValue.capacity) || undefined
     })
@@ -297,6 +345,128 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
         },
         error: err => {
           this.createBatchErrorMessage = err?.error?.message || 'Unable to create the batch right now.';
+        }
+      });
+  }
+
+  promptDeleteClass(classItem: CollegeClassSummary): void {
+    if (this.deletingClassIds.has(classItem.classId)) {
+      return;
+    }
+
+    this.deleteConfirmationState = {
+      type: 'class',
+      classId: classItem.classId,
+      className: classItem.name,
+      title: `Delete class "${classItem.name}"?`,
+      detail: classItem.batches.length > 0
+        ? `This will also remove ${classItem.batches.length} batch${classItem.batches.length === 1 ? '' : 'es'} from this class. Trainers and subjects will not be deleted.`
+        : 'Trainers and subjects will not be deleted.'
+    };
+  }
+
+  promptDeleteBatch(classItem: CollegeClassSummary, batch: CollegeBatchSummary): void {
+    if (this.deletingBatchIds.has(batch.batchId)) {
+      return;
+    }
+
+    this.deleteConfirmationState = {
+      type: 'batch',
+      classId: classItem.classId,
+      className: classItem.name,
+      batchId: batch.batchId,
+      batchName: batch.name,
+      title: `Delete batch "${batch.name}"?`,
+      detail: `This will remove the batch from class "${classItem.name}" and clear its trainer mappings. Trainers and subjects will not be deleted.`
+    };
+  }
+
+  confirmDelete(): void {
+    const pendingDelete = this.deleteConfirmationState;
+    if (!pendingDelete || this.isDeleteProcessing) {
+      return;
+    }
+
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.deleteConfirmationState = null;
+    this.isDeleteProcessing = true;
+
+    if (pendingDelete.type === 'class') {
+      this.deletingClassIds.add(pendingDelete.classId);
+      this.collegeAdminService.deleteClass(pendingDelete.classId)
+      .pipe(
+        take(1),
+        finalize(() => {
+          this.isDeleteProcessing = false;
+          this.deletingClassIds.delete(pendingDelete.classId);
+          this.changeDetectorRef.detectChanges();
+        }))
+      .subscribe({
+        next: () => {
+          if (this.activeTrainerAssignmentClassId === pendingDelete.classId) {
+            this.closeTrainerAssignmentModal(true);
+          }
+
+          this.classConfiguration = {
+            ...this.classConfiguration,
+            classes: this.classConfiguration.classes.filter(item => item.classId !== pendingDelete.classId)
+          };
+          this.recalculateTotals();
+          this.successMessage = `Class "${pendingDelete.className}" was deleted successfully.`;
+          this.isSuccessDialogOpen = true;
+        },
+        error: err => {
+          this.deleteConfirmationState = {
+            ...pendingDelete
+          };
+          this.errorMessage = err?.error?.message || 'Unable to delete the class right now.';
+        }
+      });
+      return;
+    }
+
+    this.deletingBatchIds.add(pendingDelete.batchId!);
+    this.collegeAdminService.deleteBatch(pendingDelete.classId, pendingDelete.batchId!)
+      .pipe(
+        take(1),
+        finalize(() => {
+          this.isDeleteProcessing = false;
+          this.deletingBatchIds.delete(pendingDelete.batchId!);
+          this.changeDetectorRef.detectChanges();
+        }))
+      .subscribe({
+        next: () => {
+          if (this.activeTrainerAssignmentBatchId === pendingDelete.batchId) {
+            this.closeTrainerAssignmentModal(true);
+          }
+
+          this.classConfiguration = {
+            ...this.classConfiguration,
+            classes: this.classConfiguration.classes.map(item => {
+              if (item.classId !== pendingDelete.classId) {
+                return item;
+              }
+
+              const remainingBatches = item.batches.filter(existingBatch => existingBatch.batchId !== pendingDelete.batchId);
+              const totalCapacity = remainingBatches.reduce((sum, existingBatch) => sum + (existingBatch.capacity || 0), 0);
+
+              return {
+                ...item,
+                batches: remainingBatches,
+                totalCapacity
+              };
+            })
+          };
+          this.recalculateTotals();
+          this.successMessage = `Batch "${pendingDelete.batchName}" was deleted successfully.`;
+          this.isSuccessDialogOpen = true;
+        },
+        error: err => {
+          this.deleteConfirmationState = {
+            ...pendingDelete
+          };
+          this.errorMessage = err?.error?.message || 'Unable to delete the batch right now.';
         }
       });
   }
@@ -345,6 +515,7 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
       ...liveCards,
       {
         name: `Create ${classItem.batches.length === 0 ? 'First Batch' : 'Next Batch'}`,
+        subjectName: '',
         subtitle: 'Set up remaining students later',
         assignedTrainerSummary: '',
         students: 0,
@@ -364,6 +535,14 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
 
   trackByTrainerId(_: number, item: ApprovedTrainer): string {
     return item.trainerId;
+  }
+
+  isDeletingClass(classId: string): boolean {
+    return this.deletingClassIds.has(classId);
+  }
+
+  isDeletingBatch(batchId: string): boolean {
+    return this.deletingBatchIds.has(batchId);
   }
 
   toggleTrainerDropdown(): void {
@@ -464,8 +643,9 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
         next: updatedBatch => {
           this.replaceBatchSummary(updatedBatch);
           this.successMessage = `Trainer assignments were updated for "${updatedBatch.name}".`;
-          this.closeTrainerAssignmentModal(true);
           this.isSuccessDialogOpen = true;
+          this.closeTrainerAssignmentModal(true);
+          this.changeDetectorRef.detectChanges();
         },
         error: err => {
           this.trainerAssignmentErrorMessage = err?.error?.message || 'Unable to assign trainers right now.';
@@ -477,6 +657,7 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     return {
       batch,
       name: batch.name,
+      subjectName: batch.subjectName?.trim() || 'Subject not assigned',
       subtitle: `Capacity: ${batch.capacity || 0} seats`,
       assignedTrainerSummary: batch.assignedTrainers.length > 0
         ? batch.assignedTrainers.map(trainer => trainer.fullName).join(', ')
@@ -547,6 +728,29 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
           if (showError) {
             this.trainerAssignmentErrorMessage = err?.error?.message || 'Unable to load approved trainers right now.';
           }
+        }
+      });
+  }
+
+  private loadSubjects(): void {
+    this.isLoadingSubjects = true;
+    this.createBatchErrorMessage = '';
+
+    this.collegeAdminService.getSubjects()
+      .pipe(
+        take(1),
+        finalize(() => {
+          this.isLoadingSubjects = false;
+        }))
+      .subscribe({
+        next: subjects => {
+          this.subjects = subjects;
+          this.hasLoadedSubjects = true;
+        },
+        error: err => {
+          this.subjects = [];
+          this.hasLoadedSubjects = false;
+          this.createBatchErrorMessage = err?.error?.message || 'Unable to load subjects right now.';
         }
       });
   }
