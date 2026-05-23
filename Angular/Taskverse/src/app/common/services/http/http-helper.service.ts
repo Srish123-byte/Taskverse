@@ -15,13 +15,14 @@ export interface IRequestOptions {
 
 @Injectable({ providedIn: 'root' })
 export class HttpHelperService {
-  public api: string;
-
   constructor(
     private readonly session: Session,
     private readonly appConfig: AppConfig
-  ) {
-    this.api = `${this.appConfig.api_url}/`;
+  ) {}
+
+  get api(): string {
+    const apiUrl = (this.appConfig.api_url || '').trim().replace(/\/+$/, '');
+    return apiUrl ? `${apiUrl}/` : '/';
   }
 
   public getOptions(params: HttpParams = new HttpParams(), options?: IRequestOptions): IRequestOptions {
