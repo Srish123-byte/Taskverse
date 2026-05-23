@@ -345,6 +345,14 @@
   gap: 12px;
 }
 
+.batch-card-top-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-left: auto;
+}
+
 .batch-card-top strong,
 .draft-batch-copy strong {
   display: block;
@@ -378,16 +386,11 @@
   letter-spacing: 0.03em;
 }
 
-.batch-card-icon,
 .mini-action-icon,
 .modal-title-icon-image {
   display: block;
   width: 18px;
   height: 18px;
-}
-
-.batch-card-icon {
-  color: #38bdf8;
 }
 
 .batch-metrics {
@@ -531,23 +534,6 @@
   width: min(100%, 420px);
   padding: 32px 28px;
   text-align: center;
-}
-
-.success-dialog-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 72px;
-  height: 72px;
-  margin: 0 auto 18px;
-  border-radius: 50%;
-  background: rgba(34, 197, 94, 0.16);
-  color: #86efac;
-}
-
-.success-dialog-icon mat-icon {
-  font-size: 40px;
-  width: 40px;
-  height: 40px;
 }
 
 .success-dialog h3 {

@@ -4,6 +4,9 @@
   [disabled]="disabled || loading"
   [attr.aria-label]="ariaLabel"
   (click)="handleClick($event)">
-  <mat-icon>{{ loading ? 'hourglass_top' : 'delete' }}</mat-icon>
+  <mat-icon *ngIf="loading; else trashIcon">hourglass_top</mat-icon>
+  <ng-template #trashIcon>
+    <img [src]="trashIconPath" alt="" class="delete-button-icon" aria-hidden="true">
+  </ng-template>
   <span *ngIf="appearance === 'button'">{{ loading ? 'Deleting...' : label }}</span>
 </button>

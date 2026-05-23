@@ -66,7 +66,7 @@ public class AuthController : ControllerBase
 
         try
         {
-            var response = await _authService.RefreshTokenAsync(request.RefreshToken);
+            var response = await _authService.RefreshTokenAsync(request.RefreshToken, request.AccessToken, request.ForceRotate);
             if (response == null)
                 return Unauthorized(new { message = "Invalid or expired refresh token" });
 
@@ -131,7 +131,7 @@ public class AuthController : ControllerBase
             if (!Guid.TryParse(requestUserId, out var userGuid))
                 return BadRequest(new { message = "Invalid user ID" });
 
-            await _authService.LogoutAsync(userGuid);
+            await _authService.LogoutAsync(userGuid, request.RefreshToken);
             return NoContent();
         }
         catch (Exception ex)

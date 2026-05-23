@@ -9,6 +9,7 @@ import { FooterComponent } from './components/footer/footer.component';
 import { DashboardLoaderComponent } from './components/dashboard-loader/dashboard-loader.component';
 import { DeleteActionButtonComponent } from './components/delete-action-button/delete-action-button.component';
 import { ProcessingOverlayComponent } from './components/processing-overlay/processing-overlay.component';
+import { SessionInactivityWarningComponent } from './components/session-inactivity-warning/session-inactivity-warning.component';
 
 import { FormatPhone } from './pipes/format-phone.pipe';
 import { ToLowerCaseText } from './pipes/to-lower-case-text.pipe';
@@ -32,6 +33,7 @@ import { MaterialModule } from '../material.module';
     DashboardLoaderComponent,
     DeleteActionButtonComponent,
     ProcessingOverlayComponent,
+    SessionInactivityWarningComponent,
     FormatPhone,
     ToLowerCaseText,
     ToUpperCaseText
@@ -43,6 +45,7 @@ import { MaterialModule } from '../material.module';
     DashboardLoaderComponent,
     DeleteActionButtonComponent,
     ProcessingOverlayComponent,
+    SessionInactivityWarningComponent,
     FormatPhone,
     ToLowerCaseText,
     ToUpperCaseText,

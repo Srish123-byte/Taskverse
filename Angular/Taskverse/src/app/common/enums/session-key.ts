@@ -1,8 +1,10 @@
 export class SessionKey {
-  static JwtToken  = 'jwt-token';
+  static JwtToken = 'jwt-token';
   static RefreshToken = 'refresh-token';
+  static AccessTokenExpiresAt = 'access-token-expires-at';
+  static LastActivityAt = 'last-activity-at';
   static UserEmail = 'user-email';
-  static UserId    = 'user-id';
-  static Role      = 'role';
+  static UserId = 'user-id';
+  static Role = 'role';
   static CollegeId = 'college-id';
 }

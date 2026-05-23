@@ -25,6 +25,8 @@ public class LoginResponse
 public class RefreshTokenRequest
 {
     public string RefreshToken { get; set; } = default!;
+    public string? AccessToken { get; set; }
+    public bool ForceRotate { get; set; }
 }
 
 public class RefreshTokenResponse

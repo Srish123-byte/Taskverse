@@ -1,6 +1,8 @@
 export const RouteAddress = {
   Base:           '/',
   Login:          'login',
+  Logout:         'logout',
+  SessionTimeout: 'session-timeout',
   RoleDirector:   'role-director',
   ApprovalStatus: 'approval-status',
   Error:          'error',

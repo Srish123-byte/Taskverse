@@ -20,7 +20,7 @@ public record RefreshTokenResponseModel(
     string RefreshToken,
     DateTime ExpiresAt);
 
-public record RefreshTokenRequestModel(string RefreshToken);
+public record RefreshTokenRequestModel(string RefreshToken, string? AccessToken = null, bool ForceRotate = false);
 
 public record LogoutRequestModel(string UserId, string RefreshToken);
 

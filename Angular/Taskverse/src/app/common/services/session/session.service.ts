@@ -27,6 +27,20 @@ export class Session {
     this.storage.setItem(SessionKey.RefreshToken, value);
   }
 
+  get accessTokenExpiresAt(): string {
+    return this.storage.getItem(SessionKey.AccessTokenExpiresAt) as string;
+  }
+  set accessTokenExpiresAt(value: string) {
+    this.storage.setItem(SessionKey.AccessTokenExpiresAt, value);
+  }
+
+  get lastActivityAt(): string {
+    return this.storage.getItem(SessionKey.LastActivityAt) as string;
+  }
+  set lastActivityAt(value: string) {
+    this.storage.setItem(SessionKey.LastActivityAt, value);
+  }
+
   // User email
   get userEmail(): string {
     return this.storage.getItem(SessionKey.UserEmail) as string;
@@ -78,6 +92,8 @@ export class Session {
     this._user$.next(null);
     this.storage.removeItem(SessionKey.JwtToken);
     this.storage.removeItem(SessionKey.RefreshToken);
+    this.storage.removeItem(SessionKey.AccessTokenExpiresAt);
+    this.storage.removeItem(SessionKey.LastActivityAt);
     this.storage.removeItem(SessionKey.UserEmail);
     this.storage.removeItem(SessionKey.UserId);
     this.storage.removeItem(SessionKey.Role);

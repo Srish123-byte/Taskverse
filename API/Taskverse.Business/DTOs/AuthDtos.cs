@@ -20,7 +20,7 @@ public record RefreshLoginResponseDto(
     string RefreshToken,
     DateTime ExpiresAt);
 
-public record RefreshTokenRequestDto(string RefreshToken);
+public record RefreshTokenRequestDto(string RefreshToken, string? AccessToken = null, bool ForceRotate = false);
 
 public record LogoutRequestDto(string UserId, string RefreshToken);
 

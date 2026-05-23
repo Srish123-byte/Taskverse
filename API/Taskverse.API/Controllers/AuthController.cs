@@ -70,7 +70,7 @@ public class AuthController : Controller
     {
         try
         {
-            var result = await _authOrchestrator.RefreshToken(new RefreshTokenRequestDto(model.RefreshToken));
+            var result = await _authOrchestrator.RefreshToken(new RefreshTokenRequestDto(model.RefreshToken, model.AccessToken, model.ForceRotate));
             if (result is null) return Unauthorized("Invalid or expired refresh token");
             return Ok(new RefreshLoginResponseModel
             {

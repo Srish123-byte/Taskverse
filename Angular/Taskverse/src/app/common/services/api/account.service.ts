@@ -15,11 +15,23 @@ export interface LogoutRequest {
   refreshToken: string;
 }
 
+export interface RefreshTokenRequest {
+  refreshToken: string;
+  accessToken?: string;
+  forceRotate?: boolean;
+}
+
 export interface LoginResponse {
   token: string;
   refreshToken: string;
   expiresAt: string;
   user: User;
+}
+
+export interface RefreshTokenResponse {
+  token: string;
+  refreshToken: string;
+  expiresAt: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -47,6 +59,20 @@ export class AccountService {
 
   getUserProfile(): Observable<User> {
     return this.http.get<User>(`${this.url}/profile`);
+  }
+
+  refreshToken(request: RefreshTokenRequest): Observable<RefreshTokenResponse> {
+    return this.rawHttp.post<RefreshTokenResponse>(
+      `${this.appConfig.api_url}/${this.url}/refresh`,
+      request,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Skip-Global-Error-Redirect': 'true',
+          'X-Skip-Auth-Refresh': 'true'
+        }
+      }
+    );
   }
 
   logout(request: LogoutRequest): Observable<void> {

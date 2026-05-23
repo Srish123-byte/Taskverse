@@ -112,7 +112,15 @@
                     <span>{{ batchCard.subtitle }}</span>
                     <small class="batch-card-trainer-copy">Trainer: {{ batchCard.assignedTrainerSummary }}</small>
                   </div>
-                  <img src="assets/icons/nav/assign-trainer.svg" alt="" class="batch-card-icon" aria-hidden="true">
+                  <div class="batch-card-top-actions">
+                    <app-delete-action-button
+                      appearance="icon"
+                      [ariaLabel]="'Delete batch ' + batchCard.batch!.name"
+                      [disabled]="isDeletingBatch(batchCard.batch!.batchId)"
+                      [loading]="isDeletingBatch(batchCard.batch!.batchId)"
+                      (deleteClick)="$event.stopPropagation(); promptDeleteBatch(classItem, batchCard.batch!)">
+                    </app-delete-action-button>
+                  </div>
                 </div>
 
                 <div class="batch-metrics">
@@ -127,13 +135,14 @@
                 </div>
 
                 <div class="batch-actions">
-                  <app-delete-action-button
-                    label="Delete Batch"
-                    [ariaLabel]="'Delete batch ' + batchCard.batch!.name"
+                  <button
+                    type="button"
+                    class="mini-action mini-action-muted"
                     [disabled]="isDeletingBatch(batchCard.batch!.batchId)"
-                    [loading]="isDeletingBatch(batchCard.batch!.batchId)"
-                    (deleteClick)="$event.stopPropagation(); promptDeleteBatch(classItem, batchCard.batch!)">
-                  </app-delete-action-button>
+                    (click)="$event.stopPropagation()">
+                    <img src="assets/icons/nav/settings.svg" alt="" class="mini-action-icon" aria-hidden="true">
+                    <span>Settings</span>
+                  </button>
                   <button
                     type="button"
                     class="mini-action mini-action-primary"
@@ -354,9 +363,6 @@
 
   <div *ngIf="isSuccessDialogOpen" class="modal-backdrop success-backdrop" (click)="closeSuccessDialog()">
     <section class="success-dialog" (click)="$event.stopPropagation()">
-      <div class="success-dialog-icon">
-        <mat-icon>check_circle</mat-icon>
-      </div>
       <h3>Saved Successfully</h3>
       <p>{{ successMessage }}</p>
       <button type="button" class="footer-action footer-action-primary success-dialog-action" (click)="closeSuccessDialog()">
