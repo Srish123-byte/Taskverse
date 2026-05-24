@@ -79,4 +79,39 @@ public class AssessmentController : ControllerBase
             });
         }
     }
+
+    [HttpPost("{id:guid}/publish")]
+    [ProducesResponseType(typeof(AssessmentRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<AssessmentRecord>> PublishAssessment(Guid id)
+    {
+        try
+        {
+            var assessment = await _assessmentManager.PublishAssessment(id);
+            return Ok(assessment.ToRecord());
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (AssessmentQuestionLimitException ex)
+        {
+            return UnprocessableEntity(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = "An unexpected error occurred while publishing the assessment.",
+                detail = ex.Message
+            });
+        }
+    }
 }

@@ -89,6 +89,58 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    [HttpPost("{id:guid}/publish")]
+    [SwaggerResponse(200, "Assessment published successfully", typeof(QuestionBankAssessmentResponseModel))]
+    [SwaggerResponse(400, "Invalid request or CollegeId is missing/invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Assessment not found")]
+    [SwaggerResponse(409, "Assessment could not be published due to a conflict")]
+    [SwaggerResponse(422, "Assessment questions exceed allowed limits")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> PublishAssessment(Guid id)
+    {
+        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out _);
+        if (tenantCheck is not null) return tenantCheck;
+
+        try
+        {
+            var dto = await _assessmentOrchestrator.PublishAssessment(id);
+            return Ok(dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidDataException ex)
+        {
+            return UnprocessableEntity(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return Problem(detail: ex.Message, title: "An unexpected error occurred while publishing the assessment.");
+        }
+    }
+
     [HttpPost("questions")]
     [SwaggerResponse(201, "Questions created successfully", typeof(List<QuestionResponseModel>))]
     [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]

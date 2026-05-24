@@ -166,6 +166,94 @@ public class AssessmentManager : IAssessmentManager
         return assessment;
     }
 
+    public async Task<Assessment> PublishAssessment(Guid assessmentId)
+    {
+        var assessment = await _context.Assessments
+            .Include(item => item.AssessmentQuestions)
+            .Include(item => item.Subject)
+            .Include(item => item.Topic)
+            .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId);
+
+        if (assessment is null)
+        {
+            throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found.");
+        }
+
+        if (assessment.AssessmentStatus is not AssessmentStatus.Draft and not AssessmentStatus.Scheduled)
+        {
+            throw new InvalidOperationException("Only draft or scheduled assessments can be published.");
+        }
+
+        var questions = await LoadQuestionsForPublish(assessment);
+
+        if (questions.Count == 0)
+        {
+            throw new InvalidOperationException("At least one question must be linked to the assessment before publishing.");
+        }
+
+        var wrongCollegeQuestionIds = questions
+            .Where(question => question.CollegeId != assessment.CollegeId)
+            .Select(question => question.QuestionId)
+            .ToList();
+        if (wrongCollegeQuestionIds.Count > 0)
+        {
+            throw new InvalidOperationException($"Question(s) do not belong to this college: {string.Join(", ", wrongCollegeQuestionIds)}.");
+        }
+
+        var unavailableQuestionIds = questions
+            .Where(question => !question.IsActive)
+            .Select(question => question.QuestionId)
+            .ToList();
+        if (unavailableQuestionIds.Count > 0)
+        {
+            throw new InvalidOperationException($"Question(s) are inactive and cannot be published: {string.Join(", ", unavailableQuestionIds)}.");
+        }
+
+        ValidateQuestionBudget(assessment, questions);
+
+        assessment.AssessmentType = ResolveAssessmentType(questions);
+        assessment.DifficultyLevel = CalculateDifficultyLevel(questions);
+        assessment.AssessmentStatus = AssessmentStatus.Scheduled;
+        assessment.ModifiedAt = DateTime.UtcNow;
+
+        if (assessment.AssessmentQuestions.Count == 0)
+        {
+            var questionOrder = questions
+                .Select((question, index) => new { question.QuestionId, DisplayOrder = index + 1 })
+                .ToDictionary(item => item.QuestionId, item => item.DisplayOrder);
+
+            assessment.AssessmentQuestions = questions
+                .Select(question => new AssessmentQuestion
+                {
+                    AssessmentId = assessment.AssessmentId,
+                    QuestionId = question.QuestionId,
+                    DisplayOrder = questionOrder[question.QuestionId],
+                    Marks = question.Marks
+                })
+                .ToList();
+        }
+
+        foreach (var question in questions)
+        {
+            if (question.AssessmentId != assessment.AssessmentId)
+            {
+                question.AssessmentId = assessment.AssessmentId;
+                question.ModifiedAt = DateTime.UtcNow;
+            }
+        }
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            throw new InvalidOperationException("Unable to publish the assessment.", ex);
+        }
+
+        return assessment;
+    }
+
     private static void ValidateAssessment(Assessment assessment, List<Guid> questionIds)
     {
         if (assessment.CollegeId == Guid.Empty)
@@ -243,6 +331,47 @@ public class AssessmentManager : IAssessmentManager
                 $"Selected questions require {requiredDurationMinutes} minutes, but assessment duration is {assessment.DurationMinutes} minutes. " +
                 $"Allowed by duration: {codingLimit} coding question(s) or {nonCodingLimit} non-coding question(s).");
         }
+    }
+
+    private async Task<List<Question>> LoadQuestionsForPublish(Assessment assessment)
+    {
+        List<Question> questions;
+
+        if (assessment.AssessmentQuestions.Count > 0)
+        {
+            var questionIds = assessment.AssessmentQuestions
+                .OrderBy(item => item.DisplayOrder)
+                .Select(item => item.QuestionId)
+                .ToList();
+
+            var mappedQuestions = await _context.Questions
+                .Where(question => questionIds.Contains(question.QuestionId))
+                .ToListAsync();
+
+            var questionLookup = mappedQuestions.ToDictionary(question => question.QuestionId);
+            var missingQuestionIds = questionIds
+                .Where(questionId => !questionLookup.ContainsKey(questionId))
+                .ToList();
+
+            if (missingQuestionIds.Count > 0)
+            {
+                throw new KeyNotFoundException($"Question(s) not found: {string.Join(", ", missingQuestionIds)}.");
+            }
+
+            questions = questionIds
+                .Select(questionId => questionLookup[questionId])
+                .ToList();
+        }
+        else
+        {
+            questions = await _context.Questions
+                .Where(question => question.AssessmentId == assessment.AssessmentId)
+                .OrderBy(question => question.CreatedAt)
+                .ThenBy(question => question.QuestionId)
+                .ToListAsync();
+        }
+
+        return questions;
     }
 
     private int? CalculateAllowedQuestionCountByMarks(int totalMarks)

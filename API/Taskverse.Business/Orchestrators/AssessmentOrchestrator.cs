@@ -66,6 +66,34 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         };
     }
 
+    public async Task<QuestionBankAssessmentDto> PublishAssessment(Guid assessmentId)
+    {
+        _log.Debug($"AssessmentOrchestrator.PublishAssessment: assessmentId={assessmentId}");
+
+        var result = await _microServiceOrchestrator.PublishAssessment(assessmentId);
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<QuestionBankAssessmentModel>()
+                ?? throw new InvalidOperationException("PublishAssessment returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"PublishAssessment failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status403Forbidden => new UnauthorizedAccessException(message),
+            StatusCodes.Status404NotFound => new KeyNotFoundException(message),
+            StatusCodes.Status409Conflict => new InvalidOperationException(message),
+            StatusCodes.Status422UnprocessableEntity => new InvalidDataException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new Exception(message)
+        };
+    }
+
     public async Task<List<AssessmentQuestionDto>> CreateQuestions(List<CreateQuestionDto> dtos)
     {
         _log.Debug($"AssessmentOrchestrator.CreateQuestions: count={dtos.Count}");
