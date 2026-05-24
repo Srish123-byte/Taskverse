@@ -115,3 +115,29 @@ public class QuestionResponseModel
     public DateTime CreatedAt { get; set; }
     public DateTime? ModifiedAt { get; set; }
 }
+
+public class AssessmentQuestionListRequestModel
+{
+    public int PageNumber { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
+}
+
+public class AssessmentQuestionListItemResponseModel
+{
+    public Guid QuestionId { get; set; }
+    public int DisplayOrder { get; set; }
+    public string QuestionType { get; set; } = string.Empty;
+    public string QuestionText { get; set; } = string.Empty;
+    public List<string>? Options { get; set; }
+    public decimal Marks { get; set; }
+    public decimal NegativeMarks { get; set; }
+    public int DifficultyLevel { get; set; }
+}
+
+public class PagedAssessmentQuestionListResponseModel
+{
+    public List<AssessmentQuestionListItemResponseModel> Items { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+}

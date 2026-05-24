@@ -8,6 +8,7 @@ import { AppComponent } from './app.component';
 import { AppCommonModule } from './common/common.module';
 import { AppRoutes } from './app.routes';
 import { MaterialModule } from './material.module';
+import { AuthSessionInterceptor } from './common/interceptors/auth-session.interceptor';
 import { ErrorInterceptor } from './common/interceptors/error.interceptor';
 import { LocationStrategyService } from './common/services/utilities/location-strategy.service';
 
@@ -32,6 +33,11 @@ import { SharedPagesModule } from './website/shared/shared-pages.module';
     AppRoutes
   ],
   providers: [
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: AuthSessionInterceptor,
+      multi: true
+    },
     {
       provide: HTTP_INTERCEPTORS,
       useClass: ErrorInterceptor,

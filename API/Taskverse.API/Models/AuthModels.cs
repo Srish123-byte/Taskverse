@@ -39,6 +39,8 @@ public class RefreshLoginResponseModel
 public class RefreshTokenRequestModel
 {
     [Required] public string RefreshToken { get; set; } = string.Empty;
+    public string? AccessToken { get; set; }
+    public bool ForceRotate { get; set; }
 }
 
 public class LogoutRequestModel

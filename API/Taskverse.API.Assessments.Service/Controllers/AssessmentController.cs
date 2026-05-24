@@ -79,4 +79,127 @@ public class AssessmentController : ControllerBase
             });
         }
     }
+
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DeleteAssessment(Guid id, [FromBody] DeleteAssessmentRequest request)
+    {
+        if (request is null)
+        {
+            return BadRequest(new { message = "Delete assessment request is required." });
+        }
+
+        if (request.AssessmentId != Guid.Empty && request.AssessmentId != id)
+        {
+            return BadRequest(new { message = "Assessment id in route and body must match." });
+        }
+
+        request.AssessmentId = id;
+
+        try
+        {
+            await _assessmentManager.DeleteAssessment(id, request);
+            return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = "An unexpected error occurred while deleting the assessment.",
+                detail = ex.Message
+            });
+        }
+    }
+
+    [HttpPost("{id:guid}/publish")]
+    [ProducesResponseType(typeof(AssessmentRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<AssessmentRecord>> PublishAssessment(Guid id)
+    {
+        try
+        {
+            var assessment = await _assessmentManager.PublishAssessment(id);
+            return Ok(assessment.ToRecord());
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (AssessmentQuestionLimitException ex)
+        {
+            return UnprocessableEntity(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = "An unexpected error occurred while publishing the assessment.",
+                detail = ex.Message
+            });
+        }
+    }
+
+    [HttpPost("{id:guid}/questions/list")]
+    [ProducesResponseType(typeof(PagedAssessmentQuestionListRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<PagedAssessmentQuestionListRecord>> GetAssessmentQuestionList(
+        Guid id,
+        [FromBody] AssessmentQuestionListRequest request)
+    {
+        if (request is null)
+        {
+            return BadRequest(new { message = "Request body is required." });
+        }
+
+        try
+        {
+            var result = await _assessmentManager.GetAssessmentQuestionList(
+                id,
+                request.PageNumber,
+                request.PageSize);
+
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = "An unexpected error occurred while retrieving the assessment question list.",
+                detail = ex.Message
+            });
+        }
+    }
 }

@@ -14,6 +14,7 @@ public interface ITokenService
         string role,
         string firstName,
         string lastName,
+        Guid sessionId,
         Guid? collegeId = null,
         string? collegeName = null);
 
@@ -29,8 +30,12 @@ public interface ITokenService
 
     DateTime GetExpiryUtc();
 
+    DateTime GetRefreshThresholdUtc();
+
     /// <summary>
     /// Validates a refresh token
     /// </summary>
     Task<bool> ValidateRefreshTokenAsync(string refreshToken, Guid userId);
+
+    string HashRefreshToken(string refreshToken);
 }

@@ -1,4 +1,5 @@
 import { RouterModule, Routes } from '@angular/router';
+import { LogoutComponent } from './common/components/logout/logout.component';
 import { PageNotFoundComponent } from './common/components/page-not-found/page-not-found.component';
 import { RouteAddress } from './common/constants/routes.constants';
 import { RoleType } from './common/enums/role-type.enum';
@@ -11,6 +12,10 @@ const routes: Routes = [
     path: '',
     redirectTo: RouteAddress.Login,
     pathMatch: 'full'
+  },
+  {
+    path: RouteAddress.Logout,
+    component: LogoutComponent
   },
   // Lazy-loaded role modules
   {

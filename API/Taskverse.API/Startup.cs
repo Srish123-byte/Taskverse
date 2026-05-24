@@ -215,7 +215,6 @@ public class Startup
 
         // Managers
         services.AddScoped<IUsersManager, UsersManager>();
-        services.AddScoped<IAssessmentManager, AssessmentManager>();
 
         // MicroService layer
         services.AddScoped<IMicroServiceOrchestrator, MicroServiceOrchestrator>();

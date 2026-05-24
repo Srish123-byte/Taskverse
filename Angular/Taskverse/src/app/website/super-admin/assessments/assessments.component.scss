@@ -35,3 +35,67 @@
   color: #617589;
   line-height: 1.6;
 }
+
+.assessment-delete-panel {
+  margin-top: 28px;
+  padding: 24px;
+  border: 1px solid #d8e3eb;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #ffffff 0%, #f3f8fb 100%);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.06);
+}
+
+.assessment-delete-copy h3 {
+  margin: 0 0 8px;
+  color: #16314a;
+}
+
+.assessment-delete-copy p {
+  margin: 0 0 18px;
+  color: #617589;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #26425a;
+}
+
+input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #cbd8e3;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #16314a;
+}
+
+.danger-button {
+  margin-top: 16px;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #b45309 0%, #dc2626 100%);
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.danger-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.status-message {
+  margin: 16px 0 0;
+  font-weight: 500;
+}
+
+.status-success {
+  color: #166534;
+}
+
+.status-error {
+  color: #b91c1c;
+}

@@ -13,6 +13,7 @@ import {
 } from '../../../common/services/api/user.service';
 import { RouteAddress } from '../../../common/constants/routes.constants';
 import { RoleType } from '../../../common/enums/role-type.enum';
+import { SessionActivityService } from '../../../common/services/session/session-activity.service';
 import { Session } from '../../../common/services/session/session.service';
 
 export type AuthMode = 'login' | 'register';
@@ -61,6 +62,7 @@ export class LoginComponent implements OnInit, OnDestroy {
     private readonly accountService: AccountService,
     private readonly userService: UserService,
     private readonly session: Session,
+    private readonly sessionActivityService: SessionActivityService,
     private readonly router: Router
   ) {}
 
@@ -162,10 +164,13 @@ export class LoginComponent implements OnInit, OnDestroy {
         response.user.status = normalizedStatus;
         this.session.jwtToken = response.token;
         this.session.refreshToken = response.refreshToken;
+        this.session.accessTokenExpiresAt = response.expiresAt;
+        this.session.lastActivityAt = new Date().toISOString();
         this.session.user = response.user;
         this.session.userEmail = response.user.email;
         this.session.userId = response.user.userId;
         this.session.role = response.user.role;
+        this.sessionActivityService.registerActivity();
         this.navigateToLandingPage();
       },
       error: err => {

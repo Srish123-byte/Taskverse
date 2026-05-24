@@ -1,6 +1,6 @@
 .delete-action-button,
 .delete-icon-button {
-  border: 1px solid rgba(248, 113, 113, 0.24);
+  border: 1px solid rgba(255, 99, 99, 0.44);
   transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, opacity 0.18s ease;
 }
 
@@ -12,8 +12,8 @@
   min-height: 38px;
   padding: 0 16px;
   border-radius: 10px;
-  background: rgba(127, 29, 29, 0.24);
-  color: #fecaca;
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.24) 0%, rgba(153, 27, 27, 0.3) 100%);
+  color: #ffe2e2;
   font-weight: 700;
   cursor: pointer;
 }
@@ -21,19 +21,20 @@
 .delete-icon-button {
   display: inline-grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
-  background: linear-gradient(180deg, rgba(127, 29, 29, 0.42) 0%, rgba(91, 19, 19, 0.58) 100%);
-  color: #ffe4e6;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, rgba(255, 78, 78, 0.32) 0%, rgba(185, 28, 28, 0.48) 100%);
+  color: #ffe8e8;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
   cursor: pointer;
 }
 
 .delete-action-button:hover,
 .delete-icon-button:hover {
   transform: translateY(-1px);
-  border-color: rgba(251, 113, 133, 0.58);
+  border-color: rgba(255, 120, 120, 0.82);
+  background-color: rgba(220, 38, 38, 0.28);
 }
 
 .delete-action-button[disabled],
@@ -44,8 +45,18 @@
 }
 
 .delete-action-button mat-icon,
+.delete-icon-button mat-icon,
+.delete-button-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.delete-action-button mat-icon,
 .delete-icon-button mat-icon {
-  width: 20px;
-  height: 20px;
-  font-size: 20px;
+  font-size: 18px;
+}
+
+.delete-button-icon {
+  display: block;
+  filter: brightness(0) saturate(100%) invert(95%) sepia(15%) saturate(555%) hue-rotate(300deg) brightness(110%) contrast(102%);
 }

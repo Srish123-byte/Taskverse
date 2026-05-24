@@ -53,6 +53,16 @@ public record CreateQuestionBankAssessmentModel(
     [property: JsonProperty("end_datetime")]
     DateTime? EndDateTime);
 
+public record DeleteAssessmentModel(
+    [property: JsonProperty("assessment_id")]
+    Guid AssessmentId,
+    [property: JsonProperty("deleted_by")]
+    string DeletedBy,
+    [property: JsonProperty("requester_role")]
+    string RequesterRole,
+    [property: JsonProperty("college_id")]
+    Guid? CollegeId);
+
 public record QuestionBankAssessmentModel(
     [property: JsonProperty("assessment_id")]
     Guid AssessmentId,
@@ -173,3 +183,37 @@ public record AssessmentQuestionModel(
     string CreatedBy,
     DateTime CreatedAt,
     DateTime? ModifiedAt);
+
+public record AssessmentQuestionListSearchModel(
+    [property: JsonProperty("page_number")]
+    int PageNumber,
+    [property: JsonProperty("page_size")]
+    int PageSize);
+
+public record AssessmentQuestionListItemModel(
+    [property: JsonProperty("question_id")]
+    Guid QuestionId,
+    [property: JsonProperty("display_order")]
+    int DisplayOrder,
+    [property: JsonProperty("question_type")]
+    string QuestionType,
+    [property: JsonProperty("question_text")]
+    string QuestionText,
+    [property: JsonProperty("options")]
+    List<string>? Options,
+    [property: JsonProperty("marks")]
+    decimal Marks,
+    [property: JsonProperty("negative_marks")]
+    decimal NegativeMarks,
+    [property: JsonProperty("difficulty_level")]
+    int DifficultyLevel);
+
+public record PagedAssessmentQuestionListModel(
+    [property: JsonProperty("items")]
+    List<AssessmentQuestionListItemModel> Items,
+    [property: JsonProperty("total_count")]
+    int TotalCount,
+    [property: JsonProperty("page_number")]
+    int PageNumber,
+    [property: JsonProperty("page_size")]
+    int PageSize);

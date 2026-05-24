@@ -55,6 +55,26 @@ public class CreateAssessmentRequest
     public DateTime? EndDateTime { get; set; }
 }
 
+public class DeleteAssessmentRequest
+{
+    [Required]
+    [JsonPropertyName("assessment_id")]
+    public Guid AssessmentId { get; set; }
+
+    [Required]
+    [MaxLength(200)]
+    [JsonPropertyName("deleted_by")]
+    public string DeletedBy { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(50)]
+    [JsonPropertyName("requester_role")]
+    public string RequesterRole { get; set; } = string.Empty;
+
+    [JsonPropertyName("college_id")]
+    public Guid? CollegeId { get; set; }
+}
+
 public record AssessmentRecord(
     [property: JsonPropertyName("assessment_id")]
     Guid AssessmentId,
@@ -108,3 +128,40 @@ public record AssessmentRecord(
     DateTime? ModifiedAt,
     [property: JsonPropertyName("question_ids")]
     List<Guid> QuestionIds);
+
+public class AssessmentQuestionListRequest
+{
+    [JsonPropertyName("page_number")]
+    public int PageNumber { get; set; } = 1;
+
+    [JsonPropertyName("page_size")]
+    public int PageSize { get; set; } = 10;
+}
+
+public record AssessmentQuestionListItemRecord(
+    [property: JsonPropertyName("question_id")]
+    Guid QuestionId,
+    [property: JsonPropertyName("display_order")]
+    int DisplayOrder,
+    [property: JsonPropertyName("question_type")]
+    string QuestionType,
+    [property: JsonPropertyName("question_text")]
+    string QuestionText,
+    [property: JsonPropertyName("options")]
+    List<string>? Options,
+    [property: JsonPropertyName("marks")]
+    decimal Marks,
+    [property: JsonPropertyName("negative_marks")]
+    decimal NegativeMarks,
+    [property: JsonPropertyName("difficulty_level")]
+    int DifficultyLevel);
+
+public record PagedAssessmentQuestionListRecord(
+    [property: JsonPropertyName("items")]
+    List<AssessmentQuestionListItemRecord> Items,
+    [property: JsonPropertyName("total_count")]
+    int TotalCount,
+    [property: JsonPropertyName("page_number")]
+    int PageNumber,
+    [property: JsonPropertyName("page_size")]
+    int PageSize);

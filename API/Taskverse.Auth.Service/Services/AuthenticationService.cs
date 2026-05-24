@@ -1,6 +1,7 @@
 // Taskverse.API.Auth.Service/Services/AuthenticationService.cs
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.IdentityModel.Tokens.Jwt;
 using Taskverse.API.Auth.Service.Models;
 using Taskverse.Business.Enums;
 using Taskverse.Data.DataAccess;
@@ -9,6 +10,7 @@ namespace Taskverse.API.Auth.Service.Services;
 
 public class AuthenticationService : IAuthenticationService
 {
+    private static readonly TimeSpan InactivityTimeout = TimeSpan.FromMinutes(30);
     private readonly ITokenService _tokenService;
     private readonly TaskverseContext _context;
     private readonly ILogger<AuthenticationService> _logger;
@@ -65,15 +67,25 @@ public class AuthenticationService : IAuthenticationService
 
             _logger.LogInformation($"[Login] Password verified. Generating tokens for user: {normalizedEmail}");
             var (firstName, lastName) = SplitName(user.FullName);
+            var authSession = new AuthSession
+            {
+                UserId = user.Id,
+                LastActivityAt = DateTime.UtcNow
+            };
+            var refreshToken = await _tokenService.GenerateRefreshTokenAsync();
+            authSession.RefreshTokenHash = _tokenService.HashRefreshToken(refreshToken);
+            _context.AuthSessions.Add(authSession);
+            await _context.SaveChangesAsync();
+
             var token = await _tokenService.GenerateTokenAsync(
                 user.Id,
                 user.Email,
                 user.Role,
                 firstName,
                 lastName,
+                authSession.AuthSessionId,
                 user.CollegeId,
                 user.CollegeName);
-            var refreshToken = await _tokenService.GenerateRefreshTokenAsync();
 
             _logger.LogInformation($"User logged in: {request.Email}");
 
@@ -103,25 +115,69 @@ public class AuthenticationService : IAuthenticationService
         }
     }
 
-    public async Task<RefreshTokenResponse?> RefreshTokenAsync(string refreshToken)
+    public async Task<RefreshTokenResponse?> RefreshTokenAsync(string refreshToken, string? accessToken = null, bool forceRotate = false)
     {
         try
         {
-            var isValid = await _tokenService.ValidateRefreshTokenAsync(refreshToken, Guid.Empty);
-            if (!isValid)
+            if (string.IsNullOrWhiteSpace(refreshToken))
             {
-                _logger.LogWarning("Invalid refresh token");
                 return null;
             }
 
-            // TODO: Get user from refresh token and generate new access token
+            var refreshTokenHash = _tokenService.HashRefreshToken(refreshToken);
+            var authSession = await _context.AuthSessions
+                .FirstOrDefaultAsync(session =>
+                    session.RefreshTokenHash == refreshTokenHash &&
+                    session.RevokedAt == null);
+            if (authSession is null)
+            {
+                _logger.LogWarning("Refresh token not found or revoked");
+                return null;
+            }
+
+            var now = DateTime.UtcNow;
+            if (now - authSession.LastActivityAt > InactivityTimeout)
+            {
+                authSession.RevokedAt = now;
+                authSession.ModifiedAt = now;
+                await _context.SaveChangesAsync();
+                _logger.LogWarning("Refresh token rejected due to inactivity timeout");
+                return null;
+            }
+
+            var user = await _context.Users.FirstOrDefaultAsync(existingUser => existingUser.Id == authSession.UserId);
+            if (user is null)
+            {
+                authSession.RevokedAt = now;
+                authSession.ModifiedAt = now;
+                await _context.SaveChangesAsync();
+                return null;
+            }
+
+            var rotateSession = forceRotate || ShouldRotateAccessToken(accessToken);
+            if (!rotateSession)
+            {
+                authSession.LastActivityAt = now;
+                authSession.ModifiedAt = now;
+                await _context.SaveChangesAsync();
+                return null;
+            }
+
+            var (firstName, lastName) = SplitName(user.FullName);
             var newAccessToken = await _tokenService.GenerateTokenAsync(
-                Guid.NewGuid(),
-                "user@example.com",
-                "Student",
-                "Taskverse",
-                "User");
+                user.Id,
+                user.Email,
+                user.Role,
+                firstName,
+                lastName,
+                authSession.AuthSessionId,
+                user.CollegeId,
+                user.CollegeName);
             var newRefreshToken = await _tokenService.GenerateRefreshTokenAsync();
+            authSession.RefreshTokenHash = _tokenService.HashRefreshToken(newRefreshToken);
+            authSession.LastActivityAt = now;
+            authSession.ModifiedAt = now;
+            await _context.SaveChangesAsync();
 
             return new RefreshTokenResponse
             {
@@ -151,19 +207,61 @@ public class AuthenticationService : IAuthenticationService
         }
     }
 
-    public async Task LogoutAsync(Guid userId)
+    public async Task LogoutAsync(Guid userId, string? refreshToken = null)
     {
         try
         {
-            // TODO: Invalidate refresh tokens for this user
+            var sessions = _context.AuthSessions.Where(session => session.UserId == userId && session.RevokedAt == null);
+            if (!string.IsNullOrWhiteSpace(refreshToken))
+            {
+                var refreshTokenHash = _tokenService.HashRefreshToken(refreshToken);
+                sessions = sessions.Where(session => session.RefreshTokenHash == refreshTokenHash);
+            }
+
+            var activeSessions = await sessions.ToListAsync();
+            var now = DateTime.UtcNow;
+            foreach (var session in activeSessions)
+            {
+                session.RevokedAt = now;
+                session.ModifiedAt = now;
+            }
+
+            if (activeSessions.Count > 0)
+            {
+                await _context.SaveChangesAsync();
+            }
+
             _logger.LogInformation($"User logged out: {userId}");
-            await Task.CompletedTask;
         }
         catch (Exception ex)
         {
             _logger.LogError($"Logout error: {ex.Message}");
             throw;
         }
+    }
+
+    private bool ShouldRotateAccessToken(string? accessToken)
+    {
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return true;
+        }
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+        if (!tokenHandler.CanReadToken(accessToken))
+        {
+            return true;
+        }
+
+        var jwtToken = tokenHandler.ReadJwtToken(accessToken);
+        var expirationUnix = jwtToken.Claims.FirstOrDefault(claim => claim.Type == JwtRegisteredClaimNames.Exp)?.Value;
+        if (!long.TryParse(expirationUnix, out var expiresAtUnix))
+        {
+            return true;
+        }
+
+        var expiresAt = DateTimeOffset.FromUnixTimeSeconds(expiresAtUnix).UtcDateTime;
+        return expiresAt <= DateTime.UtcNow.AddMinutes(3);
     }
 
     private static string? GetLoginBlockMessage(User user)

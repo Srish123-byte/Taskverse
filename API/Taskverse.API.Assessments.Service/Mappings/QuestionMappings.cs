@@ -1,5 +1,6 @@
 using Taskverse.API.Assessments.Service.Models;
 using Taskverse.Data.DataAccess;
+using Taskverse.Data.Utilities;
 using System.Text.Json;
 
 namespace Taskverse.API.Assessments.Service.Mappings;
@@ -50,8 +51,8 @@ public static class QuestionMappings
             question.DifficultyLevel,
             question.Version,
             question.CreatedBy,
-            question.CreatedAt,
-            question.ModifiedAt);
+            UtcDateTime.Normalize(question.CreatedAt),
+            UtcDateTime.Normalize(question.ModifiedAt));
     }
 
     public static void ApplyUpdates(this Question target, Question source)

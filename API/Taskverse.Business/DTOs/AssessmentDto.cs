@@ -32,6 +32,14 @@ public class CreateQuestionBankAssessmentDto
     public DateTime? EndDateTime { get; set; }
 }
 
+public class DeleteAssessmentDto
+{
+    public Guid AssessmentId { get; set; }
+    public string DeletedBy { get; set; } = default!;
+    public string RequesterRole { get; set; } = default!;
+    public Guid? CollegeId { get; set; }
+}
+
 public class QuestionBankAssessmentDto
 {
     public Guid AssessmentId { get; set; }
@@ -149,4 +157,24 @@ public class AssessmentSummaryDto
     public int TotalAssigned { get; set; }
     public int TotalCompleted { get; set; }
     public double? AverageScore { get; set; }
+}
+
+public class AssessmentQuestionListItemDto
+{
+    public Guid QuestionId { get; set; }
+    public int DisplayOrder { get; set; }
+    public string QuestionType { get; set; } = default!;
+    public string QuestionText { get; set; } = default!;
+    public List<string>? Options { get; set; }
+    public decimal Marks { get; set; }
+    public decimal NegativeMarks { get; set; }
+    public int DifficultyLevel { get; set; }
+}
+
+public class PagedAssessmentQuestionListDto
+{
+    public List<AssessmentQuestionListItemDto> Items { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
 }

@@ -13,6 +13,7 @@ namespace Taskverse.Api.Controllers;
 [Produces("application/json")]
 public class AssessmentsController : TaskverseBaseController
 {
+    private const string SuperAdminRole = "SuperAdmin";
     private const string CollegeAdminRole = "CollegeAdmin";
     private const string TrainerRole = "Trainer";
 
@@ -86,6 +87,117 @@ public class AssessmentsController : TaskverseBaseController
         catch (Exception ex)
         {
             return Problem(detail: ex.Message, title: "An unexpected error occurred while creating the assessment.");
+        }
+    }
+
+    [HttpPost("{id:guid}/publish")]
+    [SwaggerResponse(200, "Assessment published successfully", typeof(QuestionBankAssessmentResponseModel))]
+    [SwaggerResponse(400, "Invalid request or CollegeId is missing/invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Assessment not found")]
+    [SwaggerResponse(409, "Assessment could not be published due to a conflict")]
+    [SwaggerResponse(422, "Assessment questions exceed allowed limits")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> PublishAssessment(Guid id)
+    {
+        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out _);
+        if (tenantCheck is not null) return tenantCheck;
+
+        try
+        {
+            var dto = await _assessmentOrchestrator.PublishAssessment(id);
+            return Ok(dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidDataException ex)
+        {
+            return UnprocessableEntity(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return Problem(detail: ex.Message, title: "An unexpected error occurred while publishing the assessment.");
+        }
+    }
+
+    [HttpDelete("{id:guid}")]
+    [SwaggerResponse(204, "Assessment deleted successfully")]
+    [SwaggerResponse(400, "Invalid request or CollegeId is missing/invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Assessment not found")]
+    [SwaggerResponse(409, "Assessment could not be deleted due to a conflict")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> DeleteAssessment(Guid id)
+    {
+        var accessCheck = EnsureSuperAdminOrCollegeAdminAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        Guid? collegeId = null;
+        if (User.IsInRole(CollegeAdminRole))
+        {
+            var tenantCheck = TryGetCollegeId(out var parsedCollegeId);
+            if (tenantCheck is not null) return tenantCheck;
+            collegeId = parsedCollegeId;
+        }
+
+        try
+        {
+            await _assessmentOrchestrator.DeleteAssessment(new Taskverse.Business.DTOs.DeleteAssessmentDto
+            {
+                AssessmentId = id,
+                DeletedBy = GetCreatedByName(),
+                RequesterRole = GetRequesterRole(),
+                CollegeId = collegeId
+            });
+
+            return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return Problem(detail: ex.Message, title: "An unexpected error occurred while deleting the assessment.");
         }
     }
 
@@ -273,10 +385,69 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    [HttpPost("{id:guid}/questions/list")]
+    [SwaggerResponse(200, "Paged question list for the assessment", typeof(PagedAssessmentQuestionListResponseModel))]
+    [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]
+    [SwaggerResponse(403, "Forbidden — CollegeAdmin or Trainer role required")]
+    [SwaggerResponse(404, "Assessment not found")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> GetAssessmentQuestionList(
+        Guid id,
+        [FromBody] AssessmentQuestionListRequestModel model)
+    {
+        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out _);
+        if (tenantCheck is not null) return tenantCheck;
+
+        if (model is null)
+        {
+            return BadRequest(new { message = "Request body is required." });
+        }
+
+        var pageNumber = model.PageNumber > 0 ? model.PageNumber : 1;
+        var pageSize   = model.PageSize is > 0 and <= 100 ? model.PageSize : 10;
+
+        try
+        {
+            var dto = await _assessmentOrchestrator.GetAssessmentQuestionList(id, pageNumber, pageSize);
+            return Ok(dto.ToResponseModel());
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return Problem(detail: ex.Message, title: "An unexpected error occurred while retrieving the assessment question list.");
+        }
+    }
+
     private IActionResult? EnsureCollegeAdminOrTrainerAccess()
     {
         if (User?.Identity?.IsAuthenticated != true ||
             (!User.IsInRole(CollegeAdminRole) && !User.IsInRole(TrainerRole)))
+        {
+            return Forbid();
+        }
+
+        return null;
+    }
+
+    private IActionResult? EnsureSuperAdminOrCollegeAdminAccess()
+    {
+        if (User?.Identity?.IsAuthenticated != true ||
+            (!User.IsInRole(SuperAdminRole) && !User.IsInRole(CollegeAdminRole)))
         {
             return Forbid();
         }
@@ -384,5 +555,25 @@ public class AssessmentsController : TaskverseBaseController
     {
         var candidate = User.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.TryParse(candidate, out var userId) ? userId : null;
+    }
+
+    private string GetRequesterRole()
+    {
+        if (User.IsInRole(SuperAdminRole))
+        {
+            return SuperAdminRole;
+        }
+
+        if (User.IsInRole(CollegeAdminRole))
+        {
+            return CollegeAdminRole;
+        }
+
+        if (User.IsInRole(TrainerRole))
+        {
+            return TrainerRole;
+        }
+
+        return UserRole;
     }
 }

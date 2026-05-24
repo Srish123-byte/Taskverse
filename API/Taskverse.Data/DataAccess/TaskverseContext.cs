@@ -23,6 +23,7 @@ public class TaskverseContext : DbContext
     public DbSet<Attempt> Attempts { get; set; }
     public DbSet<AttemptAnswer> AttemptAnswers { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<AuthSession> AuthSessions { get; set; }
     public DbSet<Question> Questions { get; set; }
     public DbSet<Result> Results { get; set; }
     public DbSet<Student> Students { get; set; }
@@ -265,6 +266,9 @@ public class TaskverseContext : DbContext
             entity.Property(a => a.CreatedBy).HasColumnName("created_by").HasMaxLength(200);
             entity.Property(a => a.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(a => a.ModifiedAt).HasColumnName("modified_at");
+            entity.Property(a => a.SoftDeletedAt).HasColumnName("soft_deleted_at");
+            entity.Property(a => a.SoftDeletedBy).HasColumnName("soft_deleted_by").HasMaxLength(200);
+            entity.HasQueryFilter(a => a.AssessmentStatus != AssessmentStatus.Soft_Delete);
 
             entity.HasIndex(a => a.SubjectId);
             entity.HasIndex(a => a.TopicId);
@@ -423,6 +427,40 @@ public class TaskverseContext : DbContext
                 .HasForeignKey(al => al.UserId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("fk_audit_logs_user");
+        });
+
+        modelBuilder.Entity<AuthSession>(entity =>
+        {
+            entity.ToTable("auth_sessions");
+            entity.HasKey(session => session.AuthSessionId);
+            entity.Property(session => session.AuthSessionId)
+                .HasColumnName("auth_session_id")
+                .HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(session => session.UserId)
+                .HasColumnName("user_id");
+            entity.Property(session => session.RefreshTokenHash)
+                .HasColumnName("refresh_token_hash")
+                .IsRequired();
+            entity.Property(session => session.LastActivityAt)
+                .HasColumnName("last_activity_at");
+            entity.Property(session => session.CreatedAt)
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("now()");
+            entity.Property(session => session.ModifiedAt)
+                .HasColumnName("modified_at")
+                .HasDefaultValueSql("now()");
+            entity.Property(session => session.RevokedAt)
+                .HasColumnName("revoked_at");
+
+            entity.HasIndex(session => session.UserId);
+            entity.HasIndex(session => session.RefreshTokenHash).IsUnique();
+            entity.HasIndex(session => new { session.UserId, session.RevokedAt });
+
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(session => session.UserId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_auth_sessions_user");
         });
 
         // Configure Student entity

@@ -7,6 +7,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
   styleUrl: './delete-action-button.component.scss'
 })
 export class DeleteActionButtonComponent {
+  readonly trashIconPath = 'assets/icons/nav/trash.svg';
   @Input() label = 'Delete';
   @Input() ariaLabel = 'Delete';
   @Input() appearance: 'icon' | 'button' = 'button';

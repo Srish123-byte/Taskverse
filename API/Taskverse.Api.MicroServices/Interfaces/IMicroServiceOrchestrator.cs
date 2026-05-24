@@ -31,6 +31,8 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     // Assessment
     Task<ObjectResult> GetAssessment(string assessmentId);
     Task<ObjectResult> CreateAssessment(CreateQuestionBankAssessmentModel model);
+    Task<ObjectResult> DeleteAssessment(DeleteAssessmentModel model);
+    Task<ObjectResult> PublishAssessment(Guid assessmentId);
     Task<ObjectResult> CreateQuestions(List<CreateQuestionModel> models);
     Task<ObjectResult> UpdateQuestion(Guid questionId, CreateQuestionModel model);
     Task<ObjectResult> DeleteQuestions(DeleteQuestionsModel model);
@@ -38,6 +40,7 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> GetAssessmentsByUser(string userId);
     Task<ObjectResult> GetAssessmentResult(string assessmentId, string userId);
     Task<ObjectResult> GetAssessmentSummary(string assessmentId);
+    Task<ObjectResult> GetAssessmentQuestionList(Guid assessmentId, AssessmentQuestionListSearchModel model);
 
     // Reports
     Task<ObjectResult> GenerateReport(GenerateReportRequestModel model);

@@ -24,6 +24,7 @@ public class TokenService : ITokenService
         string role,
         string firstName,
         string lastName,
+        Guid sessionId,
         Guid? collegeId = null,
         string? collegeName = null)
     {
@@ -44,6 +45,7 @@ public class TokenService : ITokenService
                 new(ClaimTypes.Role, role),
                 new(ClaimTypes.GivenName, firstName),
                 new(ClaimTypes.Surname, lastName),
+                new("sid", sessionId.ToString()),
                 new("service", "taskverse-api")
             };
 
@@ -85,6 +87,11 @@ public class TokenService : ITokenService
     {
         var expirationMinutes = ResolveExpiryMinutes(_configuration.GetSection("JwtSettings"));
         return DateTime.UtcNow.AddMinutes(expirationMinutes);
+    }
+
+    public DateTime GetRefreshThresholdUtc()
+    {
+        return GetExpiryUtc().AddMinutes(-3);
     }
 
     public async Task<ClaimsPrincipal?> ValidateTokenAsync(string token)
@@ -132,6 +139,12 @@ public class TokenService : ITokenService
         // TODO: Implement refresh token validation from database
         // For now, just return true to indicate format is valid
         return await Task.FromResult(!string.IsNullOrWhiteSpace(refreshToken));
+    }
+
+    public string HashRefreshToken(string refreshToken)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(refreshToken));
+        return Convert.ToHexString(bytes);
     }
 
     private static int ResolveExpiryMinutes(IConfigurationSection jwtSettings)

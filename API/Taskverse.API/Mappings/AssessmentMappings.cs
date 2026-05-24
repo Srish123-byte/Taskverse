@@ -1,5 +1,6 @@
 using Taskverse.Api.Models;
 using Taskverse.Business.DTOs;
+using Taskverse.Data.Utilities;
 
 namespace Taskverse.Api.Mappings;
 
@@ -23,8 +24,8 @@ public static class AssessmentMappings
             QuestionIds = model.QuestionIds,
             DurationMinutes = model.DurationMinutes,
             TotalMarks = model.TotalMarks,
-            StartDateTime = model.StartDateTime,
-            EndDateTime = model.EndDateTime
+            StartDateTime = UtcDateTime.Normalize(model.StartDateTime),
+            EndDateTime = UtcDateTime.Normalize(model.EndDateTime)
         };
     }
 
@@ -112,8 +113,8 @@ public static class AssessmentMappings
             DifficultyLevel = dto.DifficultyLevel,
             Version = dto.Version,
             CreatedBy = dto.CreatedBy,
-            CreatedAt = dto.CreatedAt,
-            ModifiedAt = dto.ModifiedAt
+            CreatedAt = UtcDateTime.Normalize(dto.CreatedAt),
+            ModifiedAt = UtcDateTime.Normalize(dto.ModifiedAt)
         };
     }
 
@@ -144,8 +145,8 @@ public static class AssessmentMappings
             DurationMinutes = dto.DurationMinutes,
             TotalMarks = dto.TotalMarks,
             DifficultyLevel = dto.DifficultyLevel,
-            StartDateTime = dto.StartDateTime,
-            EndDateTime = dto.EndDateTime,
+            StartDateTime = UtcDateTime.Normalize(dto.StartDateTime),
+            EndDateTime = UtcDateTime.Normalize(dto.EndDateTime),
             Instructions = dto.Instructions,
             AssignedBatchIds = dto.AssignedBatchIds,
             AllowLateEntry = dto.AllowLateEntry,
@@ -155,8 +156,8 @@ public static class AssessmentMappings
             MarksPerQuestion = dto.MarksPerQuestion,
             IsTotalMarksAutoCalculated = dto.IsTotalMarksAutoCalculated,
             CreatedBy = dto.CreatedBy,
-            CreatedAt = dto.CreatedAt,
-            ModifiedAt = dto.ModifiedAt,
+            CreatedAt = UtcDateTime.Normalize(dto.CreatedAt),
+            ModifiedAt = UtcDateTime.Normalize(dto.ModifiedAt),
             QuestionIds = dto.QuestionIds
         };
     }
@@ -166,6 +167,34 @@ public static class AssessmentMappings
         return new DeleteQuestionsResponseModel
         {
             DeletedQuestionIds = deletedQuestionIds.ToList()
+        };
+    }
+
+    public static AssessmentQuestionListItemResponseModel ToResponseModel(
+        this AssessmentQuestionListItemDto dto)
+    {
+        return new AssessmentQuestionListItemResponseModel
+        {
+            QuestionId      = dto.QuestionId,
+            DisplayOrder    = dto.DisplayOrder,
+            QuestionType    = dto.QuestionType,
+            QuestionText    = dto.QuestionText,
+            Options         = dto.Options,
+            Marks           = dto.Marks,
+            NegativeMarks   = dto.NegativeMarks,
+            DifficultyLevel = dto.DifficultyLevel
+        };
+    }
+
+    public static PagedAssessmentQuestionListResponseModel ToResponseModel(
+        this PagedAssessmentQuestionListDto dto)
+    {
+        return new PagedAssessmentQuestionListResponseModel
+        {
+            Items      = dto.Items.Select(item => item.ToResponseModel()).ToList(),
+            TotalCount = dto.TotalCount,
+            PageNumber = dto.PageNumber,
+            PageSize   = dto.PageSize
         };
     }
 }

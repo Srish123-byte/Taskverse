@@ -78,7 +78,7 @@ public class AuthOrchestrator : IAuthOrchestrator
     {
         _log.Debug("AuthOrchestrator.RefreshToken");
 
-        var result = await _microServiceOrchestrator.RefreshToken(new RefreshTokenRequestModel(request.RefreshToken));
+        var result = await _microServiceOrchestrator.RefreshToken(new RefreshTokenRequestModel(request.RefreshToken, request.AccessToken, request.ForceRotate));
         result.EnsureSuccess(nameof(RefreshToken));
 
         RefreshTokenResponseModel? model = result.DeserializeValue<RefreshTokenResponseModel>();

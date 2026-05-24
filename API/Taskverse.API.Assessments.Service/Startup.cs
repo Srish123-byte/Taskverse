@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Taskverse.API.Assessments.Service.Managers;
 using Taskverse.API.Assessments.Service.Models;
+using Taskverse.API.Assessments.Service.Services;
 using Taskverse.Data.DataAccess;
 
 namespace Taskverse.API.Assessments.Service;
@@ -68,11 +69,14 @@ public class Startup
     {
         services.AddScoped<IQuestionManager, QuestionManager>();
         services.AddScoped<IAssessmentManager, AssessmentManager>();
+        services.AddScoped<IWhatsAppNotificationService, WhatsAppNotificationService>();
+        services.AddHostedService<AssessmentStatusTransitionService>();
     }
 
     private void ConfigureOptions(IServiceCollection services)
     {
         services.Configure<AssessmentSettings>(Configuration.GetSection("AssessmentSettings"));
+        services.Configure<AssessmentStatusTransitionSettings>(Configuration.GetSection("AssessmentStatusTransition"));
     }
 
     private static void ConfigureSwagger(IServiceCollection services)

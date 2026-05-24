@@ -3,6 +3,7 @@ import { AppConfig } from './app.config';
 import { Meta } from '@angular/platform-browser';
 import { DOCUMENT } from '@angular/common';
 import { LocationStrategyService } from './common/services/utilities/location-strategy.service';
+import { SessionActivityService } from './common/services/session/session-activity.service';
 
 @Component({
   selector: 'app-root',
@@ -18,11 +19,13 @@ export class AppComponent implements OnInit {
     private readonly meta: Meta,
     private readonly renderer: Renderer2,
     @Inject(DOCUMENT) private readonly document: Document,
-    private readonly locationStrategyService: LocationStrategyService
+    private readonly locationStrategyService: LocationStrategyService,
+    private readonly sessionActivityService: SessionActivityService
   ) {}
 
   ngOnInit(): void {
     this.locationStrategyService.init();
+    this.sessionActivityService.init();
     this.addCspMetaTag();
   }
 

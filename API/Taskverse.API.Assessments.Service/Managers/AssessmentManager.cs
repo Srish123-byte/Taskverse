@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Taskverse.API.Assessments.Service.Mappings;
 using Taskverse.API.Assessments.Service.Models;
 using Taskverse.Business.Enums;
 using Taskverse.Data.DataAccess;
@@ -166,6 +167,190 @@ public class AssessmentManager : IAssessmentManager
         return assessment;
     }
 
+    public async Task DeleteAssessment(Guid assessmentId, DeleteAssessmentRequest request)
+    {
+        ValidateDeleteAssessmentRequest(request);
+
+        var assessment = await _context.Assessments
+            .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId);
+
+        if (assessment is null)
+        {
+            throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found.");
+        }
+
+        if (IsCollegeAdmin(request.RequesterRole))
+        {
+            if (!request.CollegeId.HasValue || request.CollegeId.Value == Guid.Empty)
+            {
+                throw new ArgumentException("CollegeId is required for college admin delete operations.");
+            }
+
+            if (assessment.CollegeId != request.CollegeId.Value)
+            {
+                throw new UnauthorizedAccessException("College admin can delete assessments only for its own college.");
+            }
+        }
+        else if (!IsSuperAdmin(request.RequesterRole))
+        {
+            throw new UnauthorizedAccessException("Only SuperAdmin and CollegeAdmin can delete assessments.");
+        }
+
+        assessment.AssessmentStatus = AssessmentStatus.Soft_Delete;
+        assessment.SoftDeletedAt = DateTime.UtcNow;
+        assessment.SoftDeletedBy = request.DeletedBy.Trim();
+        assessment.ModifiedAt = assessment.SoftDeletedAt;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            throw new InvalidOperationException("Unable to delete the assessment.", ex);
+        }
+    }
+
+    public async Task<Assessment> PublishAssessment(Guid assessmentId)
+    {
+        var assessment = await _context.Assessments
+            .Include(item => item.AssessmentQuestions)
+            .Include(item => item.Subject)
+            .Include(item => item.Topic)
+            .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId);
+
+        if (assessment is null)
+        {
+            throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found.");
+        }
+
+        if (assessment.AssessmentStatus is not AssessmentStatus.Draft and not AssessmentStatus.Scheduled)
+        {
+            throw new InvalidOperationException("Only draft or scheduled assessments can be published.");
+        }
+
+        var questions = await LoadQuestionsForPublish(assessment);
+
+        if (questions.Count == 0)
+        {
+            throw new InvalidOperationException("At least one question must be linked to the assessment before publishing.");
+        }
+
+        var wrongCollegeQuestionIds = questions
+            .Where(question => question.CollegeId != assessment.CollegeId)
+            .Select(question => question.QuestionId)
+            .ToList();
+        if (wrongCollegeQuestionIds.Count > 0)
+        {
+            throw new InvalidOperationException($"Question(s) do not belong to this college: {string.Join(", ", wrongCollegeQuestionIds)}.");
+        }
+
+        var unavailableQuestionIds = questions
+            .Where(question => !question.IsActive)
+            .Select(question => question.QuestionId)
+            .ToList();
+        if (unavailableQuestionIds.Count > 0)
+        {
+            throw new InvalidOperationException($"Question(s) are inactive and cannot be published: {string.Join(", ", unavailableQuestionIds)}.");
+        }
+
+        ValidateQuestionBudget(assessment, questions);
+
+        assessment.AssessmentType = ResolveAssessmentType(questions);
+        assessment.DifficultyLevel = CalculateDifficultyLevel(questions);
+        assessment.AssessmentStatus = AssessmentStatus.Scheduled;
+        assessment.ModifiedAt = DateTime.UtcNow;
+
+        if (assessment.AssessmentQuestions.Count == 0)
+        {
+            var questionOrder = questions
+                .Select((question, index) => new { question.QuestionId, DisplayOrder = index + 1 })
+                .ToDictionary(item => item.QuestionId, item => item.DisplayOrder);
+
+            assessment.AssessmentQuestions = questions
+                .Select(question => new AssessmentQuestion
+                {
+                    AssessmentId = assessment.AssessmentId,
+                    QuestionId = question.QuestionId,
+                    DisplayOrder = questionOrder[question.QuestionId],
+                    Marks = question.Marks
+                })
+                .ToList();
+        }
+
+        foreach (var question in questions)
+        {
+            if (question.AssessmentId != assessment.AssessmentId)
+            {
+                question.AssessmentId = assessment.AssessmentId;
+                question.ModifiedAt = DateTime.UtcNow;
+            }
+        }
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            throw new InvalidOperationException("Unable to publish the assessment.", ex);
+        }
+
+        return assessment;
+    }
+
+    public async Task<PagedAssessmentQuestionListRecord> GetAssessmentQuestionList(
+        Guid assessmentId,
+        int pageNumber,
+        int pageSize)
+    {
+        var safePageNumber = pageNumber > 0 ? pageNumber : 1;
+        var safePageSize = pageSize is > 0 and <= 100 ? pageSize : 10;
+
+        var assessment = await _context.Assessments
+            .AsNoTracking()
+            .Include(a => a.AssessmentQuestions)
+            .FirstOrDefaultAsync(a => a.AssessmentId == assessmentId);
+
+        if (assessment is null)
+        {
+            throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found.");
+        }
+
+        // Build the ordered list of question IDs from AssessmentQuestions.
+        var orderedQuestionIds = assessment.AssessmentQuestions
+            .OrderBy(aq => aq.DisplayOrder)
+            .Select(aq => aq.QuestionId)
+            .ToList();
+
+        var totalCount = orderedQuestionIds.Count;
+
+        var pageQuestionIds = orderedQuestionIds
+            .Skip((safePageNumber - 1) * safePageSize)
+            .Take(safePageSize)
+            .ToList();
+
+        var questions = await _context.Questions
+            .AsNoTracking()
+            .Where(q => pageQuestionIds.Contains(q.QuestionId))
+            .ToListAsync();
+
+        // Maintain display order within this page.
+        var displayOrderMap = assessment.AssessmentQuestions
+            .ToDictionary(aq => aq.QuestionId, aq => aq.DisplayOrder);
+
+        var items = pageQuestionIds
+            .Where(id => questions.Any(q => q.QuestionId == id))
+            .Select(id =>
+            {
+                var q = questions.First(q => q.QuestionId == id);
+                return q.ToQuestionListItemRecord(displayOrderMap.GetValueOrDefault(id, 0));
+            })
+            .ToList();
+
+        return new PagedAssessmentQuestionListRecord(items, totalCount, safePageNumber, safePageSize);
+    }
+
     private static void ValidateAssessment(Assessment assessment, List<Guid> questionIds)
     {
         if (assessment.CollegeId == Guid.Empty)
@@ -203,6 +388,24 @@ public class AssessmentManager : IAssessmentManager
         if (questionIds.Count == 0)
         {
             throw new ArgumentException("At least one question id is required.");
+        }
+    }
+
+    private static void ValidateDeleteAssessmentRequest(DeleteAssessmentRequest request)
+    {
+        if (request.AssessmentId == Guid.Empty)
+        {
+            throw new ArgumentException("AssessmentId is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.DeletedBy))
+        {
+            throw new ArgumentException("DeletedBy is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.RequesterRole))
+        {
+            throw new ArgumentException("RequesterRole is required.");
         }
     }
 
@@ -245,6 +448,47 @@ public class AssessmentManager : IAssessmentManager
         }
     }
 
+    private async Task<List<Question>> LoadQuestionsForPublish(Assessment assessment)
+    {
+        List<Question> questions;
+
+        if (assessment.AssessmentQuestions.Count > 0)
+        {
+            var questionIds = assessment.AssessmentQuestions
+                .OrderBy(item => item.DisplayOrder)
+                .Select(item => item.QuestionId)
+                .ToList();
+
+            var mappedQuestions = await _context.Questions
+                .Where(question => questionIds.Contains(question.QuestionId))
+                .ToListAsync();
+
+            var questionLookup = mappedQuestions.ToDictionary(question => question.QuestionId);
+            var missingQuestionIds = questionIds
+                .Where(questionId => !questionLookup.ContainsKey(questionId))
+                .ToList();
+
+            if (missingQuestionIds.Count > 0)
+            {
+                throw new KeyNotFoundException($"Question(s) not found: {string.Join(", ", missingQuestionIds)}.");
+            }
+
+            questions = questionIds
+                .Select(questionId => questionLookup[questionId])
+                .ToList();
+        }
+        else
+        {
+            questions = await _context.Questions
+                .Where(question => question.AssessmentId == assessment.AssessmentId)
+                .OrderBy(question => question.CreatedAt)
+                .ThenBy(question => question.QuestionId)
+                .ToListAsync();
+        }
+
+        return questions;
+    }
+
     private int? CalculateAllowedQuestionCountByMarks(int totalMarks)
     {
         if (totalMarks <= 0 || _assessmentSettings.MarksPerQuestion <= 0)
@@ -284,6 +528,12 @@ public class AssessmentManager : IAssessmentManager
 
     private static bool IsCodingQuestion(Question question)
         => string.Equals(question.QuestionType?.Trim(), "coding", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsCollegeAdmin(string requesterRole)
+        => string.Equals(requesterRole?.Trim(), "CollegeAdmin", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsSuperAdmin(string requesterRole)
+        => string.Equals(requesterRole?.Trim(), "SuperAdmin", StringComparison.OrdinalIgnoreCase);
 
     private static int CalculateDifficultyLevel(IEnumerable<Question> questions)
     {
