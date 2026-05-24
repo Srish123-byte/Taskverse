@@ -173,3 +173,37 @@ public record AssessmentQuestionModel(
     string CreatedBy,
     DateTime CreatedAt,
     DateTime? ModifiedAt);
+
+public record AssessmentQuestionListSearchModel(
+    [property: JsonProperty("page_number")]
+    int PageNumber,
+    [property: JsonProperty("page_size")]
+    int PageSize);
+
+public record AssessmentQuestionListItemModel(
+    [property: JsonProperty("question_id")]
+    Guid QuestionId,
+    [property: JsonProperty("display_order")]
+    int DisplayOrder,
+    [property: JsonProperty("question_type")]
+    string QuestionType,
+    [property: JsonProperty("question_text")]
+    string QuestionText,
+    [property: JsonProperty("options")]
+    List<string>? Options,
+    [property: JsonProperty("marks")]
+    decimal Marks,
+    [property: JsonProperty("negative_marks")]
+    decimal NegativeMarks,
+    [property: JsonProperty("difficulty_level")]
+    int DifficultyLevel);
+
+public record PagedAssessmentQuestionListModel(
+    [property: JsonProperty("items")]
+    List<AssessmentQuestionListItemModel> Items,
+    [property: JsonProperty("total_count")]
+    int TotalCount,
+    [property: JsonProperty("page_number")]
+    int PageNumber,
+    [property: JsonProperty("page_size")]
+    int PageSize);

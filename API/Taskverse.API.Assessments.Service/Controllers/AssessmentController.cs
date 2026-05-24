@@ -114,4 +114,41 @@ public class AssessmentController : ControllerBase
             });
         }
     }
+
+    [HttpPost("{id:guid}/questions/list")]
+    [ProducesResponseType(typeof(PagedAssessmentQuestionListRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<PagedAssessmentQuestionListRecord>> GetAssessmentQuestionList(
+        Guid id,
+        [FromBody] AssessmentQuestionListRequest request)
+    {
+        if (request is null)
+        {
+            return BadRequest(new { message = "Request body is required." });
+        }
+
+        try
+        {
+            var result = await _assessmentManager.GetAssessmentQuestionList(
+                id,
+                request.PageNumber,
+                request.PageSize);
+
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = "An unexpected error occurred while retrieving the assessment question list.",
+                detail = ex.Message
+            });
+        }
+    }
 }

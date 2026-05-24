@@ -150,3 +150,23 @@ public class AssessmentSummaryDto
     public int TotalCompleted { get; set; }
     public double? AverageScore { get; set; }
 }
+
+public class AssessmentQuestionListItemDto
+{
+    public Guid QuestionId { get; set; }
+    public int DisplayOrder { get; set; }
+    public string QuestionType { get; set; } = default!;
+    public string QuestionText { get; set; } = default!;
+    public List<string>? Options { get; set; }
+    public decimal Marks { get; set; }
+    public decimal NegativeMarks { get; set; }
+    public int DifficultyLevel { get; set; }
+}
+
+public class PagedAssessmentQuestionListDto
+{
+    public List<AssessmentQuestionListItemDto> Items { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+}

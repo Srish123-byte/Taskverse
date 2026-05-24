@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Taskverse.API.Assessments.Service.Mappings;
 using Taskverse.API.Assessments.Service.Models;
 using Taskverse.Business.Enums;
 using Taskverse.Data.DataAccess;
@@ -252,6 +253,58 @@ public class AssessmentManager : IAssessmentManager
         }
 
         return assessment;
+    }
+
+    public async Task<PagedAssessmentQuestionListRecord> GetAssessmentQuestionList(
+        Guid assessmentId,
+        int pageNumber,
+        int pageSize)
+    {
+        var safePageNumber = pageNumber > 0 ? pageNumber : 1;
+        var safePageSize = pageSize is > 0 and <= 100 ? pageSize : 10;
+
+        var assessment = await _context.Assessments
+            .AsNoTracking()
+            .Include(a => a.AssessmentQuestions)
+            .FirstOrDefaultAsync(a => a.AssessmentId == assessmentId);
+
+        if (assessment is null)
+        {
+            throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found.");
+        }
+
+        // Build the ordered list of question IDs from AssessmentQuestions.
+        var orderedQuestionIds = assessment.AssessmentQuestions
+            .OrderBy(aq => aq.DisplayOrder)
+            .Select(aq => aq.QuestionId)
+            .ToList();
+
+        var totalCount = orderedQuestionIds.Count;
+
+        var pageQuestionIds = orderedQuestionIds
+            .Skip((safePageNumber - 1) * safePageSize)
+            .Take(safePageSize)
+            .ToList();
+
+        var questions = await _context.Questions
+            .AsNoTracking()
+            .Where(q => pageQuestionIds.Contains(q.QuestionId))
+            .ToListAsync();
+
+        // Maintain display order within this page.
+        var displayOrderMap = assessment.AssessmentQuestions
+            .ToDictionary(aq => aq.QuestionId, aq => aq.DisplayOrder);
+
+        var items = pageQuestionIds
+            .Where(id => questions.Any(q => q.QuestionId == id))
+            .Select(id =>
+            {
+                var q = questions.First(q => q.QuestionId == id);
+                return q.ToQuestionListItemRecord(displayOrderMap.GetValueOrDefault(id, 0));
+            })
+            .ToList();
+
+        return new PagedAssessmentQuestionListRecord(items, totalCount, safePageNumber, safePageSize);
     }
 
     private static void ValidateAssessment(Assessment assessment, List<Guid> questionIds)

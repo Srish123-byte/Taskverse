@@ -14,4 +14,5 @@ public interface IAssessmentOrchestrator
     Task<List<AssessmentDto>?> GetAssessmentsByUser(string userId);
     Task<AssessmentResultDto?> GetAssessmentResult(string assessmentId, string userId);
     Task<AssessmentSummaryDto?> GetAssessmentSummary(string assessmentId);
+    Task<PagedAssessmentQuestionListDto> GetAssessmentQuestionList(Guid assessmentId, int pageNumber, int pageSize);
 }

@@ -261,4 +261,35 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         var token = JToken.FromObject(value);
         return token["message"]?.ToString() ?? token["Message"]?.ToString();
     }
+
+    public async Task<PagedAssessmentQuestionListDto> GetAssessmentQuestionList(
+        Guid assessmentId,
+        int pageNumber,
+        int pageSize)
+    {
+        _log.Debug($"AssessmentOrchestrator.GetAssessmentQuestionList: assessmentId={assessmentId}, page={pageNumber}, pageSize={pageSize}");
+
+        var result = await _microServiceOrchestrator.GetAssessmentQuestionList(
+            assessmentId,
+            new AssessmentQuestionListSearchModel(pageNumber, pageSize));
+
+        if (result.IsSuccess())
+        {
+            var pagedModel = result.DeserializeValue<PagedAssessmentQuestionListModel>()
+                ?? throw new InvalidOperationException("GetAssessmentQuestionList returned an empty response.");
+
+            return pagedModel.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"GetAssessmentQuestionList failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest         => new ArgumentException(message),
+            StatusCodes.Status403Forbidden          => new UnauthorizedAccessException(message),
+            StatusCodes.Status404NotFound           => new KeyNotFoundException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new Exception(message)
+        };
+    }
 }

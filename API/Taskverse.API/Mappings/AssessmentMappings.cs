@@ -168,4 +168,32 @@ public static class AssessmentMappings
             DeletedQuestionIds = deletedQuestionIds.ToList()
         };
     }
+
+    public static AssessmentQuestionListItemResponseModel ToResponseModel(
+        this AssessmentQuestionListItemDto dto)
+    {
+        return new AssessmentQuestionListItemResponseModel
+        {
+            QuestionId      = dto.QuestionId,
+            DisplayOrder    = dto.DisplayOrder,
+            QuestionType    = dto.QuestionType,
+            QuestionText    = dto.QuestionText,
+            Options         = dto.Options,
+            Marks           = dto.Marks,
+            NegativeMarks   = dto.NegativeMarks,
+            DifficultyLevel = dto.DifficultyLevel
+        };
+    }
+
+    public static PagedAssessmentQuestionListResponseModel ToResponseModel(
+        this PagedAssessmentQuestionListDto dto)
+    {
+        return new PagedAssessmentQuestionListResponseModel
+        {
+            Items      = dto.Items.Select(item => item.ToResponseModel()).ToList(),
+            TotalCount = dto.TotalCount,
+            PageNumber = dto.PageNumber,
+            PageSize   = dto.PageSize
+        };
+    }
 }

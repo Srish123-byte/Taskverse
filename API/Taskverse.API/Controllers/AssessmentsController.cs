@@ -325,6 +325,54 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    [HttpPost("{id:guid}/questions/list")]
+    [SwaggerResponse(200, "Paged question list for the assessment", typeof(PagedAssessmentQuestionListResponseModel))]
+    [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]
+    [SwaggerResponse(403, "Forbidden — CollegeAdmin or Trainer role required")]
+    [SwaggerResponse(404, "Assessment not found")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> GetAssessmentQuestionList(
+        Guid id,
+        [FromBody] AssessmentQuestionListRequestModel model)
+    {
+        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out _);
+        if (tenantCheck is not null) return tenantCheck;
+
+        if (model is null)
+        {
+            return BadRequest(new { message = "Request body is required." });
+        }
+
+        var pageNumber = model.PageNumber > 0 ? model.PageNumber : 1;
+        var pageSize   = model.PageSize is > 0 and <= 100 ? model.PageSize : 10;
+
+        try
+        {
+            var dto = await _assessmentOrchestrator.GetAssessmentQuestionList(id, pageNumber, pageSize);
+            return Ok(dto.ToResponseModel());
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return Problem(detail: ex.Message, title: "An unexpected error occurred while retrieving the assessment question list.");
+        }
+    }
+
     private IActionResult? EnsureCollegeAdminOrTrainerAccess()
     {
         if (User?.Identity?.IsAuthenticated != true ||

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Taskverse.API.Assessments.Service.Models;
 using Taskverse.Business.Enums;
 using Taskverse.Data.DataAccess;
@@ -78,5 +79,30 @@ public static class AssessmentMappings
             AssessmentType.Mixed => "mixed",
             _ => "mcq"
         };
+    }
+
+    public static AssessmentQuestionListItemRecord ToQuestionListItemRecord(
+        this Question question,
+        int displayOrder)
+    {
+        return new AssessmentQuestionListItemRecord(
+            question.QuestionId,
+            displayOrder,
+            question.QuestionType,
+            question.QuestionText,
+            DeserializeOptions(question.Options),
+            question.Marks,
+            question.NegativeMarks,
+            question.DifficultyLevel);
+    }
+
+    private static List<string>? DeserializeOptions(string? options)
+    {
+        if (string.IsNullOrWhiteSpace(options))
+        {
+            return null;
+        }
+
+        return JsonSerializer.Deserialize<List<string>>(options);
     }
 }

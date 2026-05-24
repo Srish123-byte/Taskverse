@@ -160,4 +160,26 @@ public static class AssessmentMappings
             dto.Topic,
             dto.PageNumber,
             dto.PageSize);
+
+    public static AssessmentQuestionListItemDto ToDto(this AssessmentQuestionListItemModel model)
+        => new()
+        {
+            QuestionId     = model.QuestionId,
+            DisplayOrder   = model.DisplayOrder,
+            QuestionType   = model.QuestionType,
+            QuestionText   = model.QuestionText,
+            Options        = model.Options,
+            Marks          = model.Marks,
+            NegativeMarks  = model.NegativeMarks,
+            DifficultyLevel = model.DifficultyLevel
+        };
+
+    public static PagedAssessmentQuestionListDto ToDto(this PagedAssessmentQuestionListModel model)
+        => new()
+        {
+            Items      = model.Items.Select(item => item.ToDto()).ToList(),
+            TotalCount = model.TotalCount,
+            PageNumber = model.PageNumber,
+            PageSize   = model.PageSize
+        };
 }

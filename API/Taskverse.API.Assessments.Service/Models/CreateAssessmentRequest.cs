@@ -108,3 +108,40 @@ public record AssessmentRecord(
     DateTime? ModifiedAt,
     [property: JsonPropertyName("question_ids")]
     List<Guid> QuestionIds);
+
+public class AssessmentQuestionListRequest
+{
+    [JsonPropertyName("page_number")]
+    public int PageNumber { get; set; } = 1;
+
+    [JsonPropertyName("page_size")]
+    public int PageSize { get; set; } = 10;
+}
+
+public record AssessmentQuestionListItemRecord(
+    [property: JsonPropertyName("question_id")]
+    Guid QuestionId,
+    [property: JsonPropertyName("display_order")]
+    int DisplayOrder,
+    [property: JsonPropertyName("question_type")]
+    string QuestionType,
+    [property: JsonPropertyName("question_text")]
+    string QuestionText,
+    [property: JsonPropertyName("options")]
+    List<string>? Options,
+    [property: JsonPropertyName("marks")]
+    decimal Marks,
+    [property: JsonPropertyName("negative_marks")]
+    decimal NegativeMarks,
+    [property: JsonPropertyName("difficulty_level")]
+    int DifficultyLevel);
+
+public record PagedAssessmentQuestionListRecord(
+    [property: JsonPropertyName("items")]
+    List<AssessmentQuestionListItemRecord> Items,
+    [property: JsonPropertyName("total_count")]
+    int TotalCount,
+    [property: JsonPropertyName("page_number")]
+    int PageNumber,
+    [property: JsonPropertyName("page_size")]
+    int PageSize);
