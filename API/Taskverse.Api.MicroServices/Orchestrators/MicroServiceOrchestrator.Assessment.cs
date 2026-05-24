@@ -18,6 +18,12 @@ public partial class MicroServiceOrchestrator
         return await Post<QuestionBankAssessmentModel>(url, model);
     }
 
+    public async Task<ObjectResult> DeleteAssessment(DeleteAssessmentModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/{model.AssessmentId}";
+        return await Delete<object>(url, model);
+    }
+
     public async Task<ObjectResult> PublishAssessment(Guid assessmentId)
     {
         var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/{assessmentId}/publish";

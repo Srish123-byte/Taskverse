@@ -12,4 +12,26 @@
       <p>{{ item.body }}</p>
     </article>
   </div>
+
+  <section class="assessment-delete-panel">
+    <div class="assessment-delete-copy">
+      <h3>Soft Delete Assessment</h3>
+      <p>Use the new assessment microservice delete flow to retire an assessment immediately while preserving a 30-day recovery window.</p>
+    </div>
+
+    <label class="field-label" for="superAdminAssessmentDeleteId">Assessment ID</label>
+    <input
+      id="superAdminAssessmentDeleteId"
+      type="text"
+      [(ngModel)]="assessmentId"
+      [disabled]="isDeleting"
+      placeholder="Enter assessment GUID" />
+
+    <button type="button" class="danger-button" [disabled]="isDeleting || !assessmentId.trim()" (click)="deleteAssessment()">
+      {{ isDeleting ? 'Deleting...' : 'Soft Delete Assessment' }}
+    </button>
+
+    <p *ngIf="successMessage" class="status-message status-success">{{ successMessage }}</p>
+    <p *ngIf="errorMessage" class="status-message status-error">{{ errorMessage }}</p>
+  </section>
 </div>

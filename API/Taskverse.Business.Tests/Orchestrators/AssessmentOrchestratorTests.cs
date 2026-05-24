@@ -1,10 +1,8 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using log4net;
 using Moq;
 using Taskverse.Api.MicroServices.Interfaces;
 using Taskverse.Api.MicroServices.Models;
 using Taskverse.Business.DTOs;
-using Taskverse.Business.Interface;
 using Taskverse.Business.Orchestrators;
 using Taskverse.Business.Tests.Helpers;
 
@@ -14,16 +12,12 @@ namespace Taskverse.Business.Tests.Orchestrators;
 public class AssessmentOrchestratorTests
 {
     private readonly Mock<IMicroServiceOrchestrator> _mockMicroServiceOrchestrator;
-    private readonly Mock<IAssessmentManager> _mockAssessmentManager;
     private readonly AssessmentOrchestrator _orchestrator;
 
     public AssessmentOrchestratorTests()
     {
         _mockMicroServiceOrchestrator = new Mock<IMicroServiceOrchestrator>();
-        _mockAssessmentManager = new Mock<IAssessmentManager>();
-        _orchestrator = new AssessmentOrchestrator(
-            _mockMicroServiceOrchestrator.Object,
-            _mockAssessmentManager.Object);
+        _orchestrator = new AssessmentOrchestrator(_mockMicroServiceOrchestrator.Object);
     }
 
     [TestMethod]

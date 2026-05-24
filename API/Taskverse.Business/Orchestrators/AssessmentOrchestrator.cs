@@ -14,15 +14,11 @@ namespace Taskverse.Business.Orchestrators;
 public class AssessmentOrchestrator : IAssessmentOrchestrator
 {
     private readonly IMicroServiceOrchestrator _microServiceOrchestrator;
-    private readonly IAssessmentManager _assessmentManager;
     private static readonly ILog _log = LogManager.GetLogger(typeof(AssessmentOrchestrator));
 
-    public AssessmentOrchestrator(
-        IMicroServiceOrchestrator microServiceOrchestrator,
-        IAssessmentManager assessmentManager)
+    public AssessmentOrchestrator(IMicroServiceOrchestrator microServiceOrchestrator)
     {
         _microServiceOrchestrator = microServiceOrchestrator;
-        _assessmentManager = assessmentManager;
     }
 
     public async Task<AssessmentDto> GetAssessment(string assessmentId)
@@ -61,6 +57,31 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
             StatusCodes.Status404NotFound => new KeyNotFoundException(message),
             StatusCodes.Status409Conflict => new InvalidOperationException(message),
             StatusCodes.Status422UnprocessableEntity => new InvalidDataException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new Exception(message)
+        };
+    }
+
+    public async Task DeleteAssessment(DeleteAssessmentDto dto)
+    {
+        _log.Debug(
+            $"AssessmentOrchestrator.DeleteAssessment: assessmentId={dto.AssessmentId}, requesterRole={dto.RequesterRole}, collegeId={dto.CollegeId}");
+
+        var result = await _microServiceOrchestrator.DeleteAssessment(dto.ToMicroServiceModel());
+
+        if (result.IsSuccess())
+        {
+            return;
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"DeleteAssessment failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status403Forbidden => new UnauthorizedAccessException(message),
+            StatusCodes.Status404NotFound => new KeyNotFoundException(message),
+            StatusCodes.Status409Conflict => new InvalidOperationException(message),
             StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
             _ => new Exception(message)
         };

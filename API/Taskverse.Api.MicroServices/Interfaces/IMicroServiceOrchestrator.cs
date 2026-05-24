@@ -31,6 +31,7 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     // Assessment
     Task<ObjectResult> GetAssessment(string assessmentId);
     Task<ObjectResult> CreateAssessment(CreateQuestionBankAssessmentModel model);
+    Task<ObjectResult> DeleteAssessment(DeleteAssessmentModel model);
     Task<ObjectResult> PublishAssessment(Guid assessmentId);
     Task<ObjectResult> CreateQuestions(List<CreateQuestionModel> models);
     Task<ObjectResult> UpdateQuestion(Guid questionId, CreateQuestionModel model);

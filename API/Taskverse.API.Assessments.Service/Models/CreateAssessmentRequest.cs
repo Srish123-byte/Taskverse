@@ -55,6 +55,26 @@ public class CreateAssessmentRequest
     public DateTime? EndDateTime { get; set; }
 }
 
+public class DeleteAssessmentRequest
+{
+    [Required]
+    [JsonPropertyName("assessment_id")]
+    public Guid AssessmentId { get; set; }
+
+    [Required]
+    [MaxLength(200)]
+    [JsonPropertyName("deleted_by")]
+    public string DeletedBy { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(50)]
+    [JsonPropertyName("requester_role")]
+    public string RequesterRole { get; set; } = string.Empty;
+
+    [JsonPropertyName("college_id")]
+    public Guid? CollegeId { get; set; }
+}
+
 public record AssessmentRecord(
     [property: JsonPropertyName("assessment_id")]
     Guid AssessmentId,

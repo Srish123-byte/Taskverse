@@ -53,6 +53,16 @@ public record CreateQuestionBankAssessmentModel(
     [property: JsonProperty("end_datetime")]
     DateTime? EndDateTime);
 
+public record DeleteAssessmentModel(
+    [property: JsonProperty("assessment_id")]
+    Guid AssessmentId,
+    [property: JsonProperty("deleted_by")]
+    string DeletedBy,
+    [property: JsonProperty("requester_role")]
+    string RequesterRole,
+    [property: JsonProperty("college_id")]
+    Guid? CollegeId);
+
 public record QuestionBankAssessmentModel(
     [property: JsonProperty("assessment_id")]
     Guid AssessmentId,

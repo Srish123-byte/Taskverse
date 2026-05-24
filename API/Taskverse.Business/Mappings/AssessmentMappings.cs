@@ -1,5 +1,6 @@
 using Taskverse.Api.MicroServices.Models;
 using Taskverse.Business.DTOs;
+using Taskverse.Data.Utilities;
 
 namespace Taskverse.Business.Mappings;
 
@@ -15,10 +16,10 @@ public static class AssessmentMappings
             ExamId = model.ExamId,
             ChallengeIds = model.ChallengeIds,
             AssignedTo = model.AssignedTo,
-            DueDate = model.DueDate,
+            DueDate = UtcDateTime.Normalize(model.DueDate),
             IsActive = model.IsActive,
             CreatedBy = model.CreatedBy,
-            CreatedAt = model.CreatedAt
+            CreatedAt = UtcDateTime.Normalize(model.CreatedAt)
         };
 
     public static AssessmentResultDto ToDto(this AssessmentResultModel model)
@@ -29,7 +30,7 @@ public static class AssessmentMappings
             UserId = model.UserId,
             Status = model.Status,
             Score = model.Score,
-            CompletedAt = model.CompletedAt
+            CompletedAt = UtcDateTime.Normalize(model.CompletedAt)
         };
 
     public static AssessmentSummaryDto ToDto(this AssessmentSummaryModel model)
@@ -63,8 +64,8 @@ public static class AssessmentMappings
             DifficultyLevel = model.DifficultyLevel,
             Version = model.Version,
             CreatedBy = model.CreatedBy,
-            CreatedAt = model.CreatedAt,
-            ModifiedAt = model.ModifiedAt
+            CreatedAt = UtcDateTime.Normalize(model.CreatedAt),
+            ModifiedAt = UtcDateTime.Normalize(model.ModifiedAt)
         };
 
     public static QuestionBankAssessmentDto ToDto(this QuestionBankAssessmentModel model)
@@ -82,8 +83,8 @@ public static class AssessmentMappings
             DurationMinutes = model.DurationMinutes,
             TotalMarks = model.TotalMarks,
             DifficultyLevel = model.DifficultyLevel,
-            StartDateTime = model.StartDateTime,
-            EndDateTime = model.EndDateTime,
+            StartDateTime = UtcDateTime.Normalize(model.StartDateTime),
+            EndDateTime = UtcDateTime.Normalize(model.EndDateTime),
             Instructions = model.Instructions,
             AssignedBatchIds = model.AssignedBatchIds,
             AllowLateEntry = model.AllowLateEntry,
@@ -93,8 +94,8 @@ public static class AssessmentMappings
             MarksPerQuestion = model.MarksPerQuestion,
             IsTotalMarksAutoCalculated = model.IsTotalMarksAutoCalculated,
             CreatedBy = model.CreatedBy,
-            CreatedAt = model.CreatedAt,
-            ModifiedAt = model.ModifiedAt,
+            CreatedAt = UtcDateTime.Normalize(model.CreatedAt),
+            ModifiedAt = UtcDateTime.Normalize(model.ModifiedAt),
             QuestionIds = model.QuestionIds
         };
 
@@ -120,8 +121,15 @@ public static class AssessmentMappings
             dto.QuestionIds,
             dto.DurationMinutes,
             dto.TotalMarks,
-            dto.StartDateTime,
-            dto.EndDateTime);
+            UtcDateTime.Normalize(dto.StartDateTime),
+            UtcDateTime.Normalize(dto.EndDateTime));
+
+    public static DeleteAssessmentModel ToMicroServiceModel(this DeleteAssessmentDto dto)
+        => new(
+            dto.AssessmentId,
+            dto.DeletedBy,
+            dto.RequesterRole,
+            dto.CollegeId);
 
     public static CreateQuestionModel ToMicroServiceModel(this CreateQuestionDto dto)
         => new(

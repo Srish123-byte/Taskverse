@@ -6,6 +6,7 @@ public interface IAssessmentOrchestrator
 {
     Task<AssessmentDto?> GetAssessment(string assessmentId);
     Task<QuestionBankAssessmentDto> CreateAssessment(CreateQuestionBankAssessmentDto dto);
+    Task DeleteAssessment(DeleteAssessmentDto dto);
     Task<QuestionBankAssessmentDto> PublishAssessment(Guid assessmentId);
     Task<List<AssessmentQuestionDto>> CreateQuestions(List<CreateQuestionDto> dtos);
     Task<AssessmentQuestionDto> UpdateQuestion(Guid questionId, CreateQuestionDto dto);

@@ -167,6 +167,50 @@ public class AssessmentManager : IAssessmentManager
         return assessment;
     }
 
+    public async Task DeleteAssessment(Guid assessmentId, DeleteAssessmentRequest request)
+    {
+        ValidateDeleteAssessmentRequest(request);
+
+        var assessment = await _context.Assessments
+            .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId);
+
+        if (assessment is null)
+        {
+            throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found.");
+        }
+
+        if (IsCollegeAdmin(request.RequesterRole))
+        {
+            if (!request.CollegeId.HasValue || request.CollegeId.Value == Guid.Empty)
+            {
+                throw new ArgumentException("CollegeId is required for college admin delete operations.");
+            }
+
+            if (assessment.CollegeId != request.CollegeId.Value)
+            {
+                throw new UnauthorizedAccessException("College admin can delete assessments only for its own college.");
+            }
+        }
+        else if (!IsSuperAdmin(request.RequesterRole))
+        {
+            throw new UnauthorizedAccessException("Only SuperAdmin and CollegeAdmin can delete assessments.");
+        }
+
+        assessment.AssessmentStatus = AssessmentStatus.Soft_Delete;
+        assessment.SoftDeletedAt = DateTime.UtcNow;
+        assessment.SoftDeletedBy = request.DeletedBy.Trim();
+        assessment.ModifiedAt = assessment.SoftDeletedAt;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            throw new InvalidOperationException("Unable to delete the assessment.", ex);
+        }
+    }
+
     public async Task<Assessment> PublishAssessment(Guid assessmentId)
     {
         var assessment = await _context.Assessments
@@ -347,6 +391,24 @@ public class AssessmentManager : IAssessmentManager
         }
     }
 
+    private static void ValidateDeleteAssessmentRequest(DeleteAssessmentRequest request)
+    {
+        if (request.AssessmentId == Guid.Empty)
+        {
+            throw new ArgumentException("AssessmentId is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.DeletedBy))
+        {
+            throw new ArgumentException("DeletedBy is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.RequesterRole))
+        {
+            throw new ArgumentException("RequesterRole is required.");
+        }
+    }
+
     private void ValidateQuestionBudget(Assessment assessment, List<Question> questions)
     {
         var selectedQuestionCount = questions.Count;
@@ -466,6 +528,12 @@ public class AssessmentManager : IAssessmentManager
 
     private static bool IsCodingQuestion(Question question)
         => string.Equals(question.QuestionType?.Trim(), "coding", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsCollegeAdmin(string requesterRole)
+        => string.Equals(requesterRole?.Trim(), "CollegeAdmin", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsSuperAdmin(string requesterRole)
+        => string.Equals(requesterRole?.Trim(), "SuperAdmin", StringComparison.OrdinalIgnoreCase);
 
     private static int CalculateDifficultyLevel(IEnumerable<Question> questions)
     {

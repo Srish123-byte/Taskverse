@@ -2,6 +2,7 @@ using System.Text.Json;
 using Taskverse.API.Assessments.Service.Models;
 using Taskverse.Business.Enums;
 using Taskverse.Data.DataAccess;
+using Taskverse.Data.Utilities;
 
 namespace Taskverse.API.Assessments.Service.Mappings;
 
@@ -20,8 +21,8 @@ public static class AssessmentMappings
             AssessmentStatus = AssessmentStatus.Draft,
             DurationMinutes = request.DurationMinutes,
             TotalMarks = request.TotalMarks,
-            StartDateTime = request.StartDateTime,
-            EndDateTime = request.EndDateTime,
+            StartDateTime = UtcDateTime.Normalize(request.StartDateTime),
+            EndDateTime = UtcDateTime.Normalize(request.EndDateTime),
             Instructions = settings.Instructions,
             AssignedBatchIds = request.AssignedBatchIds
                 .Where(batchId => batchId != Guid.Empty)
@@ -52,8 +53,8 @@ public static class AssessmentMappings
             assessment.DurationMinutes,
             assessment.TotalMarks,
             assessment.DifficultyLevel,
-            assessment.StartDateTime,
-            assessment.EndDateTime,
+            UtcDateTime.Normalize(assessment.StartDateTime),
+            UtcDateTime.Normalize(assessment.EndDateTime),
             assessment.Instructions,
             assessment.AssignedBatchIds,
             assessment.AllowLateEntry,
@@ -63,8 +64,8 @@ public static class AssessmentMappings
             assessment.MarksPerQuestion,
             assessment.IsTotalMarksAutoCalculated,
             assessment.CreatedBy,
-            assessment.CreatedAt,
-            assessment.ModifiedAt,
+            UtcDateTime.Normalize(assessment.CreatedAt),
+            UtcDateTime.Normalize(assessment.ModifiedAt),
             assessment.AssessmentQuestions
                 .OrderBy(question => question.DisplayOrder)
                 .Select(question => question.QuestionId)

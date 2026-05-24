@@ -32,6 +32,14 @@ public class CreateQuestionBankAssessmentDto
     public DateTime? EndDateTime { get; set; }
 }
 
+public class DeleteAssessmentDto
+{
+    public Guid AssessmentId { get; set; }
+    public string DeletedBy { get; set; } = default!;
+    public string RequesterRole { get; set; } = default!;
+    public Guid? CollegeId { get; set; }
+}
+
 public class QuestionBankAssessmentDto
 {
     public Guid AssessmentId { get; set; }
