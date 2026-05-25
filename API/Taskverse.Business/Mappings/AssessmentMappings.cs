@@ -190,4 +190,29 @@ public static class AssessmentMappings
             PageNumber = model.PageNumber,
             PageSize   = model.PageSize
         };
+
+    public static StudentAssessmentListItemDto ToDto(this StudentAssessmentListItemModel model)
+        => new()
+        {
+            AssessmentId = model.AssessmentId,
+            AssessmentName = model.AssessmentName,
+            AssessmentStatus = model.AssessmentStatus,
+            DurationMinutes = model.DurationMinutes,
+            TotalMarks = model.TotalMarks,
+            DifficultyLevel = model.DifficultyLevel,
+            StartDateTime = UtcDateTime.Normalize(model.StartDateTime),
+            EndDateTime = UtcDateTime.Normalize(model.EndDateTime)
+        };
+
+    public static StudentAssessmentDetailDto ToDto(this StudentAssessmentDetailModel model)
+        => new()
+        {
+            AssessmentName = model.AssessmentName,
+            DurationMinutes = model.DurationMinutes,
+            TotalMarks = model.TotalMarks,
+            TotalQuestions = model.TotalQuestions,
+            StartTime = UtcDateTime.Normalize(model.StartTime),
+            EndTime = UtcDateTime.Normalize(model.EndTime),
+            Instructions = model.Instructions
+        };
 }

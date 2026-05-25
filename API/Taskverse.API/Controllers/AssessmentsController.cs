@@ -19,13 +19,16 @@ public class AssessmentsController : TaskverseBaseController
 
     private readonly IAssessmentOrchestrator _assessmentOrchestrator;
     private readonly IDbContextFactory<TaskverseContext> _dbContextFactory;
+    private readonly ILogger<AssessmentsController> _logger;
 
     public AssessmentsController(
         IAssessmentOrchestrator assessmentOrchestrator,
-        IDbContextFactory<TaskverseContext> dbContextFactory)
+        IDbContextFactory<TaskverseContext> dbContextFactory,
+        ILogger<AssessmentsController> logger)
     {
         _assessmentOrchestrator = assessmentOrchestrator;
         _dbContextFactory = dbContextFactory;
+        _logger = logger;
     }
 
     [HttpPost]
@@ -86,7 +89,8 @@ public class AssessmentsController : TaskverseBaseController
         }
         catch (Exception ex)
         {
-            return Problem(detail: ex.Message, title: "An unexpected error occurred while creating the assessment.");
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
         }
     }
 
@@ -138,7 +142,8 @@ public class AssessmentsController : TaskverseBaseController
         }
         catch (Exception ex)
         {
-            return Problem(detail: ex.Message, title: "An unexpected error occurred while publishing the assessment.");
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
         }
     }
 
@@ -197,7 +202,8 @@ public class AssessmentsController : TaskverseBaseController
         }
         catch (Exception ex)
         {
-            return Problem(detail: ex.Message, title: "An unexpected error occurred while deleting the assessment.");
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
         }
     }
 
@@ -242,7 +248,8 @@ public class AssessmentsController : TaskverseBaseController
         }
         catch (Exception ex)
         {
-            return Problem(detail: ex.Message, title: "An unexpected error occurred while creating the questions.");
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
         }
     }
 
@@ -280,7 +287,8 @@ public class AssessmentsController : TaskverseBaseController
         }
         catch (Exception ex)
         {
-            return Problem(detail: ex.Message, title: "An unexpected error occurred while searching the question bank.");
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
         }
     }
 
@@ -330,7 +338,8 @@ public class AssessmentsController : TaskverseBaseController
         }
         catch (Exception ex)
         {
-            return Problem(detail: ex.Message, title: "An unexpected error occurred while updating the question.");
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
         }
     }
 
@@ -381,7 +390,8 @@ public class AssessmentsController : TaskverseBaseController
         }
         catch (Exception ex)
         {
-            return Problem(detail: ex.Message, title: "An unexpected error occurred while deleting the questions.");
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
         }
     }
 
@@ -429,7 +439,124 @@ public class AssessmentsController : TaskverseBaseController
         }
         catch (Exception ex)
         {
-            return Problem(detail: ex.Message, title: "An unexpected error occurred while retrieving the assessment question list.");
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
+        }
+    }
+
+    [HttpPost("/api/student/assessments")]
+    [SwaggerResponse(200, "Assigned assessments for the logged-in student", typeof(List<StudentAssessmentListResponseModel>))]
+    [SwaggerResponse(400, "Invalid assessment status filter or student context")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Student profile not found")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> GetStudentAssessments([FromQuery(Name = "assessmentStatuses")] string[] assessmentStatuses)
+    {
+        var accessCheck = EnsureStudentAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var currentUserId = GetCurrentUserId();
+        if (!currentUserId.HasValue)
+        {
+            return BadRequest(new { message = "Student user context is missing or invalid." });
+        }
+
+        try
+        {
+            var dtos = await _assessmentOrchestrator.GetStudentAssessments(currentUserId.Value, assessmentStatuses);
+            return Ok(dtos.Select(dto => dto.ToResponseModel()).ToList());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Student assessments retrieval failed for userId={UserId}", currentUserId.Value);
+            return Problem(
+                detail: ex.Message,
+                title: ex.Message,
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            _logger.LogError(ex, "Unhandled student assessments retrieval error for userId={UserId}", currentUserId.Value);
+            return Problem(
+                detail: detail,
+                title: detail,
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    [HttpGet("/api/student/assessments/{assessmentId:guid}")]
+    [SwaggerResponse(200, "Assessment details for the logged-in student", typeof(StudentAssessmentDetailResponseModel))]
+    [SwaggerResponse(400, "Invalid student context")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Assigned assessment not found")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> GetStudentAssessmentDetail(Guid assessmentId)
+    {
+        var accessCheck = EnsureStudentAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var currentUserId = GetCurrentUserId();
+        if (!currentUserId.HasValue)
+        {
+            return BadRequest(new { message = "Student user context is missing or invalid." });
+        }
+
+        try
+        {
+            var dto = await _assessmentOrchestrator.GetStudentAssessmentDetail(assessmentId, currentUserId.Value);
+            return Ok(dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(
+                ex,
+                "Student assessment detail retrieval failed for assessmentId={AssessmentId}, userId={UserId}",
+                assessmentId,
+                currentUserId.Value);
+            return Problem(
+                detail: ex.Message,
+                title: ex.Message,
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            _logger.LogError(
+                ex,
+                "Unhandled student assessment detail retrieval error for assessmentId={AssessmentId}, userId={UserId}",
+                assessmentId,
+                currentUserId.Value);
+            return Problem(
+                detail: detail,
+                title: detail,
+                statusCode: StatusCodes.Status500InternalServerError);
         }
     }
 
@@ -448,6 +575,16 @@ public class AssessmentsController : TaskverseBaseController
     {
         if (User?.Identity?.IsAuthenticated != true ||
             (!User.IsInRole(SuperAdminRole) && !User.IsInRole(CollegeAdminRole)))
+        {
+            return Forbid();
+        }
+
+        return null;
+    }
+
+    private IActionResult? EnsureStudentAccess()
+    {
+        if (User?.Identity?.IsAuthenticated != true || !User.IsInRole("Student"))
         {
             return Forbid();
         }
@@ -554,6 +691,12 @@ public class AssessmentsController : TaskverseBaseController
     private Guid? GetCurrentUserId()
     {
         var candidate = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!string.IsNullOrWhiteSpace(candidate) && Guid.TryParse(candidate, out var userIdFromClaims))
+        {
+            return userIdFromClaims;
+        }
+
+        candidate = UserId;
         return Guid.TryParse(candidate, out var userId) ? userId : null;
     }
 

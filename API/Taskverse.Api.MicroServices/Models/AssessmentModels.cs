@@ -190,6 +190,44 @@ public record AssessmentQuestionListSearchModel(
     [property: JsonProperty("page_size")]
     int PageSize);
 
+public record StudentAssessmentListSearchModel(
+    [property: JsonProperty("student_user_id")]
+    Guid StudentUserId);
+
+public record StudentAssessmentListItemModel(
+    [property: JsonProperty("assessment_id")]
+    Guid AssessmentId,
+    [property: JsonProperty("assessment_name")]
+    string AssessmentName,
+    [property: JsonProperty("assessment_status")]
+    string AssessmentStatus,
+    [property: JsonProperty("duration_minutes")]
+    int DurationMinutes,
+    [property: JsonProperty("total_marks")]
+    int TotalMarks,
+    [property: JsonProperty("difficulty_level")]
+    int DifficultyLevel,
+    [property: JsonProperty("start_datetime")]
+    DateTime? StartDateTime,
+    [property: JsonProperty("end_datetime")]
+    DateTime? EndDateTime);
+
+public record StudentAssessmentDetailModel(
+    [property: JsonProperty("assessment_name")]
+    string AssessmentName,
+    [property: JsonProperty("duration_minutes")]
+    int DurationMinutes,
+    [property: JsonProperty("total_marks")]
+    int TotalMarks,
+    [property: JsonProperty("total_questions")]
+    int TotalQuestions,
+    [property: JsonProperty("start_time")]
+    DateTime? StartTime,
+    [property: JsonProperty("end_time")]
+    DateTime? EndTime,
+    [property: JsonProperty("instructions")]
+    string? Instructions);
+
 public record AssessmentQuestionListItemModel(
     [property: JsonProperty("question_id")]
     Guid QuestionId,

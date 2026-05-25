@@ -197,4 +197,35 @@ public static class AssessmentMappings
             PageSize   = dto.PageSize
         };
     }
+
+    public static StudentAssessmentListResponseModel ToResponseModel(
+        this StudentAssessmentListItemDto dto)
+    {
+        return new StudentAssessmentListResponseModel
+        {
+            AssessmentId = dto.AssessmentId,
+            AssessmentName = dto.AssessmentName,
+            AssessmentStatus = dto.AssessmentStatus,
+            DurationMinutes = dto.DurationMinutes,
+            TotalMarks = dto.TotalMarks,
+            DifficultyLevel = dto.DifficultyLevel,
+            StartDateTime = UtcDateTime.Normalize(dto.StartDateTime),
+            EndDateTime = UtcDateTime.Normalize(dto.EndDateTime)
+        };
+    }
+
+    public static StudentAssessmentDetailResponseModel ToResponseModel(
+        this StudentAssessmentDetailDto dto)
+    {
+        return new StudentAssessmentDetailResponseModel
+        {
+            AssessmentName = dto.AssessmentName,
+            DurationMinutes = dto.DurationMinutes,
+            TotalMarks = dto.TotalMarks,
+            TotalQuestions = dto.TotalQuestions,
+            StartTime = UtcDateTime.Normalize(dto.StartTime),
+            EndTime = UtcDateTime.Normalize(dto.EndTime),
+            Instructions = dto.Instructions
+        };
+    }
 }

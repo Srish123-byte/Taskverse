@@ -141,3 +141,26 @@ public class PagedAssessmentQuestionListResponseModel
     public int PageNumber { get; set; }
     public int PageSize { get; set; }
 }
+
+public class StudentAssessmentListResponseModel
+{
+    public Guid AssessmentId { get; set; }
+    public string AssessmentName { get; set; } = string.Empty;
+    public string AssessmentStatus { get; set; } = string.Empty;
+    public int DurationMinutes { get; set; }
+    public int TotalMarks { get; set; }
+    public int DifficultyLevel { get; set; }
+    public DateTime? StartDateTime { get; set; }
+    public DateTime? EndDateTime { get; set; }
+}
+
+public class StudentAssessmentDetailResponseModel
+{
+    public string AssessmentName { get; set; } = string.Empty;
+    public int DurationMinutes { get; set; }
+    public int TotalMarks { get; set; }
+    public int TotalQuestions { get; set; }
+    public DateTime? StartTime { get; set; }
+    public DateTime? EndTime { get; set; }
+    public string? Instructions { get; set; }
+}

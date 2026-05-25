@@ -9,4 +9,6 @@ public interface IAssessmentManager
     Task DeleteAssessment(Guid assessmentId, DeleteAssessmentRequest request);
     Task<Assessment> PublishAssessment(Guid assessmentId);
     Task<PagedAssessmentQuestionListRecord> GetAssessmentQuestionList(Guid assessmentId, int pageNumber, int pageSize);
+    Task<List<StudentAssessmentListItemRecord>> GetStudentAssessments(Guid studentUserId, IReadOnlyCollection<string> assessmentStatuses);
+    Task<StudentAssessmentDetailRecord> GetStudentAssessmentDetail(Guid assessmentId, Guid studentUserId);
 }

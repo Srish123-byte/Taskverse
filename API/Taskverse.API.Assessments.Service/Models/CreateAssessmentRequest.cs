@@ -165,3 +165,44 @@ public record PagedAssessmentQuestionListRecord(
     int PageNumber,
     [property: JsonPropertyName("page_size")]
     int PageSize);
+
+public class StudentAssessmentListRequest
+{
+    [Required]
+    [JsonPropertyName("student_user_id")]
+    public Guid StudentUserId { get; set; }
+}
+
+public record StudentAssessmentListItemRecord(
+    [property: JsonPropertyName("assessment_id")]
+    Guid AssessmentId,
+    [property: JsonPropertyName("assessment_name")]
+    string AssessmentName,
+    [property: JsonPropertyName("assessment_status")]
+    string AssessmentStatus,
+    [property: JsonPropertyName("duration_minutes")]
+    int DurationMinutes,
+    [property: JsonPropertyName("total_marks")]
+    int TotalMarks,
+    [property: JsonPropertyName("difficulty_level")]
+    int DifficultyLevel,
+    [property: JsonPropertyName("start_datetime")]
+    DateTime? StartDateTime,
+    [property: JsonPropertyName("end_datetime")]
+    DateTime? EndDateTime);
+
+public record StudentAssessmentDetailRecord(
+    [property: JsonPropertyName("assessment_name")]
+    string AssessmentName,
+    [property: JsonPropertyName("duration_minutes")]
+    int DurationMinutes,
+    [property: JsonPropertyName("total_marks")]
+    int TotalMarks,
+    [property: JsonPropertyName("total_questions")]
+    int TotalQuestions,
+    [property: JsonPropertyName("start_time")]
+    DateTime? StartTime,
+    [property: JsonPropertyName("end_time")]
+    DateTime? EndTime,
+    [property: JsonPropertyName("instructions")]
+    string? Instructions);

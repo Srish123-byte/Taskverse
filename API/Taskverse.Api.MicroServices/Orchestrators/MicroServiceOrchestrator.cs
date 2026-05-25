@@ -162,7 +162,7 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
                     ? errorModel.Message
                     : $"{errorModel.Message} | {validationErrors}";
 
-                return new ObjectResult(new { errorModel.Name, Message = message }) { StatusCode = statusCode };
+                return new ObjectResult(new { errorModel.Name, Message = message, errorModel.Detail }) { StatusCode = statusCode };
             }
         }
         catch (Exception ex)

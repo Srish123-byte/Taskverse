@@ -97,6 +97,35 @@ public static class AssessmentMappings
             question.DifficultyLevel);
     }
 
+    public static StudentAssessmentListItemRecord ToStudentAssessmentListItemRecord(
+        this Assessment assessment,
+        string assessmentStatus)
+    {
+        return new StudentAssessmentListItemRecord(
+            assessment.AssessmentId,
+            assessment.AssessmentName,
+            assessmentStatus,
+            assessment.DurationMinutes,
+            assessment.TotalMarks,
+            assessment.DifficultyLevel,
+            UtcDateTime.Normalize(assessment.StartDateTime),
+            UtcDateTime.Normalize(assessment.EndDateTime));
+    }
+
+    public static StudentAssessmentDetailRecord ToStudentAssessmentDetailRecord(
+        this Assessment assessment,
+        int totalQuestions)
+    {
+        return new StudentAssessmentDetailRecord(
+            assessment.AssessmentName,
+            assessment.DurationMinutes,
+            assessment.TotalMarks,
+            totalQuestions,
+            UtcDateTime.Normalize(assessment.StartDateTime),
+            UtcDateTime.Normalize(assessment.EndDateTime),
+            assessment.Instructions);
+    }
+
     private static List<string>? DeserializeOptions(string? options)
     {
         if (string.IsNullOrWhiteSpace(options))

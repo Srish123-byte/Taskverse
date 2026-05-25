@@ -77,4 +77,30 @@ public partial class MicroServiceOrchestrator
         var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/{assessmentId}/questions/list";
         return await Post<PagedAssessmentQuestionListModel>(url, model);
     }
+
+    public async Task<ObjectResult> GetStudentAssessments(
+        StudentAssessmentListSearchModel model,
+        IReadOnlyCollection<string> assessmentStatuses)
+    {
+        var normalizedStatuses = assessmentStatuses
+            .Where(status => !string.IsNullOrWhiteSpace(status))
+            .Select(status => $"assessmentStatuses={Uri.EscapeDataString(status)}");
+
+        var query = string.Join("&", normalizedStatuses);
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/student/assessments";
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            url = $"{url}?{query}";
+        }
+
+        return await Post<List<StudentAssessmentListItemModel>>(url, model);
+    }
+
+    public async Task<ObjectResult> GetStudentAssessmentDetail(Guid assessmentId, Guid studentUserId)
+    {
+        var url =
+            $"{GetMicroServiceUrl(MicroService.Assessment)}api/student/assessments/{assessmentId}?studentUserId={studentUserId}";
+
+        return await Get<StudentAssessmentDetailModel>(url);
+    }
 }

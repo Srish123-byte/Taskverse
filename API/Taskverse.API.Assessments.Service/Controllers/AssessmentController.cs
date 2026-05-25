@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Npgsql;
 using Taskverse.API.Assessments.Service.Managers;
 using Taskverse.API.Assessments.Service.Mappings;
 using Taskverse.API.Assessments.Service.Models;
@@ -13,13 +15,16 @@ public class AssessmentController : ControllerBase
 {
     private readonly IAssessmentManager _assessmentManager;
     private readonly AssessmentSettings _assessmentSettings;
+    private readonly ILogger<AssessmentController> _logger;
 
     public AssessmentController(
         IAssessmentManager assessmentManager,
-        IOptions<AssessmentSettings> assessmentSettings)
+        IOptions<AssessmentSettings> assessmentSettings,
+        ILogger<AssessmentController> logger)
     {
         _assessmentManager = assessmentManager;
         _assessmentSettings = assessmentSettings.Value;
+        _logger = logger;
     }
 
     [HttpPost]
@@ -72,11 +77,9 @@ public class AssessmentController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                message = "An unexpected error occurred while creating the assessment.",
-                detail = ex.Message
-            });
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while creating the assessment.");
         }
     }
 
@@ -123,11 +126,9 @@ public class AssessmentController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                message = "An unexpected error occurred while deleting the assessment.",
-                detail = ex.Message
-            });
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while deleting the assessment.");
         }
     }
 
@@ -158,11 +159,9 @@ public class AssessmentController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                message = "An unexpected error occurred while publishing the assessment.",
-                detail = ex.Message
-            });
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while publishing the assessment.");
         }
     }
 
@@ -195,11 +194,115 @@ public class AssessmentController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                message = "An unexpected error occurred while retrieving the assessment question list.",
-                detail = ex.Message
-            });
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while retrieving the assessment question list.");
         }
+    }
+
+    [HttpPost("/api/student/assessments")]
+    [ProducesResponseType(typeof(List<StudentAssessmentListItemRecord>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<List<StudentAssessmentListItemRecord>>> GetStudentAssessments(
+        [FromBody] StudentAssessmentListRequest request,
+        [FromQuery(Name = "assessmentStatuses")] string[] assessmentStatuses)
+    {
+        if (request is null)
+        {
+            return BadRequest(new { message = "Student assessment request is required." });
+        }
+
+        try
+        {
+            var result = await _assessmentManager.GetStudentAssessments(request.StudentUserId, assessmentStatuses);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (DbUpdateException ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "A database error occurred while retrieving student assessments.",
+                "StudentAssessmentDatabaseError");
+        }
+        catch (PostgresException ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "A PostgreSQL error occurred while retrieving student assessments.",
+                "StudentAssessmentPostgresError");
+        }
+        catch (Exception ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while retrieving student assessments.");
+        }
+    }
+
+    [HttpGet("/api/student/assessments/{assessmentId:guid}")]
+    [ProducesResponseType(typeof(StudentAssessmentDetailRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<StudentAssessmentDetailRecord>> GetStudentAssessmentDetail(
+        Guid assessmentId,
+        [FromQuery] Guid studentUserId)
+    {
+        try
+        {
+            var result = await _assessmentManager.GetStudentAssessmentDetail(assessmentId, studentUserId);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (DbUpdateException ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "A database error occurred while retrieving the student assessment detail.",
+                "StudentAssessmentDetailDatabaseError");
+        }
+        catch (PostgresException ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "A PostgreSQL error occurred while retrieving the student assessment detail.",
+                "StudentAssessmentDetailPostgresError");
+        }
+        catch (Exception ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while retrieving the student assessment detail.");
+        }
+    }
+
+    private ObjectResult BuildUnexpectedError(Exception ex, string message, string name = "AssessmentServiceError")
+    {
+        var detail = ex.GetBaseException().Message;
+        _logger.LogError(ex, "{Message} Detail: {Detail}", message, detail);
+
+        return StatusCode(StatusCodes.Status500InternalServerError, new
+        {
+            name,
+            message = detail,
+            detail
+        });
     }
 }
