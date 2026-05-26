@@ -240,4 +240,65 @@ public static class AssessmentMappings
             StartedAt = UtcDateTime.Normalize(dto.StartedAt)
         };
     }
+
+    public static SaveStudentAttemptAnswerDto ToDto(this SaveStudentAttemptAnswerRequestModel model)
+    {
+        return new SaveStudentAttemptAnswerDto
+        {
+            QuestionId = model.QuestionId,
+            SelectedAnswer = model.SelectedAnswer
+        };
+    }
+
+    public static StudentAttemptAnswerResponseModel ToResponseModel(
+        this StudentAttemptAnswerDto dto)
+    {
+        return new StudentAttemptAnswerResponseModel
+        {
+            QuestionId = dto.QuestionId,
+            SelectedAnswer = dto.SelectedAnswer,
+            AnsweredAt = UtcDateTime.Normalize(dto.AnsweredAt)
+        };
+    }
+
+    public static StudentAttemptRecoveryQuestionResponseModel ToResponseModel(
+        this StudentAttemptRecoveryQuestionDto dto)
+    {
+        return new StudentAttemptRecoveryQuestionResponseModel
+        {
+            QuestionId = dto.QuestionId,
+            DisplayOrder = dto.DisplayOrder,
+            QuestionType = dto.QuestionType,
+            QuestionText = dto.QuestionText,
+            Options = dto.Options,
+            Marks = dto.Marks,
+            NegativeMarks = dto.NegativeMarks,
+            DifficultyLevel = dto.DifficultyLevel,
+            SelectedAnswer = dto.SelectedAnswer,
+            AnsweredAt = UtcDateTime.Normalize(dto.AnsweredAt)
+        };
+    }
+
+    public static StudentAttemptRecoveryResponseModel ToResponseModel(
+        this StudentAttemptRecoveryDto dto)
+    {
+        return new StudentAttemptRecoveryResponseModel
+        {
+            AttemptId = dto.AttemptId,
+            AssessmentId = dto.AssessmentId,
+            AssessmentName = dto.AssessmentName,
+            AttemptStatus = dto.AttemptStatus,
+            StartedAt = UtcDateTime.Normalize(dto.StartedAt),
+            SubmittedAt = UtcDateTime.Normalize(dto.SubmittedAt),
+            ExpiresAt = UtcDateTime.Normalize(dto.ExpiresAt),
+            RemainingSeconds = dto.RemainingSeconds,
+            DurationMinutes = dto.DurationMinutes,
+            TotalMarks = dto.TotalMarks,
+            TotalQuestions = dto.TotalQuestions,
+            AttemptedQuestions = dto.AttemptedQuestions,
+            UnansweredQuestions = dto.UnansweredQuestions,
+            Instructions = dto.Instructions,
+            Questions = dto.Questions.Select(item => item.ToResponseModel()).ToList()
+        };
+    }
 }

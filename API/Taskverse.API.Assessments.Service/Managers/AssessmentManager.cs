@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Taskverse.API.Assessments.Service.Mappings;
 using Taskverse.API.Assessments.Service.Models;
+using Taskverse.API.Assessments.Service.Services;
 using Taskverse.Business.Enums;
 using Taskverse.Data.DataAccess;
 
@@ -15,13 +16,16 @@ public class AssessmentManager : IAssessmentManager
 
     private readonly TaskverseContext _context;
     private readonly AssessmentSettings _assessmentSettings;
+    private readonly IStudentAttemptAnswerSaveStrategyFactory _studentAttemptAnswerSaveStrategyFactory;
 
     public AssessmentManager(
         TaskverseContext context,
-        IOptions<AssessmentSettings> assessmentSettings)
+        IOptions<AssessmentSettings> assessmentSettings,
+        IStudentAttemptAnswerSaveStrategyFactory studentAttemptAnswerSaveStrategyFactory)
     {
         _context = context;
         _assessmentSettings = assessmentSettings.Value;
+        _studentAttemptAnswerSaveStrategyFactory = studentAttemptAnswerSaveStrategyFactory;
     }
 
     public async Task<Assessment> CreateAssessment(Assessment assessment, List<Guid> questionIds)
@@ -231,89 +235,120 @@ public class AssessmentManager : IAssessmentManager
 
     public async Task<StudentAssessmentStartRecord> StartStudentAssessment(Guid assessmentId, Guid studentUserId)
     {
-        if (assessmentId == Guid.Empty)
+        ValidateStudentAttemptRequest(assessmentId, studentUserId);
+
+        var student = await GetStudentByUserIdAsync(studentUserId);
+        var assessment = await GetStudentAssessmentForAttemptAsync(assessmentId, student);
+
+        var latestAttempt = await GetLatestAttemptAsync(student.StudentId, assessmentId);
+        if (latestAttempt is not null)
         {
-            throw new ArgumentException("Assessment id is required.");
-        }
-
-        if (studentUserId == Guid.Empty)
-        {
-            throw new ArgumentException("Student user id is required.");
-        }
-
-        var student = await _context.Students
-            .FirstOrDefaultAsync(item => item.UserId == studentUserId);
-
-        if (student is null)
-        {
-            throw new KeyNotFoundException($"Student profile was not found for user '{studentUserId}'.");
-        }
-
-        if (!student.BatchId.HasValue || student.BatchId.Value == Guid.Empty)
-        {
-            throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found for the current student.");
-        }
-
-        var assessment = await BuildStudentAssessmentQuery(student.CollegeId, student.BatchId.Value)
-            .Include(item => item.AssessmentQuestions)
-            .FirstOrDefaultAsync(item =>
-                item.AssessmentId == assessmentId &&
-                (item.AssessmentStatus == AssessmentStatus.Scheduled ||
-                 item.AssessmentStatus == AssessmentStatus.Live));
-
-        if (assessment is null)
-        {
-            throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found for the current student.");
-        }
-
-        var existingAttempt = await _context.Attempts
-            .Where(item => item.AssessmentId == assessmentId && item.StudentId == student.StudentId)
-            .OrderByDescending(item => item.CreatedAt)
-            .FirstOrDefaultAsync();
-
-        if (existingAttempt is not null)
-        {
-            if (existingAttempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
+            if (latestAttempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
             {
                 throw new InvalidOperationException("This assessment has already been submitted by the current student.");
             }
 
-            if (!existingAttempt.StartedAt.HasValue)
+            if (await EnsureAttemptClosedIfExpiredAsync(latestAttempt, assessment))
             {
-                existingAttempt.StartedAt = DateTime.UtcNow;
+                throw new InvalidOperationException("The previous attempt has already expired and was auto-submitted.");
             }
 
-            existingAttempt.AttemptStatus = AttemptStatus.In_Progress;
-            await SaveChangesWithWrapAsync("Unable to start the assessment attempt.");
-            return existingAttempt.ToStudentAssessmentStartRecord();
+            throw new InvalidOperationException(
+                $"An active attempt already exists for this assessment. Recover it using attempt id '{latestAttempt.AttemptId}'.");
         }
 
-        var startedAt = DateTime.UtcNow;
-        var totalQuestions = assessment.AssessmentQuestions.Count;
-
-        var attempt = new Attempt
-        {
-            AttemptId = Guid.NewGuid(),
-            AssessmentId = assessment.AssessmentId,
-            StudentId = student.StudentId,
-            StartedAt = startedAt,
-            AttemptStatus = AttemptStatus.In_Progress,
-            TotalQuestions = totalQuestions,
-            AttemptedQuestions = 0,
-            CorrectAnswers = 0,
-            WrongAnswers = 0,
-            UnansweredQuestions = totalQuestions,
-            TotalScore = 0,
-            Percentage = 0,
-            TimeTakenSeconds = 0,
-            IsPassed = false,
-            CreatedAt = startedAt
-        };
-
+        var attempt = CreateInProgressAttempt(student.StudentId, assessment);
         _context.Attempts.Add(attempt);
         await SaveChangesWithWrapAsync("Unable to start the assessment attempt.");
 
         return attempt.ToStudentAssessmentStartRecord();
+    }
+
+    public async Task<StudentAttemptRecoveryRecord> GetStudentAttemptRecovery(Guid attemptId, Guid studentUserId)
+    {
+        if (attemptId == Guid.Empty)
+        {
+            throw new ArgumentException("Attempt id is required.");
+        }
+
+        ValidateStudentAttemptRequest(Guid.Empty, studentUserId, validateAssessmentId: false);
+
+        var student = await GetStudentByUserIdAsync(studentUserId);
+        var attempt = await GetAttemptForStudentAsync(attemptId, student.StudentId);
+        var assessment = await GetAssessmentForAttemptRecoveryAsync(attempt.AssessmentId, student);
+
+        await EnsureAttemptClosedIfExpiredAsync(attempt, assessment);
+
+        if (attempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
+        {
+            attempt = await GetAttemptForStudentAsync(attemptId, student.StudentId);
+        }
+
+        return await BuildStudentAttemptRecoveryAsync(attempt, assessment);
+    }
+
+    public async Task<StudentAttemptAnswerRecord> SaveStudentAttemptAnswer(
+        Guid attemptId,
+        Guid studentUserId,
+        SaveStudentAttemptAnswerRequest request)
+    {
+        if (attemptId == Guid.Empty)
+        {
+            throw new ArgumentException("Attempt id is required.");
+        }
+
+        ValidateStudentAttemptRequest(Guid.Empty, studentUserId, validateAssessmentId: false);
+
+        if (request is null)
+        {
+            throw new ArgumentException("Attempt answer request is required.");
+        }
+
+        if (request.QuestionId == Guid.Empty)
+        {
+            throw new ArgumentException("Question id is required.");
+        }
+
+        var student = await GetStudentByUserIdAsync(studentUserId);
+        var attempt = await GetAttemptForStudentAsync(attemptId, student.StudentId);
+        var assessment = await GetAssessmentForAttemptRecoveryAsync(attempt.AssessmentId, student);
+
+        if (await EnsureAttemptClosedIfExpiredAsync(attempt, assessment))
+        {
+            throw new InvalidOperationException("The assessment attempt has expired and was auto-submitted.");
+        }
+
+        if (attempt.AttemptStatus is not AttemptStatus.In_Progress)
+        {
+            throw new InvalidOperationException("Answers can only be saved for an in-progress attempt.");
+        }
+
+        var assessmentQuestion = assessment.AssessmentQuestions
+            .FirstOrDefault(item => item.QuestionId == request.QuestionId);
+
+        if (assessmentQuestion is null)
+        {
+            throw new KeyNotFoundException($"Question '{request.QuestionId}' was not found in this assessment attempt.");
+        }
+
+        var question = await _context.Questions
+            .FirstOrDefaultAsync(item => item.QuestionId == request.QuestionId);
+
+        if (question is null)
+        {
+            throw new KeyNotFoundException($"Question '{request.QuestionId}' was not found.");
+        }
+
+        var answeredAt = DateTime.UtcNow;
+        var strategy = _studentAttemptAnswerSaveStrategyFactory.Resolve(question.QuestionType);
+        var savedAnswer = await strategy.SaveAsync(_context, attempt, question, request, answeredAt);
+
+        attempt.LastActivityAt = answeredAt;
+        await RefreshAttemptProgressAsync(attempt);
+
+        await SaveChangesWithWrapAsync("Unable to save the assessment answer.");
+
+        return savedAnswer.ToStudentAttemptAnswerRecord();
     }
 
     private async Task<SubjectTopicResolver.Resolution> ResolveAssessmentClassificationAsync(Assessment assessment)
@@ -687,6 +722,229 @@ public class AssessmentManager : IAssessmentManager
             assessment.DifficultyLevel,
             assessment.StartDateTime,
             assessment.EndDateTime);
+    }
+
+    private static void ValidateStudentAttemptRequest(
+        Guid assessmentId,
+        Guid studentUserId,
+        bool validateAssessmentId = true)
+    {
+        if (validateAssessmentId && assessmentId == Guid.Empty)
+        {
+            throw new ArgumentException("Assessment id is required.");
+        }
+
+        if (studentUserId == Guid.Empty)
+        {
+            throw new ArgumentException("Student user id is required.");
+        }
+    }
+
+    private async Task<Student> GetStudentByUserIdAsync(Guid studentUserId)
+    {
+        var student = await _context.Students
+            .FirstOrDefaultAsync(item => item.UserId == studentUserId);
+
+        if (student is null)
+        {
+            throw new KeyNotFoundException($"Student profile was not found for user '{studentUserId}'.");
+        }
+
+        return student;
+    }
+
+    private async Task<Assessment> GetStudentAssessmentForAttemptAsync(Guid assessmentId, Student student)
+    {
+        if (!student.BatchId.HasValue || student.BatchId.Value == Guid.Empty)
+        {
+            throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found for the current student.");
+        }
+
+        var assessment = await BuildStudentAssessmentQuery(student.CollegeId, student.BatchId.Value)
+            .Include(item => item.AssessmentQuestions)
+            .FirstOrDefaultAsync(item =>
+                item.AssessmentId == assessmentId &&
+                (item.AssessmentStatus == AssessmentStatus.Scheduled ||
+                 item.AssessmentStatus == AssessmentStatus.Live));
+
+        if (assessment is null)
+        {
+            throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found for the current student.");
+        }
+
+        return assessment;
+    }
+
+    private async Task<Assessment> GetAssessmentForAttemptRecoveryAsync(Guid assessmentId, Student student)
+    {
+        if (!student.BatchId.HasValue || student.BatchId.Value == Guid.Empty)
+        {
+            throw new KeyNotFoundException($"Attempt for assessment '{assessmentId}' was not found for the current student.");
+        }
+
+        var assessment = await BuildStudentAssessmentQuery(student.CollegeId, student.BatchId.Value)
+            .Include(item => item.AssessmentQuestions)
+            .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId);
+
+        if (assessment is null)
+        {
+            throw new KeyNotFoundException($"Attempt for assessment '{assessmentId}' was not found for the current student.");
+        }
+
+        return assessment;
+    }
+
+    private async Task<Attempt?> GetLatestAttemptAsync(Guid studentId, Guid assessmentId)
+    {
+        return await _context.Attempts
+            .Where(item => item.AssessmentId == assessmentId && item.StudentId == studentId)
+            .OrderByDescending(item => item.CreatedAt)
+            .FirstOrDefaultAsync();
+    }
+
+    private async Task<Attempt> GetAttemptForStudentAsync(Guid attemptId, Guid studentId)
+    {
+        var attempt = await _context.Attempts
+            .FirstOrDefaultAsync(item => item.AttemptId == attemptId && item.StudentId == studentId);
+
+        if (attempt is null)
+        {
+            throw new KeyNotFoundException($"Attempt '{attemptId}' was not found for the current student.");
+        }
+
+        return attempt;
+    }
+
+    private Attempt CreateInProgressAttempt(Guid studentId, Assessment assessment)
+    {
+        var startedAt = DateTime.UtcNow;
+        var totalQuestions = assessment.AssessmentQuestions.Count;
+        var expiresAt = assessment.EndDateTime ?? startedAt.AddMinutes(assessment.DurationMinutes);
+
+        return new Attempt
+        {
+            AttemptId = Guid.NewGuid(),
+            AssessmentId = assessment.AssessmentId,
+            StudentId = studentId,
+            StartedAt = startedAt,
+            LastActivityAt = startedAt,
+            ExpiresAt = expiresAt,
+            AttemptStatus = AttemptStatus.In_Progress,
+            TotalQuestions = totalQuestions,
+            AttemptedQuestions = 0,
+            CorrectAnswers = 0,
+            WrongAnswers = 0,
+            UnansweredQuestions = totalQuestions,
+            TotalScore = 0,
+            Percentage = 0,
+            TimeTakenSeconds = 0,
+            IsPassed = false,
+            CreatedAt = startedAt
+        };
+    }
+
+    private async Task<bool> EnsureAttemptClosedIfExpiredAsync(Attempt attempt, Assessment assessment)
+    {
+        if (attempt.AttemptStatus is not AttemptStatus.In_Progress)
+        {
+            return false;
+        }
+
+        if (!IsAttemptExpired(attempt, assessment, out var expiresAt))
+        {
+            return false;
+        }
+
+        await AutoSubmitAttemptAsync(attempt, expiresAt);
+        return true;
+    }
+
+    private static bool IsAttemptExpired(Attempt attempt, Assessment assessment, out DateTime expiresAt)
+    {
+        expiresAt = attempt.ExpiresAt
+            ?? assessment.EndDateTime
+            ?? attempt.StartedAt?.AddMinutes(assessment.DurationMinutes)
+            ?? DateTime.UtcNow;
+
+        return DateTime.UtcNow >= expiresAt;
+    }
+
+    private async Task AutoSubmitAttemptAsync(Attempt attempt, DateTime expiresAt)
+    {
+        attempt.ExpiresAt = expiresAt;
+        attempt.AttemptStatus = AttemptStatus.Auto_Submitted;
+        attempt.SubmittedAt = expiresAt;
+        attempt.LastActivityAt = expiresAt;
+        attempt.TimeTakenSeconds = CalculateTimeTakenSeconds(attempt.StartedAt, expiresAt);
+
+        await RefreshAttemptProgressAsync(attempt);
+        await SaveChangesWithWrapAsync("Unable to auto-submit the expired assessment attempt.");
+    }
+
+    private async Task RefreshAttemptProgressAsync(Attempt attempt)
+    {
+        var attemptedQuestions = await _context.AttemptAnswers
+            .Where(item =>
+                item.AttemptId == attempt.AttemptId &&
+                item.SelectedAnswer != null &&
+                item.SelectedAnswer != string.Empty)
+            .Select(item => item.QuestionId)
+            .Distinct()
+            .CountAsync();
+
+        attempt.AttemptedQuestions = attemptedQuestions;
+        attempt.UnansweredQuestions = Math.Max(0, attempt.TotalQuestions - attemptedQuestions);
+    }
+
+    private async Task<StudentAttemptRecoveryRecord> BuildStudentAttemptRecoveryAsync(Attempt attempt, Assessment assessment)
+    {
+        var orderedAssessmentQuestions = assessment.AssessmentQuestions
+            .OrderBy(item => item.DisplayOrder)
+            .ToList();
+
+        var questionIds = orderedAssessmentQuestions
+            .Select(item => item.QuestionId)
+            .ToList();
+
+        var questions = await _context.Questions
+            .AsNoTracking()
+            .Where(item => questionIds.Contains(item.QuestionId))
+            .ToDictionaryAsync(item => item.QuestionId);
+
+        var attemptAnswers = await _context.AttemptAnswers
+            .AsNoTracking()
+            .Where(item => item.AttemptId == attempt.AttemptId)
+            .ToDictionaryAsync(item => item.QuestionId);
+
+        var questionRecords = orderedAssessmentQuestions
+            .Where(item => questions.ContainsKey(item.QuestionId))
+            .Select(item => questions[item.QuestionId].ToStudentAttemptRecoveryQuestionRecord(
+                item.DisplayOrder,
+                attemptAnswers.GetValueOrDefault(item.QuestionId)))
+            .ToList();
+
+        var expiresAt = attempt.ExpiresAt
+            ?? assessment.EndDateTime
+            ?? attempt.StartedAt?.AddMinutes(assessment.DurationMinutes)
+            ?? DateTime.UtcNow;
+
+        attempt.ExpiresAt = expiresAt;
+
+        var remainingSeconds = attempt.AttemptStatus == AttemptStatus.In_Progress
+            ? Math.Max(0, (int)Math.Ceiling((expiresAt - DateTime.UtcNow).TotalSeconds))
+            : 0;
+
+        return attempt.ToStudentAttemptRecoveryRecord(assessment, remainingSeconds, questionRecords);
+    }
+
+    private static int CalculateTimeTakenSeconds(DateTime? startedAt, DateTime endedAt)
+    {
+        if (!startedAt.HasValue)
+        {
+            return 0;
+        }
+
+        return Math.Max(0, (int)Math.Round((endedAt - startedAt.Value).TotalSeconds, MidpointRounding.AwayFromZero));
     }
 
     private async Task SaveChangesWithWrapAsync(string errorMessage)

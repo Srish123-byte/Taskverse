@@ -338,6 +338,8 @@ public class TaskverseContext : DbContext
             entity.Property(a => a.StudentId).HasColumnName("student_id");
             entity.Property(a => a.StartedAt).HasColumnName("started_at");
             entity.Property(a => a.SubmittedAt).HasColumnName("submitted_at");
+            entity.Property(a => a.LastActivityAt).HasColumnName("last_activity_at");
+            entity.Property(a => a.ExpiresAt).HasColumnName("expires_at");
             entity.Property(a => a.AttemptStatus).HasColumnName("attempt_status").HasConversion<int>();
             entity.Property(a => a.TotalQuestions).HasColumnName("total_questions");
             entity.Property(a => a.AttemptedQuestions).HasColumnName("attempted_questions");

@@ -25,6 +25,12 @@ public class Attempt
     [Column("submitted_at")]
     public DateTime? SubmittedAt { get; set; }
 
+    [Column("last_activity_at")]
+    public DateTime? LastActivityAt { get; set; }
+
+    [Column("expires_at")]
+    public DateTime? ExpiresAt { get; set; }
+
     [Column("attempt_status")]
     public AttemptStatus AttemptStatus { get; set; }
 

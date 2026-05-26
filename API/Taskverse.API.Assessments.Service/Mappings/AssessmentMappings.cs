@@ -135,6 +135,56 @@ public static class AssessmentMappings
             UtcDateTime.Normalize(attempt.StartedAt));
     }
 
+    public static StudentAttemptAnswerRecord ToStudentAttemptAnswerRecord(this AttemptAnswer attemptAnswer)
+    {
+        return new StudentAttemptAnswerRecord(
+            attemptAnswer.QuestionId,
+            attemptAnswer.SelectedAnswer,
+            UtcDateTime.Normalize(attemptAnswer.AnsweredAt));
+    }
+
+    public static StudentAttemptRecoveryRecord ToStudentAttemptRecoveryRecord(
+        this Attempt attempt,
+        Assessment assessment,
+        int remainingSeconds,
+        List<StudentAttemptRecoveryQuestionRecord> questions)
+    {
+        return new StudentAttemptRecoveryRecord(
+            attempt.AttemptId,
+            attempt.AssessmentId,
+            assessment.AssessmentName,
+            attempt.AttemptStatus.ToString().ToUpperInvariant(),
+            UtcDateTime.Normalize(attempt.StartedAt),
+            UtcDateTime.Normalize(attempt.SubmittedAt),
+            UtcDateTime.Normalize(attempt.ExpiresAt),
+            remainingSeconds,
+            assessment.DurationMinutes,
+            assessment.TotalMarks,
+            attempt.TotalQuestions,
+            attempt.AttemptedQuestions,
+            attempt.UnansweredQuestions,
+            assessment.Instructions,
+            questions);
+    }
+
+    public static StudentAttemptRecoveryQuestionRecord ToStudentAttemptRecoveryQuestionRecord(
+        this Question question,
+        int displayOrder,
+        AttemptAnswer? attemptAnswer)
+    {
+        return new StudentAttemptRecoveryQuestionRecord(
+            question.QuestionId,
+            displayOrder,
+            question.QuestionType,
+            question.QuestionText,
+            DeserializeOptions(question.Options),
+            question.Marks,
+            question.NegativeMarks,
+            question.DifficultyLevel,
+            attemptAnswer?.SelectedAnswer,
+            UtcDateTime.Normalize(attemptAnswer?.AnsweredAt));
+    }
+
     private static List<string>? DeserializeOptions(string? options)
     {
         if (string.IsNullOrWhiteSpace(options))

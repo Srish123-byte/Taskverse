@@ -172,3 +172,49 @@ public class StudentAssessmentStartResponseModel
     public string AttemptStatus { get; set; } = string.Empty;
     public DateTime? StartedAt { get; set; }
 }
+
+public class SaveStudentAttemptAnswerRequestModel
+{
+    public Guid QuestionId { get; set; }
+    public string? SelectedAnswer { get; set; }
+}
+
+public class StudentAttemptAnswerResponseModel
+{
+    public Guid QuestionId { get; set; }
+    public string? SelectedAnswer { get; set; }
+    public DateTime? AnsweredAt { get; set; }
+}
+
+public class StudentAttemptRecoveryQuestionResponseModel
+{
+    public Guid QuestionId { get; set; }
+    public int DisplayOrder { get; set; }
+    public string QuestionType { get; set; } = string.Empty;
+    public string QuestionText { get; set; } = string.Empty;
+    public List<string>? Options { get; set; }
+    public decimal Marks { get; set; }
+    public decimal NegativeMarks { get; set; }
+    public int DifficultyLevel { get; set; }
+    public string? SelectedAnswer { get; set; }
+    public DateTime? AnsweredAt { get; set; }
+}
+
+public class StudentAttemptRecoveryResponseModel
+{
+    public Guid AttemptId { get; set; }
+    public Guid AssessmentId { get; set; }
+    public string AssessmentName { get; set; } = string.Empty;
+    public string AttemptStatus { get; set; } = string.Empty;
+    public DateTime? StartedAt { get; set; }
+    public DateTime? SubmittedAt { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+    public int RemainingSeconds { get; set; }
+    public int DurationMinutes { get; set; }
+    public int TotalMarks { get; set; }
+    public int TotalQuestions { get; set; }
+    public int AttemptedQuestions { get; set; }
+    public int UnansweredQuestions { get; set; }
+    public string? Instructions { get; set; }
+    public List<StudentAttemptRecoveryQuestionResponseModel> Questions { get; set; } = [];
+}

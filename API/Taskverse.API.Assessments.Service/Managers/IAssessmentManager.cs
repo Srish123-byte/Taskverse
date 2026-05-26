@@ -12,4 +12,6 @@ public interface IAssessmentManager
     Task<List<StudentAssessmentListItemRecord>> GetStudentAssessments(Guid studentUserId, IReadOnlyCollection<string> assessmentStatuses);
     Task<StudentAssessmentDetailRecord> GetStudentAssessmentDetail(Guid assessmentId, Guid studentUserId);
     Task<StudentAssessmentStartRecord> StartStudentAssessment(Guid assessmentId, Guid studentUserId);
+    Task<StudentAttemptRecoveryRecord> GetStudentAttemptRecovery(Guid attemptId, Guid studentUserId);
+    Task<StudentAttemptAnswerRecord> SaveStudentAttemptAnswer(Guid attemptId, Guid studentUserId, SaveStudentAttemptAnswerRequest request);
 }

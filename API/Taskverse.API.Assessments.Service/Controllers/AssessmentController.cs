@@ -342,6 +342,109 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    [HttpGet("/api/student/attempts/{attemptId:guid}")]
+    [ProducesResponseType(typeof(StudentAttemptRecoveryRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<StudentAttemptRecoveryRecord>> GetStudentAttemptRecovery(
+        Guid attemptId,
+        [FromQuery] Guid studentUserId)
+    {
+        try
+        {
+            var result = await _assessmentManager.GetStudentAttemptRecovery(attemptId, studentUserId);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (DbUpdateException ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "A database error occurred while recovering the student assessment attempt.",
+                "StudentAttemptRecoveryDatabaseError");
+        }
+        catch (PostgresException ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "A PostgreSQL error occurred while recovering the student assessment attempt.",
+                "StudentAttemptRecoveryPostgresError");
+        }
+        catch (Exception ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while recovering the student assessment attempt.");
+        }
+    }
+
+    [HttpPut("/api/student/attempts/{attemptId:guid}/answers")]
+    [ProducesResponseType(typeof(StudentAttemptAnswerRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<StudentAttemptAnswerRecord>> SaveStudentAttemptAnswer(
+        Guid attemptId,
+        [FromQuery] Guid studentUserId,
+        [FromBody] SaveStudentAttemptAnswerRequest request)
+    {
+        if (request is null)
+        {
+            return BadRequest(new { message = "Attempt answer request is required." });
+        }
+
+        try
+        {
+            var result = await _assessmentManager.SaveStudentAttemptAnswer(attemptId, studentUserId, request);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (DbUpdateException ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "A database error occurred while saving the student assessment answer.",
+                "StudentAttemptAnswerDatabaseError");
+        }
+        catch (PostgresException ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "A PostgreSQL error occurred while saving the student assessment answer.",
+                "StudentAttemptAnswerPostgresError");
+        }
+        catch (Exception ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while saving the student assessment answer.");
+        }
+    }
+
     private ObjectResult BuildUnexpectedError(Exception ex, string message, string name = "AssessmentServiceError")
     {
         var detail = ex.GetBaseException().Message;

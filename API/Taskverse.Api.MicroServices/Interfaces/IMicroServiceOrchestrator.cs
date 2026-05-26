@@ -29,7 +29,6 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> GetExamsByUser(string userId);
 
     // Assessment
-    Task<ObjectResult> GetAssessment(string assessmentId);
     Task<ObjectResult> CreateAssessment(CreateQuestionBankAssessmentModel model);
     Task<ObjectResult> DeleteAssessment(DeleteAssessmentModel model);
     Task<ObjectResult> PublishAssessment(Guid assessmentId);
@@ -37,13 +36,12 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> UpdateQuestion(Guid questionId, CreateQuestionModel model);
     Task<ObjectResult> DeleteQuestions(DeleteQuestionsModel model);
     Task<ObjectResult> SearchQuestionBank(QuestionBankSearchModel model);
-    Task<ObjectResult> GetAssessmentsByUser(string userId);
-    Task<ObjectResult> GetAssessmentResult(string assessmentId, string userId);
-    Task<ObjectResult> GetAssessmentSummary(string assessmentId);
     Task<ObjectResult> GetAssessmentQuestionList(Guid assessmentId, AssessmentQuestionListSearchModel model);
     Task<ObjectResult> GetStudentAssessments(StudentAssessmentListSearchModel model, IReadOnlyCollection<string> assessmentStatuses);
     Task<ObjectResult> GetStudentAssessmentDetail(Guid assessmentId, Guid studentUserId);
     Task<ObjectResult> StartStudentAssessment(Guid assessmentId, Guid studentUserId);
+    Task<ObjectResult> GetStudentAttemptRecovery(Guid attemptId, Guid studentUserId);
+    Task<ObjectResult> SaveStudentAttemptAnswer(Guid attemptId, Guid studentUserId, SaveStudentAttemptAnswerModel model);
 
     // Reports
     Task<ObjectResult> GenerateReport(GenerateReportRequestModel model);

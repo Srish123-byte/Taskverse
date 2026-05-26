@@ -6,12 +6,6 @@ namespace Taskverse.Api.MicroServices.Orchestrators;
 
 public partial class MicroServiceOrchestrator
 {
-    public async Task<ObjectResult> GetAssessment(string assessmentId)
-    {
-        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}assessments/{assessmentId}";
-        return await Get<AssessmentModel>(url);
-    }
-
     public async Task<ObjectResult> CreateAssessment(CreateQuestionBankAssessmentModel model)
     {
         var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments";
@@ -54,24 +48,6 @@ public partial class MicroServiceOrchestrator
         return await Post<PagedQuestionBankModel>(url, model);
     }
 
-    public async Task<ObjectResult> GetAssessmentsByUser(string userId)
-    {
-        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}assessments/user/{userId}";
-        return await Get<List<AssessmentModel>>(url);
-    }
-
-    public async Task<ObjectResult> GetAssessmentResult(string assessmentId, string userId)
-    {
-        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}assessments/{assessmentId}/results/{userId}";
-        return await Get<AssessmentResultModel>(url);
-    }
-
-    public async Task<ObjectResult> GetAssessmentSummary(string assessmentId)
-    {
-        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}assessments/{assessmentId}/summary";
-        return await Get<AssessmentSummaryModel>(url);
-    }
-
     public async Task<ObjectResult> GetAssessmentQuestionList(Guid assessmentId, AssessmentQuestionListSearchModel model)
     {
         var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/{assessmentId}/questions/list";
@@ -110,5 +86,24 @@ public partial class MicroServiceOrchestrator
             $"{GetMicroServiceUrl(MicroService.Assessment)}api/student/assessments/{assessmentId}/start?studentUserId={studentUserId}";
 
         return await Post<StudentAssessmentStartModel>(url, new { });
+    }
+
+    public async Task<ObjectResult> GetStudentAttemptRecovery(Guid attemptId, Guid studentUserId)
+    {
+        var url =
+            $"{GetMicroServiceUrl(MicroService.Assessment)}api/student/attempts/{attemptId}?studentUserId={studentUserId}";
+
+        return await Get<StudentAttemptRecoveryModel>(url);
+    }
+
+    public async Task<ObjectResult> SaveStudentAttemptAnswer(
+        Guid attemptId,
+        Guid studentUserId,
+        SaveStudentAttemptAnswerModel model)
+    {
+        var url =
+            $"{GetMicroServiceUrl(MicroService.Assessment)}api/student/attempts/{attemptId}/answers?studentUserId={studentUserId}";
+
+        return await Put<StudentAttemptAnswerModel>(url, model);
     }
 }
