@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 import { EMPTY, Observable, of } from 'rxjs';
 import { catchError, finalize, map, shareReplay, take } from 'rxjs/operators';
+import { LogoutConfirmationDialogComponent } from '../../components/logout-confirmation-dialog/logout-confirmation-dialog.component';
 import { RouteAddress } from '../../constants/routes.constants';
 import { AccountService } from '../api/account.service';
 import { Session } from './session.service';
@@ -14,8 +16,30 @@ export class AuthSessionService {
   constructor(
     private readonly accountService: AccountService,
     private readonly session: Session,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly dialog: MatDialog
   ) {}
+
+  confirmLogout(onCancel?: () => void): void {
+    const dialogRef = this.dialog.open(LogoutConfirmationDialogComponent, {
+      autoFocus: false,
+      restoreFocus: true,
+      disableClose: false,
+      panelClass: 'logout-confirmation-overlay',
+      backdropClass: 'logout-confirmation-backdrop'
+    });
+
+    dialogRef.afterClosed().pipe(take(1)).subscribe(confirmed => {
+      if (confirmed) {
+        this.logout('manual');
+        return;
+      }
+
+      if (onCancel) {
+        onCancel();
+      }
+    });
+  }
 
   logout(reason: 'manual' | 'timeout' | 'unauthorized' = 'manual'): void {
     if (this.isLoggingOut) {

@@ -256,3 +256,18 @@ option {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-card) !important;
 }
+body .logout-confirmation-backdrop {
+  background: rgba(3, 8, 20, 0.76);
+  backdrop-filter: blur(10px);
+}
+
+body .logout-confirmation-overlay .mat-mdc-dialog-surface {
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+body .logout-confirmation-overlay .mat-mdc-dialog-container .mdc-dialog__surface {
+  background: transparent;
+  box-shadow: none;
+}

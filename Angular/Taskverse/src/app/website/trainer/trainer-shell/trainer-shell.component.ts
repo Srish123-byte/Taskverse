@@ -26,6 +26,6 @@ export class TrainerShellComponent {
   constructor(private readonly authSessionService: AuthSessionService) {}
 
   logout(): void {
-    this.authSessionService.logout();
+    this.authSessionService.confirmLogout();
   }
 }

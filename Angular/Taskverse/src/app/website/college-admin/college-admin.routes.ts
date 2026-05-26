@@ -5,6 +5,7 @@ import { UserApprovalsComponent } from './user-approvals/user-approvals.componen
 import { UserManagementComponent } from './user-management/user-management.component';
 import { AcademicStructureComponent } from './academic-structure/academic-structure.component';
 import { AssessmentBuilderComponent } from './assessment-builder/assessment-builder.component';
+import { QuestionsManagementComponent } from './questions-management/questions-management.component';
 import { ReportsComponent } from './reports/reports.component';
 import { SettingsComponent } from './settings/settings.component';
 import { HelpCenterComponent } from './help-center/help-center.component';
@@ -19,6 +20,7 @@ const routes: Routes = [
       { path: 'approvals', component: UserApprovalsComponent },
       { path: 'users', component: UserManagementComponent },
       { path: 'classes-management', component: AcademicStructureComponent },
+      { path: 'questions-management', component: QuestionsManagementComponent },
       { path: 'assessment-builder', component: AssessmentBuilderComponent },
       { path: 'reports', component: ReportsComponent },
       { path: 'help-center', component: HelpCenterComponent },

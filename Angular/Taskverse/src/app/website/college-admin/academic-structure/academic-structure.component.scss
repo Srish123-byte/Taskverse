@@ -83,6 +83,13 @@
   cursor: pointer;
 }
 
+.hero-action-icon {
+  display: block;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
 .primary-action {
   background: linear-gradient(180deg, #38bdf8 0%, #2aa8ea 100%);
   color: #08263f;
