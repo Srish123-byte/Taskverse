@@ -97,6 +97,102 @@ public static class AssessmentMappings
             question.DifficultyLevel);
     }
 
+    public static StudentAssessmentListItemRecord ToStudentAssessmentListItemRecord(
+        this Assessment assessment,
+        string assessmentStatus)
+    {
+        return new StudentAssessmentListItemRecord(
+            assessment.AssessmentId,
+            assessment.AssessmentName,
+            assessmentStatus,
+            assessment.DurationMinutes,
+            assessment.TotalMarks,
+            assessment.DifficultyLevel,
+            UtcDateTime.Normalize(assessment.StartDateTime),
+            UtcDateTime.Normalize(assessment.EndDateTime));
+    }
+
+    public static StudentAssessmentDetailRecord ToStudentAssessmentDetailRecord(
+        this Assessment assessment,
+        int totalQuestions)
+    {
+        return new StudentAssessmentDetailRecord(
+            assessment.AssessmentName,
+            assessment.DurationMinutes,
+            assessment.TotalMarks,
+            totalQuestions,
+            UtcDateTime.Normalize(assessment.StartDateTime),
+            UtcDateTime.Normalize(assessment.EndDateTime),
+            assessment.Instructions);
+    }
+
+    public static StudentAssessmentStartRecord ToStudentAssessmentStartRecord(this Attempt attempt)
+    {
+        return new StudentAssessmentStartRecord(
+            attempt.AttemptId,
+            attempt.AssessmentId,
+            attempt.AttemptStatus.ToString().ToUpperInvariant(),
+            UtcDateTime.Normalize(attempt.StartedAt));
+    }
+
+    public static StudentAttemptAnswerRecord ToStudentAttemptAnswerRecord(this AttemptAnswer attemptAnswer)
+    {
+        return new StudentAttemptAnswerRecord(
+            attemptAnswer.QuestionId,
+            attemptAnswer.SelectedAnswer,
+            UtcDateTime.Normalize(attemptAnswer.AnsweredAt));
+    }
+
+    public static StudentAttemptSubmitRecord ToStudentAttemptSubmitRecord(this Attempt attempt)
+    {
+        return new StudentAttemptSubmitRecord(
+            attempt.AttemptId,
+            attempt.AttemptStatus.ToString().ToUpperInvariant(),
+            UtcDateTime.Normalize(attempt.SubmittedAt));
+    }
+
+    public static StudentAttemptRecoveryRecord ToStudentAttemptRecoveryRecord(
+        this Attempt attempt,
+        Assessment assessment,
+        int remainingSeconds,
+        List<StudentAttemptRecoveryQuestionRecord> questions)
+    {
+        return new StudentAttemptRecoveryRecord(
+            attempt.AttemptId,
+            attempt.AssessmentId,
+            assessment.AssessmentName,
+            attempt.AttemptStatus.ToString().ToUpperInvariant(),
+            UtcDateTime.Normalize(attempt.StartedAt),
+            UtcDateTime.Normalize(attempt.SubmittedAt),
+            UtcDateTime.Normalize(attempt.ExpiresAt),
+            remainingSeconds,
+            assessment.DurationMinutes,
+            assessment.TotalMarks,
+            attempt.TotalQuestions,
+            attempt.AttemptedQuestions,
+            attempt.UnansweredQuestions,
+            assessment.Instructions,
+            questions);
+    }
+
+    public static StudentAttemptRecoveryQuestionRecord ToStudentAttemptRecoveryQuestionRecord(
+        this Question question,
+        int displayOrder,
+        AttemptAnswer? attemptAnswer)
+    {
+        return new StudentAttemptRecoveryQuestionRecord(
+            question.QuestionId,
+            displayOrder,
+            question.QuestionType,
+            question.QuestionText,
+            DeserializeOptions(question.Options),
+            question.Marks,
+            question.NegativeMarks,
+            question.DifficultyLevel,
+            attemptAnswer?.SelectedAnswer,
+            UtcDateTime.Normalize(attemptAnswer?.AnsweredAt));
+    }
+
     private static List<string>? DeserializeOptions(string? options)
     {
         if (string.IsNullOrWhiteSpace(options))

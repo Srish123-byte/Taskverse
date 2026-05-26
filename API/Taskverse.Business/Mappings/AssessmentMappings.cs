@@ -6,43 +6,6 @@ namespace Taskverse.Business.Mappings;
 
 public static class AssessmentMappings
 {
-    public static AssessmentDto ToDto(this AssessmentModel model)
-        => new()
-        {
-            AssessmentId = model.AssessmentId,
-            Title = model.Title,
-            Description = model.Description,
-            Type = model.Type,
-            ExamId = model.ExamId,
-            ChallengeIds = model.ChallengeIds,
-            AssignedTo = model.AssignedTo,
-            DueDate = UtcDateTime.Normalize(model.DueDate),
-            IsActive = model.IsActive,
-            CreatedBy = model.CreatedBy,
-            CreatedAt = UtcDateTime.Normalize(model.CreatedAt)
-        };
-
-    public static AssessmentResultDto ToDto(this AssessmentResultModel model)
-        => new()
-        {
-            ResultId = model.ResultId,
-            AssessmentId = model.AssessmentId,
-            UserId = model.UserId,
-            Status = model.Status,
-            Score = model.Score,
-            CompletedAt = UtcDateTime.Normalize(model.CompletedAt)
-        };
-
-    public static AssessmentSummaryDto ToDto(this AssessmentSummaryModel model)
-        => new()
-        {
-            AssessmentId = model.AssessmentId,
-            Title = model.Title,
-            TotalAssigned = model.TotalAssigned,
-            TotalCompleted = model.TotalCompleted,
-            AverageScore = model.AverageScore
-        };
-
     public static AssessmentQuestionDto ToDto(this AssessmentQuestionModel model)
         => new()
         {
@@ -189,5 +152,94 @@ public static class AssessmentMappings
             TotalCount = model.TotalCount,
             PageNumber = model.PageNumber,
             PageSize   = model.PageSize
+        };
+
+    public static StudentAssessmentListItemDto ToDto(this StudentAssessmentListItemModel model)
+        => new()
+        {
+            AssessmentId = model.AssessmentId,
+            AssessmentName = model.AssessmentName,
+            AssessmentStatus = model.AssessmentStatus,
+            DurationMinutes = model.DurationMinutes,
+            TotalMarks = model.TotalMarks,
+            DifficultyLevel = model.DifficultyLevel,
+            StartDateTime = UtcDateTime.Normalize(model.StartDateTime),
+            EndDateTime = UtcDateTime.Normalize(model.EndDateTime)
+        };
+
+    public static StudentAssessmentDetailDto ToDto(this StudentAssessmentDetailModel model)
+        => new()
+        {
+            AssessmentName = model.AssessmentName,
+            DurationMinutes = model.DurationMinutes,
+            TotalMarks = model.TotalMarks,
+            TotalQuestions = model.TotalQuestions,
+            StartTime = UtcDateTime.Normalize(model.StartTime),
+            EndTime = UtcDateTime.Normalize(model.EndTime),
+            Instructions = model.Instructions
+        };
+
+    public static StudentAssessmentStartDto ToDto(this StudentAssessmentStartModel model)
+        => new()
+        {
+            AttemptId = model.AttemptId,
+            AssessmentId = model.AssessmentId,
+            AttemptStatus = model.AttemptStatus,
+            StartedAt = UtcDateTime.Normalize(model.StartedAt)
+        };
+
+    public static SaveStudentAttemptAnswerModel ToMicroServiceModel(this SaveStudentAttemptAnswerDto dto)
+        => new(
+            dto.SelectedAnswer);
+
+    public static StudentAttemptAnswerDto ToDto(this StudentAttemptAnswerModel model)
+        => new()
+        {
+            QuestionId = model.QuestionId,
+            SelectedAnswer = model.SelectedAnswer,
+            AnsweredAt = UtcDateTime.Normalize(model.AnsweredAt)
+        };
+
+    public static StudentAttemptSubmitDto ToDto(this StudentAttemptSubmitModel model)
+        => new()
+        {
+            AttemptId = model.AttemptId,
+            AttemptStatus = model.AttemptStatus,
+            SubmittedAt = UtcDateTime.Normalize(model.SubmittedAt)
+        };
+
+    public static StudentAttemptRecoveryQuestionDto ToDto(this StudentAttemptRecoveryQuestionModel model)
+        => new()
+        {
+            QuestionId = model.QuestionId,
+            DisplayOrder = model.DisplayOrder,
+            QuestionType = model.QuestionType,
+            QuestionText = model.QuestionText,
+            Options = model.Options,
+            Marks = model.Marks,
+            NegativeMarks = model.NegativeMarks,
+            DifficultyLevel = model.DifficultyLevel,
+            SelectedAnswer = model.SelectedAnswer,
+            AnsweredAt = UtcDateTime.Normalize(model.AnsweredAt)
+        };
+
+    public static StudentAttemptRecoveryDto ToDto(this StudentAttemptRecoveryModel model)
+        => new()
+        {
+            AttemptId = model.AttemptId,
+            AssessmentId = model.AssessmentId,
+            AssessmentName = model.AssessmentName,
+            AttemptStatus = model.AttemptStatus,
+            StartedAt = UtcDateTime.Normalize(model.StartedAt),
+            SubmittedAt = UtcDateTime.Normalize(model.SubmittedAt),
+            ExpiresAt = UtcDateTime.Normalize(model.ExpiresAt),
+            RemainingSeconds = model.RemainingSeconds,
+            DurationMinutes = model.DurationMinutes,
+            TotalMarks = model.TotalMarks,
+            TotalQuestions = model.TotalQuestions,
+            AttemptedQuestions = model.AttemptedQuestions,
+            UnansweredQuestions = model.UnansweredQuestions,
+            Instructions = model.Instructions,
+            Questions = model.Questions.Select(item => item.ToDto()).ToList()
         };
 }

@@ -37,36 +37,6 @@ public static class MockData
         IsPassed: true,
         CompletedAt: new DateTime(2025, 5, 10, 14, 30, 0, DateTimeKind.Utc));
 
-    public static AssessmentModel GetAssessmentModel() => new(
-        AssessmentId: TestConstants.AssessmentId,
-        Title: "Mid-Term Assessment",
-        Description: "Covers chapters 1 through 5",
-        Type: "Exam",
-        ExamId: TestConstants.ExamId,
-        ChallengeIds: null,
-        AssignedTo: [TestConstants.UserId, "user-456"],
-        DueDate: new DateTime(2025, 6, 30, 0, 0, 0, DateTimeKind.Utc),
-        IsActive: true,
-        CreatedBy: "admin-001",
-        CreatedAt: new DateTime(2025, 1, 20, 0, 0, 0, DateTimeKind.Utc));
-
-    public static AssessmentResultModel GetAssessmentResultModel() => new(
-        ResultId: "result-001",
-        AssessmentId: TestConstants.AssessmentId,
-        UserId: TestConstants.UserId,
-        Status: "Completed",
-        Score: 85,
-        CompletedAt: new DateTime(2025, 5, 10, 14, 30, 0, DateTimeKind.Utc),
-        ExamResult: GetExamResultModel(),
-        CodingResults: null);
-
-    public static AssessmentSummaryModel GetAssessmentSummaryModel() => new(
-        AssessmentId: TestConstants.AssessmentId,
-        Title: "Mid-Term Assessment",
-        TotalAssigned: 30,
-        TotalCompleted: 25,
-        AverageScore: 78.4);
-
     public static ReportModel GetReportModel() => new(
         ReportId: TestConstants.ReportId,
         Type: "Performance",

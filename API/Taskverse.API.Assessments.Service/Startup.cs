@@ -69,6 +69,8 @@ public class Startup
     {
         services.AddScoped<IQuestionManager, QuestionManager>();
         services.AddScoped<IAssessmentManager, AssessmentManager>();
+        services.AddScoped<IStudentAttemptAnswerSaveStrategyFactory, StudentAttemptAnswerSaveStrategyFactory>();
+        services.AddScoped<IStudentAttemptAnswerSaveStrategy, ObjectiveStudentAttemptAnswerSaveStrategy>();
         services.AddScoped<IWhatsAppNotificationService, WhatsAppNotificationService>();
         services.AddHostedService<AssessmentStatusTransitionService>();
     }

@@ -21,19 +21,6 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         _microServiceOrchestrator = microServiceOrchestrator;
     }
 
-    public async Task<AssessmentDto> GetAssessment(string assessmentId)
-    {
-        _log.Debug($"AssessmentOrchestrator.GetAssessment: assessmentId={assessmentId}");
-
-        var result = await _microServiceOrchestrator.GetAssessment(assessmentId);
-        result.EnsureSuccess(nameof(GetAssessment));
-
-        AssessmentModel model = result.DeserializeValue<AssessmentModel>()
-            ?? throw new InvalidOperationException($"GetAssessment returned an empty response for assessmentId={assessmentId}.");
-
-        return model.ToDto();
-    }
-
     public async Task<QuestionBankAssessmentDto> CreateAssessment(CreateQuestionBankAssessmentDto dto)
     {
         _log.Debug($"AssessmentOrchestrator.CreateAssessment: assessmentName={dto.AssessmentName}, collegeId={dto.CollegeId}, questionCount={dto.QuestionIds.Count}");
@@ -218,45 +205,6 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         };
     }
 
-    public async Task<List<AssessmentDto>> GetAssessmentsByUser(string userId)
-    {
-        _log.Debug($"AssessmentOrchestrator.GetAssessmentsByUser: userId={userId}");
-
-        var result = await _microServiceOrchestrator.GetAssessmentsByUser(userId);
-        result.EnsureSuccess(nameof(GetAssessmentsByUser));
-
-        List<AssessmentModel> models = result.DeserializeValue<List<AssessmentModel>>()
-            ?? throw new InvalidOperationException($"GetAssessmentsByUser returned an empty response for userId={userId}.");
-
-        return models.Select(a => a.ToDto()).ToList();
-    }
-
-    public async Task<AssessmentResultDto> GetAssessmentResult(string assessmentId, string userId)
-    {
-        _log.Debug($"AssessmentOrchestrator.GetAssessmentResult: assessmentId={assessmentId}, userId={userId}");
-
-        var result = await _microServiceOrchestrator.GetAssessmentResult(assessmentId, userId);
-        result.EnsureSuccess(nameof(GetAssessmentResult));
-
-        AssessmentResultModel model = result.DeserializeValue<AssessmentResultModel>()
-            ?? throw new InvalidOperationException($"GetAssessmentResult returned an empty response for assessmentId={assessmentId}, userId={userId}.");
-
-        return model.ToDto();
-    }
-
-    public async Task<AssessmentSummaryDto> GetAssessmentSummary(string assessmentId)
-    {
-        _log.Debug($"AssessmentOrchestrator.GetAssessmentSummary: assessmentId={assessmentId}");
-
-        var result = await _microServiceOrchestrator.GetAssessmentSummary(assessmentId);
-        result.EnsureSuccess(nameof(GetAssessmentSummary));
-
-        AssessmentSummaryModel model = result.DeserializeValue<AssessmentSummaryModel>()
-            ?? throw new InvalidOperationException($"GetAssessmentSummary returned an empty response for assessmentId={assessmentId}.");
-
-        return model.ToDto();
-    }
-
     private static string? ExtractMessage(object? value)
     {
         if (value is null)
@@ -312,5 +260,206 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
             StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
             _ => new Exception(message)
         };
+    }
+
+    public async Task<List<StudentAssessmentListItemDto>> GetStudentAssessments(
+        Guid studentUserId,
+        IReadOnlyCollection<string> assessmentStatuses)
+    {
+        _log.Debug(
+            $"AssessmentOrchestrator.GetStudentAssessments: studentUserId={studentUserId}, statuses={string.Join(",", assessmentStatuses)}");
+
+        var result = await _microServiceOrchestrator.GetStudentAssessments(
+            new StudentAssessmentListSearchModel(studentUserId),
+            assessmentStatuses);
+
+        if (result.IsSuccess())
+        {
+            var models = result.DeserializeValue<List<StudentAssessmentListItemModel>>()
+                ?? throw new InvalidOperationException("GetStudentAssessments returned an empty response.");
+
+            return models.Select(model => model.ToDto()).ToList();
+        }
+
+        var extractedMessage = ExtractMessage(result.Value);
+        var extractedDetail = ExtractDetail(result.Value);
+        var message = string.IsNullOrWhiteSpace(extractedDetail) || string.Equals(extractedMessage, extractedDetail, StringComparison.Ordinal)
+            ? extractedMessage ?? extractedDetail ?? $"GetStudentAssessments failed with status {result.StatusCode}."
+            : $"{extractedMessage ?? "GetStudentAssessments failed."} Detail: {extractedDetail}";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status404NotFound => new KeyNotFoundException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new InvalidOperationException(message)
+        };
+    }
+
+    public async Task<StudentAssessmentDetailDto> GetStudentAssessmentDetail(Guid assessmentId, Guid studentUserId)
+    {
+        _log.Debug(
+            $"AssessmentOrchestrator.GetStudentAssessmentDetail: assessmentId={assessmentId}, studentUserId={studentUserId}");
+
+        var result = await _microServiceOrchestrator.GetStudentAssessmentDetail(assessmentId, studentUserId);
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<StudentAssessmentDetailModel>()
+                ?? throw new InvalidOperationException("GetStudentAssessmentDetail returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"GetStudentAssessmentDetail failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status404NotFound => new KeyNotFoundException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new InvalidOperationException(message)
+        };
+    }
+
+    public async Task<StudentAssessmentStartDto> StartStudentAssessment(Guid assessmentId, Guid studentUserId)
+    {
+        _log.Debug(
+            $"AssessmentOrchestrator.StartStudentAssessment: assessmentId={assessmentId}, studentUserId={studentUserId}");
+
+        var result = await _microServiceOrchestrator.StartStudentAssessment(assessmentId, studentUserId);
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<StudentAssessmentStartModel>()
+                ?? throw new InvalidOperationException("StartStudentAssessment returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"StartStudentAssessment failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status404NotFound => new KeyNotFoundException(message),
+            StatusCodes.Status409Conflict => new InvalidOperationException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new InvalidOperationException(message)
+        };
+    }
+
+    public async Task<StudentAttemptRecoveryDto> GetStudentAttemptRecovery(Guid attemptId, Guid studentUserId)
+    {
+        _log.Debug(
+            $"AssessmentOrchestrator.GetStudentAttemptRecovery: attemptId={attemptId}, studentUserId={studentUserId}");
+
+        var result = await _microServiceOrchestrator.GetStudentAttemptRecovery(attemptId, studentUserId);
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<StudentAttemptRecoveryModel>()
+                ?? throw new InvalidOperationException("GetStudentAttemptRecovery returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"GetStudentAttemptRecovery failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status404NotFound => new KeyNotFoundException(message),
+            StatusCodes.Status409Conflict => new InvalidOperationException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new InvalidOperationException(message)
+        };
+    }
+
+    public async Task<StudentAttemptAnswerDto> SaveStudentAttemptAnswer(
+        Guid attemptId,
+        Guid questionId,
+        Guid studentUserId,
+        SaveStudentAttemptAnswerDto dto)
+    {
+        _log.Debug(
+            $"AssessmentOrchestrator.SaveStudentAttemptAnswer: attemptId={attemptId}, studentUserId={studentUserId}, questionId={questionId}");
+
+        var result = await _microServiceOrchestrator.SaveStudentAttemptAnswer(
+            attemptId,
+            questionId,
+            studentUserId,
+            dto.ToMicroServiceModel());
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<StudentAttemptAnswerModel>()
+                ?? throw new InvalidOperationException("SaveStudentAttemptAnswer returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"SaveStudentAttemptAnswer failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status404NotFound => new KeyNotFoundException(message),
+            StatusCodes.Status409Conflict => new InvalidOperationException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new InvalidOperationException(message)
+        };
+    }
+
+    public async Task<StudentAttemptSubmitDto> SubmitStudentAttempt(Guid attemptId, Guid studentUserId)
+    {
+        _log.Debug(
+            $"AssessmentOrchestrator.SubmitStudentAttempt: attemptId={attemptId}, studentUserId={studentUserId}");
+
+        var result = await _microServiceOrchestrator.SubmitStudentAttempt(attemptId, studentUserId);
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<StudentAttemptSubmitModel>()
+                ?? throw new InvalidOperationException("SubmitStudentAttempt returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"SubmitStudentAttempt failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status404NotFound => new KeyNotFoundException(message),
+            StatusCodes.Status409Conflict => new InvalidOperationException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new InvalidOperationException(message)
+        };
+    }
+
+    private static string? ExtractDetail(object? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        if (value is string json)
+        {
+            try
+            {
+                var parsed = JObject.Parse(json);
+                return parsed["detail"]?.ToString()
+                    ?? parsed["Detail"]?.ToString();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        var token = JToken.FromObject(value);
+        return token["detail"]?.ToString() ?? token["Detail"]?.ToString();
     }
 }

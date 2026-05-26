@@ -172,8 +172,9 @@ public class AssessmentStatusTransitionService : BackgroundService
     {
         // SqlQuery<T>(FormattableString) treats interpolated values as parameterised inputs,
         // avoiding EF1002 and keeping the advisory lock key safely out of raw SQL text.
+        // For scalar SqlQuery<T>, EF expects the projected column to be named "Value".
         var result = await context.Database
-            .SqlQuery<bool>($"SELECT pg_try_advisory_lock({_advisoryLockKey})")
+            .SqlQuery<bool>($"SELECT pg_try_advisory_lock({_advisoryLockKey}) AS \"Value\"")
             .FirstAsync(ct);
 
         return result;

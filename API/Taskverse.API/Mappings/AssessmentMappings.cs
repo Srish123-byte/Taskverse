@@ -197,4 +197,118 @@ public static class AssessmentMappings
             PageSize   = dto.PageSize
         };
     }
+
+    public static StudentAssessmentListResponseModel ToResponseModel(
+        this StudentAssessmentListItemDto dto)
+    {
+        return new StudentAssessmentListResponseModel
+        {
+            AssessmentId = dto.AssessmentId,
+            AssessmentName = dto.AssessmentName,
+            AssessmentStatus = dto.AssessmentStatus,
+            DurationMinutes = dto.DurationMinutes,
+            TotalMarks = dto.TotalMarks,
+            DifficultyLevel = dto.DifficultyLevel,
+            StartDateTime = UtcDateTime.Normalize(dto.StartDateTime),
+            EndDateTime = UtcDateTime.Normalize(dto.EndDateTime)
+        };
+    }
+
+    public static StudentAssessmentDetailResponseModel ToResponseModel(
+        this StudentAssessmentDetailDto dto)
+    {
+        return new StudentAssessmentDetailResponseModel
+        {
+            AssessmentName = dto.AssessmentName,
+            DurationMinutes = dto.DurationMinutes,
+            TotalMarks = dto.TotalMarks,
+            TotalQuestions = dto.TotalQuestions,
+            StartTime = UtcDateTime.Normalize(dto.StartTime),
+            EndTime = UtcDateTime.Normalize(dto.EndTime),
+            Instructions = dto.Instructions
+        };
+    }
+
+    public static StudentAssessmentStartResponseModel ToResponseModel(
+        this StudentAssessmentStartDto dto)
+    {
+        return new StudentAssessmentStartResponseModel
+        {
+            AttemptId = dto.AttemptId,
+            AssessmentId = dto.AssessmentId,
+            AttemptStatus = dto.AttemptStatus,
+            StartedAt = UtcDateTime.Normalize(dto.StartedAt)
+        };
+    }
+
+    public static SaveStudentAttemptAnswerDto ToDto(this SaveStudentAttemptAnswerRequestModel model)
+    {
+        return new SaveStudentAttemptAnswerDto
+        {
+            SelectedAnswer = model.SelectedAnswer
+        };
+    }
+
+    public static StudentAttemptAnswerResponseModel ToResponseModel(
+        this StudentAttemptAnswerDto dto)
+    {
+        return new StudentAttemptAnswerResponseModel
+        {
+            QuestionId = dto.QuestionId,
+            SelectedAnswer = dto.SelectedAnswer,
+            AnsweredAt = UtcDateTime.Normalize(dto.AnsweredAt)
+        };
+    }
+
+    public static StudentAttemptSubmitResponseModel ToResponseModel(
+        this StudentAttemptSubmitDto dto)
+    {
+        return new StudentAttemptSubmitResponseModel
+        {
+            AttemptId = dto.AttemptId,
+            AttemptStatus = dto.AttemptStatus,
+            SubmittedAt = UtcDateTime.Normalize(dto.SubmittedAt)
+        };
+    }
+
+    public static StudentAttemptRecoveryQuestionResponseModel ToResponseModel(
+        this StudentAttemptRecoveryQuestionDto dto)
+    {
+        return new StudentAttemptRecoveryQuestionResponseModel
+        {
+            QuestionId = dto.QuestionId,
+            DisplayOrder = dto.DisplayOrder,
+            QuestionType = dto.QuestionType,
+            QuestionText = dto.QuestionText,
+            Options = dto.Options,
+            Marks = dto.Marks,
+            NegativeMarks = dto.NegativeMarks,
+            DifficultyLevel = dto.DifficultyLevel,
+            SelectedAnswer = dto.SelectedAnswer,
+            AnsweredAt = UtcDateTime.Normalize(dto.AnsweredAt)
+        };
+    }
+
+    public static StudentAttemptRecoveryResponseModel ToResponseModel(
+        this StudentAttemptRecoveryDto dto)
+    {
+        return new StudentAttemptRecoveryResponseModel
+        {
+            AttemptId = dto.AttemptId,
+            AssessmentId = dto.AssessmentId,
+            AssessmentName = dto.AssessmentName,
+            AttemptStatus = dto.AttemptStatus,
+            StartedAt = UtcDateTime.Normalize(dto.StartedAt),
+            SubmittedAt = UtcDateTime.Normalize(dto.SubmittedAt),
+            ExpiresAt = UtcDateTime.Normalize(dto.ExpiresAt),
+            RemainingSeconds = dto.RemainingSeconds,
+            DurationMinutes = dto.DurationMinutes,
+            TotalMarks = dto.TotalMarks,
+            TotalQuestions = dto.TotalQuestions,
+            AttemptedQuestions = dto.AttemptedQuestions,
+            UnansweredQuestions = dto.UnansweredQuestions,
+            Instructions = dto.Instructions,
+            Questions = dto.Questions.Select(item => item.ToResponseModel()).ToList()
+        };
+    }
 }

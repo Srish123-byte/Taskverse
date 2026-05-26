@@ -12,6 +12,7 @@
         *ngFor="let item of navItems"
         class="nav-link"
         [routerLink]="item.route"
+        (click)="handleNavigation(item.route)"
         routerLinkActive="nav-link-active"
         [routerLinkActiveOptions]="{ exact: true }">
         <img [src]="item.iconPath" [alt]="item.label" class="nav-icon" aria-hidden="true" />

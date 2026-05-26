@@ -25,9 +25,9 @@ export class HttpClientService {
       .pipe(catchError(this.formatErrors));
   }
 
-  post<T>(path: string, body: object = {}): Observable<T> {
+  post<T>(path: string, body: object = {}, params: HttpParams = new HttpParams()): Observable<T> {
     return this.http
-      .post<T>(this.httpHelperService.api + path, JSON.stringify(body), this.httpHelperService.getOptions())
+      .post<T>(this.httpHelperService.api + path, JSON.stringify(body), this.httpHelperService.getOptions(params))
       .pipe(map((response: HttpResponse<T>) => response.body as T))
       .pipe(catchError(this.formatErrors));
   }

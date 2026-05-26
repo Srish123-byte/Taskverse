@@ -19,11 +19,20 @@ public class Attempt
     [Column("student_id")]
     public Guid StudentId { get; set; }
 
+    [Column("question_id")]
+    public Guid? QuestionId { get; set; }
+
     [Column("started_at")]
     public DateTime? StartedAt { get; set; }
 
     [Column("submitted_at")]
     public DateTime? SubmittedAt { get; set; }
+
+    [Column("last_activity_at")]
+    public DateTime? LastActivityAt { get; set; }
+
+    [Column("expires_at")]
+    public DateTime? ExpiresAt { get; set; }
 
     [Column("attempt_status")]
     public AttemptStatus AttemptStatus { get; set; }
@@ -57,4 +66,6 @@ public class Attempt
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public Question? Question { get; set; }
 }

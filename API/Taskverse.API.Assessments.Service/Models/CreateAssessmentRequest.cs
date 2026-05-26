@@ -165,3 +165,130 @@ public record PagedAssessmentQuestionListRecord(
     int PageNumber,
     [property: JsonPropertyName("page_size")]
     int PageSize);
+
+public class StudentAssessmentListRequest
+{
+    [Required]
+    [JsonPropertyName("student_user_id")]
+    public Guid StudentUserId { get; set; }
+}
+
+public record StudentAssessmentListItemRecord(
+    [property: JsonPropertyName("assessment_id")]
+    Guid AssessmentId,
+    [property: JsonPropertyName("assessment_name")]
+    string AssessmentName,
+    [property: JsonPropertyName("assessment_status")]
+    string AssessmentStatus,
+    [property: JsonPropertyName("duration_minutes")]
+    int DurationMinutes,
+    [property: JsonPropertyName("total_marks")]
+    int TotalMarks,
+    [property: JsonPropertyName("difficulty_level")]
+    int DifficultyLevel,
+    [property: JsonPropertyName("start_datetime")]
+    DateTime? StartDateTime,
+    [property: JsonPropertyName("end_datetime")]
+    DateTime? EndDateTime);
+
+public record StudentAssessmentDetailRecord(
+    [property: JsonPropertyName("assessment_name")]
+    string AssessmentName,
+    [property: JsonPropertyName("duration_minutes")]
+    int DurationMinutes,
+    [property: JsonPropertyName("total_marks")]
+    int TotalMarks,
+    [property: JsonPropertyName("total_questions")]
+    int TotalQuestions,
+    [property: JsonPropertyName("start_time")]
+    DateTime? StartTime,
+    [property: JsonPropertyName("end_time")]
+    DateTime? EndTime,
+    [property: JsonPropertyName("instructions")]
+    string? Instructions);
+
+public record StudentAssessmentStartRecord(
+    [property: JsonPropertyName("attempt_id")]
+    Guid AttemptId,
+    [property: JsonPropertyName("assessment_id")]
+    Guid AssessmentId,
+    [property: JsonPropertyName("attempt_status")]
+    string AttemptStatus,
+    [property: JsonPropertyName("started_at")]
+    DateTime? StartedAt);
+
+public class SaveStudentAttemptAnswerRequest
+{
+    [JsonPropertyName("selected_answer")]
+    public string? SelectedAnswer { get; set; }
+}
+
+public record StudentAttemptAnswerRecord(
+    [property: JsonPropertyName("question_id")]
+    Guid QuestionId,
+    [property: JsonPropertyName("selected_answer")]
+    string? SelectedAnswer,
+    [property: JsonPropertyName("answered_at")]
+    DateTime? AnsweredAt);
+
+public record StudentAttemptSubmitRecord(
+    [property: JsonPropertyName("attempt_id")]
+    Guid AttemptId,
+    [property: JsonPropertyName("attempt_status")]
+    string AttemptStatus,
+    [property: JsonPropertyName("submitted_at")]
+    DateTime? SubmittedAt);
+
+public record StudentAttemptRecoveryQuestionRecord(
+    [property: JsonPropertyName("question_id")]
+    Guid QuestionId,
+    [property: JsonPropertyName("display_order")]
+    int DisplayOrder,
+    [property: JsonPropertyName("question_type")]
+    string QuestionType,
+    [property: JsonPropertyName("question_text")]
+    string QuestionText,
+    [property: JsonPropertyName("options")]
+    List<string>? Options,
+    [property: JsonPropertyName("marks")]
+    decimal Marks,
+    [property: JsonPropertyName("negative_marks")]
+    decimal NegativeMarks,
+    [property: JsonPropertyName("difficulty_level")]
+    int DifficultyLevel,
+    [property: JsonPropertyName("selected_answer")]
+    string? SelectedAnswer,
+    [property: JsonPropertyName("answered_at")]
+    DateTime? AnsweredAt);
+
+public record StudentAttemptRecoveryRecord(
+    [property: JsonPropertyName("attempt_id")]
+    Guid AttemptId,
+    [property: JsonPropertyName("assessment_id")]
+    Guid AssessmentId,
+    [property: JsonPropertyName("assessment_name")]
+    string AssessmentName,
+    [property: JsonPropertyName("attempt_status")]
+    string AttemptStatus,
+    [property: JsonPropertyName("started_at")]
+    DateTime? StartedAt,
+    [property: JsonPropertyName("submitted_at")]
+    DateTime? SubmittedAt,
+    [property: JsonPropertyName("expires_at")]
+    DateTime? ExpiresAt,
+    [property: JsonPropertyName("remaining_seconds")]
+    int RemainingSeconds,
+    [property: JsonPropertyName("duration_minutes")]
+    int DurationMinutes,
+    [property: JsonPropertyName("total_marks")]
+    int TotalMarks,
+    [property: JsonPropertyName("total_questions")]
+    int TotalQuestions,
+    [property: JsonPropertyName("attempted_questions")]
+    int AttemptedQuestions,
+    [property: JsonPropertyName("unanswered_questions")]
+    int UnansweredQuestions,
+    [property: JsonPropertyName("instructions")]
+    string? Instructions,
+    [property: JsonPropertyName("questions")]
+    List<StudentAttemptRecoveryQuestionRecord> Questions);

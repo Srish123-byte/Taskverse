@@ -2,29 +2,6 @@ using Newtonsoft.Json;
 
 namespace Taskverse.Api.MicroServices.Models;
 
-public record AssessmentModel(
-    string AssessmentId,
-    string Title,
-    string? Description,
-    string Type,
-    string? ExamId,
-    List<string>? ChallengeIds,
-    List<string> AssignedTo,
-    DateTime? DueDate,
-    bool IsActive,
-    string CreatedBy,
-    DateTime CreatedAt);
-
-public record AssessmentResultModel(
-    string ResultId,
-    string AssessmentId,
-    string UserId,
-    string Status,
-    int? Score,
-    DateTime? CompletedAt,
-    ExamResultModel? ExamResult,
-    List<CodeExecutionResultModel>? CodingResults);
-
 public record CreateQuestionBankAssessmentModel(
     [property: JsonProperty("college_id")]
     Guid CollegeId,
@@ -117,13 +94,6 @@ public record QuestionBankAssessmentModel(
     [property: JsonProperty("question_ids")]
     List<Guid> QuestionIds);
 
-public record AssessmentSummaryModel(
-    string AssessmentId,
-    string Title,
-    int TotalAssigned,
-    int TotalCompleted,
-    double? AverageScore);
-
 public record CreateQuestionModel(
     Guid CollegeId,
     string CreatedBy,
@@ -189,6 +159,128 @@ public record AssessmentQuestionListSearchModel(
     int PageNumber,
     [property: JsonProperty("page_size")]
     int PageSize);
+
+public record StudentAssessmentListSearchModel(
+    [property: JsonProperty("student_user_id")]
+    Guid StudentUserId);
+
+public record StudentAssessmentListItemModel(
+    [property: JsonProperty("assessment_id")]
+    Guid AssessmentId,
+    [property: JsonProperty("assessment_name")]
+    string AssessmentName,
+    [property: JsonProperty("assessment_status")]
+    string AssessmentStatus,
+    [property: JsonProperty("duration_minutes")]
+    int DurationMinutes,
+    [property: JsonProperty("total_marks")]
+    int TotalMarks,
+    [property: JsonProperty("difficulty_level")]
+    int DifficultyLevel,
+    [property: JsonProperty("start_datetime")]
+    DateTime? StartDateTime,
+    [property: JsonProperty("end_datetime")]
+    DateTime? EndDateTime);
+
+public record StudentAssessmentDetailModel(
+    [property: JsonProperty("assessment_name")]
+    string AssessmentName,
+    [property: JsonProperty("duration_minutes")]
+    int DurationMinutes,
+    [property: JsonProperty("total_marks")]
+    int TotalMarks,
+    [property: JsonProperty("total_questions")]
+    int TotalQuestions,
+    [property: JsonProperty("start_time")]
+    DateTime? StartTime,
+    [property: JsonProperty("end_time")]
+    DateTime? EndTime,
+    [property: JsonProperty("instructions")]
+    string? Instructions);
+
+public record StudentAssessmentStartModel(
+    [property: JsonProperty("attempt_id")]
+    Guid AttemptId,
+    [property: JsonProperty("assessment_id")]
+    Guid AssessmentId,
+    [property: JsonProperty("attempt_status")]
+    string AttemptStatus,
+    [property: JsonProperty("started_at")]
+    DateTime? StartedAt);
+
+public record SaveStudentAttemptAnswerModel(
+    [property: JsonProperty("selected_answer")]
+    string? SelectedAnswer);
+
+public record StudentAttemptAnswerModel(
+    [property: JsonProperty("question_id")]
+    Guid QuestionId,
+    [property: JsonProperty("selected_answer")]
+    string? SelectedAnswer,
+    [property: JsonProperty("answered_at")]
+    DateTime? AnsweredAt);
+
+public record StudentAttemptSubmitModel(
+    [property: JsonProperty("attempt_id")]
+    Guid AttemptId,
+    [property: JsonProperty("attempt_status")]
+    string AttemptStatus,
+    [property: JsonProperty("submitted_at")]
+    DateTime? SubmittedAt);
+
+public record StudentAttemptRecoveryQuestionModel(
+    [property: JsonProperty("question_id")]
+    Guid QuestionId,
+    [property: JsonProperty("display_order")]
+    int DisplayOrder,
+    [property: JsonProperty("question_type")]
+    string QuestionType,
+    [property: JsonProperty("question_text")]
+    string QuestionText,
+    [property: JsonProperty("options")]
+    List<string>? Options,
+    [property: JsonProperty("marks")]
+    decimal Marks,
+    [property: JsonProperty("negative_marks")]
+    decimal NegativeMarks,
+    [property: JsonProperty("difficulty_level")]
+    int DifficultyLevel,
+    [property: JsonProperty("selected_answer")]
+    string? SelectedAnswer,
+    [property: JsonProperty("answered_at")]
+    DateTime? AnsweredAt);
+
+public record StudentAttemptRecoveryModel(
+    [property: JsonProperty("attempt_id")]
+    Guid AttemptId,
+    [property: JsonProperty("assessment_id")]
+    Guid AssessmentId,
+    [property: JsonProperty("assessment_name")]
+    string AssessmentName,
+    [property: JsonProperty("attempt_status")]
+    string AttemptStatus,
+    [property: JsonProperty("started_at")]
+    DateTime? StartedAt,
+    [property: JsonProperty("submitted_at")]
+    DateTime? SubmittedAt,
+    [property: JsonProperty("expires_at")]
+    DateTime? ExpiresAt,
+    [property: JsonProperty("remaining_seconds")]
+    int RemainingSeconds,
+    [property: JsonProperty("duration_minutes")]
+    int DurationMinutes,
+    [property: JsonProperty("total_marks")]
+    int TotalMarks,
+    [property: JsonProperty("total_questions")]
+    int TotalQuestions,
+    [property: JsonProperty("attempted_questions")]
+    int AttemptedQuestions,
+    [property: JsonProperty("unanswered_questions")]
+    int UnansweredQuestions,
+    [property: JsonProperty("instructions")]
+    string? Instructions,
+    [property: JsonProperty("questions")]
+    List<StudentAttemptRecoveryQuestionModel> Questions);
 
 public record AssessmentQuestionListItemModel(
     [property: JsonProperty("question_id")]

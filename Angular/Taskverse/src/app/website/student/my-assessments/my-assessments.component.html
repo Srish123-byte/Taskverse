@@ -3,23 +3,51 @@
     <div>
       <span class="page-eyebrow">Student Portal</span>
       <h1>My Assessments</h1>
-      <p>Track upcoming exams, launch available tests, and review completed assessment activity.</p>
+      <p>Track assigned assessments, switch between active and past attempts, and stay ready for upcoming tests.</p>
+    </div>
+
+    <div class="tab-bar" role="tablist" aria-label="Assessment status filters">
+      <button
+        *ngFor="let tab of tabs"
+        type="button"
+        class="tab-button"
+        [class.tab-button-active]="activeTab === tab.key"
+        [attr.aria-selected]="activeTab === tab.key"
+        (click)="selectTab(tab.key)">
+        {{ tab.label }}
+      </button>
     </div>
   </header>
 
   <section class="page-panel">
     <div class="table-head">
-      <span>Assessment</span>
-      <span>Type</span>
-      <span>Schedule</span>
+      <span>Assessment Name</span>
       <span>Status</span>
+      <span>Duration</span>
+      <span>Total Marks</span>
+      <span>Difficulty</span>
     </div>
 
-    <div *ngFor="let assessment of assessments" class="table-row">
-      <strong>{{ assessment.title }}</strong>
-      <span>{{ assessment.type }}</span>
-      <span>{{ assessment.schedule }}</span>
-      <span class="status-pill" [ngClass]="'status-pill-' + assessment.status.toLowerCase()">{{ assessment.status }}</span>
+    <app-dashboard-loader
+      *ngIf="isLoading"
+      class="assessments-loader"
+      tone="dark"
+      title="Loading assessments"
+      copy="Fetching your active and completed assessments.">
+    </app-dashboard-loader>
+    <div *ngIf="!isLoading && errorMessage" class="panel-state panel-state-error">{{ errorMessage }}</div>
+    <div *ngIf="!isLoading && !errorMessage && assessments.length === 0" class="panel-state">
+      {{ getEmptyStateMessage() }}
+    </div>
+
+    <div *ngFor="let assessment of assessments; trackBy: trackByAssessmentId" class="table-row">
+      <strong>{{ assessment.assessmentName }}</strong>
+      <span class="status-pill" [ngClass]="'status-pill-' + assessment.assessmentStatus.toLowerCase()">
+        {{ getStatusLabel(assessment.assessmentStatus) }}
+      </span>
+      <span>{{ assessment.durationMinutes }} mins</span>
+      <span>{{ assessment.totalMarks }} Marks</span>
+      <span class="difficulty-pill">{{ getDifficultyLabel(assessment.difficultyLevel) }}</span>
     </div>
   </section>
 </section>
