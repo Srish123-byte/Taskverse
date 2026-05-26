@@ -143,6 +143,14 @@ public static class AssessmentMappings
             UtcDateTime.Normalize(attemptAnswer.AnsweredAt));
     }
 
+    public static StudentAttemptSubmitRecord ToStudentAttemptSubmitRecord(this Attempt attempt)
+    {
+        return new StudentAttemptSubmitRecord(
+            attempt.AttemptId,
+            attempt.AttemptStatus.ToString().ToUpperInvariant(),
+            UtcDateTime.Normalize(attempt.SubmittedAt));
+    }
+
     public static StudentAttemptRecoveryRecord ToStudentAttemptRecoveryRecord(
         this Attempt attempt,
         Assessment assessment,

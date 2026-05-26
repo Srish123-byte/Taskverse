@@ -107,4 +107,12 @@ public partial class MicroServiceOrchestrator
 
         return await Put<StudentAttemptAnswerModel>(url, model);
     }
+
+    public async Task<ObjectResult> SubmitStudentAttempt(Guid attemptId, Guid studentUserId)
+    {
+        var url =
+            $"{GetMicroServiceUrl(MicroService.Assessment)}api/student/attempts/{attemptId}/submit?studentUserId={studentUserId}";
+
+        return await Post<StudentAttemptSubmitModel>(url, new { });
+    }
 }

@@ -390,6 +390,55 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    [HttpPost("/api/student/attempts/{attemptId:guid}/submit")]
+    [ProducesResponseType(typeof(StudentAttemptSubmitRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<StudentAttemptSubmitRecord>> SubmitStudentAttempt(
+        Guid attemptId,
+        [FromQuery] Guid studentUserId)
+    {
+        try
+        {
+            var result = await _assessmentManager.SubmitStudentAttempt(attemptId, studentUserId);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (DbUpdateException ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "A database error occurred while submitting the student assessment attempt.",
+                "StudentAttemptSubmitDatabaseError");
+        }
+        catch (PostgresException ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "A PostgreSQL error occurred while submitting the student assessment attempt.",
+                "StudentAttemptSubmitPostgresError");
+        }
+        catch (Exception ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while submitting the student assessment attempt.");
+        }
+    }
+
     [HttpPut("/api/student/attempts/{attemptId:guid}/{questionId:guid}/answers")]
     [ProducesResponseType(typeof(StudentAttemptAnswerRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

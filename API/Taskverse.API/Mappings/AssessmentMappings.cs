@@ -260,6 +260,17 @@ public static class AssessmentMappings
         };
     }
 
+    public static StudentAttemptSubmitResponseModel ToResponseModel(
+        this StudentAttemptSubmitDto dto)
+    {
+        return new StudentAttemptSubmitResponseModel
+        {
+            AttemptId = dto.AttemptId,
+            AttemptStatus = dto.AttemptStatus,
+            SubmittedAt = UtcDateTime.Normalize(dto.SubmittedAt)
+        };
+    }
+
     public static StudentAttemptRecoveryQuestionResponseModel ToResponseModel(
         this StudentAttemptRecoveryQuestionDto dto)
     {

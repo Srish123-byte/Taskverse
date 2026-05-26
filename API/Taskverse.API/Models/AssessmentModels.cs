@@ -185,6 +185,13 @@ public class StudentAttemptAnswerResponseModel
     public DateTime? AnsweredAt { get; set; }
 }
 
+public class StudentAttemptSubmitResponseModel
+{
+    public Guid AttemptId { get; set; }
+    public string AttemptStatus { get; set; } = string.Empty;
+    public DateTime? SubmittedAt { get; set; }
+}
+
 public class StudentAttemptRecoveryQuestionResponseModel
 {
     public Guid QuestionId { get; set; }

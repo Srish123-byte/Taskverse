@@ -188,6 +188,13 @@ public class StudentAttemptAnswerDto
     public DateTime? AnsweredAt { get; set; }
 }
 
+public class StudentAttemptSubmitDto
+{
+    public Guid AttemptId { get; set; }
+    public string AttemptStatus { get; set; } = default!;
+    public DateTime? SubmittedAt { get; set; }
+}
+
 public class StudentAttemptRecoveryQuestionDto
 {
     public Guid QuestionId { get; set; }

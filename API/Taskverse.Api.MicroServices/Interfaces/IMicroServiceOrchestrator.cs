@@ -42,6 +42,7 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> StartStudentAssessment(Guid assessmentId, Guid studentUserId);
     Task<ObjectResult> GetStudentAttemptRecovery(Guid attemptId, Guid studentUserId);
     Task<ObjectResult> SaveStudentAttemptAnswer(Guid attemptId, Guid questionId, Guid studentUserId, SaveStudentAttemptAnswerModel model);
+    Task<ObjectResult> SubmitStudentAttempt(Guid attemptId, Guid studentUserId);
 
     // Reports
     Task<ObjectResult> GenerateReport(GenerateReportRequestModel model);

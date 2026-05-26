@@ -356,6 +356,9 @@ public class TaskverseContext : DbContext
             entity.HasIndex(a => a.AssessmentId);
             entity.HasIndex(a => a.StudentId);
             entity.HasIndex(a => a.QuestionId);
+            entity.HasIndex(a => new { a.AssessmentId, a.StudentId })
+                .IsUnique()
+                .HasDatabaseName("ux_attempts_assessment_student");
 
             entity.HasOne(a => a.Question)
                 .WithMany(q => q.Attempts)

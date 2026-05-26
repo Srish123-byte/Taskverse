@@ -220,6 +220,14 @@ public record StudentAttemptAnswerModel(
     [property: JsonProperty("answered_at")]
     DateTime? AnsweredAt);
 
+public record StudentAttemptSubmitModel(
+    [property: JsonProperty("attempt_id")]
+    Guid AttemptId,
+    [property: JsonProperty("attempt_status")]
+    string AttemptStatus,
+    [property: JsonProperty("submitted_at")]
+    DateTime? SubmittedAt);
+
 public record StudentAttemptRecoveryQuestionModel(
     [property: JsonProperty("question_id")]
     Guid QuestionId,

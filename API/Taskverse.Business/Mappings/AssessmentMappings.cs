@@ -200,6 +200,14 @@ public static class AssessmentMappings
             AnsweredAt = UtcDateTime.Normalize(model.AnsweredAt)
         };
 
+    public static StudentAttemptSubmitDto ToDto(this StudentAttemptSubmitModel model)
+        => new()
+        {
+            AttemptId = model.AttemptId,
+            AttemptStatus = model.AttemptStatus,
+            SubmittedAt = UtcDateTime.Normalize(model.SubmittedAt)
+        };
+
     public static StudentAttemptRecoveryQuestionDto ToDto(this StudentAttemptRecoveryQuestionModel model)
         => new()
         {

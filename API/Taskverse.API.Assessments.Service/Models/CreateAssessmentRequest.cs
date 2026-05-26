@@ -231,6 +231,14 @@ public record StudentAttemptAnswerRecord(
     [property: JsonPropertyName("answered_at")]
     DateTime? AnsweredAt);
 
+public record StudentAttemptSubmitRecord(
+    [property: JsonPropertyName("attempt_id")]
+    Guid AttemptId,
+    [property: JsonPropertyName("attempt_status")]
+    string AttemptStatus,
+    [property: JsonPropertyName("submitted_at")]
+    DateTime? SubmittedAt);
+
 public record StudentAttemptRecoveryQuestionRecord(
     [property: JsonPropertyName("question_id")]
     Guid QuestionId,

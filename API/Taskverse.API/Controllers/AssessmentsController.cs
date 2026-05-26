@@ -670,6 +670,61 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    [HttpPost("/api/student/attempts/{attemptId:guid}/submit")]
+    [SwaggerResponse(200, "Attempt submitted for the logged-in student", typeof(StudentAttemptSubmitResponseModel))]
+    [SwaggerResponse(400, "Invalid student context or request")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Attempt not found")]
+    [SwaggerResponse(409, "Attempt already submitted or auto-submitted")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> SubmitStudentAttempt(Guid attemptId)
+    {
+        var accessCheck = EnsureStudentAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var currentUserId = GetCurrentUserId();
+        if (!currentUserId.HasValue)
+        {
+            return BadRequest(new { message = "Student user context is missing or invalid." });
+        }
+
+        try
+        {
+            var dto = await _assessmentOrchestrator.SubmitStudentAttempt(attemptId, currentUserId.Value);
+            return Ok(dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            _logger.LogError(
+                ex,
+                "Unhandled student attempt submit error for attemptId={AttemptId}, userId={UserId}",
+                attemptId,
+                currentUserId.Value);
+            return Problem(
+                detail: detail,
+                title: detail,
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
     [HttpPut("/api/student/attempts/{attemptId:guid}/{questionId:guid}/answers")]
     [SwaggerResponse(200, "Attempt answer saved for the logged-in student", typeof(StudentAttemptAnswerResponseModel))]
     [SwaggerResponse(400, "Invalid student context or request")]

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Npgsql;
 using Taskverse.API.Assessments.Service.Mappings;
 using Taskverse.API.Assessments.Service.Models;
 using Taskverse.API.Assessments.Service.Services;
@@ -259,7 +260,28 @@ public class AssessmentManager : IAssessmentManager
 
         var attempt = CreateInProgressAttempt(student.StudentId, assessment);
         _context.Attempts.Add(attempt);
-        await SaveChangesWithWrapAsync("Unable to start the assessment attempt.");
+
+        try
+        {
+            await SaveChangesWithWrapAsync("Unable to start the assessment attempt.");
+        }
+        catch (InvalidOperationException ex) when (IsDuplicateStudentAttempt(ex))
+        {
+            var existingAttempt = await GetLatestAttemptAsync(student.StudentId, assessmentId);
+            if (existingAttempt is not null)
+            {
+                if (existingAttempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
+                {
+                    throw new InvalidOperationException(
+                        "This assessment has already been submitted by the current student.");
+                }
+
+                throw new InvalidOperationException(
+                    $"An active attempt already exists for this assessment. Recover it using attempt id '{existingAttempt.AttemptId}'.");
+            }
+
+            throw;
+        }
 
         return attempt.ToStudentAssessmentStartRecord();
     }
@@ -351,6 +373,39 @@ public class AssessmentManager : IAssessmentManager
         await SaveChangesWithWrapAsync("Unable to save the assessment answer.");
 
         return savedAnswer.ToStudentAttemptAnswerRecord();
+    }
+
+    public async Task<StudentAttemptSubmitRecord> SubmitStudentAttempt(Guid attemptId, Guid studentUserId)
+    {
+        if (attemptId == Guid.Empty)
+        {
+            throw new ArgumentException("Attempt id is required.");
+        }
+
+        ValidateStudentAttemptRequest(Guid.Empty, studentUserId, validateAssessmentId: false);
+
+        var student = await GetStudentByUserIdAsync(studentUserId);
+        var attempt = await GetAttemptForStudentAsync(attemptId, student.StudentId);
+        var assessment = await GetAssessmentForAttemptRecoveryAsync(attempt.AssessmentId, student);
+
+        if (attempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
+        {
+            throw new InvalidOperationException("This assessment attempt has already been submitted.");
+        }
+
+        var submittedAt = DateTime.UtcNow;
+        var isExpired = IsAttemptExpired(attempt, assessment, out var expiresAt);
+        var finalStatus = isExpired ? AttemptStatus.Auto_Submitted : AttemptStatus.Submitted;
+        var effectiveSubmittedAt = isExpired ? expiresAt : submittedAt;
+        var effectiveExpiresAt = isExpired
+            ? expiresAt
+            : attempt.ExpiresAt
+              ?? assessment.EndDateTime
+              ?? attempt.StartedAt?.AddMinutes(assessment.DurationMinutes)
+              ?? submittedAt;
+
+        var finalizedAttempt = await FinalizeAttemptAsync(attempt, effectiveSubmittedAt, effectiveExpiresAt, finalStatus);
+        return finalizedAttempt.ToStudentAttemptSubmitRecord();
     }
 
     private async Task<SubjectTopicResolver.Resolution> ResolveAssessmentClassificationAsync(Assessment assessment)
@@ -873,26 +928,12 @@ public class AssessmentManager : IAssessmentManager
 
     private async Task AutoSubmitAttemptAsync(Attempt attempt, DateTime expiresAt)
     {
-        attempt.ExpiresAt = expiresAt;
-        attempt.AttemptStatus = AttemptStatus.Auto_Submitted;
-        attempt.SubmittedAt = expiresAt;
-        attempt.LastActivityAt = expiresAt;
-        attempt.TimeTakenSeconds = CalculateTimeTakenSeconds(attempt.StartedAt, expiresAt);
-
-        await RefreshAttemptProgressAsync(attempt);
-        await SaveChangesWithWrapAsync("Unable to auto-submit the expired assessment attempt.");
+        await FinalizeAttemptAsync(attempt, expiresAt, expiresAt, AttemptStatus.Auto_Submitted);
     }
 
     private async Task RefreshAttemptProgressAsync(Attempt attempt)
     {
-        var attemptedQuestions = await _context.AttemptAnswers
-            .Where(item =>
-                item.AttemptId == attempt.AttemptId &&
-                item.SelectedAnswer != null &&
-                item.SelectedAnswer != string.Empty)
-            .Select(item => item.QuestionId)
-            .Distinct()
-            .CountAsync();
+        var attemptedQuestions = await GetAttemptedQuestionCountAsync(attempt.AttemptId);
 
         attempt.AttemptedQuestions = attemptedQuestions;
         attempt.UnansweredQuestions = Math.Max(0, attempt.TotalQuestions - attemptedQuestions);
@@ -959,6 +1000,78 @@ public class AssessmentManager : IAssessmentManager
         {
             throw new InvalidOperationException(errorMessage, ex);
         }
+    }
+
+    private async Task<Attempt> FinalizeAttemptAsync(
+        Attempt attempt,
+        DateTime submittedAt,
+        DateTime expiresAt,
+        AttemptStatus finalStatus)
+    {
+        var attemptedQuestions = await GetAttemptedQuestionCountAsync(attempt.AttemptId);
+        var unansweredQuestions = Math.Max(0, attempt.TotalQuestions - attemptedQuestions);
+        var timeTakenSeconds = CalculateTimeTakenSeconds(attempt.StartedAt, submittedAt);
+
+        try
+        {
+            var affectedRows = await _context.Attempts
+                .Where(item =>
+                    item.AttemptId == attempt.AttemptId &&
+                    item.StudentId == attempt.StudentId &&
+                    item.AttemptStatus == AttemptStatus.In_Progress)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(item => item.AttemptStatus, finalStatus)
+                    .SetProperty(item => item.SubmittedAt, submittedAt)
+                    .SetProperty(item => item.LastActivityAt, submittedAt)
+                    .SetProperty(item => item.ExpiresAt, expiresAt)
+                    .SetProperty(item => item.TimeTakenSeconds, timeTakenSeconds)
+                    .SetProperty(item => item.AttemptedQuestions, attemptedQuestions)
+                    .SetProperty(item => item.UnansweredQuestions, unansweredQuestions));
+
+            if (affectedRows == 0)
+            {
+                var currentAttempt = await _context.Attempts
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(item =>
+                        item.AttemptId == attempt.AttemptId &&
+                        item.StudentId == attempt.StudentId);
+
+                if (currentAttempt is not null &&
+                    currentAttempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
+                {
+                    throw new InvalidOperationException("This assessment attempt has already been submitted.");
+                }
+
+                throw new InvalidOperationException("This assessment attempt could not be submitted.");
+            }
+
+            await _context.Entry(attempt).ReloadAsync();
+            return attempt;
+        }
+        catch (DbUpdateException ex)
+        {
+            throw new InvalidOperationException("Unable to submit the assessment attempt.", ex);
+        }
+    }
+
+    private async Task<int> GetAttemptedQuestionCountAsync(Guid attemptId)
+    {
+        return await _context.AttemptAnswers
+            .Where(item =>
+                item.AttemptId == attemptId &&
+                item.SelectedAnswer != null &&
+                item.SelectedAnswer != string.Empty)
+            .Select(item => item.QuestionId)
+            .Distinct()
+            .CountAsync();
+    }
+
+    private static bool IsDuplicateStudentAttempt(InvalidOperationException exception)
+    {
+        return exception.InnerException is DbUpdateException dbUpdateException &&
+               dbUpdateException.InnerException is PostgresException postgresException &&
+               postgresException.SqlState == PostgresErrorCodes.UniqueViolation &&
+               string.Equals(postgresException.ConstraintName, "ux_attempts_assessment_student", StringComparison.Ordinal);
     }
 
     private static void ValidateAssessment(Assessment assessment, List<Guid> questionIds)
