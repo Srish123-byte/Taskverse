@@ -39,6 +39,23 @@ public static class ReportMappings
             ReportGeneratedAt = model.ReportGeneratedAt
         };
 
+    public static StudentResultDto ToDto(this StudentResultModel model)
+        => new()
+        {
+            ResultId = model.ResultId,
+            AssessmentId = model.AssessmentId,
+            AssessmentName = model.AssessmentName,
+            AttemptId = model.AttemptId,
+            StudentId = model.StudentId,
+            TotalMarks = model.TotalMarks,
+            ObtainedMarks = model.ObtainedMarks,
+            Percentage = model.Percentage,
+            Rank = model.Rank,
+            ResultStatus = model.ResultStatus,
+            GeneratedAt = model.GeneratedAt,
+            HasPendingCodingEvaluation = model.HasPendingCodingEvaluation
+        };
+
     public static GenerateReportRequestModel ToMicroServiceModel(this GenerateReportDto dto)
         => new(dto.Type, dto.UserId, dto.AssessmentId, dto.ExamId, dto.DateFrom, dto.DateTo);
 }

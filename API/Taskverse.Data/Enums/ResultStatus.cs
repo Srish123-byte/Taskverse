@@ -6,5 +6,6 @@ namespace Taskverse.Business.Enums;
 public enum ResultStatus
 {
     Pass = 1,
-    Fail = 2
+    Fail = 2,
+    Pending = 3
 }

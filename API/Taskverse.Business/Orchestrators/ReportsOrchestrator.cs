@@ -82,4 +82,17 @@ public class ReportsOrchestrator : IReportsOrchestrator
 
         return models.Select(r => r.ToDto()).ToList();
     }
+
+    public async Task<List<StudentResultDto>> GetStudentResults(Guid studentId)
+    {
+        _log.Debug($"ReportsOrchestrator.GetStudentResults: studentId={studentId}");
+
+        var result = await _microServiceOrchestrator.GetStudentResults(studentId);
+        result.EnsureSuccess(nameof(GetStudentResults));
+
+        List<StudentResultModel> models = result.DeserializeValue<List<StudentResultModel>>()
+            ?? throw new InvalidOperationException($"GetStudentResults returned an empty response for studentId={studentId}.");
+
+        return models.Select(item => item.ToDto()).ToList();
+    }
 }

@@ -32,3 +32,17 @@ public record AssessmentReportModel(
     double AverageScore,
     double PassRate,
     DateTime ReportGeneratedAt);
+
+public record StudentResultModel(
+    Guid ResultId,
+    Guid AssessmentId,
+    string AssessmentName,
+    Guid AttemptId,
+    Guid StudentId,
+    decimal TotalMarks,
+    decimal ObtainedMarks,
+    decimal Percentage,
+    int Rank,
+    string ResultStatus,
+    DateTime GeneratedAt,
+    bool HasPendingCodingEvaluation);

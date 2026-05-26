@@ -224,3 +224,19 @@ public class StudentAttemptRecoveryResponseModel
     public string? Instructions { get; set; }
     public List<StudentAttemptRecoveryQuestionResponseModel> Questions { get; set; } = [];
 }
+
+public class StudentResultResponseModel
+{
+    public Guid ResultId { get; set; }
+    public Guid AssessmentId { get; set; }
+    public string AssessmentName { get; set; } = string.Empty;
+    public Guid AttemptId { get; set; }
+    public Guid StudentId { get; set; }
+    public decimal TotalMarks { get; set; }
+    public decimal ObtainedMarks { get; set; }
+    public decimal Percentage { get; set; }
+    public int Rank { get; set; }
+    public string ResultStatus { get; set; } = string.Empty;
+    public DateTime GeneratedAt { get; set; }
+    public bool HasPendingCodingEvaluation { get; set; }
+}

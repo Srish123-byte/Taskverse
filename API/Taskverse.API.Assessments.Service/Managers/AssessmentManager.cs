@@ -18,15 +18,21 @@ public class AssessmentManager : IAssessmentManager
     private readonly TaskverseContext _context;
     private readonly AssessmentSettings _assessmentSettings;
     private readonly IStudentAttemptAnswerSaveStrategyFactory _studentAttemptAnswerSaveStrategyFactory;
+    private readonly IReportsServiceClient _reportsServiceClient;
+    private readonly ILogger<AssessmentManager> _logger;
 
     public AssessmentManager(
         TaskverseContext context,
         IOptions<AssessmentSettings> assessmentSettings,
-        IStudentAttemptAnswerSaveStrategyFactory studentAttemptAnswerSaveStrategyFactory)
+        IStudentAttemptAnswerSaveStrategyFactory studentAttemptAnswerSaveStrategyFactory,
+        IReportsServiceClient reportsServiceClient,
+        ILogger<AssessmentManager> logger)
     {
         _context = context;
         _assessmentSettings = assessmentSettings.Value;
         _studentAttemptAnswerSaveStrategyFactory = studentAttemptAnswerSaveStrategyFactory;
+        _reportsServiceClient = reportsServiceClient;
+        _logger = logger;
     }
 
     public async Task<Assessment> CreateAssessment(Assessment assessment, List<Guid> questionIds)
@@ -1046,6 +1052,7 @@ public class AssessmentManager : IAssessmentManager
             }
 
             await _context.Entry(attempt).ReloadAsync();
+            await TryEvaluateAttemptResultAsync(attempt.AttemptId);
             return attempt;
         }
         catch (DbUpdateException ex)
@@ -1064,6 +1071,21 @@ public class AssessmentManager : IAssessmentManager
             .Select(item => item.QuestionId)
             .Distinct()
             .CountAsync();
+    }
+
+    private async Task TryEvaluateAttemptResultAsync(Guid attemptId)
+    {
+        try
+        {
+            await _reportsServiceClient.EvaluateAttemptAsync(attemptId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Attempt {AttemptId} was finalized but result evaluation in Reports service did not complete.",
+                attemptId);
+        }
     }
 
     private static bool IsDuplicateStudentAttempt(InvalidOperationException exception)

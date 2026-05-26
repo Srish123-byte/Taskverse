@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Npgsql;
 using Taskverse.API.Assessments.Service.Managers;
 using Taskverse.API.Assessments.Service.Models;
@@ -71,6 +72,18 @@ public class Startup
         services.AddScoped<IAssessmentManager, AssessmentManager>();
         services.AddScoped<IStudentAttemptAnswerSaveStrategyFactory, StudentAttemptAnswerSaveStrategyFactory>();
         services.AddScoped<IStudentAttemptAnswerSaveStrategy, ObjectiveStudentAttemptAnswerSaveStrategy>();
+        services.AddHttpClient<IReportsServiceClient, ReportsServiceClient>((serviceProvider, client) =>
+        {
+            var settings = serviceProvider.GetRequiredService<IOptions<ReportsServiceSettings>>().Value;
+
+            if (string.IsNullOrWhiteSpace(settings.BaseUrl))
+            {
+                throw new InvalidOperationException("ReportsService:BaseUrl is missing.");
+            }
+
+            client.BaseAddress = new Uri(settings.BaseUrl, UriKind.Absolute);
+            client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds > 0 ? settings.TimeoutSeconds : 30);
+        });
         services.AddScoped<IWhatsAppNotificationService, WhatsAppNotificationService>();
         services.AddHostedService<AssessmentStatusTransitionService>();
     }
@@ -79,6 +92,7 @@ public class Startup
     {
         services.Configure<AssessmentSettings>(Configuration.GetSection("AssessmentSettings"));
         services.Configure<AssessmentStatusTransitionSettings>(Configuration.GetSection("AssessmentStatusTransition"));
+        services.Configure<ReportsServiceSettings>(Configuration.GetSection("ReportsService"));
     }
 
     private static void ConfigureSwagger(IServiceCollection services)

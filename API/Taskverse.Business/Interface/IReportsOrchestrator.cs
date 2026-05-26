@@ -9,4 +9,5 @@ public interface IReportsOrchestrator
     Task<UserPerformanceReportDto> GetUserPerformanceReport(string userId);
     Task<AssessmentReportDto> GetAssessmentReport(string assessmentId);
     Task<List<ReportDto>> GetReportsByUser(string userId);
+    Task<List<StudentResultDto>> GetStudentResults(Guid studentId);
 }

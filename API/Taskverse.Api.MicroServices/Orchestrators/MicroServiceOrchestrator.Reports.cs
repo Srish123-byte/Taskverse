@@ -35,4 +35,10 @@ public partial class MicroServiceOrchestrator
         var url = $"{GetMicroServiceUrl(MicroService.Reports)}reports/user/{userId}";
         return await Get<List<ReportModel>>(url);
     }
+
+    public async Task<ObjectResult> GetStudentResults(Guid studentId)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Reports)}api/results/students/{studentId}";
+        return await Get<List<StudentResultModel>>(url);
+    }
 }
