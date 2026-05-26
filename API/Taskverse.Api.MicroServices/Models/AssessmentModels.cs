@@ -209,8 +209,6 @@ public record StudentAssessmentStartModel(
     DateTime? StartedAt);
 
 public record SaveStudentAttemptAnswerModel(
-    [property: JsonProperty("question_id")]
-    Guid QuestionId,
     [property: JsonProperty("selected_answer")]
     string? SelectedAnswer);
 

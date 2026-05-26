@@ -175,7 +175,6 @@ public class StudentAssessmentStartResponseModel
 
 public class SaveStudentAttemptAnswerRequestModel
 {
-    public Guid QuestionId { get; set; }
     public string? SelectedAnswer { get; set; }
 }
 

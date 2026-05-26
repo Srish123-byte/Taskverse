@@ -83,4 +83,6 @@ public class Question
 
     [NotMapped]
     public Guid? TopicId { get; set; }
+
+    public ICollection<Attempt> Attempts { get; set; } = [];
 }

@@ -289,6 +289,7 @@ public class AssessmentManager : IAssessmentManager
 
     public async Task<StudentAttemptAnswerRecord> SaveStudentAttemptAnswer(
         Guid attemptId,
+        Guid questionId,
         Guid studentUserId,
         SaveStudentAttemptAnswerRequest request)
     {
@@ -304,7 +305,7 @@ public class AssessmentManager : IAssessmentManager
             throw new ArgumentException("Attempt answer request is required.");
         }
 
-        if (request.QuestionId == Guid.Empty)
+        if (questionId == Guid.Empty)
         {
             throw new ArgumentException("Question id is required.");
         }
@@ -324,25 +325,26 @@ public class AssessmentManager : IAssessmentManager
         }
 
         var assessmentQuestion = assessment.AssessmentQuestions
-            .FirstOrDefault(item => item.QuestionId == request.QuestionId);
+            .FirstOrDefault(item => item.QuestionId == questionId);
 
         if (assessmentQuestion is null)
         {
-            throw new KeyNotFoundException($"Question '{request.QuestionId}' was not found in this assessment attempt.");
+            throw new KeyNotFoundException($"Question '{questionId}' was not found in this assessment attempt.");
         }
 
         var question = await _context.Questions
-            .FirstOrDefaultAsync(item => item.QuestionId == request.QuestionId);
+            .FirstOrDefaultAsync(item => item.QuestionId == questionId);
 
         if (question is null)
         {
-            throw new KeyNotFoundException($"Question '{request.QuestionId}' was not found.");
+            throw new KeyNotFoundException($"Question '{questionId}' was not found.");
         }
 
         var answeredAt = DateTime.UtcNow;
         var strategy = _studentAttemptAnswerSaveStrategyFactory.Resolve(question.QuestionType);
         var savedAnswer = await strategy.SaveAsync(_context, attempt, question, request, answeredAt);
 
+        attempt.QuestionId = questionId;
         attempt.LastActivityAt = answeredAt;
         await RefreshAttemptProgressAsync(attempt);
 

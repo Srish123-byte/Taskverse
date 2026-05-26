@@ -245,7 +245,6 @@ public static class AssessmentMappings
     {
         return new SaveStudentAttemptAnswerDto
         {
-            QuestionId = model.QuestionId,
             SelectedAnswer = model.SelectedAnswer
         };
     }

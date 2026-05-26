@@ -190,7 +190,6 @@ public static class AssessmentMappings
 
     public static SaveStudentAttemptAnswerModel ToMicroServiceModel(this SaveStudentAttemptAnswerDto dto)
         => new(
-            dto.QuestionId,
             dto.SelectedAnswer);
 
     public static StudentAttemptAnswerDto ToDto(this StudentAttemptAnswerModel model)

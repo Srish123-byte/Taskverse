@@ -670,7 +670,7 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
-    [HttpPut("/api/student/attempts/{attemptId:guid}/answers")]
+    [HttpPut("/api/student/attempts/{attemptId:guid}/{questionId:guid}/answers")]
     [SwaggerResponse(200, "Attempt answer saved for the logged-in student", typeof(StudentAttemptAnswerResponseModel))]
     [SwaggerResponse(400, "Invalid student context or request")]
     [SwaggerResponse(403, "Forbidden")]
@@ -680,6 +680,7 @@ public class AssessmentsController : TaskverseBaseController
     [SwaggerResponse(500, "Unexpected error")]
     public async Task<IActionResult> SaveStudentAttemptAnswer(
         Guid attemptId,
+        Guid questionId,
         [FromBody] SaveStudentAttemptAnswerRequestModel model)
     {
         var accessCheck = EnsureStudentAccess();
@@ -700,6 +701,7 @@ public class AssessmentsController : TaskverseBaseController
         {
             var dto = await _assessmentOrchestrator.SaveStudentAttemptAnswer(
                 attemptId,
+                questionId,
                 currentUserId.Value,
                 model.ToDto());
 

@@ -390,7 +390,7 @@ public class AssessmentController : ControllerBase
         }
     }
 
-    [HttpPut("/api/student/attempts/{attemptId:guid}/answers")]
+    [HttpPut("/api/student/attempts/{attemptId:guid}/{questionId:guid}/answers")]
     [ProducesResponseType(typeof(StudentAttemptAnswerRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -398,6 +398,7 @@ public class AssessmentController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<StudentAttemptAnswerRecord>> SaveStudentAttemptAnswer(
         Guid attemptId,
+        Guid questionId,
         [FromQuery] Guid studentUserId,
         [FromBody] SaveStudentAttemptAnswerRequest request)
     {
@@ -408,7 +409,7 @@ public class AssessmentController : ControllerBase
 
         try
         {
-            var result = await _assessmentManager.SaveStudentAttemptAnswer(attemptId, studentUserId, request);
+            var result = await _assessmentManager.SaveStudentAttemptAnswer(attemptId, questionId, studentUserId, request);
             return Ok(result);
         }
         catch (ArgumentException ex)

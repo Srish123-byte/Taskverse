@@ -13,5 +13,5 @@ public interface IAssessmentManager
     Task<StudentAssessmentDetailRecord> GetStudentAssessmentDetail(Guid assessmentId, Guid studentUserId);
     Task<StudentAssessmentStartRecord> StartStudentAssessment(Guid assessmentId, Guid studentUserId);
     Task<StudentAttemptRecoveryRecord> GetStudentAttemptRecovery(Guid attemptId, Guid studentUserId);
-    Task<StudentAttemptAnswerRecord> SaveStudentAttemptAnswer(Guid attemptId, Guid studentUserId, SaveStudentAttemptAnswerRequest request);
+    Task<StudentAttemptAnswerRecord> SaveStudentAttemptAnswer(Guid attemptId, Guid questionId, Guid studentUserId, SaveStudentAttemptAnswerRequest request);
 }

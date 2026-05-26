@@ -16,5 +16,5 @@ public interface IAssessmentOrchestrator
     Task<StudentAssessmentDetailDto> GetStudentAssessmentDetail(Guid assessmentId, Guid studentUserId);
     Task<StudentAssessmentStartDto> StartStudentAssessment(Guid assessmentId, Guid studentUserId);
     Task<StudentAttemptRecoveryDto> GetStudentAttemptRecovery(Guid attemptId, Guid studentUserId);
-    Task<StudentAttemptAnswerDto> SaveStudentAttemptAnswer(Guid attemptId, Guid studentUserId, SaveStudentAttemptAnswerDto dto);
+    Task<StudentAttemptAnswerDto> SaveStudentAttemptAnswer(Guid attemptId, Guid questionId, Guid studentUserId, SaveStudentAttemptAnswerDto dto);
 }

@@ -336,6 +336,7 @@ public class TaskverseContext : DbContext
             entity.Property(a => a.AttemptId).HasColumnName("attempt_id").HasDefaultValueSql("gen_random_uuid()");
             entity.Property(a => a.AssessmentId).HasColumnName("assessment_id");
             entity.Property(a => a.StudentId).HasColumnName("student_id");
+            entity.Property(a => a.QuestionId).HasColumnName("question_id");
             entity.Property(a => a.StartedAt).HasColumnName("started_at");
             entity.Property(a => a.SubmittedAt).HasColumnName("submitted_at");
             entity.Property(a => a.LastActivityAt).HasColumnName("last_activity_at");
@@ -354,6 +355,13 @@ public class TaskverseContext : DbContext
 
             entity.HasIndex(a => a.AssessmentId);
             entity.HasIndex(a => a.StudentId);
+            entity.HasIndex(a => a.QuestionId);
+
+            entity.HasOne(a => a.Question)
+                .WithMany(q => q.Attempts)
+                .HasForeignKey(a => a.QuestionId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_attempts_question");
         });
 
         // Configure Question entity

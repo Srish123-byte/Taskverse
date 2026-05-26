@@ -378,14 +378,16 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
 
     public async Task<StudentAttemptAnswerDto> SaveStudentAttemptAnswer(
         Guid attemptId,
+        Guid questionId,
         Guid studentUserId,
         SaveStudentAttemptAnswerDto dto)
     {
         _log.Debug(
-            $"AssessmentOrchestrator.SaveStudentAttemptAnswer: attemptId={attemptId}, studentUserId={studentUserId}, questionId={dto.QuestionId}");
+            $"AssessmentOrchestrator.SaveStudentAttemptAnswer: attemptId={attemptId}, studentUserId={studentUserId}, questionId={questionId}");
 
         var result = await _microServiceOrchestrator.SaveStudentAttemptAnswer(
             attemptId,
+            questionId,
             studentUserId,
             dto.ToMicroServiceModel());
 

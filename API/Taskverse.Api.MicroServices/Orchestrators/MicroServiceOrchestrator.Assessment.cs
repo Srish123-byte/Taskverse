@@ -98,11 +98,12 @@ public partial class MicroServiceOrchestrator
 
     public async Task<ObjectResult> SaveStudentAttemptAnswer(
         Guid attemptId,
+        Guid questionId,
         Guid studentUserId,
         SaveStudentAttemptAnswerModel model)
     {
         var url =
-            $"{GetMicroServiceUrl(MicroService.Assessment)}api/student/attempts/{attemptId}/answers?studentUserId={studentUserId}";
+            $"{GetMicroServiceUrl(MicroService.Assessment)}api/student/attempts/{attemptId}/{questionId}/answers?studentUserId={studentUserId}";
 
         return await Put<StudentAttemptAnswerModel>(url, model);
     }

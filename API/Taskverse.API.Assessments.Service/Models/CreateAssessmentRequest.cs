@@ -219,10 +219,6 @@ public record StudentAssessmentStartRecord(
 
 public class SaveStudentAttemptAnswerRequest
 {
-    [Required]
-    [JsonPropertyName("question_id")]
-    public Guid QuestionId { get; set; }
-
     [JsonPropertyName("selected_answer")]
     public string? SelectedAnswer { get; set; }
 }

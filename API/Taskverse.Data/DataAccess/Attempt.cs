@@ -19,6 +19,9 @@ public class Attempt
     [Column("student_id")]
     public Guid StudentId { get; set; }
 
+    [Column("question_id")]
+    public Guid? QuestionId { get; set; }
+
     [Column("started_at")]
     public DateTime? StartedAt { get; set; }
 
@@ -63,4 +66,6 @@ public class Attempt
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public Question? Question { get; set; }
 }
