@@ -215,4 +215,13 @@ public static class AssessmentMappings
             EndTime = UtcDateTime.Normalize(model.EndTime),
             Instructions = model.Instructions
         };
+
+    public static StudentAssessmentStartDto ToDto(this StudentAssessmentStartModel model)
+        => new()
+        {
+            AttemptId = model.AttemptId,
+            AssessmentId = model.AssessmentId,
+            AttemptStatus = model.AttemptStatus,
+            StartedAt = UtcDateTime.Normalize(model.StartedAt)
+        };
 }

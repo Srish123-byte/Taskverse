@@ -103,4 +103,12 @@ public partial class MicroServiceOrchestrator
 
         return await Get<StudentAssessmentDetailModel>(url);
     }
+
+    public async Task<ObjectResult> StartStudentAssessment(Guid assessmentId, Guid studentUserId)
+    {
+        var url =
+            $"{GetMicroServiceUrl(MicroService.Assessment)}api/student/assessments/{assessmentId}/start?studentUserId={studentUserId}";
+
+        return await Post<StudentAssessmentStartModel>(url, new { });
+    }
 }

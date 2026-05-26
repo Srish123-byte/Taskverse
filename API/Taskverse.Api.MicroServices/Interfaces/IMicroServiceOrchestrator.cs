@@ -43,6 +43,7 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> GetAssessmentQuestionList(Guid assessmentId, AssessmentQuestionListSearchModel model);
     Task<ObjectResult> GetStudentAssessments(StudentAssessmentListSearchModel model, IReadOnlyCollection<string> assessmentStatuses);
     Task<ObjectResult> GetStudentAssessmentDetail(Guid assessmentId, Guid studentUserId);
+    Task<ObjectResult> StartStudentAssessment(Guid assessmentId, Guid studentUserId);
 
     // Reports
     Task<ObjectResult> GenerateReport(GenerateReportRequestModel model);

@@ -229,6 +229,93 @@ public class AssessmentManager : IAssessmentManager
         return assessment.ToStudentAssessmentDetailRecord(assessment.AssessmentQuestions.Count);
     }
 
+    public async Task<StudentAssessmentStartRecord> StartStudentAssessment(Guid assessmentId, Guid studentUserId)
+    {
+        if (assessmentId == Guid.Empty)
+        {
+            throw new ArgumentException("Assessment id is required.");
+        }
+
+        if (studentUserId == Guid.Empty)
+        {
+            throw new ArgumentException("Student user id is required.");
+        }
+
+        var student = await _context.Students
+            .FirstOrDefaultAsync(item => item.UserId == studentUserId);
+
+        if (student is null)
+        {
+            throw new KeyNotFoundException($"Student profile was not found for user '{studentUserId}'.");
+        }
+
+        if (!student.BatchId.HasValue || student.BatchId.Value == Guid.Empty)
+        {
+            throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found for the current student.");
+        }
+
+        var assessment = await BuildStudentAssessmentQuery(student.CollegeId, student.BatchId.Value)
+            .Include(item => item.AssessmentQuestions)
+            .FirstOrDefaultAsync(item =>
+                item.AssessmentId == assessmentId &&
+                (item.AssessmentStatus == AssessmentStatus.Scheduled ||
+                 item.AssessmentStatus == AssessmentStatus.Live));
+
+        if (assessment is null)
+        {
+            throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found for the current student.");
+        }
+
+        var existingAttempt = await _context.Attempts
+            .Where(item => item.AssessmentId == assessmentId && item.StudentId == student.StudentId)
+            .OrderByDescending(item => item.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (existingAttempt is not null)
+        {
+            if (existingAttempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
+            {
+                throw new InvalidOperationException("This assessment has already been submitted by the current student.");
+            }
+
+            if (!existingAttempt.StartedAt.HasValue)
+            {
+                existingAttempt.StartedAt = DateTime.UtcNow;
+            }
+
+            existingAttempt.AttemptStatus = AttemptStatus.In_Progress;
+            await SaveChangesWithWrapAsync("Unable to start the assessment attempt.");
+            return existingAttempt.ToStudentAssessmentStartRecord();
+        }
+
+        var startedAt = DateTime.UtcNow;
+        var totalQuestions = assessment.AssessmentQuestions.Count;
+
+        var attempt = new Attempt
+        {
+            AttemptId = Guid.NewGuid(),
+            AssessmentId = assessment.AssessmentId,
+            StudentId = student.StudentId,
+            StartedAt = startedAt,
+            AttemptStatus = AttemptStatus.In_Progress,
+            TotalQuestions = totalQuestions,
+            AttemptedQuestions = 0,
+            CorrectAnswers = 0,
+            WrongAnswers = 0,
+            UnansweredQuestions = totalQuestions,
+            TotalScore = 0,
+            Percentage = 0,
+            TimeTakenSeconds = 0,
+            IsPassed = false,
+            CreatedAt = startedAt
+        };
+
+        _context.Attempts.Add(attempt);
+        await SaveChangesWithWrapAsync("Unable to start the assessment attempt.");
+
+        return attempt.ToStudentAssessmentStartRecord();
+    }
+
     private async Task<SubjectTopicResolver.Resolution> ResolveAssessmentClassificationAsync(Assessment assessment)
     {
         return await SubjectTopicResolver.ResolveAsync(

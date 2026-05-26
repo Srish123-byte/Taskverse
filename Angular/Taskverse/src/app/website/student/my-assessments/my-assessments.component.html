@@ -28,7 +28,13 @@
       <span>Difficulty</span>
     </div>
 
-    <div *ngIf="isLoading" class="panel-state">Loading assessments...</div>
+    <app-dashboard-loader
+      *ngIf="isLoading"
+      class="assessments-loader"
+      tone="dark"
+      title="Loading assessments"
+      copy="Fetching your active and completed assessments.">
+    </app-dashboard-loader>
     <div *ngIf="!isLoading && errorMessage" class="panel-state panel-state-error">{{ errorMessage }}</div>
     <div *ngIf="!isLoading && !errorMessage && assessments.length === 0" class="panel-state">
       {{ getEmptyStateMessage() }}

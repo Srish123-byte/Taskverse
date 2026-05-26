@@ -11,4 +11,5 @@ public interface IAssessmentManager
     Task<PagedAssessmentQuestionListRecord> GetAssessmentQuestionList(Guid assessmentId, int pageNumber, int pageSize);
     Task<List<StudentAssessmentListItemRecord>> GetStudentAssessments(Guid studentUserId, IReadOnlyCollection<string> assessmentStatuses);
     Task<StudentAssessmentDetailRecord> GetStudentAssessmentDetail(Guid assessmentId, Guid studentUserId);
+    Task<StudentAssessmentStartRecord> StartStudentAssessment(Guid assessmentId, Guid studentUserId);
 }

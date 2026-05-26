@@ -560,6 +560,61 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    [HttpPost("/api/student/assessments/{assessmentId:guid}/start")]
+    [SwaggerResponse(200, "Assessment attempt started for the logged-in student", typeof(StudentAssessmentStartResponseModel))]
+    [SwaggerResponse(400, "Invalid student context")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Assigned assessment not found")]
+    [SwaggerResponse(409, "Assessment attempt cannot be started")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> StartStudentAssessment(Guid assessmentId)
+    {
+        var accessCheck = EnsureStudentAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var currentUserId = GetCurrentUserId();
+        if (!currentUserId.HasValue)
+        {
+            return BadRequest(new { message = "Student user context is missing or invalid." });
+        }
+
+        try
+        {
+            var dto = await _assessmentOrchestrator.StartStudentAssessment(assessmentId, currentUserId.Value);
+            return Ok(dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            _logger.LogError(
+                ex,
+                "Unhandled student assessment start error for assessmentId={AssessmentId}, userId={UserId}",
+                assessmentId,
+                currentUserId.Value);
+            return Problem(
+                detail: detail,
+                title: detail,
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
     private IActionResult? EnsureCollegeAdminOrTrainerAccess()
     {
         if (User?.Identity?.IsAuthenticated != true ||

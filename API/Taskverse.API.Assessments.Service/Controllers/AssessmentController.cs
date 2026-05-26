@@ -293,6 +293,55 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    [HttpPost("/api/student/assessments/{assessmentId:guid}/start")]
+    [ProducesResponseType(typeof(StudentAssessmentStartRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<StudentAssessmentStartRecord>> StartStudentAssessment(
+        Guid assessmentId,
+        [FromQuery] Guid studentUserId)
+    {
+        try
+        {
+            var result = await _assessmentManager.StartStudentAssessment(assessmentId, studentUserId);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (DbUpdateException ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "A database error occurred while starting the student assessment attempt.",
+                "StudentAssessmentStartDatabaseError");
+        }
+        catch (PostgresException ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "A PostgreSQL error occurred while starting the student assessment attempt.",
+                "StudentAssessmentStartPostgresError");
+        }
+        catch (Exception ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while starting the student assessment attempt.");
+        }
+    }
+
     private ObjectResult BuildUnexpectedError(Exception ex, string message, string name = "AssessmentServiceError")
     {
         var detail = ex.GetBaseException().Message;

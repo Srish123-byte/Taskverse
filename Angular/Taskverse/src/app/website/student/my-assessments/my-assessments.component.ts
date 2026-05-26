@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { StudentAssessmentItem, StudentAssessmentsService } from '../../../common/services/api/student-assessments.service';
 
@@ -10,7 +11,7 @@ type AssessmentTab = 'active' | 'past';
   templateUrl: './my-assessments.component.html',
   styleUrl: './my-assessments.component.scss'
 })
-export class MyAssessmentsComponent implements OnInit {
+export class MyAssessmentsComponent implements OnInit, OnDestroy {
   readonly tabs: { key: AssessmentTab; label: string; statuses: string[] }[] = [
     { key: 'active', label: 'Active/Upcoming', statuses: ['LIVE', 'SCHEDULED'] },
     { key: 'past', label: 'Past Assessments', statuses: ['COMPLETED'] }
@@ -20,11 +21,22 @@ export class MyAssessmentsComponent implements OnInit {
   assessments: StudentAssessmentItem[] = [];
   isLoading = false;
   errorMessage = '';
+  private readonly subscriptions = new Subscription();
 
   constructor(private readonly studentAssessmentsService: StudentAssessmentsService) {}
 
   ngOnInit(): void {
+    this.subscriptions.add(
+      this.studentAssessmentsService.assessmentsCacheReset$.subscribe(() => {
+        this.loadAssessments();
+      })
+    );
+
     this.loadAssessments();
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
   }
 
   selectTab(tab: AssessmentTab): void {

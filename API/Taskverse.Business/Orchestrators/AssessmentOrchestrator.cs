@@ -374,6 +374,33 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         };
     }
 
+    public async Task<StudentAssessmentStartDto> StartStudentAssessment(Guid assessmentId, Guid studentUserId)
+    {
+        _log.Debug(
+            $"AssessmentOrchestrator.StartStudentAssessment: assessmentId={assessmentId}, studentUserId={studentUserId}");
+
+        var result = await _microServiceOrchestrator.StartStudentAssessment(assessmentId, studentUserId);
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<StudentAssessmentStartModel>()
+                ?? throw new InvalidOperationException("StartStudentAssessment returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"StartStudentAssessment failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status404NotFound => new KeyNotFoundException(message),
+            StatusCodes.Status409Conflict => new InvalidOperationException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new InvalidOperationException(message)
+        };
+    }
+
     private static string? ExtractDetail(object? value)
     {
         if (value is null)

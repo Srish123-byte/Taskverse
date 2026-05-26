@@ -18,4 +18,5 @@ public interface IAssessmentOrchestrator
     Task<PagedAssessmentQuestionListDto> GetAssessmentQuestionList(Guid assessmentId, int pageNumber, int pageSize);
     Task<List<StudentAssessmentListItemDto>> GetStudentAssessments(Guid studentUserId, IReadOnlyCollection<string> assessmentStatuses);
     Task<StudentAssessmentDetailDto> GetStudentAssessmentDetail(Guid assessmentId, Guid studentUserId);
+    Task<StudentAssessmentStartDto> StartStudentAssessment(Guid assessmentId, Guid studentUserId);
 }

@@ -126,6 +126,15 @@ public static class AssessmentMappings
             assessment.Instructions);
     }
 
+    public static StudentAssessmentStartRecord ToStudentAssessmentStartRecord(this Attempt attempt)
+    {
+        return new StudentAssessmentStartRecord(
+            attempt.AttemptId,
+            attempt.AssessmentId,
+            attempt.AttemptStatus.ToString().ToUpperInvariant(),
+            UtcDateTime.Normalize(attempt.StartedAt));
+    }
+
     private static List<string>? DeserializeOptions(string? options)
     {
         if (string.IsNullOrWhiteSpace(options))

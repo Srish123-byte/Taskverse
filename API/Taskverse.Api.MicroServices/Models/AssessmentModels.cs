@@ -228,6 +228,16 @@ public record StudentAssessmentDetailModel(
     [property: JsonProperty("instructions")]
     string? Instructions);
 
+public record StudentAssessmentStartModel(
+    [property: JsonProperty("attempt_id")]
+    Guid AttemptId,
+    [property: JsonProperty("assessment_id")]
+    Guid AssessmentId,
+    [property: JsonProperty("attempt_status")]
+    string AttemptStatus,
+    [property: JsonProperty("started_at")]
+    DateTime? StartedAt);
+
 public record AssessmentQuestionListItemModel(
     [property: JsonProperty("question_id")]
     Guid QuestionId,

@@ -228,4 +228,16 @@ public static class AssessmentMappings
             Instructions = dto.Instructions
         };
     }
+
+    public static StudentAssessmentStartResponseModel ToResponseModel(
+        this StudentAssessmentStartDto dto)
+    {
+        return new StudentAssessmentStartResponseModel
+        {
+            AttemptId = dto.AttemptId,
+            AssessmentId = dto.AssessmentId,
+            AttemptStatus = dto.AttemptStatus,
+            StartedAt = UtcDateTime.Normalize(dto.StartedAt)
+        };
+    }
 }

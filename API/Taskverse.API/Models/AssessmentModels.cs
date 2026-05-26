@@ -164,3 +164,11 @@ public class StudentAssessmentDetailResponseModel
     public DateTime? EndTime { get; set; }
     public string? Instructions { get; set; }
 }
+
+public class StudentAssessmentStartResponseModel
+{
+    public Guid AttemptId { get; set; }
+    public Guid AssessmentId { get; set; }
+    public string AttemptStatus { get; set; } = string.Empty;
+    public DateTime? StartedAt { get; set; }
+}

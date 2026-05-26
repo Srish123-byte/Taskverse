@@ -206,3 +206,13 @@ public record StudentAssessmentDetailRecord(
     DateTime? EndTime,
     [property: JsonPropertyName("instructions")]
     string? Instructions);
+
+public record StudentAssessmentStartRecord(
+    [property: JsonPropertyName("attempt_id")]
+    Guid AttemptId,
+    [property: JsonPropertyName("assessment_id")]
+    Guid AssessmentId,
+    [property: JsonPropertyName("attempt_status")]
+    string AttemptStatus,
+    [property: JsonPropertyName("started_at")]
+    DateTime? StartedAt);

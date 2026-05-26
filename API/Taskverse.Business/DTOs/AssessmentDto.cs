@@ -201,3 +201,11 @@ public class StudentAssessmentDetailDto
     public DateTime? EndTime { get; set; }
     public string? Instructions { get; set; }
 }
+
+public class StudentAssessmentStartDto
+{
+    public Guid AttemptId { get; set; }
+    public Guid AssessmentId { get; set; }
+    public string AttemptStatus { get; set; } = default!;
+    public DateTime? StartedAt { get; set; }
+}
