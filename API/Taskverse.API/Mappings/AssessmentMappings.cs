@@ -311,4 +311,23 @@ public static class AssessmentMappings
             Questions = dto.Questions.Select(item => item.ToResponseModel()).ToList()
         };
     }
+
+    public static StudentResultResponseModel ToResponseModel(this StudentResultDto dto)
+    {
+        return new StudentResultResponseModel
+        {
+            ResultId = dto.ResultId,
+            AssessmentId = dto.AssessmentId,
+            AssessmentName = dto.AssessmentName,
+            AttemptId = dto.AttemptId,
+            StudentId = dto.StudentId,
+            TotalMarks = dto.TotalMarks,
+            ObtainedMarks = dto.ObtainedMarks,
+            Percentage = dto.Percentage,
+            Rank = dto.Rank,
+            ResultStatus = dto.ResultStatus,
+            GeneratedAt = UtcDateTime.Normalize(dto.GeneratedAt),
+            HasPendingCodingEvaluation = dto.HasPendingCodingEvaluation
+        };
+    }
 }

@@ -40,3 +40,19 @@ public class AssessmentReportDto
     public double PassRate { get; set; }
     public DateTime ReportGeneratedAt { get; set; }
 }
+
+public class StudentResultDto
+{
+    public Guid ResultId { get; set; }
+    public Guid AssessmentId { get; set; }
+    public string AssessmentName { get; set; } = default!;
+    public Guid AttemptId { get; set; }
+    public Guid StudentId { get; set; }
+    public decimal TotalMarks { get; set; }
+    public decimal ObtainedMarks { get; set; }
+    public decimal Percentage { get; set; }
+    public int Rank { get; set; }
+    public string ResultStatus { get; set; } = default!;
+    public DateTime GeneratedAt { get; set; }
+    public bool HasPendingCodingEvaluation { get; set; }
+}

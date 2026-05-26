@@ -223,6 +223,7 @@ public class Startup
         services.AddScoped<IAuthOrchestrator, AuthOrchestrator>();
         services.AddScoped<IUsersOrchestrator, UsersOrchestrator>();
         services.AddScoped<IAssessmentOrchestrator, AssessmentOrchestrator>();
+        services.AddScoped<IReportsOrchestrator, ReportsOrchestrator>();
         services.AddScoped<ISuperAdminOrchestrator, SuperAdminOrchestrator>();
         services.AddScoped<ICollegeAdminOrchestrator, CollegeAdminOrchestrator>();
     }
