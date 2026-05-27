@@ -9,6 +9,7 @@ import { StudentsComponent } from './students/students.component';
 import { ManageComponent } from './manage/manage.component';
 import { HelpCenterComponent } from './help-center/help-center.component';
 import { QuestionsManagementComponent } from './questions-management/questions-management.component';
+import { QuestionEditorPageComponent } from './question-editor/question-editor.component';
 
 @NgModule({
   declarations: [
@@ -17,6 +18,7 @@ import { QuestionsManagementComponent } from './questions-management/questions-m
     CoursesComponent,
     StudentsComponent,
     QuestionsManagementComponent,
+    QuestionEditorPageComponent,
     ManageComponent,
     HelpCenterComponent
   ],

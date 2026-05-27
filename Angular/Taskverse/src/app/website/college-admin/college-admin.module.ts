@@ -12,6 +12,7 @@ import { QuestionsManagementComponent } from './questions-management/questions-m
 import { ReportsComponent } from './reports/reports.component';
 import { SettingsComponent } from './settings/settings.component';
 import { HelpCenterComponent } from './help-center/help-center.component';
+import { QuestionEditorPageComponent } from './question-editor/question-editor.component';
 
 @NgModule({
   declarations: [
@@ -22,6 +23,7 @@ import { HelpCenterComponent } from './help-center/help-center.component';
     AcademicStructureComponent,
     AssessmentBuilderComponent,
     QuestionsManagementComponent,
+    QuestionEditorPageComponent,
     ReportsComponent,
     SettingsComponent,
     HelpCenterComponent

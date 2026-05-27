@@ -27,6 +27,7 @@ export class QuestionBankComponent implements OnInit {
   @Input() pageTitle = 'Question Bank';
   @Input() pageWelcome = 'Manage and organize your institution\'s shared question repository.';
   @Input() theme: 'college-admin' | 'trainer' = 'college-admin';
+  @Input() addQuestionRoute = '';
 
   readonly pageSize = 10;
   readonly difficultyOptions: SelectOption[] = [
@@ -66,6 +67,10 @@ export class QuestionBankComponent implements OnInit {
   @HostBinding('class.theme-college-admin')
   get isCollegeAdminTheme(): boolean {
     return this.theme === 'college-admin';
+  }
+
+  get addQuestionRouteSegments(): string[] {
+    return this.addQuestionRoute.split('/').filter(segment => segment.length > 0);
   }
 
   constructor(

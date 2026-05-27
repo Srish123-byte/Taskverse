@@ -12,6 +12,7 @@ import { LogoutConfirmationDialogComponent } from './components/logout-confirmat
 import { ProcessingOverlayComponent } from './components/processing-overlay/processing-overlay.component';
 import { SessionInactivityWarningComponent } from './components/session-inactivity-warning/session-inactivity-warning.component';
 import { QuestionBankComponent } from './components/question-bank/question-bank.component';
+import { QuestionEditorComponent } from './components/question-editor/question-editor.component';
 
 import { FormatPhone } from './pipes/format-phone.pipe';
 import { ToLowerCaseText } from './pipes/to-lower-case-text.pipe';
@@ -38,6 +39,7 @@ import { MaterialModule } from '../material.module';
     ProcessingOverlayComponent,
     SessionInactivityWarningComponent,
     QuestionBankComponent,
+    QuestionEditorComponent,
     FormatPhone,
     ToLowerCaseText,
     ToUpperCaseText
@@ -51,6 +53,7 @@ import { MaterialModule } from '../material.module';
     ProcessingOverlayComponent,
     SessionInactivityWarningComponent,
     QuestionBankComponent,
+    QuestionEditorComponent,
     FormatPhone,
     ToLowerCaseText,
     ToUpperCaseText,

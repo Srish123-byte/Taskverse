@@ -17,10 +17,12 @@
         <img src="assets/icons/shared/export.svg" alt="" class="action-icon" aria-hidden="true" />
         <span>{{ isUploading ? 'Uploading...' : 'Bulk Upload' }}</span>
       </button>
-      <button type="button" class="primary-action" disabled>
+      <a
+        class="primary-action primary-action-link"
+        [routerLink]="['/', ...addQuestionRouteSegments]">
         <img src="assets/icons/shared/add.svg" alt="" class="action-icon" aria-hidden="true" />
         <span>Add New Question</span>
-      </button>
+      </a>
     </div>
   </section>
 
