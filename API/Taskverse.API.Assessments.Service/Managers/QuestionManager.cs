@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Taskverse.Data.DataAccess;
 using Taskverse.API.Assessments.Service.Mappings;
+using System.Text.Json;
 
 namespace Taskverse.API.Assessments.Service.Managers;
 
@@ -19,25 +20,83 @@ public class QuestionManager : IQuestionManager
         _context = context;
     }
 
-    public async Task<List<Question>> CreateQuestions(List<Question> questions)
+    public async Task<List<Question>> CreateQuestions(List<QuestionImportItem> questions)
     {
         if (questions.Count == 0)
         {
             throw new ArgumentException("At least one question is required.");
         }
 
-        foreach (var question in questions)
+        var preparedQuestions = new List<Question>();
+        var importFingerprints = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var importItem in questions)
         {
-            await NormalizeSubjectTopicAsync(question);
-            ValidateQuestion(question);
+            var question = importItem.Question;
+
+            try
+            {
+                await NormalizeSubjectTopicAsync(question);
+                ValidateQuestion(question);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or KeyNotFoundException)
+            {
+                throw new ArgumentException($"Row {importItem.SourceRowNumber}: {ex.Message}");
+            }
 
             question.QuestionId = question.QuestionId == Guid.Empty ? Guid.NewGuid() : question.QuestionId;
             question.IsActive = true;
             question.CreatedAt = DateTime.UtcNow;
             question.ModifiedAt = DateTime.UtcNow;
+            question.Version = question.Version <= 0 ? 1 : question.Version;
+
+            var fingerprint = BuildDuplicateFingerprint(question);
+            if (!importFingerprints.Add(fingerprint))
+            {
+                continue;
+            }
+
+            preparedQuestions.Add(question);
         }
 
-        _context.Questions.AddRange(questions);
+        if (preparedQuestions.Count == 0)
+        {
+            return [];
+        }
+
+        var normalizedQuestionTexts = preparedQuestions
+            .Select(question => NormalizeForLookup(question.QuestionText))
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct()
+            .ToList();
+
+        var collegeIds = preparedQuestions
+            .Select(question => question.CollegeId)
+            .Distinct()
+            .ToList();
+
+        var existingQuestions = await _context.Questions
+            .AsNoTracking()
+            .Where(question =>
+                question.IsActive &&
+                collegeIds.Contains(question.CollegeId) &&
+                normalizedQuestionTexts.Contains(question.QuestionText.ToLower()))
+            .ToListAsync();
+
+        var existingFingerprints = existingQuestions
+            .Select(BuildDuplicateFingerprint)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var uniqueQuestionsToCreate = preparedQuestions
+            .Where(question => !existingFingerprints.Contains(BuildDuplicateFingerprint(question)))
+            .ToList();
+
+        if (uniqueQuestionsToCreate.Count == 0)
+        {
+            return [];
+        }
+
+        _context.Questions.AddRange(uniqueQuestionsToCreate);
 
         try
         {
@@ -48,7 +107,7 @@ public class QuestionManager : IQuestionManager
             throw new InvalidOperationException("Unable to save the question to the question bank.", ex);
         }
 
-        return questions;
+        return uniqueQuestionsToCreate;
     }
 
     public async Task<Question> UpdateQuestion(Guid questionId, Question updatedQuestion)
@@ -293,7 +352,7 @@ public class QuestionManager : IQuestionManager
             throw new ArgumentException("Question text is required.");
         }
 
-        if (normalizedQuestionType == "mcq" && string.IsNullOrWhiteSpace(question.Options))
+        if (normalizedQuestionType == "mcq" && !HasValidOptions(question.Options))
         {
             throw new ArgumentException("Options are required for mcq questions.");
         }
@@ -312,5 +371,72 @@ public class QuestionManager : IQuestionManager
         {
             throw new ArgumentException("Negative marks cannot be negative.");
         }
+    }
+
+    private static bool HasValidOptions(string? options)
+    {
+        if (string.IsNullOrWhiteSpace(options))
+        {
+            return false;
+        }
+
+        try
+        {
+            var parsedOptions = JsonSerializer.Deserialize<List<string>>(options);
+            return parsedOptions is { Count: > 0 } && parsedOptions.All(option => !string.IsNullOrWhiteSpace(option));
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static string BuildDuplicateFingerprint(Question question)
+    {
+        var normalizedOptions = NormalizeOptions(question.Options);
+
+        return string.Join("|", [
+            question.CollegeId.ToString("D"),
+            NormalizeForLookup(question.Stream),
+            NormalizeForLookup(question.Subject),
+            NormalizeForLookup(question.Topic),
+            NormalizeForLookup(question.TopicTag),
+            NormalizeForLookup(question.QuestionType),
+            NormalizeForLookup(question.QuestionText),
+            normalizedOptions,
+            NormalizeForLookup(question.Answer),
+            NormalizeForLookup(question.Explanation),
+            question.Marks.ToString("0.##"),
+            question.NegativeMarks.ToString("0.##"),
+            question.DifficultyLevel.ToString()
+        ]);
+    }
+
+    private static string NormalizeOptions(string? options)
+    {
+        if (string.IsNullOrWhiteSpace(options))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            var parsedOptions = JsonSerializer.Deserialize<List<string>>(options) ?? [];
+            return string.Join("~", parsedOptions.Select(NormalizeForLookup));
+        }
+        catch
+        {
+            return NormalizeForLookup(options);
+        }
+    }
+
+    private static string NormalizeForLookup(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        return string.Join(" ", value.Trim().ToLowerInvariant().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 }

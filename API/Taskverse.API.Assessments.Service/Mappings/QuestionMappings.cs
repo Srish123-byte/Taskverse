@@ -9,20 +9,25 @@ public static class QuestionMappings
 {
     public static Question ToEntity(this CreateQuestionRequest request)
     {
+        var normalizedOptions = request.Options?
+            .Select(NormalizeWhitespace)
+            .Where(option => !string.IsNullOrWhiteSpace(option))
+            .ToList();
+
         return new Question
         {
             CollegeId = request.CollegeId,
             SubjectId = request.SubjectId,
-            Stream = request.Stream?.Trim(),
-            Subject = request.Subject?.Trim(),
+            Stream = NormalizeWhitespace(request.Stream),
+            Subject = NormalizeWhitespace(request.Subject),
             TopicId = request.TopicId,
-            Topic = request.Topic?.Trim(),
-            TopicTag = request.TopicTag?.Trim(),
-            QuestionType = request.QuestionType?.Trim() ?? string.Empty,
-            QuestionText = request.QuestionText?.Trim() ?? string.Empty,
-            Options = request.Options is null ? null : JsonSerializer.Serialize(request.Options),
-            Answer = request.Answer?.Trim(),
-            Explanation = request.Explanation?.Trim(),
+            Topic = NormalizeWhitespace(request.Topic),
+            TopicTag = NormalizeWhitespace(request.TopicTag),
+            QuestionType = NormalizeWhitespace(request.QuestionType) ?? string.Empty,
+            QuestionText = NormalizeWhitespace(request.QuestionText) ?? string.Empty,
+            Options = normalizedOptions is null ? null : JsonSerializer.Serialize(normalizedOptions),
+            Answer = NormalizeWhitespace(request.Answer),
+            Explanation = NormalizeWhitespace(request.Explanation),
             Marks = request.Marks,
             NegativeMarks = request.NegativeMarks,
             DifficultyLevel = request.DifficultyLevel,
@@ -90,5 +95,15 @@ public static class QuestionMappings
         }
 
         return JsonSerializer.Deserialize<List<string>>(options);
+    }
+
+    private static string? NormalizeWhitespace(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return string.Join(" ", value.Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 }

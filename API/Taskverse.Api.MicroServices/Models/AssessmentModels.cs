@@ -110,7 +110,8 @@ public record CreateQuestionModel(
     string? Explanation,
     decimal Marks,
     decimal NegativeMarks,
-    int DifficultyLevel);
+    int DifficultyLevel,
+    int? SourceRowNumber);
 
 public record DeleteQuestionsModel(
     string CreatedBy,

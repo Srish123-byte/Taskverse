@@ -52,6 +52,8 @@ public class CreateQuestionRequest
 
     [Range(0, int.MaxValue)]
     public int DifficultyLevel { get; set; }
+
+    public int? SourceRowNumber { get; set; }
 }
 
 public class DeleteQuestionsRequest

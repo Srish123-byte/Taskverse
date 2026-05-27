@@ -11,6 +11,7 @@ import { DeleteActionButtonComponent } from './components/delete-action-button/d
 import { LogoutConfirmationDialogComponent } from './components/logout-confirmation-dialog/logout-confirmation-dialog.component';
 import { ProcessingOverlayComponent } from './components/processing-overlay/processing-overlay.component';
 import { SessionInactivityWarningComponent } from './components/session-inactivity-warning/session-inactivity-warning.component';
+import { QuestionBankComponent } from './components/question-bank/question-bank.component';
 
 import { FormatPhone } from './pipes/format-phone.pipe';
 import { ToLowerCaseText } from './pipes/to-lower-case-text.pipe';
@@ -36,6 +37,7 @@ import { MaterialModule } from '../material.module';
     LogoutConfirmationDialogComponent,
     ProcessingOverlayComponent,
     SessionInactivityWarningComponent,
+    QuestionBankComponent,
     FormatPhone,
     ToLowerCaseText,
     ToUpperCaseText
@@ -48,6 +50,7 @@ import { MaterialModule } from '../material.module';
     DeleteActionButtonComponent,
     ProcessingOverlayComponent,
     SessionInactivityWarningComponent,
+    QuestionBankComponent,
     FormatPhone,
     ToLowerCaseText,
     ToUpperCaseText,

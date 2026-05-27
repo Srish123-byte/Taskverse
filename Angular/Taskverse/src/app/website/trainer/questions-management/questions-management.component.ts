@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 
 @Component({
-  selector: 'app-college-admin-questions-management',
+  selector: 'app-trainer-questions-management',
   standalone: false,
   templateUrl: './questions-management.component.html',
   styleUrl: './questions-management.component.scss'

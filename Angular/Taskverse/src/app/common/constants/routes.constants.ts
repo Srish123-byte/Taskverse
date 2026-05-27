@@ -31,12 +31,13 @@ export const RouteAddress = {
   },
 
   Trainer: {
-    Root:       'trainer',
-    Dashboard:  'trainer/dashboard',
-    Courses:    'trainer/courses',
-    Students:   'trainer/students',
-    Manage:     'trainer/manage',
-    HelpCenter: 'trainer/help-center'
+    Root:                'trainer',
+    Dashboard:           'trainer/dashboard',
+    Courses:             'trainer/courses',
+    Students:            'trainer/students',
+    QuestionsManagement: 'trainer/questions-management',
+    Manage:              'trainer/manage',
+    HelpCenter:          'trainer/help-center'
   },
 
   Student: {

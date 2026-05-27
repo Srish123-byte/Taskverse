@@ -12,6 +12,24 @@ export interface QuestionBankSearchRequest {
   pageSize: number;
 }
 
+export interface CreateQuestionRequest {
+  stream: string;
+  subjectId?: string;
+  subject?: string;
+  topicId?: string;
+  topic?: string;
+  topicTag: string;
+  questionType: string;
+  questionText: string;
+  options?: string[];
+  answer: string;
+  explanation?: string;
+  marks: number;
+  negativeMarks: number;
+  difficultyLevel: number;
+  sourceRowNumber?: number;
+}
+
 export interface QuestionBankItem {
   questionId: string;
   collegeId: string;
@@ -50,6 +68,10 @@ export class AssessmentAdminService {
 
   searchQuestionBank(request: QuestionBankSearchRequest): Observable<PagedQuestionBankResult> {
     return this.http.post<PagedQuestionBankResult>(`${this.url}/questions/search`, request);
+  }
+
+  createQuestions(request: CreateQuestionRequest[]): Observable<QuestionBankItem[]> {
+    return this.http.post<QuestionBankItem[]>(`${this.url}/questions`, request);
   }
 
   deleteAssessment(assessmentId: string): Observable<void> {

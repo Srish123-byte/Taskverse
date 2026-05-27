@@ -61,6 +61,7 @@ public class CreateQuestionRequestModel
     public decimal Marks { get; set; }
     public decimal NegativeMarks { get; set; }
     public int DifficultyLevel { get; set; }
+    public int? SourceRowNumber { get; set; }
 }
 
 public class DeleteQuestionsRequestModel

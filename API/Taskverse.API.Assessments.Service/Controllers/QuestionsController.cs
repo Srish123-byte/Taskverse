@@ -31,7 +31,12 @@ public class QuestionsController : ControllerBase
 
         try
         {
-            var questions = await _questionManager.CreateQuestions(requests.Select(request => request.ToEntity()).ToList());
+            var questions = await _questionManager.CreateQuestions(
+                requests.Select((request, index) => new QuestionImportItem
+                {
+                    SourceRowNumber = request.SourceRowNumber ?? index + 2,
+                    Question = request.ToEntity()
+                }).ToList());
             var response = questions.Select(question => question.ToRecord()).ToList();
 
             return StatusCode(StatusCodes.Status201Created, response);

@@ -51,7 +51,8 @@ public static class AssessmentMappings
             Explanation = model.Explanation,
             Marks = model.Marks,
             NegativeMarks = model.NegativeMarks,
-            DifficultyLevel = model.DifficultyLevel
+            DifficultyLevel = model.DifficultyLevel,
+            SourceRowNumber = model.SourceRowNumber
         };
     }
 
