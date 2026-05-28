@@ -66,6 +66,13 @@ public class DeleteQuestionsRequest
     public string CreatedBy { get; set; } = string.Empty;
 
     [Required]
+    [MaxLength(50)]
+    public string RequesterRole { get; set; } = string.Empty;
+
+    [Required]
+    public Guid CollegeId { get; set; }
+
+    [Required]
     public List<Guid> QuestionIds { get; set; } = [];
 }
 

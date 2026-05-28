@@ -116,6 +116,8 @@ public record CreateQuestionModel(
 
 public record DeleteQuestionsModel(
     string CreatedBy,
+    string RequesterRole,
+    Guid CollegeId,
     List<Guid> QuestionIds);
 
 public record QuestionBankSearchModel(

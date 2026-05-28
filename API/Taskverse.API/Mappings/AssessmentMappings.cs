@@ -67,11 +67,15 @@ public static class AssessmentMappings
 
     public static DeleteQuestionsDto ToDto(
         this DeleteQuestionsRequestModel model,
-        string createdBy)
+        Guid collegeId,
+        string createdBy,
+        string requesterRole)
     {
         return new DeleteQuestionsDto
         {
             CreatedBy = createdBy,
+            CollegeId = collegeId,
+            RequesterRole = requesterRole,
             QuestionIds = model.QuestionIds
         };
     }

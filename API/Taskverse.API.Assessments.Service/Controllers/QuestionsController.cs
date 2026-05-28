@@ -197,7 +197,11 @@ public class QuestionsController : ControllerBase
 
         try
         {
-            var deletedQuestionIds = await _questionManager.DeleteQuestions(request.CreatedBy, request.QuestionIds);
+            var deletedQuestionIds = await _questionManager.DeleteQuestions(
+                request.CreatedBy,
+                request.RequesterRole,
+                request.CollegeId,
+                request.QuestionIds);
             return Ok(deletedQuestionIds);
         }
         catch (ArgumentException ex)

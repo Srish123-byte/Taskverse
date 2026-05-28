@@ -70,6 +70,7 @@
 .hero-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 14px;
   flex-wrap: wrap;
 }
@@ -289,7 +290,7 @@
 .table-header-row,
 .question-row {
   display: grid;
-  grid-template-columns: 56px minmax(0, 2.2fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(110px, 0.8fr) minmax(120px, 0.9fr);
+  grid-template-columns: minmax(0, 2.2fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(110px, 0.8fr) minmax(120px, 0.9fr);
   gap: 16px;
   align-items: center;
   padding: 18px 24px;
@@ -306,11 +307,6 @@
 
 .question-row {
   border-top: 1px solid rgba(148, 163, 184, 0.12);
-}
-
-.selection-cell {
-  display: flex;
-  justify-content: center;
 }
 
 .question-preview-cell {
@@ -500,10 +496,6 @@
 
   .question-row {
     grid-template-columns: 1fr;
-  }
-
-  .selection-cell {
-    justify-content: flex-start;
   }
 }
 

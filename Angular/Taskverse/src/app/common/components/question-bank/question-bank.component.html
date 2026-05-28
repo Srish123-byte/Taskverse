@@ -79,7 +79,6 @@
 
     <section *ngIf="!isLoading && !errorMessage" class="question-table-shell">
       <div class="table-header-row" *ngIf="filteredQuestions.length > 0">
-        <span></span>
         <span>Question Preview</span>
         <span>Subject</span>
         <span>Topic</span>
@@ -93,10 +92,6 @@
       </div>
 
       <article *ngFor="let question of filteredQuestions; trackBy: trackByQuestionId" class="question-row">
-        <div class="selection-cell">
-          <input type="checkbox" disabled aria-label="Select question" />
-        </div>
-
         <div class="question-preview-cell">
           <span class="question-accent" [ngClass]="getDifficultyClass(question.difficultyLevel)"></span>
           <div>
@@ -116,7 +111,13 @@
 
         <div class="actions-cell">
           <button type="button" class="table-action" (click)="editQuestion(question.questionId)">Edit</button>
-          <button type="button" class="table-action table-action-ghost" disabled>Delete</button>
+          <button
+            type="button"
+            class="table-action table-action-ghost"
+            [disabled]="deletingQuestionId === question.questionId"
+            (click)="deleteQuestion(question)">
+            {{ deletingQuestionId === question.questionId ? 'Deleting...' : 'Delete' }}
+          </button>
         </div>
       </article>
 

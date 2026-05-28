@@ -43,9 +43,19 @@ export class HttpClientService {
       .pipe(catchError(this.formatErrors));
   }
 
-  delete<T>(path: string, params: HttpParams = new HttpParams()): Observable<T> {
+  delete<T>(
+    path: string,
+    params: HttpParams = new HttpParams(),
+    body?: object,
+    skipGlobalErrorRedirect = false
+  ): Observable<T> {
+    const options = this.buildOptions(params, skipGlobalErrorRedirect);
+
     return this.http
-      .delete<T>(this.httpHelperService.api + path, this.httpHelperService.getOptions(params))
+      .delete<T>(this.httpHelperService.api + path, {
+        ...options,
+        body: body ? JSON.stringify(body) : undefined
+      })
       .pipe(map((response: HttpResponse<T>) => response.body as T))
       .pipe(catchError(this.formatErrors));
   }

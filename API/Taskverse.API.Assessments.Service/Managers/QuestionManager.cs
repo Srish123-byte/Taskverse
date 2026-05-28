@@ -216,11 +216,20 @@ public class QuestionManager : IQuestionManager
         }
     }
 
-    public async Task<List<Guid>> DeleteQuestions(string createdBy, List<Guid> questionIds)
+    public async Task<List<Guid>> DeleteQuestions(
+        string createdBy,
+        string? requesterRole,
+        Guid collegeId,
+        List<Guid> questionIds)
     {
         if (string.IsNullOrWhiteSpace(createdBy))
         {
             throw new ArgumentException("CreatedBy is required.");
+        }
+
+        if (collegeId == Guid.Empty)
+        {
+            throw new ArgumentException("CollegeId is required.");
         }
 
         var normalizedQuestionIds = questionIds.NormalizeQuestionIds();
@@ -239,22 +248,39 @@ public class QuestionManager : IQuestionManager
             throw new KeyNotFoundException($"Question(s) not found: {string.Join(", ", missingQuestionIds)}.");
         }
 
+        var outOfCollegeQuestion = questions.FirstOrDefault(question => question.CollegeId != collegeId);
+        if (outOfCollegeQuestion is not null)
+        {
+            throw new UnauthorizedAccessException("You are not authorized to delete questions outside your college question bank.");
+        }
+
         var unauthorizedQuestion = questions.FirstOrDefault(question =>
+            IsTrainer(requesterRole) &&
             !string.Equals(question.CreatedBy?.Trim(), createdBy.Trim(), StringComparison.OrdinalIgnoreCase));
         if (unauthorizedQuestion is not null)
         {
-            throw new UnauthorizedAccessException("Only the user who created a question can delete it.");
+            throw new UnauthorizedAccessException("You're not authorized to delete this question. Please try deleting a question you've created");
         }
 
-        var linkedQuestionIds = questions
-            .Where(question => question.AssessmentId.HasValue)
-            .Select(question => question.QuestionId)
-            .ToList();
+        var linkedAssessmentStatuses = await GetLinkedAssessmentStatusesAsync(questions);
 
-        if (linkedQuestionIds.Count > 0)
+        if (linkedAssessmentStatuses.Any(status => status == AssessmentStatus.Scheduled))
         {
-            throw new InvalidOperationException(
-                $"Question(s) cannot be deleted because they are attached to an assessment: {string.Join(", ", linkedQuestionIds)}.");
+            throw new InvalidOperationException("Delete the question from the scheduled assessment(s) and try again.");
+        }
+
+        if (linkedAssessmentStatuses.Any(status => status is AssessmentStatus.Live or AssessmentStatus.Completed))
+        {
+            throw new InvalidOperationException("Deleting a question in the Live/Completed assessment(s) isn't allowed");
+        }
+
+        var linkedAssessmentQuestions = await _context.AssessmentQuestions
+            .Where(item => normalizedQuestionIds.Contains(item.QuestionId))
+            .ToListAsync();
+
+        if (linkedAssessmentQuestions.Count > 0)
+        {
+            _context.AssessmentQuestions.RemoveRange(linkedAssessmentQuestions);
         }
 
         _context.Questions.RemoveRange(questions);
@@ -269,6 +295,56 @@ public class QuestionManager : IQuestionManager
         }
 
         return questions.Select(question => question.QuestionId).ToList();
+    }
+
+    private async Task<HashSet<AssessmentStatus>> GetLinkedAssessmentStatusesAsync(IEnumerable<Question> questions)
+    {
+        var statusSet = new HashSet<AssessmentStatus>();
+        var questionList = questions.ToList();
+        var questionIds = questionList.Select(question => question.QuestionId).ToList();
+
+        var directAssessmentIds = questionList
+            .Where(question => question.AssessmentId.HasValue && question.AssessmentId.Value != Guid.Empty)
+            .Select(question => question.AssessmentId!.Value)
+            .Distinct()
+            .ToList();
+
+        if (directAssessmentIds.Count > 0)
+        {
+            var directStatuses = await _context.Assessments
+                .AsNoTracking()
+                .Where(item => directAssessmentIds.Contains(item.AssessmentId))
+                .Select(item => item.AssessmentStatus)
+                .ToListAsync();
+
+            foreach (var status in directStatuses)
+            {
+                statusSet.Add(status);
+            }
+        }
+
+        var linkedStatuses = await _context.AssessmentQuestions
+            .AsNoTracking()
+            .Join(
+                _context.Assessments.AsNoTracking(),
+                assessmentQuestion => assessmentQuestion.AssessmentId,
+                assessment => assessment.AssessmentId,
+                (assessmentQuestion, assessment) => new
+                {
+                    assessmentQuestion.QuestionId,
+                    assessment.AssessmentStatus
+                })
+            .Where(item => questionIds.Contains(item.QuestionId))
+            .Select(item => item.AssessmentStatus)
+            .Distinct()
+            .ToListAsync();
+
+        foreach (var status in linkedStatuses)
+        {
+            statusSet.Add(status);
+        }
+
+        return statusSet;
     }
 
     public async Task<(List<Question> Items, int TotalCount)> SearchQuestionBank(

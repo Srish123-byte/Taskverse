@@ -80,6 +80,8 @@ public class CreateQuestionDto
 public class DeleteQuestionsDto
 {
     public string CreatedBy { get; set; } = default!;
+    public string RequesterRole { get; set; } = default!;
+    public Guid CollegeId { get; set; }
     public List<Guid> QuestionIds { get; set; } = [];
 }
 

@@ -255,6 +255,12 @@ option {
   --mat-snack-bar-button-color: var(--accent-cyan);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-card) !important;
+  opacity: 1 !important;
+}
+
+.mat-mdc-snack-bar-container .mat-mdc-snackbar-surface {
+  opacity: 1 !important;
+  backdrop-filter: none !important;
 }
 
 .cdk-overlay-container .cdk-global-overlay-wrapper:has(.question-editor-success-snackbar) {
@@ -273,6 +279,7 @@ body .question-editor-success-snackbar.mat-mdc-snack-bar-container {
 }
 
 body .question-editor-success-snackbar .mat-mdc-snackbar-surface {
+  background-color: #1f2937 !important;
   justify-content: center;
   padding: 20px 24px;
 }

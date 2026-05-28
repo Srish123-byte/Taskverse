@@ -414,6 +414,9 @@ public class AssessmentsController : TaskverseBaseController
         var accessCheck = EnsureCollegeAdminOrTrainerAccess();
         if (accessCheck is not null) return accessCheck;
 
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
         if (model is null || model.QuestionIds.Count == 0)
         {
             return BadRequest(new { message = "At least one question id is required." });
@@ -422,7 +425,7 @@ public class AssessmentsController : TaskverseBaseController
         try
         {
             var deletedQuestionIds = await _assessmentOrchestrator.DeleteQuestions(
-                model.ToDto(GetCreatedByName()));
+                model.ToDto(collegeId, GetCreatedByName(), GetRequesterRole()));
 
             return Ok(deletedQuestionIds.ToResponseModel());
         }

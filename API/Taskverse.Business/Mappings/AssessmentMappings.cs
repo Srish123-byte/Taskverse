@@ -121,6 +121,8 @@ public static class AssessmentMappings
     public static DeleteQuestionsModel ToMicroServiceModel(this DeleteQuestionsDto dto)
         => new(
             dto.CreatedBy,
+            dto.RequesterRole,
+            dto.CollegeId,
             dto.QuestionIds);
 
     public static QuestionBankSearchModel ToMicroServiceModel(this QuestionBankSearchDto dto)

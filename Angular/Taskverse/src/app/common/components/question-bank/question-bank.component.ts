@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import {
   AssessmentAdminService,
   CreateQuestionRequest,
+  DeleteQuestionsResponse,
   PagedQuestionBankResult,
   QuestionBankItem,
   QuestionBankSearchRequest
@@ -31,6 +32,12 @@ export class QuestionBankComponent implements OnInit {
     horizontalPosition: 'center' as const,
     verticalPosition: 'top' as const,
     panelClass: ['question-bank-restriction-snackbar']
+  };
+  private static readonly deleteSuccessSnackBarConfig = {
+    duration: 4000,
+    horizontalPosition: 'center' as const,
+    verticalPosition: 'top' as const,
+    panelClass: ['question-editor-success-snackbar']
   };
 
   @Input() heroKicker = 'Shared Repository';
@@ -62,6 +69,7 @@ export class QuestionBankComponent implements OnInit {
 
   currentPage = 1;
   totalCount = 0;
+  deletingQuestionId: string | null = null;
 
   isLoading = false;
   isUploading = false;
@@ -252,6 +260,28 @@ export class QuestionBankComponent implements OnInit {
     });
   }
 
+  deleteQuestion(question: QuestionBankItem): void {
+    if (!question?.questionId || this.deletingQuestionId) {
+      return;
+    }
+
+    this.deletingQuestionId = question.questionId;
+
+    this.assessmentAdminService.deleteQuestions(
+      { questionIds: [question.questionId] },
+      true
+    ).subscribe({
+      next: response => {
+        this.handleDeleteSuccess(question.questionId, response);
+      },
+      error: error => {
+        this.deletingQuestionId = null;
+        const message = this.getDeleteRestrictionMessage(error);
+        this.snackBar.open(message, 'Close', QuestionBankComponent.editErrorSnackBarConfig);
+      }
+    });
+  }
+
   private getEditRestrictionMessage(error: HttpErrorResponse): string {
     const detail = error?.error?.detail;
     const message = error?.error?.message;
@@ -269,6 +299,63 @@ export class QuestionBankComponent implements OnInit {
     }
 
     return message || detail || 'Unable to open this question for editing right now.';
+  }
+
+  private getDeleteRestrictionMessage(error: HttpErrorResponse): string {
+    const detail = error?.error?.detail;
+    const message = error?.error?.message;
+    const normalizedMessage = `${detail ?? ''} ${message ?? ''}`.toLowerCase();
+
+    if (normalizedMessage.includes('scheduled assessment')) {
+      return 'Delete the question from the scheduled assessment(s) and try again.';
+    }
+
+    if (normalizedMessage.includes('live/completed assessment')) {
+      return 'Deleting a question in the Live/Completed assessment(s) isn\'t allowed';
+    }
+
+    if (normalizedMessage.includes('not authorized to delete this question') ||
+        normalizedMessage.includes('only the user who created a question can delete it')) {
+      return 'You\'re not authorized to delete this question. Please try deleting a question you\'ve created';
+    }
+
+    return message || detail || 'Unable to delete this question right now.';
+  }
+
+  private handleDeleteSuccess(questionId: string, response: DeleteQuestionsResponse): void {
+    const deletedQuestionIds = response.deletedQuestionIds ?? [];
+    if (!deletedQuestionIds.includes(questionId)) {
+      this.deletingQuestionId = null;
+      this.snackBar.open(
+        'Unable to delete this question right now.',
+        'Close',
+        QuestionBankComponent.editErrorSnackBarConfig
+      );
+      return;
+    }
+
+    const removedCurrentPageLastVisibleRow = this.filteredQuestions.length === 1;
+
+    this.questions = this.questions.filter(question => question.questionId !== questionId);
+    this.totalCount = Math.max(0, this.totalCount - 1);
+    this.buildDynamicOptions(this.questions);
+    this.applyClientFilters();
+    this.deletingQuestionId = null;
+    this.changeDetectorRef.detectChanges();
+
+    this.snackBar.open(
+      'Question successfully removed from the question bank.',
+      'Close',
+      QuestionBankComponent.deleteSuccessSnackBarConfig
+    );
+
+    if (this.totalCount > 0 && removedCurrentPageLastVisibleRow) {
+      if (this.currentPage > 1) {
+        this.currentPage -= 1;
+      }
+
+      this.loadQuestions();
+    }
   }
 
   private submitBulkUpload(parsedFile: ParsedQuestionImportFile, input: HTMLInputElement): void {

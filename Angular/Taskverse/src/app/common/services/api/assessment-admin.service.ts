@@ -60,6 +60,14 @@ export interface PagedQuestionBankResult {
   pageSize: number;
 }
 
+export interface DeleteQuestionsRequest {
+  questionIds: string[];
+}
+
+export interface DeleteQuestionsResponse {
+  deletedQuestionIds: string[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class AssessmentAdminService {
   private readonly url = 'assessments';
@@ -80,6 +88,15 @@ export class AssessmentAdminService {
 
   updateQuestion(questionId: string, request: CreateQuestionRequest): Observable<QuestionBankItem> {
     return this.http.put<QuestionBankItem>(`${this.url}/questions/${questionId}`, request);
+  }
+
+  deleteQuestions(request: DeleteQuestionsRequest, skipGlobalErrorRedirect = false): Observable<DeleteQuestionsResponse> {
+    return this.http.delete<DeleteQuestionsResponse>(
+      `${this.url}/questions`,
+      undefined,
+      request,
+      skipGlobalErrorRedirect
+    );
   }
 
   deleteAssessment(assessmentId: string): Observable<void> {
