@@ -38,6 +38,7 @@ public static class AssessmentMappings
         {
             CollegeId = collegeId,
             CreatedBy = createdBy,
+            RequesterRole = model.RequesterRole ?? string.Empty,
             Stream = model.Stream,
             SubjectId = model.SubjectId,
             Subject = model.Subject,
@@ -51,7 +52,8 @@ public static class AssessmentMappings
             Explanation = model.Explanation,
             Marks = model.Marks,
             NegativeMarks = model.NegativeMarks,
-            DifficultyLevel = model.DifficultyLevel
+            DifficultyLevel = model.DifficultyLevel,
+            SourceRowNumber = model.SourceRowNumber
         };
     }
 
@@ -65,11 +67,15 @@ public static class AssessmentMappings
 
     public static DeleteQuestionsDto ToDto(
         this DeleteQuestionsRequestModel model,
-        string createdBy)
+        Guid collegeId,
+        string createdBy,
+        string requesterRole)
     {
         return new DeleteQuestionsDto
         {
             CreatedBy = createdBy,
+            CollegeId = collegeId,
+            RequesterRole = requesterRole,
             QuestionIds = model.QuestionIds
         };
     }

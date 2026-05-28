@@ -98,6 +98,7 @@ public static class AssessmentMappings
         => new(
             dto.CollegeId,
             dto.CreatedBy,
+            dto.RequesterRole,
             dto.Stream,
             dto.SubjectId,
             dto.Subject,
@@ -111,7 +112,8 @@ public static class AssessmentMappings
             dto.Explanation,
             dto.Marks,
             dto.NegativeMarks,
-            dto.DifficultyLevel);
+            dto.DifficultyLevel,
+            dto.SourceRowNumber);
 
     public static List<CreateQuestionModel> ToMicroServiceModels(this IEnumerable<CreateQuestionDto> dtos)
         => dtos.Select(dto => dto.ToMicroServiceModel()).ToList();
@@ -119,6 +121,8 @@ public static class AssessmentMappings
     public static DeleteQuestionsModel ToMicroServiceModel(this DeleteQuestionsDto dto)
         => new(
             dto.CreatedBy,
+            dto.RequesterRole,
+            dto.CollegeId,
             dto.QuestionIds);
 
     public static QuestionBankSearchModel ToMicroServiceModel(this QuestionBankSearchDto dto)

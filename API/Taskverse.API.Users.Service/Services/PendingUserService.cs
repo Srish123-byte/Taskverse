@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Taskverse.API.Users.Service.DTOs;
 using Taskverse.API.Users.Service.Mappings;
 using Taskverse.API.Users.Service.Models;
-using Taskverse.Business.Enums;
+using Taskverse.Data.Enums;
 using Taskverse.Data.DataAccess;
 
 namespace Taskverse.API.Users.Service.Services;

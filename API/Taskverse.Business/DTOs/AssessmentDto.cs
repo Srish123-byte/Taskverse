@@ -59,6 +59,7 @@ public class CreateQuestionDto
 {
     public Guid CollegeId { get; set; }
     public string CreatedBy { get; set; } = default!;
+    public string RequesterRole { get; set; } = default!;
     public string Stream { get; set; } = default!;
     public Guid? SubjectId { get; set; }
     public string? Subject { get; set; }
@@ -73,11 +74,14 @@ public class CreateQuestionDto
     public decimal Marks { get; set; }
     public decimal NegativeMarks { get; set; }
     public int DifficultyLevel { get; set; }
+    public int? SourceRowNumber { get; set; }
 }
 
 public class DeleteQuestionsDto
 {
     public string CreatedBy { get; set; } = default!;
+    public string RequesterRole { get; set; } = default!;
+    public Guid CollegeId { get; set; }
     public List<Guid> QuestionIds { get; set; } = [];
 }
 

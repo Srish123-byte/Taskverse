@@ -1,4 +1,4 @@
-namespace Taskverse.Business.Enums;
+namespace Taskverse.Data.Enums;
 
 /// <summary>
 /// Mirrors the PostgreSQL lookup_attempt_status.

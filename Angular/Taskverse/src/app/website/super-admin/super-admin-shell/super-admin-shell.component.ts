@@ -28,6 +28,6 @@ export class SuperAdminShellComponent {
   ];
 
   logout(): void {
-    this.authSessionService.logout();
+    this.authSessionService.confirmLogout();
   }
 }

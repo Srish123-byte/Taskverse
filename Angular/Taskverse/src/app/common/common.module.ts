@@ -8,8 +8,11 @@ import { HeaderComponent } from './components/header/header.component';
 import { FooterComponent } from './components/footer/footer.component';
 import { DashboardLoaderComponent } from './components/dashboard-loader/dashboard-loader.component';
 import { DeleteActionButtonComponent } from './components/delete-action-button/delete-action-button.component';
+import { LogoutConfirmationDialogComponent } from './components/logout-confirmation-dialog/logout-confirmation-dialog.component';
 import { ProcessingOverlayComponent } from './components/processing-overlay/processing-overlay.component';
 import { SessionInactivityWarningComponent } from './components/session-inactivity-warning/session-inactivity-warning.component';
+import { QuestionBankComponent } from './components/question-bank/question-bank.component';
+import { QuestionEditorComponent } from './components/question-editor/question-editor.component';
 
 import { FormatPhone } from './pipes/format-phone.pipe';
 import { ToLowerCaseText } from './pipes/to-lower-case-text.pipe';
@@ -32,8 +35,11 @@ import { MaterialModule } from '../material.module';
     FooterComponent,
     DashboardLoaderComponent,
     DeleteActionButtonComponent,
+    LogoutConfirmationDialogComponent,
     ProcessingOverlayComponent,
     SessionInactivityWarningComponent,
+    QuestionBankComponent,
+    QuestionEditorComponent,
     FormatPhone,
     ToLowerCaseText,
     ToUpperCaseText
@@ -46,6 +52,8 @@ import { MaterialModule } from '../material.module';
     DeleteActionButtonComponent,
     ProcessingOverlayComponent,
     SessionInactivityWarningComponent,
+    QuestionBankComponent,
+    QuestionEditorComponent,
     FormatPhone,
     ToLowerCaseText,
     ToUpperCaseText,

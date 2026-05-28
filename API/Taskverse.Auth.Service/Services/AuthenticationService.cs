@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using Taskverse.API.Auth.Service.Models;
-using Taskverse.Business.Enums;
+using Taskverse.Data.Enums;
 using Taskverse.Data.DataAccess;
 
 namespace Taskverse.API.Auth.Service.Services;

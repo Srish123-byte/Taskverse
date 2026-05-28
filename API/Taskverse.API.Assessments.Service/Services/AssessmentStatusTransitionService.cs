@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Taskverse.API.Assessments.Service.Models;
-using Taskverse.Business.Enums;
+using Taskverse.Data.Enums;
 using Taskverse.Data.DataAccess;
 
 namespace Taskverse.API.Assessments.Service.Services;

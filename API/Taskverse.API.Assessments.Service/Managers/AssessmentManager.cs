@@ -4,7 +4,7 @@ using Npgsql;
 using Taskverse.API.Assessments.Service.Mappings;
 using Taskverse.API.Assessments.Service.Models;
 using Taskverse.API.Assessments.Service.Services;
-using Taskverse.Business.Enums;
+using Taskverse.Data.Enums;
 using Taskverse.Data.DataAccess;
 
 namespace Taskverse.API.Assessments.Service.Managers;

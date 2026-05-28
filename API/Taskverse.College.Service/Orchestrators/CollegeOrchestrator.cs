@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Taskverse.Business.Enums;
+using Taskverse.Data.Enums;
 using Taskverse.API.College.Service.DTOs;
 using Taskverse.Data.DataAccess;
 

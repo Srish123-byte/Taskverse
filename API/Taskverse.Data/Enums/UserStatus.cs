@@ -1,4 +1,4 @@
-namespace Taskverse.Business.Enums;
+namespace Taskverse.Data.Enums;
 
 /// <summary>
 /// Mirrors the PostgreSQL user_status enum.

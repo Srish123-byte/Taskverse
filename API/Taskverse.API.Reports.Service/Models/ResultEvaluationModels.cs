@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-using Taskverse.Business.Enums;
+using Taskverse.Data.Enums;
 
 namespace Taskverse.API.Reports.Service.Models;
 

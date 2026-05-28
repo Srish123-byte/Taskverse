@@ -97,6 +97,7 @@ public record QuestionBankAssessmentModel(
 public record CreateQuestionModel(
     Guid CollegeId,
     string CreatedBy,
+    string RequesterRole,
     string Stream,
     Guid? SubjectId,
     string? Subject,
@@ -110,10 +111,13 @@ public record CreateQuestionModel(
     string? Explanation,
     decimal Marks,
     decimal NegativeMarks,
-    int DifficultyLevel);
+    int DifficultyLevel,
+    int? SourceRowNumber);
 
 public record DeleteQuestionsModel(
     string CreatedBy,
+    string RequesterRole,
+    Guid CollegeId,
     List<Guid> QuestionIds);
 
 public record QuestionBankSearchModel(

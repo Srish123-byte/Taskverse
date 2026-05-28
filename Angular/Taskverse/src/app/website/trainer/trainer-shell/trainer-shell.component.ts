@@ -19,6 +19,7 @@ export class TrainerShellComponent {
     { label: 'Dashboard',   route: 'dashboard',   icon: 'dashboard',   iconPath: 'assets/icons/nav/dashboard.svg' },
     { label: 'Courses',     route: 'courses',     icon: 'menu_book',   iconPath: 'assets/icons/nav/courses.svg' },
     { label: 'Students',    route: 'students',    icon: 'groups',      iconPath: 'assets/icons/nav/students.svg' },
+    { label: 'Question Bank', route: 'questions-management', icon: 'quiz', iconPath: 'assets/icons/nav/tasks.svg' },
     { label: 'Manage',      route: 'manage',      icon: 'tune',        iconPath: 'assets/icons/nav/manage.svg' },
     { label: 'Help Center', route: 'help-center', icon: 'help_center', iconPath: 'assets/icons/nav/help-center.svg' }
   ];
@@ -26,6 +27,6 @@ export class TrainerShellComponent {
   constructor(private readonly authSessionService: AuthSessionService) {}
 
   logout(): void {
-    this.authSessionService.logout();
+    this.authSessionService.confirmLogout();
   }
 }

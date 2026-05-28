@@ -48,6 +48,7 @@ public class QuestionBankAssessmentResponseModel
 public class CreateQuestionRequestModel
 {
     public string Stream { get; set; } = string.Empty;
+    public string? RequesterRole { get; set; }
     public Guid? SubjectId { get; set; }
     public string? Subject { get; set; }
     public Guid? TopicId { get; set; }
@@ -61,6 +62,7 @@ public class CreateQuestionRequestModel
     public decimal Marks { get; set; }
     public decimal NegativeMarks { get; set; }
     public int DifficultyLevel { get; set; }
+    public int? SourceRowNumber { get; set; }
 }
 
 public class DeleteQuestionsRequestModel

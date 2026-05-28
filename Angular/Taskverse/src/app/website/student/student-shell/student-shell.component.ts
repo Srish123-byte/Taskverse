@@ -36,6 +36,6 @@ export class StudentShellComponent {
   }
 
   logout(): void {
-    this.authSessionService.logout();
+    this.authSessionService.confirmLogout();
   }
 }

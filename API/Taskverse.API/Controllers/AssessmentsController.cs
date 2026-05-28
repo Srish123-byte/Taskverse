@@ -295,6 +295,60 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    [HttpGet("questions/{id:guid}")]
+    [SwaggerResponse(200, "Question loaded successfully", typeof(QuestionResponseModel))]
+    [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Question not found")]
+    [SwaggerResponse(409, "Question cannot be edited while linked to a live assessment")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> GetQuestion(Guid id)
+    {
+        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        try
+        {
+            var dto = await _assessmentOrchestrator.GetQuestion(id, collegeId);
+
+            if (User.IsInRole(TrainerRole) &&
+                !string.Equals(dto.CreatedBy?.Trim(), GetCreatedByName().Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    message = "You can only edit questions that you created."
+                });
+            }
+
+            return Ok(dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
+        }
+    }
+
     [HttpPut("questions/{id:guid}")]
     [SwaggerResponse(200, "Question updated successfully", typeof(QuestionResponseModel))]
     [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]
@@ -313,6 +367,7 @@ public class AssessmentsController : TaskverseBaseController
 
         try
         {
+            model.RequesterRole = GetRequesterRole();
             var dto = await _assessmentOrchestrator.UpdateQuestion(
                 id,
                 model.ToDto(collegeId, GetCreatedByName()));
@@ -359,6 +414,9 @@ public class AssessmentsController : TaskverseBaseController
         var accessCheck = EnsureCollegeAdminOrTrainerAccess();
         if (accessCheck is not null) return accessCheck;
 
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
         if (model is null || model.QuestionIds.Count == 0)
         {
             return BadRequest(new { message = "At least one question id is required." });
@@ -367,7 +425,7 @@ public class AssessmentsController : TaskverseBaseController
         try
         {
             var deletedQuestionIds = await _assessmentOrchestrator.DeleteQuestions(
-                model.ToDto(GetCreatedByName()));
+                model.ToDto(collegeId, GetCreatedByName(), GetRequesterRole()));
 
             return Ok(deletedQuestionIds.ToResponseModel());
         }

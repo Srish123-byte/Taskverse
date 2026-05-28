@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { RouteAddress } from '../../../common/constants/routes.constants';
 import { CollegeAdminService } from '../../../common/services/api/college-admin.service';
 import { AuthSessionService } from '../../../common/services/session/auth-session.service';
@@ -24,6 +25,7 @@ export class CollegeAdminShellComponent implements OnInit, OnDestroy {
     { label: 'Dashboard',           route: `/${RouteAddress.CollegeAdmin.Dashboard}`,         icon: 'space_dashboard',  iconPath: 'assets/icons/nav/dashboard.svg' },
     { label: 'User Management',     route: `/${RouteAddress.CollegeAdmin.Users}`,              icon: 'groups_2',         iconPath: 'assets/icons/nav/user-management.svg', badge: null },
     { label: 'Classes Management',  route: `/${RouteAddress.CollegeAdmin.ClassesManagement}`,  icon: 'account_tree',     iconPath: 'assets/icons/nav/classes.svg' },
+    { label: 'Questions Management',route: `/${RouteAddress.CollegeAdmin.QuestionsManagement}`,icon: 'quiz',             iconPath: 'assets/icons/nav/tasks.svg' },
     { label: 'Assessment Builder',  route: `/${RouteAddress.CollegeAdmin.AssessmentBuilder}`,  icon: 'assignment',       iconPath: 'assets/icons/nav/assessment-builder.svg' },
     { label: 'Reports',             route: `/${RouteAddress.CollegeAdmin.Reports}`,            icon: 'bar_chart',        iconPath: 'assets/icons/nav/reports.svg' }
   ];
@@ -37,7 +39,8 @@ export class CollegeAdminShellComponent implements OnInit, OnDestroy {
   constructor(
     private readonly collegeAdminService: CollegeAdminService,
     private readonly authSessionService: AuthSessionService,
-    private readonly session: Session) {}
+    private readonly session: Session,
+    private readonly router: Router) {}
 
   ngOnInit(): void {
     this.subscriptions.add(
@@ -64,8 +67,12 @@ export class CollegeAdminShellComponent implements OnInit, OnDestroy {
     return this.session.user?.collegeName?.trim() || 'Institution';
   }
 
+  get showHeaderSearch(): boolean {
+    return !this.router.url.includes(`/${RouteAddress.CollegeAdmin.QuestionsManagement}`);
+  }
+
   logout(): void {
-    this.authSessionService.logout();
+    this.authSessionService.confirmLogout();
   }
 
   private updateUserManagementBadge(pendingCount: number): void {

@@ -50,7 +50,7 @@
   </aside>
 
   <main class="shell-main">
-    <header class="shell-header">
+    <header *ngIf="showHeaderSearch" class="shell-header">
       <label class="search-shell" for="collegeAdminSearch">
         <mat-icon>search</mat-icon>
         <input id="collegeAdminSearch" type="search" placeholder="Search assessments, students, or batches..." />

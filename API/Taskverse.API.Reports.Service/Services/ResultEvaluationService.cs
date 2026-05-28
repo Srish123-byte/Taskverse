@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Taskverse.API.Reports.Service.Models;
-using Taskverse.Business.Enums;
+using Taskverse.Data.Enums;
 using Taskverse.Data.DataAccess;
 
 namespace Taskverse.API.Reports.Service.Services;
