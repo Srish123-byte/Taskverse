@@ -26,7 +26,7 @@ export class CollegeAdminShellComponent implements OnInit, OnDestroy {
     { label: 'User Management',     route: `/${RouteAddress.CollegeAdmin.Users}`,              icon: 'groups_2',         iconPath: 'assets/icons/nav/user-management.svg', badge: null },
     { label: 'Classes Management',  route: `/${RouteAddress.CollegeAdmin.ClassesManagement}`,  icon: 'account_tree',     iconPath: 'assets/icons/nav/classes.svg' },
     { label: 'Questions Management',route: `/${RouteAddress.CollegeAdmin.QuestionsManagement}`,icon: 'quiz',             iconPath: 'assets/icons/nav/tasks.svg' },
-    { label: 'Assessment Builder',  route: `/${RouteAddress.CollegeAdmin.AssessmentBuilder}`,  icon: 'assignment',       iconPath: 'assets/icons/nav/assessment-builder.svg' },
+    { label: 'Assessments Management', route: `/${RouteAddress.CollegeAdmin.AssessmentsManagement}`, icon: 'assignment', iconPath: 'assets/icons/nav/assessment-builder.svg' },
     { label: 'Reports',             route: `/${RouteAddress.CollegeAdmin.Reports}`,            icon: 'bar_chart',        iconPath: 'assets/icons/nav/reports.svg' }
   ];
 
@@ -68,7 +68,8 @@ export class CollegeAdminShellComponent implements OnInit, OnDestroy {
   }
 
   get showHeaderSearch(): boolean {
-    return !this.router.url.includes(`/${RouteAddress.CollegeAdmin.QuestionsManagement}`);
+    return !this.router.url.includes(`/${RouteAddress.CollegeAdmin.QuestionsManagement}`) &&
+      !this.router.url.includes(`/${RouteAddress.CollegeAdmin.AssessmentsManagement}`);
   }
 
   logout(): void {

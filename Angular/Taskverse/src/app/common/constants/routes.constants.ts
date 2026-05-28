@@ -25,7 +25,7 @@ export const RouteAddress = {
     ClassesManagement:  'college-admin/classes-management',
     QuestionsManagement:'college-admin/questions-management',
     AddQuestion:        'college-admin/questions-management/new',
-    AssessmentBuilder:  'college-admin/assessment-builder',
+    AssessmentsManagement: 'college-admin/assessments-management',
     Reports:            'college-admin/reports',
     HelpCenter:         'college-admin/help-center',
     Settings:           'college-admin/settings'
@@ -38,6 +38,7 @@ export const RouteAddress = {
     Students:            'trainer/students',
     QuestionsManagement: 'trainer/questions-management',
     AddQuestion:         'trainer/questions-management/new',
+    AssessmentsManagement: 'trainer/assessments-management',
     Manage:              'trainer/manage',
     HelpCenter:          'trainer/help-center'
   },

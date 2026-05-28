@@ -1,0 +1,125 @@
+<div class="page-container">
+  <section class="assessments-hero">
+    <div class="hero-copy">
+      <span class="hero-kicker">{{ heroKicker }}</span>
+      <h2 class="page-title">{{ pageTitle }}</h2>
+      <p class="page-welcome">{{ pageWelcome }}</p>
+    </div>
+
+    <button type="button" class="primary-action" (click)="createAssessment()">
+      <mat-icon>add</mat-icon>
+      <span>Create New Assessment</span>
+    </button>
+  </section>
+
+  <section class="summary-grid">
+    <article class="summary-card accent-total">
+      <div class="summary-label">Total Assessments</div>
+      <div class="summary-value">{{ totalCount }}</div>
+      <div class="summary-meta">Mock catalog for SPA preview</div>
+    </article>
+
+    <article class="summary-card accent-active">
+      <div class="summary-label">Active Assessments</div>
+      <div class="summary-value">{{ activeCount }}</div>
+      <div class="summary-meta">Live and upcoming sessions</div>
+    </article>
+
+    <article class="summary-card accent-completed">
+      <div class="summary-label">Completed</div>
+      <div class="summary-value">{{ completedCount }}</div>
+      <div class="summary-meta">Completed assessment runs</div>
+    </article>
+  </section>
+
+  <section class="filters-shell">
+    <label class="search-field" for="assessmentManagementSearch">
+      <img src="assets/icons/shared/magnifier.svg" alt="" class="search-icon" aria-hidden="true" />
+      <input
+        id="assessmentManagementSearch"
+        type="search"
+        [(ngModel)]="searchTerm"
+        (ngModelChange)="onFilterChange()"
+        placeholder="Search assessments by name, category, or code..." />
+    </label>
+
+    <div class="filter-actions">
+      <select [(ngModel)]="selectedStatus" (ngModelChange)="onFilterChange()" aria-label="Filter by status">
+        <option *ngFor="let option of statusOptions" [value]="option.value">{{ option.label }}</option>
+      </select>
+
+      <select [(ngModel)]="selectedDifficulty" (ngModelChange)="onFilterChange()" aria-label="Filter by difficulty">
+        <option *ngFor="let option of difficultyOptions" [value]="option.value">{{ option.label }}</option>
+      </select>
+
+      <button type="button" class="secondary-action" (click)="clearFilters()">Reset</button>
+    </div>
+  </section>
+
+  <section class="management-table-shell">
+    <div class="table-header-row" *ngIf="visibleAssessments.length > 0">
+      <span>Assessment Name</span>
+      <span>Category</span>
+      <span>Status</span>
+      <span>Date</span>
+      <span>Total Marks</span>
+      <span>Actions</span>
+    </div>
+
+    <div *ngIf="visibleAssessments.length === 0" class="empty-state">
+      <div class="empty-state-title">No assessments match the current filters</div>
+      <div class="empty-state-copy">Try broadening the search or resetting the filters to see more mock records.</div>
+    </div>
+
+    <article
+      *ngFor="let assessment of visibleAssessments; trackBy: trackByAssessmentId"
+      class="table-row">
+      <div class="assessment-name-cell">
+        <div class="assessment-name">{{ assessment.assessmentName }}</div>
+        <div class="assessment-code">{{ assessment.assessmentCode }}</div>
+      </div>
+
+      <div class="category-cell">
+        <span class="category-pill">{{ assessment.category }}</span>
+      </div>
+
+      <div class="status-cell">
+        <span class="status-dot" [ngClass]="getStatusClass(assessment.status)"></span>
+        <span class="status-label">{{ assessment.status }}</span>
+      </div>
+
+      <div class="date-cell">{{ assessment.scheduledDate }}</div>
+
+      <div class="marks-cell">{{ assessment.totalMarks }} Marks</div>
+
+      <div class="actions-cell">
+        <button type="button" class="icon-button" (click)="editAssessment(assessment)" aria-label="Edit assessment">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button type="button" class="icon-button icon-button-danger" (click)="deleteAssessment(assessment)" aria-label="Delete assessment">
+          <mat-icon>delete_outline</mat-icon>
+        </button>
+      </div>
+    </article>
+
+    <div class="table-footer" *ngIf="filteredAssessments.length > 0">
+      <span class="footer-copy">
+        Showing {{ pageStart }}-{{ pageEnd }} of {{ filteredAssessments.length }} assessments
+      </span>
+
+      <div class="pagination-controls">
+        <button type="button" class="page-button" [disabled]="currentPage === 1" (click)="prevPage()" aria-label="Previous page">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <span class="page-indicator">Page {{ currentPage }} of {{ totalPages }}</span>
+        <button type="button" class="page-button" [disabled]="currentPage === totalPages" (click)="nextPage()" aria-label="Next page">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <div class="integration-note">
+    This screen is currently mock-backed for UI approval. API wiring can be layered in later without changing the page structure.
+  </div>
+</div>

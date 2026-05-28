@@ -24,7 +24,7 @@ const routes: Routes = [
       { path: 'questions-management', component: QuestionsManagementComponent },
       { path: 'questions-management/new', component: QuestionEditorPageComponent },
       { path: 'questions-management/edit/:id', component: QuestionEditorPageComponent },
-      { path: 'assessment-builder', component: AssessmentBuilderComponent },
+      { path: 'assessments-management', component: AssessmentBuilderComponent },
       { path: 'reports', component: ReportsComponent },
       { path: 'help-center', component: HelpCenterComponent },
       { path: 'settings', component: SettingsComponent }

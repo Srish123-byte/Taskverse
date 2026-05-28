@@ -215,7 +215,10 @@
   background: rgba(30, 41, 59, 0.82);
 }
 
-.search-field mat-icon {
+.search-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
   color: #7dd3fc;
 }
 
@@ -631,7 +634,7 @@
   color: #6e8a7d;
 }
 
-:host(.theme-trainer) .search-field mat-icon {
+:host(.theme-trainer) .search-icon {
   color: #5fc49a;
 }
 
