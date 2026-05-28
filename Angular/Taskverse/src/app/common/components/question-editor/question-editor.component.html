@@ -5,9 +5,9 @@
 
   <section class="editor-hero">
     <span class="hero-kicker">{{ heroKicker }}</span>
-    <h2 class="page-title">Add New Question</h2>
+    <h2 class="page-title">{{ pageTitle }}</h2>
     <p class="page-welcome">
-      Create a question and save it directly into the shared repository.
+      {{ pageDescription }}
     </p>
   </section>
 
@@ -107,8 +107,8 @@
     </section>
 
     <div class="action-row">
-      <button type="button" class="secondary-action" (click)="cancel()">Cancel</button>
-      <button type="submit" class="primary-action" [disabled]="isSaving">{{ isSaving ? 'Saving...' : 'Save to Repository' }}</button>
+      <button type="button" class="secondary-action" (click)="cancel()">Discard Changes</button>
+      <button type="submit" class="primary-action" [disabled]="isSaving || isLoading">{{ submitButtonLabel }}</button>
     </div>
   </form>
 

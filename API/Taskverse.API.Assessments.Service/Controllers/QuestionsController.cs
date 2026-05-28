@@ -102,6 +102,43 @@ public class QuestionsController : ControllerBase
         }
     }
 
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType(typeof(QuestionRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<QuestionRecord>> GetQuestionById(
+        Guid id,
+        [FromQuery(Name = "collegeId")] Guid collegeId)
+    {
+        try
+        {
+            var question = await _questionManager.GetQuestionById(collegeId, id);
+            return Ok(question.ToRecord());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = "An unexpected error occurred while loading the question.",
+                detail = ex.Message
+            });
+        }
+    }
+
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(QuestionRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -113,7 +150,7 @@ public class QuestionsController : ControllerBase
     {
         try
         {
-            var question = await _questionManager.UpdateQuestion(id, request.ToEntity());
+            var question = await _questionManager.UpdateQuestion(id, request.ToEntity(), request.RequesterRole);
             var response = question.ToRecord();
 
             return Ok(response);

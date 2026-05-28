@@ -98,6 +98,7 @@ public static class AssessmentMappings
         => new(
             dto.CollegeId,
             dto.CreatedBy,
+            dto.RequesterRole,
             dto.Stream,
             dto.SubjectId,
             dto.Subject,

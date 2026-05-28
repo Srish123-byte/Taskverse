@@ -1,4 +1,7 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectorRef, Component, HostBinding, Input, OnInit } from '@angular/core';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import {
   AssessmentAdminService,
   CreateQuestionRequest,
@@ -23,11 +26,19 @@ interface SelectOption {
   styleUrl: './question-bank.component.scss'
 })
 export class QuestionBankComponent implements OnInit {
+  private static readonly editErrorSnackBarConfig = {
+    duration: 4500,
+    horizontalPosition: 'center' as const,
+    verticalPosition: 'top' as const,
+    panelClass: ['question-bank-restriction-snackbar']
+  };
+
   @Input() heroKicker = 'Shared Repository';
   @Input() pageTitle = 'Question Bank';
   @Input() pageWelcome = 'Manage and organize your institution\'s shared question repository.';
   @Input() theme: 'college-admin' | 'trainer' = 'college-admin';
   @Input() addQuestionRoute = '';
+  @Input() editQuestionRoute = '';
 
   readonly pageSize = 10;
   readonly difficultyOptions: SelectOption[] = [
@@ -73,10 +84,16 @@ export class QuestionBankComponent implements OnInit {
     return this.addQuestionRoute.split('/').filter(segment => segment.length > 0);
   }
 
+  get editQuestionRouteSegments(): string[] {
+    return this.editQuestionRoute.split('/').filter(segment => segment.length > 0);
+  }
+
   constructor(
     private readonly assessmentAdminService: AssessmentAdminService,
     private readonly questionImportParserService: QuestionImportParserService,
-    private readonly changeDetectorRef: ChangeDetectorRef
+    private readonly changeDetectorRef: ChangeDetectorRef,
+    private readonly router: Router,
+    private readonly snackBar: MatSnackBar
   ) {}
 
   ngOnInit(): void {
@@ -211,6 +228,47 @@ export class QuestionBankComponent implements OnInit {
       .filter(segment => segment.length > 0)
       .map(segment => segment.charAt(0).toUpperCase() + segment.slice(1))
       .join(' ');
+  }
+
+  editQuestion(questionId: string): void {
+    if (!questionId || this.editQuestionRouteSegments.length === 0) {
+      return;
+    }
+
+    this.assessmentAdminService.getQuestion(questionId, true).subscribe({
+      next: () => {
+        void this.router.navigate(
+          ['/', ...this.editQuestionRouteSegments, questionId],
+          {
+            state: {
+              returnUrl: this.router.url
+            }
+          });
+      },
+      error: error => {
+        const message = this.getEditRestrictionMessage(error);
+        this.snackBar.open(message, 'Close', QuestionBankComponent.editErrorSnackBarConfig);
+      }
+    });
+  }
+
+  private getEditRestrictionMessage(error: HttpErrorResponse): string {
+    const detail = error?.error?.detail;
+    const message = error?.error?.message;
+    const normalizedMessage = `${detail ?? ''} ${message ?? ''}`.toLowerCase();
+
+    if (normalizedMessage.includes('you can only edit questions that you created') ||
+        normalizedMessage.includes('only the user who created this question can update it')) {
+      return this.theme === 'trainer'
+        ? 'You can only edit questions that you created.'
+        : 'This question cannot be edited right now.';
+    }
+
+    if (normalizedMessage.includes('included in a live assessment')) {
+      return 'This question is part of a live assessment, so it cannot be edited right now.';
+    }
+
+    return message || detail || 'Unable to open this question for editing right now.';
   }
 
   private submitBulkUpload(parsedFile: ParsedQuestionImportFile, input: HTMLInputElement): void {

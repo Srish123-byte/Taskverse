@@ -66,12 +66,20 @@ export class AssessmentAdminService {
 
   constructor(private readonly http: HttpClientService) {}
 
+  getQuestion(questionId: string, skipGlobalErrorRedirect = false): Observable<QuestionBankItem> {
+    return this.http.get<QuestionBankItem>(`${this.url}/questions/${questionId}`, undefined, skipGlobalErrorRedirect);
+  }
+
   searchQuestionBank(request: QuestionBankSearchRequest): Observable<PagedQuestionBankResult> {
     return this.http.post<PagedQuestionBankResult>(`${this.url}/questions/search`, request);
   }
 
   createQuestions(request: CreateQuestionRequest[]): Observable<QuestionBankItem[]> {
     return this.http.post<QuestionBankItem[]>(`${this.url}/questions`, request);
+  }
+
+  updateQuestion(questionId: string, request: CreateQuestionRequest): Observable<QuestionBankItem> {
+    return this.http.put<QuestionBankItem>(`${this.url}/questions/${questionId}`, request);
   }
 
   deleteAssessment(assessmentId: string): Observable<void> {

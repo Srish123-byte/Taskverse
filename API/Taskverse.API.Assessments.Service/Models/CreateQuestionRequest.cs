@@ -11,6 +11,9 @@ public class CreateQuestionRequest
     [MaxLength(200)]
     public string CreatedBy { get; set; } = string.Empty;
 
+    [MaxLength(50)]
+    public string? RequesterRole { get; set; }
+
     [Required]
     [MaxLength(100)]
     public string Stream { get; set; } = string.Empty;

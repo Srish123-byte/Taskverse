@@ -59,6 +59,7 @@ public class CreateQuestionDto
 {
     public Guid CollegeId { get; set; }
     public string CreatedBy { get; set; } = default!;
+    public string RequesterRole { get; set; } = default!;
     public string Stream { get; set; } = default!;
     public Guid? SubjectId { get; set; }
     public string? Subject { get; set; }

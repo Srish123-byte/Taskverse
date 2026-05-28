@@ -97,6 +97,7 @@ public record QuestionBankAssessmentModel(
 public record CreateQuestionModel(
     Guid CollegeId,
     string CreatedBy,
+    string RequesterRole,
     string Stream,
     Guid? SubjectId,
     string? Subject,

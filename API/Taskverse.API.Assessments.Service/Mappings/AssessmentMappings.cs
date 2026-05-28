@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Taskverse.API.Assessments.Service.Models;
-using Taskverse.Business.Enums;
+using Taskverse.Data.Enums;
 using Taskverse.Data.DataAccess;
 using Taskverse.Data.Utilities;
 

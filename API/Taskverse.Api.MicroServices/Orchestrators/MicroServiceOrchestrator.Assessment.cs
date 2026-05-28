@@ -30,6 +30,12 @@ public partial class MicroServiceOrchestrator
         return await Post<List<AssessmentQuestionModel>>(url, models);
     }
 
+    public async Task<ObjectResult> GetQuestion(Guid questionId, Guid collegeId)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/questions/{questionId}?collegeId={collegeId}";
+        return await Get<AssessmentQuestionModel>(url);
+    }
+
     public async Task<ObjectResult> UpdateQuestion(Guid questionId, CreateQuestionModel model)
     {
         var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/questions/{questionId}";

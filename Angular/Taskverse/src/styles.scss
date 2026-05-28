@@ -256,6 +256,81 @@ option {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-card) !important;
 }
+
+.cdk-overlay-container .cdk-global-overlay-wrapper:has(.question-editor-success-snackbar) {
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 0;
+}
+
+body .question-editor-success-snackbar.mat-mdc-snack-bar-container {
+  margin-top: calc(50vh - 40px);
+  min-width: min(460px, calc(100vw - 32px));
+  max-width: min(560px, calc(100vw - 32px));
+  border-color: rgba(0, 191, 255, 0.35);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  z-index: 1200;
+}
+
+body .question-editor-success-snackbar .mat-mdc-snackbar-surface {
+  justify-content: center;
+  padding: 20px 24px;
+}
+
+body .question-editor-success-snackbar .mdc-snackbar__label {
+  text-align: center;
+  font-weight: 600;
+}
+
+.cdk-overlay-container .cdk-global-overlay-wrapper:has(.question-bank-restriction-snackbar) {
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 0;
+}
+
+body .question-bank-restriction-snackbar.mat-mdc-snack-bar-container {
+  --mdc-snackbar-container-color: #dff6ea;
+  --mdc-snackbar-supporting-text-color: #1f5f46;
+  --mat-snack-bar-button-color: #127a55;
+  margin-top: calc(50vh - 40px);
+  min-width: min(460px, calc(100vw - 32px));
+  max-width: min(560px, calc(100vw - 32px));
+  border-color: rgba(60, 148, 107, 0.35);
+  box-shadow: 0 24px 80px rgba(20, 63, 44, 0.24);
+  z-index: 1200;
+}
+
+body .question-bank-restriction-snackbar .mat-mdc-snackbar-surface {
+  background-color: #dff6ea !important;
+  justify-content: center;
+  padding: 20px 24px;
+}
+
+body .question-bank-restriction-snackbar .mdc-snackbar__label {
+  text-align: center;
+  font-weight: 600;
+  color: #1f5f46;
+}
+
+body .question-bank-restriction-snackbar .mat-mdc-snack-bar-action {
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #127a55 !important;
+}
+
+body .question-bank-restriction-snackbar .mat-mdc-snack-bar-action:hover,
+body .question-bank-restriction-snackbar .mat-mdc-snack-bar-action:focus,
+body .question-bank-restriction-snackbar .mat-mdc-snack-bar-action:active,
+body .question-bank-restriction-snackbar .mat-mdc-snack-bar-action:focus-visible {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body .question-bank-restriction-snackbar .mat-mdc-button-persistent-ripple,
+body .question-bank-restriction-snackbar .mat-mdc-button-ripple,
+body .question-bank-restriction-snackbar .mdc-button__ripple {
+  display: none !important;
+}
 body .logout-confirmation-backdrop {
   background: rgba(3, 8, 20, 0.76);
   backdrop-filter: blur(10px);

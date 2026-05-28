@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Taskverse.Data.DataAccess;
 using Taskverse.API.Assessments.Service.Mappings;
 using System.Text.Json;
+using Taskverse.Data.Enums;
 
 namespace Taskverse.API.Assessments.Service.Managers;
 
@@ -110,7 +111,37 @@ public class QuestionManager : IQuestionManager
         return uniqueQuestionsToCreate;
     }
 
-    public async Task<Question> UpdateQuestion(Guid questionId, Question updatedQuestion)
+    public async Task<Question> GetQuestionById(Guid collegeId, Guid questionId)
+    {
+        if (collegeId == Guid.Empty)
+        {
+            throw new ArgumentException("CollegeId is required.");
+        }
+
+        if (questionId == Guid.Empty)
+        {
+            throw new ArgumentException("QuestionId is required.");
+        }
+
+        var question = await _context.Questions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item =>
+                item.QuestionId == questionId &&
+                item.CollegeId == collegeId &&
+                item.IsActive);
+
+        if (question is null)
+        {
+            throw new KeyNotFoundException($"Question with id '{questionId}' was not found.");
+        }
+
+        await EnsureQuestionIsNotInLiveAssessmentAsync(question.QuestionId, question.AssessmentId);
+        await SubjectTopicResolver.PopulateQuestionSubjectTopicIdsAsync(_context, [question]);
+
+        return question;
+    }
+
+    public async Task<Question> UpdateQuestion(Guid questionId, Question updatedQuestion, string? requesterRole)
     {
         await NormalizeSubjectTopicAsync(updatedQuestion);
         ValidateQuestion(updatedQuestion);
@@ -121,7 +152,10 @@ public class QuestionManager : IQuestionManager
             throw new KeyNotFoundException($"Question with id '{questionId}' was not found.");
         }
 
-        if (!string.Equals(existingQuestion.CreatedBy?.Trim(), updatedQuestion.CreatedBy?.Trim(), StringComparison.OrdinalIgnoreCase))
+        await EnsureQuestionIsNotInLiveAssessmentAsync(existingQuestion.QuestionId, existingQuestion.AssessmentId);
+
+        if (IsTrainer(requesterRole) &&
+            !string.Equals(existingQuestion.CreatedBy?.Trim(), updatedQuestion.CreatedBy?.Trim(), StringComparison.OrdinalIgnoreCase))
         {
             throw new UnauthorizedAccessException("Only the user who created this question can update it.");
         }
@@ -140,6 +174,46 @@ public class QuestionManager : IQuestionManager
         }
 
         return existingQuestion;
+    }
+
+    private static bool IsTrainer(string? requesterRole)
+    {
+        return string.Equals(requesterRole?.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task EnsureQuestionIsNotInLiveAssessmentAsync(Guid questionId, Guid? assessmentId)
+    {
+        if (assessmentId.HasValue && assessmentId.Value != Guid.Empty)
+        {
+            var linkedAssessment = await _context.Assessments
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId.Value);
+
+            if (linkedAssessment?.AssessmentStatus == AssessmentStatus.Live)
+            {
+                throw new InvalidOperationException("This question cannot be edited because it is included in a live assessment.");
+            }
+        }
+
+        var liveAssessmentLinkExists = await _context.AssessmentQuestions
+            .AsNoTracking()
+            .Join(
+                _context.Assessments.AsNoTracking(),
+                assessmentQuestion => assessmentQuestion.AssessmentId,
+                assessment => assessment.AssessmentId,
+                (assessmentQuestion, assessment) => new
+                {
+                    assessmentQuestion.QuestionId,
+                    assessment.AssessmentStatus
+                })
+            .AnyAsync(item =>
+                item.QuestionId == questionId &&
+                item.AssessmentStatus == AssessmentStatus.Live);
+
+        if (liveAssessmentLinkExists)
+        {
+            throw new InvalidOperationException("This question cannot be edited because it is included in a live assessment.");
+        }
     }
 
     public async Task<List<Guid>> DeleteQuestions(string createdBy, List<Guid> questionIds)

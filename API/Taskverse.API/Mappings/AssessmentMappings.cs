@@ -38,6 +38,7 @@ public static class AssessmentMappings
         {
             CollegeId = collegeId,
             CreatedBy = createdBy,
+            RequesterRole = model.RequesterRole ?? string.Empty,
             Stream = model.Stream,
             SubjectId = model.SubjectId,
             Subject = model.Subject,

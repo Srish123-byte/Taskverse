@@ -8,6 +8,7 @@ public interface IAssessmentOrchestrator
     Task DeleteAssessment(DeleteAssessmentDto dto);
     Task<QuestionBankAssessmentDto> PublishAssessment(Guid assessmentId);
     Task<List<AssessmentQuestionDto>> CreateQuestions(List<CreateQuestionDto> dtos);
+    Task<AssessmentQuestionDto> GetQuestion(Guid questionId, Guid collegeId);
     Task<AssessmentQuestionDto> UpdateQuestion(Guid questionId, CreateQuestionDto dto);
     Task<List<Guid>> DeleteQuestions(DeleteQuestionsDto dto);
     Task<PagedQuestionBankDto> SearchQuestionBank(QuestionBankSearchDto dto);

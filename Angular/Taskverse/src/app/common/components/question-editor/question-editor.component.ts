@@ -2,11 +2,13 @@ import { Location } from '@angular/common';
 import { ChangeDetectorRef, Component, HostBinding, Input, OnInit } from '@angular/core';
 import { FormArray, FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import {
   AssessmentAdminService,
   CreateQuestionRequest,
-  PagedQuestionBankResult
+  PagedQuestionBankResult,
+  QuestionBankItem
 } from '../../services/api/assessment-admin.service';
 
 type QuestionType = 'mcq' | 'fill in the blanks';
@@ -18,6 +20,13 @@ type QuestionType = 'mcq' | 'fill in the blanks';
   styleUrl: './question-editor.component.scss'
 })
 export class QuestionEditorComponent implements OnInit {
+  private static readonly successSnackBarConfig = {
+    duration: 3500,
+    horizontalPosition: 'center' as const,
+    verticalPosition: 'top' as const,
+    panelClass: ['question-editor-success-snackbar']
+  };
+
   @Input() theme: 'college-admin' | 'trainer' = 'college-admin';
   @Input() questionBankRoute = '';
   @Input() heroKicker = 'Shared Repository';
@@ -51,14 +60,18 @@ export class QuestionEditorComponent implements OnInit {
 
   isLoading = false;
   isSaving = false;
+  isEditMode = false;
   successMessage = '';
   errorMessage = '';
+  private questionId = '';
+  private fallbackReturnUrl = '';
 
   constructor(
     private readonly formBuilder: FormBuilder,
     private readonly assessmentAdminService: AssessmentAdminService,
     private readonly location: Location,
     private readonly router: Router,
+    private readonly route: ActivatedRoute,
     private readonly changeDetectorRef: ChangeDetectorRef,
     private readonly snackBar: MatSnackBar
   ) {
@@ -84,7 +97,13 @@ export class QuestionEditorComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.questionId = this.route.snapshot.paramMap.get('id') ?? '';
+    this.isEditMode = this.questionId.length > 0;
+    this.fallbackReturnUrl = (history.state?.returnUrl as string | undefined) ?? '';
     this.loadExistingValues();
+    if (this.isEditMode) {
+      this.loadQuestionForEdit();
+    }
     this.applyQuestionTypeRules(this.questionTypeControl.value ?? 'mcq');
     this.questionTypeControl.valueChanges.subscribe(value => {
       this.applyQuestionTypeRules(value ?? 'mcq');
@@ -147,6 +166,24 @@ export class QuestionEditorComponent implements OnInit {
     return window.history.length > 1;
   }
 
+  get pageTitle(): string {
+    return this.isEditMode ? 'Edit Question' : 'Add New Question';
+  }
+
+  get pageDescription(): string {
+    return this.isEditMode
+      ? 'Modify the details of this question and keep your shared repository up to date.'
+      : 'Create a question and save it directly into the shared repository.';
+  }
+
+  get submitButtonLabel(): string {
+    if (this.isSaving) {
+      return this.isEditMode ? 'Updating...' : 'Saving...';
+    }
+
+    return this.isEditMode ? 'Update Question' : 'Save to Repository';
+  }
+
   goToQuestionBank(): void {
     if (!this.questionBankRoute) {
       return;
@@ -158,6 +195,11 @@ export class QuestionEditorComponent implements OnInit {
   cancel(): void {
     if (window.history.length > 1) {
       this.location.back();
+      return;
+    }
+
+    if (this.fallbackReturnUrl) {
+      void this.router.navigateByUrl(this.fallbackReturnUrl);
       return;
     }
 
@@ -181,15 +223,38 @@ export class QuestionEditorComponent implements OnInit {
     const payload = this.buildPayload();
     this.isSaving = true;
 
+    if (this.isEditMode) {
+      this.assessmentAdminService.updateQuestion(this.questionId, payload).subscribe({
+        next: question => {
+          this.successMessage = '';
+          this.errorMessage = '';
+          this.patchFormFromQuestion(question);
+          this.snackBar.open(
+            'Question updated successfully.',
+            'Close',
+            QuestionEditorComponent.successSnackBarConfig);
+          this.isSaving = false;
+          this.changeDetectorRef.detectChanges();
+        },
+        error: error => {
+          this.errorMessage = this.getQuestionEditErrorMessage(error, 'update');
+          this.successMessage = '';
+          this.isSaving = false;
+          this.changeDetectorRef.detectChanges();
+        }
+      });
+
+      return;
+    }
+
     this.assessmentAdminService.createQuestions([payload]).subscribe({
       next: () => {
         this.successMessage = '';
         this.errorMessage = '';
-        this.snackBar.open('Question saved successfully.', 'Close', {
-          duration: 3500,
-          horizontalPosition: 'right',
-          verticalPosition: 'top'
-        });
+        this.snackBar.open(
+          'Question saved successfully.',
+          'Close',
+          QuestionEditorComponent.successSnackBarConfig);
         this.resetForm();
         this.loadExistingValues();
       },
@@ -238,6 +303,24 @@ export class QuestionEditorComponent implements OnInit {
     });
   }
 
+  private loadQuestionForEdit(): void {
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    this.assessmentAdminService.getQuestion(this.questionId, true).subscribe({
+      next: question => {
+        this.patchFormFromQuestion(question);
+        this.isLoading = false;
+        this.changeDetectorRef.detectChanges();
+      },
+      error: error => {
+        this.errorMessage = this.getQuestionEditErrorMessage(error, 'load');
+        this.isLoading = false;
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
   private applyExistingValues(result: PagedQuestionBankResult): void {
     this.streamOptions = this.toDistinctSortedValues(result.items.map(item => item.stream));
     this.subjectOptions = this.toDistinctSortedValues(result.items.map(item => item.subject));
@@ -251,6 +334,63 @@ export class QuestionEditorComponent implements OnInit {
       .map(value => value?.trim())
       .filter((value): value is string => Boolean(value)))]
       .sort((left, right) => left.localeCompare(right));
+  }
+
+  private patchFormFromQuestion(question: QuestionBankItem): void {
+    const questionType = (question.questionType?.toLowerCase() ?? 'mcq') as QuestionType;
+    const options = question.options ?? [];
+    const answerLabel = questionType === 'mcq'
+      ? this.resolveAnswerLabel(options, question.answer)
+      : (question.answer ?? '');
+
+    this.form.patchValue({
+      stream: question.stream ?? '',
+      subject: question.subject ?? '',
+      topic: question.topic ?? '',
+      topicTag: question.topicTag ?? '',
+      difficultyLevel: question.difficultyLevel ?? 1,
+      questionType,
+      questionText: question.questionText ?? '',
+      marks: question.marks ?? 1,
+      negativeMarks: question.negativeMarks ?? 0,
+      answer: answerLabel,
+      explanation: question.explanation ?? ''
+    }, { emitEvent: false });
+
+    this.optionsArray.controls.forEach((control, index) => {
+      control.setValue(options[index] ?? '', { emitEvent: false });
+    });
+
+    this.applyQuestionTypeRules(questionType);
+  }
+
+  private resolveAnswerLabel(options: string[], answer: string | null | undefined): string {
+    const normalizedAnswer = answer?.trim().toLowerCase();
+    const selectedIndex = options.findIndex(option => option.trim().toLowerCase() === normalizedAnswer);
+    return selectedIndex >= 0 ? this.getOptionLabel(selectedIndex) : 'A';
+  }
+
+  private getQuestionEditErrorMessage(error: HttpErrorResponse, action: 'load' | 'update'): string {
+    const detail = error?.error?.detail;
+    const message = error?.error?.message;
+    const normalizedMessage = `${detail ?? ''} ${message ?? ''}`.toLowerCase();
+
+    if (normalizedMessage.includes('you can only edit questions that you created') ||
+        normalizedMessage.includes('only the user who created this question can update it')) {
+      return this.theme === 'trainer'
+        ? 'You can only edit questions that you created. Choose one of your own questions or contact your college admin if this question needs to be updated.'
+        : 'This question can only be edited by its creator right now.';
+    }
+
+    if (normalizedMessage.includes('included in a live assessment')) {
+      return 'This question is part of a live assessment, so editing is locked until that assessment is no longer live.';
+    }
+
+    return detail ||
+      message ||
+      (action === 'load'
+        ? 'Unable to load this question right now.'
+        : 'Unable to update the question right now.');
   }
 
   private applyQuestionTypeRules(questionType: QuestionType): void {

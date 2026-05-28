@@ -19,6 +19,7 @@ const routes: Routes = [
       { path: 'students', component: StudentsComponent },
       { path: 'questions-management', component: QuestionsManagementComponent },
       { path: 'questions-management/new', component: QuestionEditorPageComponent },
+      { path: 'questions-management/edit/:id', component: QuestionEditorPageComponent },
       { path: 'manage', component: ManageComponent },
       { path: 'help-center', component: HelpCenterComponent }
     ]

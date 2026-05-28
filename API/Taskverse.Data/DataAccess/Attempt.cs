@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Taskverse.Business.Enums;
+using Taskverse.Data.Enums;
 
 namespace Taskverse.Data.DataAccess;
 

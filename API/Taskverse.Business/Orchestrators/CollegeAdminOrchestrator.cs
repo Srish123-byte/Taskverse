@@ -6,7 +6,7 @@ using Npgsql;
 using Taskverse.Api.MicroServices.Interfaces;
 using Taskverse.Api.MicroServices.Models;
 using Taskverse.Business.DTOs;
-using Taskverse.Business.Enums;
+using Taskverse.Data.Enums;
 using Taskverse.Business.Interface;
 using Taskverse.Business.Mappings;
 using Taskverse.Business.Utilities;

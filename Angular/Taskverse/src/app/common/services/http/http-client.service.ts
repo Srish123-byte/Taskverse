@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { HttpHelperService } from './http-helper.service';
@@ -8,6 +8,8 @@ import { HttpHelperService } from './http-helper.service';
   providedIn: 'root'
 })
 export class HttpClientService {
+  private static readonly skipGlobalErrorRedirectHeader = 'X-Skip-Global-Error-Redirect';
+
   constructor(
     private readonly http: HttpClient,
     private readonly httpHelperService: HttpHelperService
@@ -18,9 +20,11 @@ export class HttpClientService {
     return throwError(() => error);
   }
 
-  get<T>(path: string, params: HttpParams = new HttpParams()): Observable<T> {
+  get<T>(path: string, params: HttpParams = new HttpParams(), skipGlobalErrorRedirect = false): Observable<T> {
+    const options = this.buildOptions(params, skipGlobalErrorRedirect);
+
     return this.http
-      .get<T>(this.httpHelperService.api + path, this.httpHelperService.getOptions(params))
+      .get<T>(this.httpHelperService.api + path, options)
       .pipe(map((response: HttpResponse<T>) => response.body as T))
       .pipe(catchError(this.formatErrors));
   }
@@ -44,5 +48,22 @@ export class HttpClientService {
       .delete<T>(this.httpHelperService.api + path, this.httpHelperService.getOptions(params))
       .pipe(map((response: HttpResponse<T>) => response.body as T))
       .pipe(catchError(this.formatErrors));
+  }
+
+  private buildOptions(params: HttpParams, skipGlobalErrorRedirect: boolean) {
+    const options = this.httpHelperService.getOptions(params);
+
+    if (!skipGlobalErrorRedirect) {
+      return options;
+    }
+
+    const headers = options.headers instanceof HttpHeaders
+      ? options.headers
+      : new HttpHeaders(options.headers);
+
+    return {
+      ...options,
+      headers: headers.set(HttpClientService.skipGlobalErrorRedirectHeader, 'true')
+    };
   }
 }

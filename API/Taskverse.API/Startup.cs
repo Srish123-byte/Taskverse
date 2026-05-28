@@ -21,7 +21,7 @@ using Taskverse.Business.Interface;
 using Taskverse.Business.Managers;
 using Taskverse.Business.Orchestrators;
 using Taskverse.Data.DataAccess;
-using Taskverse.Business.Enums;
+using Taskverse.Data.Enums;
 using Taskverse.Api.MicroServices;
 
 namespace Taskverse.Api;
