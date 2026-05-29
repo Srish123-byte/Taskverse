@@ -70,7 +70,7 @@ public class Assessment
     public decimal MarksPerQuestion { get; set; }
 
     [Column("is_total_marks_auto_calculated")]
-    public bool IsTotalMarksAutoCalculated { get; set; }
+    public bool? IsTotalMarksAutoCalculated { get; set; }
 
     [Required]
     [MaxLength(200)]

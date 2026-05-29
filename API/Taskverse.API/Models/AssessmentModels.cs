@@ -38,7 +38,7 @@ public class QuestionBankAssessmentResponseModel
     public bool AllowQuestionReview { get; set; }
     public bool NegativeMarking { get; set; }
     public decimal MarksPerQuestion { get; set; }
-    public bool IsTotalMarksAutoCalculated { get; set; }
+    public bool? IsTotalMarksAutoCalculated { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public DateTime? ModifiedAt { get; set; }

@@ -119,7 +119,7 @@ public record AssessmentRecord(
     [property: JsonPropertyName("marks_per_question")]
     decimal MarksPerQuestion,
     [property: JsonPropertyName("is_total_marks_auto_calculated")]
-    bool IsTotalMarksAutoCalculated,
+    bool? IsTotalMarksAutoCalculated,
     [property: JsonPropertyName("created_by")]
     string CreatedBy,
     [property: JsonPropertyName("created_at")]

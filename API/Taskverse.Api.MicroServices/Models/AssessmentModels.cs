@@ -84,7 +84,7 @@ public record QuestionBankAssessmentModel(
     [property: JsonProperty("marks_per_question")]
     decimal MarksPerQuestion,
     [property: JsonProperty("is_total_marks_auto_calculated")]
-    bool IsTotalMarksAutoCalculated,
+    bool? IsTotalMarksAutoCalculated,
     [property: JsonProperty("created_by")]
     string CreatedBy,
     [property: JsonProperty("created_at")]
