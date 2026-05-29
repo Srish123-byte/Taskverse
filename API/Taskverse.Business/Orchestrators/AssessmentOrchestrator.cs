@@ -231,6 +231,31 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         };
     }
 
+    public async Task<AssessmentAssignmentCatalogDto> GetTrainerAssignedClassesAndBatches(AssessmentBootstrapDto dto)
+    {
+        _log.Debug(
+            $"AssessmentOrchestrator.GetTrainerAssignedClassesAndBatches: collegeId={dto.CollegeId}, requesterRole={dto.RequesterRole}, requesterUserId={dto.RequesterUserId}");
+
+        var result = await _microServiceOrchestrator.GetTrainerAssignedClassesAndBatches(dto.ToMicroServiceModel());
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<AssessmentAssignmentCatalogModel>()
+                ?? throw new InvalidOperationException("GetTrainerAssignedClassesAndBatches returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"GetTrainerAssignedClassesAndBatches failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new Exception(message)
+        };
+    }
+
     public async Task<PagedQuestionBankDto> SearchQuestionBank(QuestionBankSearchDto dto)
     {
         _log.Debug($"AssessmentOrchestrator.SearchQuestionBank: collegeId={dto.CollegeId}, subject={dto.Subject}, topic={dto.Topic}, difficultyLevel={dto.DifficultyLevel}, page={dto.PageNumber}, pageSize={dto.PageSize}");

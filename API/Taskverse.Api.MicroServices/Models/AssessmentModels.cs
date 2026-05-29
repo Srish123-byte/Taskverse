@@ -166,6 +166,32 @@ public record AssessmentSubjectTopicCatalogModel(
     [property: JsonProperty("subjects")]
     List<AssessmentSubjectCatalogModel> Subjects);
 
+public record AssessmentAssignmentBatchModel(
+    [property: JsonProperty("batch_id")]
+    Guid BatchId,
+    [property: JsonProperty("class_id")]
+    Guid ClassId,
+    [property: JsonProperty("college_id")]
+    Guid CollegeId,
+    [property: JsonProperty("name")]
+    string Name);
+
+public record AssessmentAssignmentClassModel(
+    [property: JsonProperty("class_id")]
+    Guid ClassId,
+    [property: JsonProperty("college_id")]
+    Guid CollegeId,
+    [property: JsonProperty("name")]
+    string Name,
+    [property: JsonProperty("academic_year")]
+    string? AcademicYear,
+    [property: JsonProperty("batches")]
+    List<AssessmentAssignmentBatchModel> Batches);
+
+public record AssessmentAssignmentCatalogModel(
+    [property: JsonProperty("classes")]
+    List<AssessmentAssignmentClassModel> Classes);
+
 public record AssessmentQuestionModel(
     Guid QuestionId,
     Guid CollegeId,

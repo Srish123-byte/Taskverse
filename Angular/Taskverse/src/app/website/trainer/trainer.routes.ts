@@ -23,7 +23,7 @@ const routes: Routes = [
       { path: 'questions-management/new', component: QuestionEditorPageComponent },
       { path: 'questions-management/edit/:id', component: QuestionEditorPageComponent },
       { path: 'assessments-management', component: AssessmentsManagementComponent },
-      { path: 'assessments-management/newassessment', component: NewAssessmentComponent },
+      { path: 'assessments-management/new-assessment', component: NewAssessmentComponent },
       { path: 'manage', component: ManageComponent },
       { path: 'help-center', component: HelpCenterComponent }
     ]

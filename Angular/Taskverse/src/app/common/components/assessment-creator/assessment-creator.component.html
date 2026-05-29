@@ -1,4 +1,13 @@
 <div class="creator-page">
+  <section *ngIf="isInitialPageLoading" class="state-shell assessment-page-loader">
+    <app-dashboard-loader
+      title="Preparing assessment workspace"
+      copy="Loading classes, batches, subjects and questions for assessment setup."
+      tone="dark"
+      [diameter]="42">
+    </app-dashboard-loader>
+  </section>
+
   <div class="builder-scroll-shell">
     <section class="page-head">
       <div class="head-copy">
@@ -15,7 +24,7 @@
 
     <section class="builder-layout">
       <div class="builder-main">
-        <article class="surface-card">
+        <article class="surface-card" *ngIf="!isInitialPageLoading">
           <div class="card-title-row">
             <h3>Assessment Details</h3>
           </div>
@@ -70,7 +79,7 @@
           </div>
         </article>
 
-        <article class="surface-card">
+        <article class="surface-card" *ngIf="!isInitialPageLoading">
           <div class="card-title-row">
             <h3>Instructions</h3>
           </div>
@@ -81,7 +90,7 @@
           </label>
         </article>
 
-        <article class="surface-card question-hub-card">
+        <article class="surface-card question-hub-card" *ngIf="!isInitialPageLoading">
           <div class="card-title-row">
             <div>
               <h3>Question Hub</h3>
@@ -166,7 +175,7 @@
       </div>
 
       <aside class="builder-sidebar">
-        <article class="surface-card">
+        <article class="surface-card" *ngIf="!isInitialPageLoading">
           <div class="card-title-row">
             <h3>Scheduling</h3>
           </div>
@@ -182,7 +191,7 @@
           </label>
         </article>
 
-        <article class="surface-card">
+        <article class="surface-card" *ngIf="!isInitialPageLoading">
           <div class="card-title-row">
             <h3>Advanced Rules</h3>
           </div>
@@ -210,24 +219,106 @@
           </div>
         </article>
 
-        <article class="surface-card">
-          <div class="card-title-row">
-            <h3>Assignment</h3>
+        <article class="surface-card assignment-surface-card" *ngIf="!isInitialPageLoading">
+          <app-dashboard-loader
+            *ngIf="isAssignmentLoading"
+            title="Loading classes and batches"
+            copy="Preparing assignment options for this assessment."
+            tone="dark"
+            [diameter]="34">
+          </app-dashboard-loader>
+
+          <div *ngIf="!isAssignmentLoading && assignmentErrorMessage" class="inline-error-state">
+            {{ assignmentErrorMessage }}
           </div>
 
-          <div class="assignment-summary">
-            <div class="summary-line">Assigned Batches</div>
-          </div>
+          <div *ngIf="!isAssignmentLoading && !assignmentErrorMessage" class="assignment-panel">
+            <div class="assignment-intro">
+              <h3>Select Classes and Batches</h3>
+              <p>Choose the batches that should receive this assessment.</p>
+            </div>
 
-          <div class="empty-state">
-            Batch assignment loading is deferred in this pass.
+            <div class="assignment-overview">
+              <div class="assignment-overview-item">
+                <span class="summary-line">Selected Classes</span>
+                <strong>{{ selectedClassCount }}</strong>
+              </div>
+
+              <div class="assignment-overview-item">
+                <span class="summary-line">Selected Batches</span>
+                <strong>{{ selectedBatchCount }}</strong>
+              </div>
+            </div>
+
+            <div class="assignment-summary-block">
+              <div class="summary-line">Classes in Scope</div>
+              <div class="assignment-chip-row" *ngIf="selectedAssignmentClasses.length > 0; else noClassesSelected">
+                <span class="assignment-chip" *ngFor="let classItem of selectedAssignmentClasses; trackBy: trackByAssignmentClassId">
+                  {{ classItem.name }}
+                </span>
+              </div>
+              <ng-template #noClassesSelected>
+                <div class="assignment-empty-copy">Select one or more batches to assign classes.</div>
+              </ng-template>
+            </div>
+
+            <div class="assignment-summary-block">
+              <div class="summary-line">Batches in Scope</div>
+              <div class="assignment-chip-row" *ngIf="selectedAssignmentBatches.length > 0; else noBatchesSelected">
+                <span class="assignment-chip" *ngFor="let batch of selectedAssignmentBatches; trackBy: trackByAssignmentBatchId">
+                  {{ batch.name }}
+                </span>
+              </div>
+              <ng-template #noBatchesSelected>
+                <div class="assignment-empty-copy">No batches selected yet.</div>
+              </ng-template>
+            </div>
+
+            <div class="empty-state" *ngIf="assignmentClasses.length === 0">
+              No classes or batches are available for assignment.
+            </div>
+
+            <div class="assignment-class-list" *ngIf="assignmentClasses.length > 0">
+              <section class="assignment-class-card" *ngFor="let classItem of assignmentClasses; trackBy: trackByAssignmentClassId">
+                <div class="assignment-class-head">
+                  <div class="assignment-class-copy">
+                    <div class="assignment-class-title">{{ classItem.name }}</div>
+                    <div class="assignment-class-meta" *ngIf="classItem.academicYear">Academic Year {{ classItem.academicYear }}</div>
+                  </div>
+
+                  <div class="assignment-class-count">
+                    {{ classItem.batches.length }} {{ classItem.batches.length === 1 ? 'batch' : 'batches' }}
+                  </div>
+                </div>
+
+                <div class="empty-state assignment-inline-empty" *ngIf="classItem.batches.length === 0">
+                  No batches available for this class yet.
+                </div>
+
+                <div class="batch-list" *ngIf="classItem.batches.length > 0">
+                  <label class="batch-option" *ngFor="let batch of classItem.batches; trackBy: trackByAssignmentBatchId">
+                    <div class="batch-copy">
+                      <span>{{ batch.name }}</span>
+                      <small>{{ classItem.name }}</small>
+                    </div>
+
+                    <span class="batch-toggle-shell" [class.is-selected]="isBatchSelected(batch.batchId)">
+                      <input
+                        type="checkbox"
+                        [checked]="isBatchSelected(batch.batchId)"
+                        (change)="toggleBatchSelection(batch.batchId)" />
+                    </span>
+                  </label>
+                </div>
+              </section>
+            </div>
           </div>
         </article>
       </aside>
     </section>
   </div>
 
-  <div class="builder-footer">
+  <div class="builder-footer" *ngIf="!isInitialPageLoading">
     <a class="cancel-link" [routerLink]="['/', ...backRouteSegments]">Cancel</a>
 
     <div class="footer-actions">

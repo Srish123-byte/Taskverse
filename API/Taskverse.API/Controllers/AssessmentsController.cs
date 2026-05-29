@@ -336,6 +336,55 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    [HttpGet("trainer/assigned-classes-batches")]
+    [SwaggerResponse(200, "Assigned classes and batches for the trainer assessment builder", typeof(AssessmentAssignmentCatalogResponseModel))]
+    [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> GetTrainerAssignedClassesAndBatches()
+    {
+        if (User?.Identity?.IsAuthenticated != true || !User.IsInRole(TrainerRole))
+        {
+            return Forbid();
+        }
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        var currentUserId = GetCurrentUserId();
+        if (!currentUserId.HasValue)
+        {
+            return BadRequest(new { message = "Trainer user context is missing or invalid." });
+        }
+
+        try
+        {
+            var dto = new Taskverse.Business.DTOs.AssessmentBootstrapDto
+            {
+                CollegeId = collegeId,
+                RequesterRole = TrainerRole,
+                RequesterUserId = currentUserId.Value
+            };
+
+            var result = await _assessmentOrchestrator.GetTrainerAssignedClassesAndBatches(dto);
+            return Ok(result.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
+        }
+    }
+
     [HttpGet("questions/{id:guid}")]
     [SwaggerResponse(200, "Question loaded successfully", typeof(QuestionResponseModel))]
     [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]

@@ -37,6 +37,7 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> UpdateQuestion(Guid questionId, CreateQuestionModel model);
     Task<ObjectResult> DeleteQuestions(DeleteQuestionsModel model);
     Task<ObjectResult> GetSubjectTopicCatalog(AssessmentBootstrapModel model);
+    Task<ObjectResult> GetTrainerAssignedClassesAndBatches(AssessmentBootstrapModel model);
     Task<ObjectResult> SearchQuestionBank(QuestionBankSearchModel model);
     Task<ObjectResult> GetAssessmentQuestionList(Guid assessmentId, AssessmentQuestionListSearchModel model);
     Task<ObjectResult> GetStudentAssessments(StudentAssessmentListSearchModel model, IReadOnlyCollection<string> assessmentStatuses);

@@ -2,10 +2,14 @@ import { ChangeDetectorRef, Component, HostBinding, Input, OnInit } from '@angul
 import { MatSnackBar } from '@angular/material/snack-bar';
 import {
   AssessmentAdminService,
+  AssessmentAssignmentBatch,
+  AssessmentAssignmentCatalog,
+  AssessmentAssignmentClass,
   AssessmentSubjectCatalogItem,
   AssessmentSubjectTopicCatalog,
   QuestionBankItem
 } from '../../services/api/assessment-admin.service';
+import { CollegeAdminService, CollegeBatchSummary, CollegeClassSummary } from '../../services/api/college-admin.service';
 
 interface DifficultyOption {
   value: string;
@@ -31,11 +35,14 @@ export class AssessmentCreatorComponent implements OnInit {
 
   isCatalogLoading = true;
   isQuestionBankLoading = true;
+  isAssignmentLoading = true;
   catalogErrorMessage = '';
   questionBankErrorMessage = '';
+  assignmentErrorMessage = '';
 
   subjectCatalog: AssessmentSubjectTopicCatalog = { subjects: [] };
   questions: QuestionBankItem[] = [];
+  assignmentCatalog: AssessmentAssignmentCatalog = { classes: [] };
 
   selectedBatchIds = new Set<string>();
   selectedQuestionIds = new Set<string>();
@@ -74,8 +81,30 @@ export class AssessmentCreatorComponent implements OnInit {
     return this.selectedBatchIds.size;
   }
 
+  get selectedClassCount(): number {
+    return this.selectedAssignmentClasses.length;
+  }
+
   get selectedQuestionCount(): number {
     return this.selectedQuestionIds.size;
+  }
+
+  get isInitialPageLoading(): boolean {
+    return this.isCatalogLoading || this.isQuestionBankLoading || this.isAssignmentLoading;
+  }
+
+  get assignmentClasses(): AssessmentAssignmentClass[] {
+    return this.assignmentCatalog.classes;
+  }
+
+  get selectedAssignmentClasses(): AssessmentAssignmentClass[] {
+    return this.assignmentClasses.filter(classItem =>
+      classItem.batches.some(batch => this.selectedBatchIds.has(batch.batchId)));
+  }
+
+  get selectedAssignmentBatches(): AssessmentAssignmentBatch[] {
+    return this.assignmentClasses.flatMap(classItem =>
+      classItem.batches.filter(batch => this.selectedBatchIds.has(batch.batchId)));
   }
 
   get filteredQuestions(): QuestionBankItem[] {
@@ -129,16 +158,23 @@ export class AssessmentCreatorComponent implements OnInit {
 
   constructor(
     private readonly assessmentAdminService: AssessmentAdminService,
+    private readonly collegeAdminService: CollegeAdminService,
     private readonly snackBar: MatSnackBar,
     private readonly changeDetectorRef: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
+    this.loadAssignmentCatalog();
     this.loadSubjectTopicCatalog();
     this.loadQuestionBank();
   }
 
   onSubjectChange(): void {
+    if (this.selectedSubjectId &&
+        !this.visibleSubjects.some(subject => subject.subjectId === this.selectedSubjectId)) {
+      this.selectedSubjectId = '';
+    }
+
     if (this.selectedTopicId &&
         !this.visibleTopics.some(topic => topic.topicId === this.selectedTopicId)) {
       this.selectedTopicId = '';
@@ -204,6 +240,71 @@ export class AssessmentCreatorComponent implements OnInit {
     return subject.subjectId;
   }
 
+  trackByAssignmentClassId(_: number, classItem: AssessmentAssignmentClass): string {
+    return classItem.classId;
+  }
+
+  trackByAssignmentBatchId(_: number, batch: AssessmentAssignmentBatch): string {
+    return batch.batchId;
+  }
+
+  isBatchSelected(batchId: string): boolean {
+    return this.selectedBatchIds.has(batchId);
+  }
+
+  toggleBatchSelection(batchId: string): void {
+    if (this.selectedBatchIds.has(batchId)) {
+      this.selectedBatchIds.delete(batchId);
+    } else {
+      this.selectedBatchIds.add(batchId);
+    }
+
+    this.onSubjectChange();
+  }
+
+  private loadAssignmentCatalog(): void {
+    this.isAssignmentLoading = true;
+    this.assignmentErrorMessage = '';
+
+    if (this.theme === 'trainer') {
+      this.assessmentAdminService.getTrainerAssignedClassesAndBatches().subscribe({
+        next: catalog => {
+          this.assignmentCatalog = catalog ?? { classes: [] };
+          this.isAssignmentLoading = false;
+          this.changeDetectorRef.detectChanges();
+        },
+        error: error => {
+          this.assignmentErrorMessage =
+            error?.error?.detail ||
+            error?.error?.message ||
+            'Unable to load assigned classes and batches right now.';
+          this.isAssignmentLoading = false;
+          this.changeDetectorRef.detectChanges();
+        }
+      });
+
+      return;
+    }
+
+    this.collegeAdminService.getClassConfiguration().subscribe({
+      next: configuration => {
+        this.assignmentCatalog = {
+          classes: (configuration?.classes ?? []).map(classItem => this.mapCollegeClassToAssignmentClass(classItem))
+        };
+        this.isAssignmentLoading = false;
+        this.changeDetectorRef.detectChanges();
+      },
+      error: error => {
+        this.assignmentErrorMessage =
+          error?.error?.detail ||
+          error?.error?.message ||
+          'Unable to load classes and batches right now.';
+        this.isAssignmentLoading = false;
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
   private loadSubjectTopicCatalog(): void {
     this.isCatalogLoading = true;
     this.catalogErrorMessage = '';
@@ -256,5 +357,24 @@ export class AssessmentCreatorComponent implements OnInit {
       verticalPosition: 'top',
       panelClass: ['question-editor-success-snackbar']
     });
+  }
+
+  private mapCollegeClassToAssignmentClass(classItem: CollegeClassSummary): AssessmentAssignmentClass {
+    return {
+      classId: classItem.classId,
+      collegeId: classItem.collegeId,
+      name: classItem.name,
+      academicYear: classItem.academicYear,
+      batches: (classItem.batches ?? []).map(batch => this.mapCollegeBatchToAssignmentBatch(batch))
+    };
+  }
+
+  private mapCollegeBatchToAssignmentBatch(batch: CollegeBatchSummary): AssessmentAssignmentBatch {
+    return {
+      batchId: batch.batchId,
+      classId: batch.classId,
+      collegeId: batch.collegeId,
+      name: batch.name
+    };
   }
 }

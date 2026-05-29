@@ -54,6 +54,12 @@ public partial class MicroServiceOrchestrator
         return await Post<AssessmentSubjectTopicCatalogModel>(url, model);
     }
 
+    public async Task<ObjectResult> GetTrainerAssignedClassesAndBatches(AssessmentBootstrapModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/trainer/assigned-classes-batches";
+        return await Post<AssessmentAssignmentCatalogModel>(url, model);
+    }
+
     public async Task<ObjectResult> SearchQuestionBank(QuestionBankSearchModel model)
     {
         var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/questions/search";

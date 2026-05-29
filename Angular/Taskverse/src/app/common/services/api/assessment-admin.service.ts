@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { HttpClientService } from '../http/http-client.service';
 
 export interface QuestionBankSearchRequest {
@@ -77,6 +78,25 @@ export interface AssessmentSubjectTopicCatalog {
   subjects: AssessmentSubjectCatalogItem[];
 }
 
+export interface AssessmentAssignmentBatch {
+  batchId: string;
+  classId: string;
+  collegeId: string;
+  name: string;
+}
+
+export interface AssessmentAssignmentClass {
+  classId: string;
+  collegeId: string;
+  name: string;
+  academicYear?: string;
+  batches: AssessmentAssignmentBatch[];
+}
+
+export interface AssessmentAssignmentCatalog {
+  classes: AssessmentAssignmentClass[];
+}
+
 export interface DeleteQuestionsRequest {
   questionIds: string[];
 }
@@ -107,6 +127,12 @@ export class AssessmentAdminService {
     return this.http.get<AssessmentSubjectTopicCatalog>(`${this.url}/subjects-topics/catalog`);
   }
 
+  getTrainerAssignedClassesAndBatches(): Observable<AssessmentAssignmentCatalog> {
+    return this.http
+      .get<any>(`${this.url}/trainer/assigned-classes-batches`)
+      .pipe(map((catalog: any) => this.mapAssignmentCatalog(catalog)));
+  }
+
   updateQuestion(questionId: string, request: CreateQuestionRequest): Observable<QuestionBankItem> {
     return this.http.put<QuestionBankItem>(`${this.url}/questions/${questionId}`, request);
   }
@@ -122,5 +148,30 @@ export class AssessmentAdminService {
 
   deleteAssessment(assessmentId: string): Observable<void> {
     return this.http.delete<void>(`${this.url}/${assessmentId}`);
+  }
+
+  private mapAssignmentCatalog(catalog: any): AssessmentAssignmentCatalog {
+    return {
+      classes: (catalog?.classes ?? catalog?.Classes ?? []).map((item: any) => this.mapAssignmentClass(item))
+    };
+  }
+
+  private mapAssignmentClass(item: any): AssessmentAssignmentClass {
+    return {
+      classId: item?.classId ?? item?.ClassId ?? '',
+      collegeId: item?.collegeId ?? item?.CollegeId ?? '',
+      name: item?.name ?? item?.Name ?? '',
+      academicYear: item?.academicYear ?? item?.AcademicYear ?? undefined,
+      batches: (item?.batches ?? item?.Batches ?? []).map((batch: any) => this.mapAssignmentBatch(batch))
+    };
+  }
+
+  private mapAssignmentBatch(item: any): AssessmentAssignmentBatch {
+    return {
+      batchId: item?.batchId ?? item?.BatchId ?? '',
+      classId: item?.classId ?? item?.ClassId ?? '',
+      collegeId: item?.collegeId ?? item?.CollegeId ?? '',
+      name: item?.name ?? item?.Name ?? ''
+    };
   }
 }

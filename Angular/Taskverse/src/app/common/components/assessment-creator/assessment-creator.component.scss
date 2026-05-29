@@ -151,7 +151,8 @@
 
 .hub-actions,
 .footer-actions,
-.assignment-summary {
+.assignment-summary,
+.assignment-chip-row {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -292,6 +293,149 @@
   gap: 14px;
 }
 
+.assignment-surface-card {
+  gap: 0;
+}
+
+.assignment-panel,
+.assignment-class-list,
+.assignment-summary-block {
+  display: grid;
+  gap: 14px;
+}
+
+.assignment-intro {
+  display: grid;
+  gap: 6px;
+}
+
+.assignment-intro h3,
+.assignment-intro p {
+  margin: 0;
+}
+
+.assignment-intro h3 {
+  color: #f8fafc;
+  font-size: 1rem;
+}
+
+.assignment-intro p {
+  color: #9fb2c8;
+  font-size: 0.88rem;
+}
+
+.assignment-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.assignment-overview-item {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.38);
+}
+
+.assignment-overview-item strong {
+  color: #f8fafc;
+  font-size: 1.1rem;
+}
+
+.assignment-class-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.44);
+}
+
+.assignment-class-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.assignment-class-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.assignment-class-title {
+  color: #f8fafc;
+  font-weight: 700;
+}
+
+.assignment-class-meta,
+.assignment-empty-copy {
+  color: #93a8c5;
+  font-size: 0.82rem;
+}
+
+.assignment-class-count {
+  color: #7dd3fc;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.assignment-chip-row {
+  flex-wrap: wrap;
+}
+
+.assignment-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.18);
+  border: 1px solid rgba(251, 191, 36, 0.24);
+  color: #fcd34d;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.assignment-inline-empty {
+  font-size: 0.86rem;
+  padding: 4px 0 2px;
+}
+
+.batch-toggle-shell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  min-height: 34px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.batch-toggle-shell.is-selected {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.14);
+}
+
+.batch-toggle-shell input {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .assignment-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .assignment-class-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 .toggle-row,
 .batch-option {
   display: flex;
@@ -328,6 +472,12 @@
 .state-shell {
   padding: 26px;
   border-radius: 20px;
+}
+
+.assessment-page-loader {
+  display: grid;
+  place-items: center;
+  min-height: 240px;
 }
 
 .inline-error-state {

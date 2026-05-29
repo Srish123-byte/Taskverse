@@ -114,6 +114,28 @@ public class AssessmentSubjectTopicCatalogResponseModel
     public List<AssessmentSubjectCatalogResponseModel> Subjects { get; set; } = [];
 }
 
+public class AssessmentAssignmentBatchResponseModel
+{
+    public string BatchId { get; set; } = string.Empty;
+    public string ClassId { get; set; } = string.Empty;
+    public string CollegeId { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+}
+
+public class AssessmentAssignmentClassResponseModel
+{
+    public string ClassId { get; set; } = string.Empty;
+    public string CollegeId { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? AcademicYear { get; set; }
+    public List<AssessmentAssignmentBatchResponseModel> Batches { get; set; } = [];
+}
+
+public class AssessmentAssignmentCatalogResponseModel
+{
+    public List<AssessmentAssignmentClassResponseModel> Classes { get; set; } = [];
+}
+
 public class QuestionResponseModel
 {
     public Guid QuestionId { get; set; }

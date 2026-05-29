@@ -202,6 +202,32 @@ public record AssessmentSubjectTopicCatalogRecord(
     [property: JsonPropertyName("subjects")]
     List<AssessmentSubjectCatalogRecord> Subjects);
 
+public record AssessmentAssignmentBatchRecord(
+    [property: JsonPropertyName("batch_id")]
+    Guid BatchId,
+    [property: JsonPropertyName("class_id")]
+    Guid ClassId,
+    [property: JsonPropertyName("college_id")]
+    Guid CollegeId,
+    [property: JsonPropertyName("name")]
+    string Name);
+
+public record AssessmentAssignmentClassRecord(
+    [property: JsonPropertyName("class_id")]
+    Guid ClassId,
+    [property: JsonPropertyName("college_id")]
+    Guid CollegeId,
+    [property: JsonPropertyName("name")]
+    string Name,
+    [property: JsonPropertyName("academic_year")]
+    string? AcademicYear,
+    [property: JsonPropertyName("batches")]
+    List<AssessmentAssignmentBatchRecord> Batches);
+
+public record AssessmentAssignmentCatalogRecord(
+    [property: JsonPropertyName("classes")]
+    List<AssessmentAssignmentClassRecord> Classes);
+
 public class StudentAssessmentListRequest
 {
     [Required]

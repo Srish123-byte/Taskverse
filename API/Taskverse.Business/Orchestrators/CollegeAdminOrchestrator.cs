@@ -61,41 +61,64 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
     {
         _log.Debug($"CollegeAdminOrchestrator.GetClassConfiguration: collegeId={collegeId}");
 
+        var classesResult = await _microServiceOrchestrator.GetRegistrationClasses(collegeId.ToString());
+        EnsureMicroServiceSuccess(classesResult, nameof(GetClassConfiguration));
+
+        var registrationClasses = classesResult.DeserializeValue<List<RegistrationClassModel>>()
+            ?? throw new InvalidOperationException($"GetClassConfiguration returned empty classes for collegeId={collegeId}.");
+
+        var batchTasks = registrationClasses.ToDictionary(
+            item => item.ClassId,
+            item => _microServiceOrchestrator.GetRegistrationBatches(item.ClassId));
+
+        await Task.WhenAll(batchTasks.Values);
+
+        var registrationBatches = new List<RegistrationBatchModel>();
+        foreach (var entry in batchTasks)
+        {
+            EnsureMicroServiceSuccess(entry.Value.Result, nameof(GetClassConfiguration));
+
+            var batches = entry.Value.Result.DeserializeValue<List<RegistrationBatchModel>>()
+                ?? throw new InvalidOperationException($"GetClassConfiguration returned empty batches for classId={entry.Key}.");
+
+            registrationBatches.AddRange(batches);
+        }
+
         await using var context = await _dbContextFactory.CreateDbContextAsync();
 
-        var classes = await context.Classes
+        var classIds = registrationClasses
+            .Select(item => Guid.TryParse(item.ClassId, out var parsedId) ? parsedId : Guid.Empty)
+            .Where(item => item != Guid.Empty)
+            .ToList();
+
+        var batchIds = registrationBatches
+            .Select(item => Guid.TryParse(item.BatchId, out var parsedId) ? parsedId : Guid.Empty)
+            .Where(item => item != Guid.Empty)
+            .ToList();
+
+        var classMetadata = await context.Classes
             .AsNoTracking()
-            .Where(item => item.CollegeId == collegeId)
-            .OrderByDescending(item => item.CreatedAt)
-            .ThenBy(item => item.Name)
+            .Where(item => classIds.Contains(item.ClassId))
             .Select(item => new
             {
                 item.ClassId,
-                item.CollegeId,
-                item.Name,
                 item.AcademicYear,
                 Department = item.Description,
                 item.CreatedAt
             })
-            .ToListAsync();
+            .ToDictionaryAsync(item => item.ClassId);
 
-        var batches = await context.Batches
+        var batchMetadata = await context.Batches
             .AsNoTracking()
-            .Where(item => item.CollegeId == collegeId)
-            .OrderBy(item => item.Name)
+            .Where(item => batchIds.Contains(item.BatchId))
             .Select(item => new
             {
                 item.BatchId,
-                item.ClassId,
-                item.CollegeId,
-                item.Name,
                 item.Description,
                 Capacity = item.Capacity ?? 0,
                 item.CreatedAt
             })
-            .ToListAsync();
-
-        var batchIds = batches.Select(item => item.BatchId).ToList();
+            .ToDictionaryAsync(item => item.BatchId);
 
         var subjectsByBatch = await context.SubjectBatches
             .AsNoTracking()
@@ -161,54 +184,89 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
                     })
                     .ToList());
 
-        var batchesByClass = batches
-            .GroupBy(item => item.ClassId)
+        var batchesByClass = registrationBatches
+            .Where(item =>
+                Guid.TryParse(item.ClassId, out var parsedClassId) &&
+                Guid.TryParse(item.BatchId, out var parsedBatchId) &&
+                parsedClassId != Guid.Empty &&
+                parsedBatchId != Guid.Empty)
+            .GroupBy(item => Guid.Parse(item.ClassId))
             .ToDictionary(
                 group => group.Key,
                 group => group
                     .Select(item => new CollegeBatchSummaryDto
                     {
-                        BatchId = item.BatchId.ToString(),
-                        ClassId = item.ClassId.ToString(),
-                        CollegeId = item.CollegeId.ToString(),
+                        BatchId = item.BatchId,
+                        ClassId = item.ClassId,
+                        CollegeId = item.CollegeId,
                         Name = item.Name,
-                        Description = item.Description,
-                        SubjectId = subjectsLookup.TryGetValue(item.BatchId, out var subject)
+                        Description = Guid.TryParse(item.BatchId, out var batchId) &&
+                                      batchMetadata.TryGetValue(batchId, out var batchInfo)
+                            ? batchInfo.Description
+                            : null,
+                        SubjectId = Guid.TryParse(item.BatchId, out var subjectBatchId) &&
+                                    subjectsLookup.TryGetValue(subjectBatchId, out var subject)
                             ? subject.SubjectId.ToString()
                             : null,
-                        SubjectName = subjectsLookup.TryGetValue(item.BatchId, out var subjectInfo)
+                        SubjectName = Guid.TryParse(item.BatchId, out var subjectBatchNameId) &&
+                                      subjectsLookup.TryGetValue(subjectBatchNameId, out var subjectInfo)
                             ? subjectInfo.SubjectName
                             : null,
-                        Capacity = item.Capacity,
-                        StudentCount = studentCountsByBatch.TryGetValue(item.BatchId, out var count) ? count : 0,
-                        CreatedAt = item.CreatedAt,
-                        AssignedTrainers = trainersLookup.TryGetValue(item.BatchId, out var trainers)
+                        Capacity = Guid.TryParse(item.BatchId, out var capacityBatchId) &&
+                                   batchMetadata.TryGetValue(capacityBatchId, out var capacityBatch)
+                            ? capacityBatch.Capacity
+                            : 0,
+                        StudentCount = Guid.TryParse(item.BatchId, out var countBatchId) &&
+                                       studentCountsByBatch.TryGetValue(countBatchId, out var count)
+                            ? count
+                            : 0,
+                        CreatedAt = Guid.TryParse(item.BatchId, out var createdBatchId) &&
+                                    batchMetadata.TryGetValue(createdBatchId, out var createdBatch)
+                            ? createdBatch.CreatedAt
+                            : DateTime.UtcNow,
+                        AssignedTrainers = Guid.TryParse(item.BatchId, out var trainerBatchId) &&
+                                           trainersLookup.TryGetValue(trainerBatchId, out var trainers)
                             ? trainers
                             : []
                     })
                     .OrderBy(item => item.Name)
                     .ToList());
 
-        var classSummaries = classes
+        var classSummaries = registrationClasses
             .Select(item =>
             {
-                var classBatches = batchesByClass.TryGetValue(item.ClassId, out var foundBatches)
+                if (!Guid.TryParse(item.ClassId, out var classId))
+                {
+                    return null;
+                }
+
+                var classBatches = batchesByClass.TryGetValue(classId, out var foundBatches)
                     ? foundBatches
                     : [];
 
                 return new CollegeClassSummaryDto
                 {
-                    ClassId = item.ClassId.ToString(),
-                    CollegeId = item.CollegeId.ToString(),
+                    ClassId = item.ClassId,
+                    CollegeId = item.CollegeId,
                     Name = item.Name,
-                    AcademicYear = item.AcademicYear,
-                    Department = item.Department,
+                    AcademicYear = classMetadata.TryGetValue(classId, out var classInfo)
+                        ? classInfo.AcademicYear ?? item.AcademicYear
+                        : item.AcademicYear,
+                    Department = classMetadata.TryGetValue(classId, out var departmentInfo)
+                        ? departmentInfo.Department
+                        : null,
                     TotalStudents = classBatches.Sum(batch => batch.StudentCount),
                     TotalCapacity = classBatches.Sum(batch => batch.Capacity),
-                    CreatedAt = item.CreatedAt,
+                    CreatedAt = classMetadata.TryGetValue(classId, out var createdClassInfo)
+                        ? createdClassInfo.CreatedAt
+                        : DateTime.UtcNow,
                     Batches = classBatches
                 };
             })
+            .Where(item => item is not null)
+            .Select(item => item!)
+            .OrderByDescending(item => item.CreatedAt)
+            .ThenBy(item => item.Name)
             .ToList();
 
         var totalCapacity = classSummaries.Sum(item => item.TotalCapacity);

@@ -194,6 +194,35 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    [HttpPost("trainer/assigned-classes-batches")]
+    [ProducesResponseType(typeof(AssessmentAssignmentCatalogRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<AssessmentAssignmentCatalogRecord>> GetTrainerAssignedClassesAndBatches(
+        [FromBody] AssessmentAccessibleBatchesRequest request)
+    {
+        if (request is null)
+        {
+            return BadRequest(new { message = "Assessment bootstrap request is required." });
+        }
+
+        try
+        {
+            var result = await _assessmentManager.GetTrainerAssignedClassesAndBatches(request);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while retrieving trainer assignment options.");
+        }
+    }
+
     [HttpPost("{id:guid}/questions/list")]
     [ProducesResponseType(typeof(PagedAssessmentQuestionListRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

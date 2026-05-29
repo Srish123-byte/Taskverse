@@ -132,6 +132,28 @@ public class AssessmentSubjectTopicCatalogDto
     public List<AssessmentSubjectCatalogDto> Subjects { get; set; } = [];
 }
 
+public class AssessmentAssignmentBatchDto
+{
+    public string BatchId { get; set; } = string.Empty;
+    public string ClassId { get; set; } = string.Empty;
+    public string CollegeId { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+}
+
+public class AssessmentAssignmentClassDto
+{
+    public string ClassId { get; set; } = string.Empty;
+    public string CollegeId { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? AcademicYear { get; set; }
+    public List<AssessmentAssignmentBatchDto> Batches { get; set; } = [];
+}
+
+public class AssessmentAssignmentCatalogDto
+{
+    public List<AssessmentAssignmentClassDto> Classes { get; set; } = [];
+}
+
 public class AssessmentQuestionDto
 {
     public Guid QuestionId { get; set; }

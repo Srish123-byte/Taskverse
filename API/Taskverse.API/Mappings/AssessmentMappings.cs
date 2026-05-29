@@ -164,6 +164,37 @@ public static class AssessmentMappings
         };
     }
 
+    public static AssessmentAssignmentBatchResponseModel ToResponseModel(this AssessmentAssignmentBatchDto dto)
+    {
+        return new AssessmentAssignmentBatchResponseModel
+        {
+            BatchId = dto.BatchId,
+            ClassId = dto.ClassId,
+            CollegeId = dto.CollegeId,
+            Name = dto.Name
+        };
+    }
+
+    public static AssessmentAssignmentClassResponseModel ToResponseModel(this AssessmentAssignmentClassDto dto)
+    {
+        return new AssessmentAssignmentClassResponseModel
+        {
+            ClassId = dto.ClassId,
+            CollegeId = dto.CollegeId,
+            Name = dto.Name,
+            AcademicYear = dto.AcademicYear,
+            Batches = dto.Batches.Select(item => item.ToResponseModel()).ToList()
+        };
+    }
+
+    public static AssessmentAssignmentCatalogResponseModel ToResponseModel(this AssessmentAssignmentCatalogDto dto)
+    {
+        return new AssessmentAssignmentCatalogResponseModel
+        {
+            Classes = dto.Classes.Select(item => item.ToResponseModel()).ToList()
+        };
+    }
+
     public static QuestionBankAssessmentResponseModel ToResponseModel(this QuestionBankAssessmentDto dto)
     {
         return new QuestionBankAssessmentResponseModel

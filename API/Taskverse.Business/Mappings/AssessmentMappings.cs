@@ -94,6 +94,31 @@ public static class AssessmentMappings
             Subjects = model.Subjects.Select(item => item.ToDto()).ToList()
         };
 
+    public static AssessmentAssignmentBatchDto ToDto(this AssessmentAssignmentBatchModel model)
+        => new()
+        {
+            BatchId = model.BatchId.ToString(),
+            ClassId = model.ClassId.ToString(),
+            CollegeId = model.CollegeId.ToString(),
+            Name = model.Name
+        };
+
+    public static AssessmentAssignmentClassDto ToDto(this AssessmentAssignmentClassModel model)
+        => new()
+        {
+            ClassId = model.ClassId.ToString(),
+            CollegeId = model.CollegeId.ToString(),
+            Name = model.Name,
+            AcademicYear = model.AcademicYear,
+            Batches = model.Batches.Select(item => item.ToDto()).ToList()
+        };
+
+    public static AssessmentAssignmentCatalogDto ToDto(this AssessmentAssignmentCatalogModel model)
+        => new()
+        {
+            Classes = model.Classes.Select(item => item.ToDto()).ToList()
+        };
+
     public static CreateQuestionBankAssessmentModel ToMicroServiceModel(this CreateQuestionBankAssessmentDto dto)
         => new(
             dto.CollegeId,

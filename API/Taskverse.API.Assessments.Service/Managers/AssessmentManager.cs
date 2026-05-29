@@ -177,6 +177,90 @@ public class AssessmentManager : IAssessmentManager
         return new AssessmentSubjectTopicCatalogRecord(subjects);
     }
 
+    public async Task<AssessmentAssignmentCatalogRecord> GetTrainerAssignedClassesAndBatches(AssessmentAccessibleBatchesRequest request)
+    {
+        ValidateTrainerAssignmentRequest(request);
+
+        var trainer = await _context.Trainers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item =>
+                item.UserId == request.RequesterUserId!.Value &&
+                item.CollegeId == request.CollegeId);
+
+        if (trainer is null)
+        {
+            return new AssessmentAssignmentCatalogRecord([]);
+        }
+
+        var trainerClassIds = await _context.TrainerClasses
+            .AsNoTracking()
+            .Where(item => item.TrainerId == trainer.TrainerId)
+            .Select(item => item.ClassId)
+            .ToListAsync();
+
+        var assignedBatchRows = await _context.TrainerBatches
+            .AsNoTracking()
+            .Where(item => item.TrainerId == trainer.TrainerId)
+            .Select(item => new
+            {
+                item.Batch.BatchId,
+                item.Batch.ClassId,
+                item.Batch.CollegeId,
+                item.Batch.Name
+            })
+            .ToListAsync();
+
+        var accessibleClassIds = trainerClassIds
+            .Concat(assignedBatchRows.Select(item => item.ClassId))
+            .Distinct()
+            .ToList();
+
+        if (accessibleClassIds.Count == 0)
+        {
+            return new AssessmentAssignmentCatalogRecord([]);
+        }
+
+        var classes = await _context.Classes
+            .AsNoTracking()
+            .Where(item => item.CollegeId == request.CollegeId && accessibleClassIds.Contains(item.ClassId))
+            .OrderBy(item => item.Name)
+            .ThenBy(item => item.AcademicYear)
+            .Select(item => new
+            {
+                item.ClassId,
+                item.CollegeId,
+                item.Name,
+                item.AcademicYear
+            })
+            .ToListAsync();
+
+        var batchesByClass = assignedBatchRows
+            .GroupBy(item => item.ClassId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderBy(item => item.Name)
+                    .Select(item => new AssessmentAssignmentBatchRecord(
+                        item.BatchId,
+                        item.ClassId,
+                        item.CollegeId,
+                        item.Name))
+                    .ToList());
+
+        var classRecords = classes
+            .Select(item => new AssessmentAssignmentClassRecord(
+                item.ClassId,
+                item.CollegeId,
+                item.Name,
+                item.AcademicYear,
+                batchesByClass.TryGetValue(item.ClassId, out var batches)
+                    ? batches
+                    : []))
+            .ToList();
+
+        return new AssessmentAssignmentCatalogRecord(classRecords);
+    }
+
     public async Task<PagedAssessmentQuestionListRecord> GetAssessmentQuestionList(
         Guid assessmentId,
         int pageNumber,
@@ -660,6 +744,16 @@ public class AssessmentManager : IAssessmentManager
             (!request.RequesterUserId.HasValue || request.RequesterUserId.Value == Guid.Empty))
         {
             throw new ArgumentException("Requester user id is required for trainer assessment bootstrap requests.");
+        }
+    }
+
+    private static void ValidateTrainerAssignmentRequest(AssessmentAccessibleBatchesRequest request)
+    {
+        ValidateAccessibleBatchesRequest(request);
+
+        if (!string.Equals(request.RequesterRole.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Trainer role is required for trainer assignment requests.");
         }
     }
 
