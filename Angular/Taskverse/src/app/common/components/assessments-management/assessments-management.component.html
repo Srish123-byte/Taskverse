@@ -6,7 +6,7 @@
       <p class="page-welcome">{{ pageWelcome }}</p>
     </div>
 
-    <button type="button" class="primary-action" (click)="createAssessment()">
+    <button type="button" class="primary-action" [routerLink]="['/', ...createAssessmentRouteSegments]">
       <mat-icon>add</mat-icon>
       <span>Create New Assessment</span>
     </button>

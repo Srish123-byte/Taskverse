@@ -165,6 +165,35 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    [HttpPost("subjects-topics/catalog")]
+    [ProducesResponseType(typeof(AssessmentSubjectTopicCatalogRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<AssessmentSubjectTopicCatalogRecord>> GetSubjectTopicCatalog(
+        [FromBody] AssessmentAccessibleBatchesRequest request)
+    {
+        if (request is null)
+        {
+            return BadRequest(new { message = "Assessment bootstrap request is required." });
+        }
+
+        try
+        {
+            var result = await _assessmentManager.GetSubjectTopicCatalog(request);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while retrieving the subject-topic catalog.");
+        }
+    }
+
     [HttpPost("{id:guid}/questions/list")]
     [ProducesResponseType(typeof(PagedAssessmentQuestionListRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

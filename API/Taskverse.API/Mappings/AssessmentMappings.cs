@@ -135,6 +135,35 @@ public static class AssessmentMappings
         };
     }
 
+    public static AssessmentTopicCatalogResponseModel ToResponseModel(this AssessmentTopicCatalogDto dto)
+    {
+        return new AssessmentTopicCatalogResponseModel
+        {
+            TopicId = dto.TopicId,
+            TopicName = dto.TopicName,
+            BatchIds = dto.BatchIds
+        };
+    }
+
+    public static AssessmentSubjectCatalogResponseModel ToResponseModel(this AssessmentSubjectCatalogDto dto)
+    {
+        return new AssessmentSubjectCatalogResponseModel
+        {
+            SubjectId = dto.SubjectId,
+            SubjectName = dto.SubjectName,
+            BatchIds = dto.BatchIds,
+            Topics = dto.Topics.Select(item => item.ToResponseModel()).ToList()
+        };
+    }
+
+    public static AssessmentSubjectTopicCatalogResponseModel ToResponseModel(this AssessmentSubjectTopicCatalogDto dto)
+    {
+        return new AssessmentSubjectTopicCatalogResponseModel
+        {
+            Subjects = dto.Subjects.Select(item => item.ToResponseModel()).ToList()
+        };
+    }
+
     public static QuestionBankAssessmentResponseModel ToResponseModel(this QuestionBankAssessmentDto dto)
     {
         return new QuestionBankAssessmentResponseModel

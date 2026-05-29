@@ -94,6 +94,26 @@ public class PagedQuestionBankResponseModel
     public int PageSize { get; set; }
 }
 
+public class AssessmentTopicCatalogResponseModel
+{
+    public Guid TopicId { get; set; }
+    public string TopicName { get; set; } = string.Empty;
+    public Guid[] BatchIds { get; set; } = [];
+}
+
+public class AssessmentSubjectCatalogResponseModel
+{
+    public Guid SubjectId { get; set; }
+    public string SubjectName { get; set; } = string.Empty;
+    public Guid[] BatchIds { get; set; } = [];
+    public List<AssessmentTopicCatalogResponseModel> Topics { get; set; } = [];
+}
+
+public class AssessmentSubjectTopicCatalogResponseModel
+{
+    public List<AssessmentSubjectCatalogResponseModel> Subjects { get; set; } = [];
+}
+
 public class QuestionResponseModel
 {
     public Guid QuestionId { get; set; }

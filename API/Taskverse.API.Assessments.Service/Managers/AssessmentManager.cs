@@ -121,6 +121,62 @@ public class AssessmentManager : IAssessmentManager
         return assessment;
     }
 
+    public async Task<AssessmentSubjectTopicCatalogRecord> GetSubjectTopicCatalog(AssessmentAccessibleBatchesRequest request)
+    {
+        ValidateAccessibleBatchesRequest(request);
+
+        var accessibleBatchIds = await BuildAccessibleBatchQuery(request)
+            .Select(batch => batch.BatchId)
+            .ToListAsync();
+
+        if (accessibleBatchIds.Count == 0)
+        {
+            return new AssessmentSubjectTopicCatalogRecord([]);
+        }
+
+        var subjectBatchLinks = await _context.SubjectBatches
+            .AsNoTracking()
+            .Where(link => accessibleBatchIds.Contains(link.BatchId))
+            .Include(link => link.Subject)
+                .ThenInclude(subject => subject.Topics.Where(topic => topic.IsActive))
+            .ToListAsync();
+
+        var subjects = subjectBatchLinks
+            .Where(link => link.Subject.IsActive)
+            .GroupBy(link => new { link.Subject.SubjectId, link.Subject.SubjectName })
+            .Select(subjectGroup =>
+            {
+                var batchIds = subjectGroup
+                    .Select(link => link.BatchId)
+                    .Distinct()
+                    .OrderBy(batchId => batchId)
+                    .ToArray();
+
+                var topics = subjectGroup
+                    .SelectMany(link => link.Subject.Topics.Select(topic => new { link.BatchId, Topic = topic }))
+                    .GroupBy(item => new { item.Topic.TopicId, item.Topic.TopicName })
+                    .Select(topicGroup => new AssessmentTopicCatalogRecord(
+                        topicGroup.Key.TopicId,
+                        topicGroup.Key.TopicName,
+                        topicGroup.Select(item => item.BatchId)
+                            .Distinct()
+                            .OrderBy(batchId => batchId)
+                            .ToArray()))
+                    .OrderBy(item => item.TopicName)
+                    .ToList();
+
+                return new AssessmentSubjectCatalogRecord(
+                    subjectGroup.Key.SubjectId,
+                    subjectGroup.Key.SubjectName,
+                    batchIds,
+                    topics);
+            })
+            .OrderBy(item => item.SubjectName)
+            .ToList();
+
+        return new AssessmentSubjectTopicCatalogRecord(subjects);
+    }
+
     public async Task<PagedAssessmentQuestionListRecord> GetAssessmentQuestionList(
         Guid assessmentId,
         int pageNumber,
@@ -555,6 +611,55 @@ public class AssessmentManager : IAssessmentManager
         {
             throw new InvalidOperationException(
                 $"Question(s) do not belong to topic '{topicName}': {string.Join(", ", mismatchedQuestionIds)}.");
+        }
+    }
+
+    private IQueryable<Batch> BuildAccessibleBatchQuery(AssessmentAccessibleBatchesRequest request)
+    {
+        var normalizedRole = request.RequesterRole.Trim();
+
+        var query = _context.Batches
+            .AsNoTracking()
+            .Include(batch => batch.Class)
+            .Include(batch => batch.SubjectBatches)
+            .Where(batch => batch.CollegeId == request.CollegeId);
+
+        if (!string.Equals(normalizedRole, "Trainer", StringComparison.OrdinalIgnoreCase))
+        {
+            return query;
+        }
+
+        var trainerId = _context.Trainers
+            .AsNoTracking()
+            .Where(trainer =>
+                trainer.UserId == request.RequesterUserId &&
+                trainer.CollegeId == request.CollegeId)
+            .Select(trainer => trainer.TrainerId);
+
+        return query.Where(batch => batch.TrainerBatches.Any(link => trainerId.Contains(link.TrainerId)));
+    }
+
+    private static void ValidateAccessibleBatchesRequest(AssessmentAccessibleBatchesRequest request)
+    {
+        if (request is null)
+        {
+            throw new ArgumentException("Assessment bootstrap request is required.");
+        }
+
+        if (request.CollegeId == Guid.Empty)
+        {
+            throw new ArgumentException("CollegeId is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.RequesterRole))
+        {
+            throw new ArgumentException("Requester role is required.");
+        }
+
+        if (string.Equals(request.RequesterRole.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase) &&
+            (!request.RequesterUserId.HasValue || request.RequesterUserId.Value == Guid.Empty))
+        {
+            throw new ArgumentException("Requester user id is required for trainer assessment bootstrap requests.");
         }
     }
 

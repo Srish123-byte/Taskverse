@@ -60,6 +60,23 @@ export interface PagedQuestionBankResult {
   pageSize: number;
 }
 
+export interface AssessmentTopicCatalogItem {
+  topicId: string;
+  topicName: string;
+  batchIds: string[];
+}
+
+export interface AssessmentSubjectCatalogItem {
+  subjectId: string;
+  subjectName: string;
+  batchIds: string[];
+  topics: AssessmentTopicCatalogItem[];
+}
+
+export interface AssessmentSubjectTopicCatalog {
+  subjects: AssessmentSubjectCatalogItem[];
+}
+
 export interface DeleteQuestionsRequest {
   questionIds: string[];
 }
@@ -84,6 +101,10 @@ export class AssessmentAdminService {
 
   createQuestions(request: CreateQuestionRequest[]): Observable<QuestionBankItem[]> {
     return this.http.post<QuestionBankItem[]>(`${this.url}/questions`, request);
+  }
+
+  getSubjectTopicCatalog(): Observable<AssessmentSubjectTopicCatalog> {
+    return this.http.get<AssessmentSubjectTopicCatalog>(`${this.url}/subjects-topics/catalog`);
   }
 
   updateQuestion(questionId: string, request: CreateQuestionRequest): Observable<QuestionBankItem> {

@@ -8,6 +8,7 @@ public interface IAssessmentManager
     Task<Assessment> CreateAssessment(Assessment assessment, List<Guid> questionIds);
     Task DeleteAssessment(Guid assessmentId, DeleteAssessmentRequest request);
     Task<Assessment> PublishAssessment(Guid assessmentId);
+    Task<AssessmentSubjectTopicCatalogRecord> GetSubjectTopicCatalog(AssessmentAccessibleBatchesRequest request);
     Task<PagedAssessmentQuestionListRecord> GetAssessmentQuestionList(Guid assessmentId, int pageNumber, int pageSize);
     Task<List<StudentAssessmentListItemRecord>> GetStudentAssessments(Guid studentUserId, IReadOnlyCollection<string> assessmentStatuses);
     Task<StudentAssessmentDetailRecord> GetStudentAssessmentDetail(Guid assessmentId, Guid studentUserId);

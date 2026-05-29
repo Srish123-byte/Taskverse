@@ -71,6 +71,29 @@ public static class AssessmentMappings
             PageSize = model.PageSize
         };
 
+    public static AssessmentTopicCatalogDto ToDto(this AssessmentTopicCatalogModel model)
+        => new()
+        {
+            TopicId = model.TopicId,
+            TopicName = model.TopicName,
+            BatchIds = model.BatchIds
+        };
+
+    public static AssessmentSubjectCatalogDto ToDto(this AssessmentSubjectCatalogModel model)
+        => new()
+        {
+            SubjectId = model.SubjectId,
+            SubjectName = model.SubjectName,
+            BatchIds = model.BatchIds,
+            Topics = model.Topics.Select(item => item.ToDto()).ToList()
+        };
+
+    public static AssessmentSubjectTopicCatalogDto ToDto(this AssessmentSubjectTopicCatalogModel model)
+        => new()
+        {
+            Subjects = model.Subjects.Select(item => item.ToDto()).ToList()
+        };
+
     public static CreateQuestionBankAssessmentModel ToMicroServiceModel(this CreateQuestionBankAssessmentDto dto)
         => new(
             dto.CollegeId,
@@ -124,6 +147,12 @@ public static class AssessmentMappings
             dto.RequesterRole,
             dto.CollegeId,
             dto.QuestionIds);
+
+    public static AssessmentBootstrapModel ToMicroServiceModel(this AssessmentBootstrapDto dto)
+        => new(
+            dto.CollegeId,
+            dto.RequesterRole,
+            dto.RequesterUserId);
 
     public static QuestionBankSearchModel ToMicroServiceModel(this QuestionBankSearchDto dto)
         => new(

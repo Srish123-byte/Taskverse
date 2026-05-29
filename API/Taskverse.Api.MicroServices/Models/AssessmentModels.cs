@@ -136,6 +136,36 @@ public record PagedQuestionBankModel(
     int PageNumber,
     int PageSize);
 
+public record AssessmentBootstrapModel(
+    [property: JsonProperty("college_id")]
+    Guid CollegeId,
+    [property: JsonProperty("requester_role")]
+    string RequesterRole,
+    [property: JsonProperty("requester_user_id")]
+    Guid? RequesterUserId);
+
+public record AssessmentTopicCatalogModel(
+    [property: JsonProperty("topic_id")]
+    Guid TopicId,
+    [property: JsonProperty("topic_name")]
+    string TopicName,
+    [property: JsonProperty("batch_ids")]
+    Guid[] BatchIds);
+
+public record AssessmentSubjectCatalogModel(
+    [property: JsonProperty("subject_id")]
+    Guid SubjectId,
+    [property: JsonProperty("subject_name")]
+    string SubjectName,
+    [property: JsonProperty("batch_ids")]
+    Guid[] BatchIds,
+    [property: JsonProperty("topics")]
+    List<AssessmentTopicCatalogModel> Topics);
+
+public record AssessmentSubjectTopicCatalogModel(
+    [property: JsonProperty("subjects")]
+    List<AssessmentSubjectCatalogModel> Subjects);
+
 public record AssessmentQuestionModel(
     Guid QuestionId,
     Guid CollegeId,

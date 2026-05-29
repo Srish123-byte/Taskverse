@@ -31,6 +31,7 @@ export class AssessmentsManagementComponent implements OnInit {
   @Input() pageTitle = 'Assessments Management';
   @Input() pageWelcome = 'Configure, monitor, and deploy high-stakes technical assessments.';
   @Input() theme: 'college-admin' | 'trainer' = 'college-admin';
+  @Input() createAssessmentRoute = '';
 
   readonly pageSize = 3;
   readonly statusOptions: FilterOption[] = [
@@ -100,6 +101,10 @@ export class AssessmentsManagementComponent implements OnInit {
     return Math.min(this.currentPage * this.pageSize, this.filteredAssessments.length);
   }
 
+  get createAssessmentRouteSegments(): string[] {
+    return this.createAssessmentRoute.split('/').filter(segment => segment.length > 0);
+  }
+
   trackByAssessmentId(_: number, assessment: AssessmentManagementItem): string {
     return assessment.assessmentId;
   }
@@ -133,10 +138,6 @@ export class AssessmentsManagementComponent implements OnInit {
 
     this.currentPage += 1;
     this.updateVisibleAssessments();
-  }
-
-  createAssessment(): void {
-    this.openSnackBar('Assessment creation flow will be connected next.');
   }
 
   editAssessment(assessment: AssessmentManagementItem): void {

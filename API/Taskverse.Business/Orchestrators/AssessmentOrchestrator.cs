@@ -206,6 +206,31 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         };
     }
 
+    public async Task<AssessmentSubjectTopicCatalogDto> GetSubjectTopicCatalog(AssessmentBootstrapDto dto)
+    {
+        _log.Debug(
+            $"AssessmentOrchestrator.GetSubjectTopicCatalog: collegeId={dto.CollegeId}, requesterRole={dto.RequesterRole}, requesterUserId={dto.RequesterUserId}");
+
+        var result = await _microServiceOrchestrator.GetSubjectTopicCatalog(dto.ToMicroServiceModel());
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<AssessmentSubjectTopicCatalogModel>()
+                ?? throw new InvalidOperationException("GetSubjectTopicCatalog returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"GetSubjectTopicCatalog failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new Exception(message)
+        };
+    }
+
     public async Task<PagedQuestionBankDto> SearchQuestionBank(QuestionBankSearchDto dto)
     {
         _log.Debug($"AssessmentOrchestrator.SearchQuestionBank: collegeId={dto.CollegeId}, subject={dto.Subject}, topic={dto.Topic}, difficultyLevel={dto.DifficultyLevel}, page={dto.PageNumber}, pageSize={dto.PageSize}");

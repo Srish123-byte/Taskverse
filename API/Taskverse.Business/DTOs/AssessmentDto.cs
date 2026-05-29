@@ -105,6 +105,33 @@ public class PagedQuestionBankDto
     public int PageSize { get; set; }
 }
 
+public class AssessmentBootstrapDto
+{
+    public Guid CollegeId { get; set; }
+    public string RequesterRole { get; set; } = default!;
+    public Guid? RequesterUserId { get; set; }
+}
+
+public class AssessmentTopicCatalogDto
+{
+    public Guid TopicId { get; set; }
+    public string TopicName { get; set; } = default!;
+    public Guid[] BatchIds { get; set; } = [];
+}
+
+public class AssessmentSubjectCatalogDto
+{
+    public Guid SubjectId { get; set; }
+    public string SubjectName { get; set; } = default!;
+    public Guid[] BatchIds { get; set; } = [];
+    public List<AssessmentTopicCatalogDto> Topics { get; set; } = [];
+}
+
+public class AssessmentSubjectTopicCatalogDto
+{
+    public List<AssessmentSubjectCatalogDto> Subjects { get; set; } = [];
+}
+
 public class AssessmentQuestionDto
 {
     public Guid QuestionId { get; set; }

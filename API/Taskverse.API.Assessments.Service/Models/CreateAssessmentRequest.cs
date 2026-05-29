@@ -166,6 +166,42 @@ public record PagedAssessmentQuestionListRecord(
     [property: JsonPropertyName("page_size")]
     int PageSize);
 
+public class AssessmentAccessibleBatchesRequest
+{
+    [Required]
+    [JsonPropertyName("college_id")]
+    public Guid CollegeId { get; set; }
+
+    [MaxLength(50)]
+    [JsonPropertyName("requester_role")]
+    public string RequesterRole { get; set; } = string.Empty;
+
+    [JsonPropertyName("requester_user_id")]
+    public Guid? RequesterUserId { get; set; }
+}
+
+public record AssessmentTopicCatalogRecord(
+    [property: JsonPropertyName("topic_id")]
+    Guid TopicId,
+    [property: JsonPropertyName("topic_name")]
+    string TopicName,
+    [property: JsonPropertyName("batch_ids")]
+    Guid[] BatchIds);
+
+public record AssessmentSubjectCatalogRecord(
+    [property: JsonPropertyName("subject_id")]
+    Guid SubjectId,
+    [property: JsonPropertyName("subject_name")]
+    string SubjectName,
+    [property: JsonPropertyName("batch_ids")]
+    Guid[] BatchIds,
+    [property: JsonPropertyName("topics")]
+    List<AssessmentTopicCatalogRecord> Topics);
+
+public record AssessmentSubjectTopicCatalogRecord(
+    [property: JsonPropertyName("subjects")]
+    List<AssessmentSubjectCatalogRecord> Subjects);
+
 public class StudentAssessmentListRequest
 {
     [Required]
