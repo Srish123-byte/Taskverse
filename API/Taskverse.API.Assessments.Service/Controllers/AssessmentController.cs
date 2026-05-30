@@ -13,6 +13,7 @@ namespace Taskverse.API.Assessments.Service.Controllers;
 [Produces("application/json")]
 public class AssessmentController : ControllerBase
 {
+    private const int MaxInstructionWordCount = 1000;
     private readonly IAssessmentManager _assessmentManager;
     private readonly AssessmentSettings _assessmentSettings;
     private readonly ILogger<AssessmentController> _logger;
@@ -41,13 +42,10 @@ public class AssessmentController : ControllerBase
             return BadRequest(new { message = "Assessment request is required." });
         }
 
-        if (_assessmentSettings.AssessmentMaxDurationInMinutes > 0 &&
-            request.DurationMinutes > _assessmentSettings.AssessmentMaxDurationInMinutes)
+        var instructionValidationError = ValidateInstructionWordLimit(request.Instructions);
+        if (instructionValidationError is not null)
         {
-            return BadRequest(new
-            {
-                message = $"Duration minutes cannot exceed {_assessmentSettings.AssessmentMaxDurationInMinutes}."
-            });
+            return BadRequest(new { message = instructionValidationError });
         }
 
         try
@@ -184,13 +182,10 @@ public class AssessmentController : ControllerBase
             return await PublishAssessment(request.AssessmentId.Value);
         }
 
-        if (_assessmentSettings.AssessmentMaxDurationInMinutes > 0 &&
-            request.DurationMinutes > _assessmentSettings.AssessmentMaxDurationInMinutes)
+        var instructionValidationError = ValidateInstructionWordLimit(request.Instructions);
+        if (instructionValidationError is not null)
         {
-            return BadRequest(new
-            {
-                message = $"Duration minutes cannot exceed {_assessmentSettings.AssessmentMaxDurationInMinutes}."
-            });
+            return BadRequest(new { message = instructionValidationError });
         }
 
         try
@@ -625,5 +620,20 @@ public class AssessmentController : ControllerBase
             message = detail,
             detail
         });
+    }
+
+    private static string? ValidateInstructionWordLimit(string? instructions)
+    {
+        return CountWords(instructions) > MaxInstructionWordCount
+            ? $"Instructions cannot exceed {MaxInstructionWordCount} words."
+            : null;
+    }
+
+    private static int CountWords(string? value)
+    {
+        var normalized = value?.Trim();
+        return string.IsNullOrWhiteSpace(normalized)
+            ? 0
+            : normalized.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
     }
 }

@@ -33,6 +33,19 @@ public class CreateAssessmentRequest
     [JsonPropertyName("topic_name")]
     public string? TopicName { get; set; }
 
+    [MaxLength(2000)]
+    [JsonPropertyName("instructions")]
+    public string? Instructions { get; set; }
+
+    [JsonPropertyName("allow_late_entry")]
+    public bool AllowLateEntry { get; set; }
+
+    [JsonPropertyName("allow_question_review")]
+    public bool AllowQuestionReview { get; set; }
+
+    [JsonPropertyName("negative_marking")]
+    public bool NegativeMarking { get; set; }
+
     [JsonPropertyName("assigned_batch_ids")]
     public Guid[] AssignedBatchIds { get; set; } = [];
 
@@ -84,6 +97,19 @@ public class PublishAssessmentRequest
     [MaxLength(200)]
     [JsonPropertyName("topic_name")]
     public string? TopicName { get; set; }
+
+    [MaxLength(2000)]
+    [JsonPropertyName("instructions")]
+    public string? Instructions { get; set; }
+
+    [JsonPropertyName("allow_late_entry")]
+    public bool AllowLateEntry { get; set; }
+
+    [JsonPropertyName("allow_question_review")]
+    public bool AllowQuestionReview { get; set; }
+
+    [JsonPropertyName("negative_marking")]
+    public bool NegativeMarking { get; set; }
 
     [JsonPropertyName("assigned_batch_ids")]
     public Guid[] AssignedBatchIds { get; set; } = [];

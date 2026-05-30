@@ -25,6 +25,7 @@ interface DifficultyOption {
   styleUrl: './assessment-creator.component.scss'
 })
 export class AssessmentCreatorComponent implements OnInit {
+  private static readonly maxInstructionWordCount = 1000;
   @Input() theme: 'college-admin' | 'trainer' = 'college-admin';
   @Input() backRoute = '';
 
@@ -107,6 +108,14 @@ export class AssessmentCreatorComponent implements OnInit {
     return this.formatMarks(this.totalMarks);
   }
 
+  get instructionWordCount(): number {
+    return this.countWords(this.instructions);
+  }
+
+  get minimumScheduleDateTime(): string {
+    return this.formatDateTimeLocalValue(new Date());
+  }
+
   get saveDraftButtonLabel(): string {
     if (this.isSubmitting && this.pendingSubmitAction === 'draft') {
       return 'Saving...';
@@ -168,12 +177,7 @@ export class AssessmentCreatorComponent implements OnInit {
   }
 
   get visibleSubjects(): AssessmentSubjectCatalogItem[] {
-    if (this.selectedBatchIds.size === 0) {
-      return this.subjectCatalog.subjects;
-    }
-
-    return this.subjectCatalog.subjects.filter(subject =>
-      subject.batchIds.some(batchId => this.selectedBatchIds.has(batchId)));
+    return this.subjectCatalog.subjects;
   }
 
   get visibleTopics() {
@@ -182,12 +186,7 @@ export class AssessmentCreatorComponent implements OnInit {
       return [];
     }
 
-    if (this.selectedBatchIds.size === 0) {
-      return subject.topics;
-    }
-
-    return subject.topics.filter(topic =>
-      topic.batchIds.some(batchId => this.selectedBatchIds.has(batchId)));
+    return subject.topics;
   }
 
   constructor(
@@ -293,8 +292,6 @@ export class AssessmentCreatorComponent implements OnInit {
     } else {
       this.selectedBatchIds.add(batchId);
     }
-
-    this.onSubjectChange();
   }
 
   enforcePassingPercentageRange(): void {
@@ -503,12 +500,31 @@ export class AssessmentCreatorComponent implements OnInit {
       return 'Duration must be greater than zero.';
     }
 
+    const now = new Date();
+    const startDateTime = this.parseDateTimeLocalValue(this.startDate);
+    if (startDateTime && startDateTime < now) {
+      return 'Start time must be later than the current time.';
+    }
+
+    const endDateTime = this.parseDateTimeLocalValue(this.endDate);
+    if (endDateTime && endDateTime < now) {
+      return 'End time must be later than the current time.';
+    }
+
+    if (startDateTime && endDateTime && endDateTime <= startDateTime) {
+      return 'End time must be later than the start time.';
+    }
+
     if (this.selectedBatchIds.size === 0) {
       return 'Select at least one batch before saving this assessment.';
     }
 
     if (this.selectedQuestionIds.size === 0) {
       return 'Select at least one question before saving this assessment.';
+    }
+
+    if (this.instructionWordCount > AssessmentCreatorComponent.maxInstructionWordCount) {
+      return `Instructions cannot exceed ${AssessmentCreatorComponent.maxInstructionWordCount} words.`;
     }
 
     return '';
@@ -520,8 +536,8 @@ export class AssessmentCreatorComponent implements OnInit {
       return null;
     }
 
-    const selectedSubject = this.visibleSubjects.find(subject => subject.subjectId === this.selectedSubjectId);
-    const selectedTopic = this.visibleTopics.find(topic => topic.topicId === this.selectedTopicId);
+    const selectedSubject = this.subjectCatalog.subjects.find(subject => subject.subjectId === this.selectedSubjectId);
+    const selectedTopic = selectedSubject?.topics.find(topic => topic.topicId === this.selectedTopicId);
 
     return {
       assessmentName: this.assessmentName.trim(),
@@ -529,6 +545,10 @@ export class AssessmentCreatorComponent implements OnInit {
       subjectName: selectedSubject?.subjectName ?? null,
       topicId: this.selectedTopicId || null,
       topicName: selectedTopic?.topicName ?? null,
+      instructions: this.normalizeInstructions(),
+      allowLateEntry: this.allowLateEntry,
+      allowQuestionReview: this.allowQuestionReview,
+      negativeMarking: this.negativeMarking,
       assignedBatchIds: Array.from(this.selectedBatchIds),
       questionIds: Array.from(this.selectedQuestionIds),
       durationMinutes: Number(this.durationMinutes),
@@ -580,6 +600,35 @@ export class AssessmentCreatorComponent implements OnInit {
     }
 
     return totalMarks.toFixed(2).replace(/\.?0+$/, '');
+  }
+
+  private normalizeInstructions(): string | null {
+    const normalized = this.instructions.trim();
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  private countWords(value: string): number {
+    const normalized = value.trim();
+    return normalized ? normalized.split(/\s+/).length : 0;
+  }
+
+  private parseDateTimeLocalValue(value: string): Date | null {
+    if (!value.trim()) {
+      return null;
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private formatDateTimeLocalValue(value: Date): string {
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    const hours = `${value.getHours()}`.padStart(2, '0');
+    const minutes = `${value.getMinutes()}`.padStart(2, '0');
+
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
   private mapCollegeClassToAssignmentClass(classItem: CollegeClassSummary): AssessmentAssignmentClass {

@@ -26,15 +26,15 @@ public static class AssessmentMappings
             TotalMarks = request.TotalMarks,
             StartDateTime = UtcDateTime.Normalize(request.StartDateTime),
             EndDateTime = UtcDateTime.Normalize(request.EndDateTime),
-            Instructions = settings.Instructions,
+            Instructions = string.IsNullOrWhiteSpace(request.Instructions) ? null : request.Instructions.Trim(),
             AssignedBatchIds = request.AssignedBatchIds
                 .Where(batchId => batchId != Guid.Empty)
                 .Distinct()
                 .ToArray(),
-            AllowLateEntry = settings.IsLateEntryAllowed,
+            AllowLateEntry = request.AllowLateEntry,
             ShowResultsImmediately = settings.IsResultsAvailableImmediately,
-            AllowQuestionReview = settings.AllowQuestionReview,
-            NegativeMarking = settings.NegativeMarking,
+            AllowQuestionReview = request.AllowQuestionReview,
+            NegativeMarking = request.NegativeMarking,
             IsTotalMarksAutoCalculated = settings.IsTotalMarksAutoCalculated,
             CreatedBy = request.CreatedBy
         };
@@ -51,6 +51,10 @@ public static class AssessmentMappings
             SubjectName = request.SubjectName,
             TopicId = request.TopicId,
             TopicName = request.TopicName,
+            Instructions = request.Instructions,
+            AllowLateEntry = request.AllowLateEntry,
+            AllowQuestionReview = request.AllowQuestionReview,
+            NegativeMarking = request.NegativeMarking,
             AssignedBatchIds = request.AssignedBatchIds,
             QuestionIds = request.QuestionIds,
             DurationMinutes = request.DurationMinutes,

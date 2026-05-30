@@ -13,6 +13,7 @@ namespace Taskverse.Api.Controllers;
 [Produces("application/json")]
 public class AssessmentsController : TaskverseBaseController
 {
+    private const int MaxInstructionWordCount = 1000;
     private const string SuperAdminRole = "SuperAdmin";
     private const string CollegeAdminRole = "CollegeAdmin";
     private const string TrainerRole = "Trainer";
@@ -54,6 +55,12 @@ public class AssessmentsController : TaskverseBaseController
         if (model is null)
         {
             return BadRequest(new { message = "Assessment request is required." });
+        }
+
+        var instructionValidationError = ValidateInstructionWordLimit(model.Instructions);
+        if (instructionValidationError is not null)
+        {
+            return BadRequest(new { message = instructionValidationError });
         }
 
         try
@@ -359,6 +366,12 @@ public class AssessmentsController : TaskverseBaseController
         if (model is null)
         {
             return BadRequest(new { message = "Assessment publish request is required." });
+        }
+
+        var instructionValidationError = ValidateInstructionWordLimit(model.Instructions);
+        if (instructionValidationError is not null)
+        {
+            return BadRequest(new { message = instructionValidationError });
         }
 
         try
@@ -1251,5 +1264,20 @@ public class AssessmentsController : TaskverseBaseController
         }
 
         return UserRole;
+    }
+
+    private static string? ValidateInstructionWordLimit(string? instructions)
+    {
+        return CountWords(instructions) > MaxInstructionWordCount
+            ? $"Instructions cannot exceed {MaxInstructionWordCount} words."
+            : null;
+    }
+
+    private static int CountWords(string? value)
+    {
+        var normalized = value?.Trim();
+        return string.IsNullOrWhiteSpace(normalized)
+            ? 0
+            : normalized.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
     }
 }

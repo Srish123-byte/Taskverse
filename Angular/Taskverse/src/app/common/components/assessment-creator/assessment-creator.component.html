@@ -105,6 +105,7 @@
           <label class="field field-full">
             <span>Candidate Instructions</span>
             <textarea [(ngModel)]="instructions" rows="6" placeholder="Enter detailed candidate instructions here..."></textarea>
+            <small class="field-help">{{ instructionWordCount }}/1000 words</small>
           </label>
         </article>
 
@@ -200,12 +201,12 @@
 
           <label class="field field-full">
             <span>Start Time</span>
-            <input type="datetime-local" [(ngModel)]="startDate" />
+            <input type="datetime-local" [(ngModel)]="startDate" [min]="minimumScheduleDateTime" />
           </label>
 
           <label class="field field-full">
             <span>End Time</span>
-            <input type="datetime-local" [(ngModel)]="endDate" />
+            <input type="datetime-local" [(ngModel)]="endDate" [min]="minimumScheduleDateTime" />
           </label>
         </article>
 

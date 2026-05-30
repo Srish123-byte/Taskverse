@@ -110,40 +110,69 @@ public class AssessmentStatusTransitionService : BackgroundService
     {
         var utcNow = DateTime.UtcNow;
 
-        // Fetch all Scheduled assessments whose start_datetime has been reached.
-        var dueAssessments = await context.Assessments
+        // First complete any assessments whose end_datetime has already passed.
+        // This runs before the Live transition so expired Scheduled assessments
+        // move straight to Completed instead of briefly flipping to Live.
+        var dueForCompletion = await context.Assessments
+            .Where(a =>
+                (a.AssessmentStatus == AssessmentStatus.Scheduled ||
+                 a.AssessmentStatus == AssessmentStatus.Live) &&
+                a.EndDateTime.HasValue &&
+                a.EndDateTime.Value <= utcNow)
+            .ToListAsync(ct);
+
+        foreach (var assessment in dueForCompletion)
+        {
+            assessment.AssessmentStatus = AssessmentStatus.Completed;
+            assessment.ModifiedAt = utcNow;
+        }
+
+        // Fetch all Scheduled assessments whose start_datetime has been reached
+        // and that have not already expired.
+        var dueForLiveTransition = await context.Assessments
             .Where(a =>
                 a.AssessmentStatus == AssessmentStatus.Scheduled &&
                 a.StartDateTime.HasValue &&
-                a.StartDateTime.Value <= utcNow)
+                a.StartDateTime.Value <= utcNow &&
+                (!a.EndDateTime.HasValue || a.EndDateTime.Value > utcNow))
             .ToListAsync(ct);
 
-        if (dueAssessments.Count == 0)
+        if (dueForCompletion.Count == 0 && dueForLiveTransition.Count == 0)
         {
-            _logger.LogDebug("No assessments due for Live transition at {UtcNow}.", utcNow);
+            _logger.LogDebug("No assessments due for status transition at {UtcNow}.", utcNow);
             return;
         }
 
         // Flip status to Live.
-        foreach (var assessment in dueAssessments)
+        foreach (var assessment in dueForLiveTransition)
         {
             assessment.AssessmentStatus = AssessmentStatus.Live;
-            assessment.ModifiedAt = DateTime.UtcNow;
+            assessment.ModifiedAt = utcNow;
         }
 
-        // Commit the status change BEFORE dispatching notifications.
+        // Commit status changes BEFORE dispatching notifications.
         // A notification failure must never roll back a Live transition.
         await context.SaveChangesAsync(ct);
 
-        _logger.LogInformation(
-            "Transitioned {Count} assessment(s) from Scheduled to Live.",
-            dueAssessments.Count);
+        if (dueForCompletion.Count > 0)
+        {
+            _logger.LogInformation(
+                "Transitioned {Count} assessment(s) to Completed.",
+                dueForCompletion.Count);
+        }
 
-        // Dispatch WhatsApp notifications for each transitioned assessment.
+        if (dueForLiveTransition.Count > 0)
+        {
+            _logger.LogInformation(
+                "Transitioned {Count} assessment(s) from Scheduled to Live.",
+                dueForLiveTransition.Count);
+        }
+
+        // Dispatch WhatsApp notifications for each assessment that just went Live.
         var notificationService = scope.ServiceProvider
             .GetRequiredService<IWhatsAppNotificationService>();
 
-        foreach (var assessment in dueAssessments)
+        foreach (var assessment in dueForLiveTransition)
         {
             try
             {

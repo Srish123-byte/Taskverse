@@ -103,6 +103,10 @@ export interface CreateAssessmentRequest {
   subjectName?: string | null;
   topicId?: string | null;
   topicName?: string | null;
+  instructions?: string | null;
+  allowLateEntry: boolean;
+  allowQuestionReview: boolean;
+  negativeMarking: boolean;
   assignedBatchIds: string[];
   questionIds: string[];
   durationMinutes: number;

@@ -17,6 +17,14 @@ public record CreateQuestionBankAssessmentModel(
     Guid? TopicId,
     [property: JsonProperty("topic_name")]
     string? TopicName,
+    [property: JsonProperty("instructions")]
+    string? Instructions,
+    [property: JsonProperty("allow_late_entry")]
+    bool AllowLateEntry,
+    [property: JsonProperty("allow_question_review")]
+    bool AllowQuestionReview,
+    [property: JsonProperty("negative_marking")]
+    bool NegativeMarking,
     [property: JsonProperty("assigned_batch_ids")]
     Guid[] AssignedBatchIds,
     [property: JsonProperty("question_ids")]
@@ -47,6 +55,14 @@ public record PublishQuestionBankAssessmentModel(
     Guid? TopicId,
     [property: JsonProperty("topic_name")]
     string? TopicName,
+    [property: JsonProperty("instructions")]
+    string? Instructions,
+    [property: JsonProperty("allow_late_entry")]
+    bool AllowLateEntry,
+    [property: JsonProperty("allow_question_review")]
+    bool AllowQuestionReview,
+    [property: JsonProperty("negative_marking")]
+    bool NegativeMarking,
     [property: JsonProperty("assigned_batch_ids")]
     Guid[] AssignedBatchIds,
     [property: JsonProperty("question_ids")]

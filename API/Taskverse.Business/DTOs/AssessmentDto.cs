@@ -9,6 +9,10 @@ public class CreateQuestionBankAssessmentDto
     public string? SubjectName { get; set; }
     public Guid? TopicId { get; set; }
     public string? TopicName { get; set; }
+    public string? Instructions { get; set; }
+    public bool AllowLateEntry { get; set; }
+    public bool AllowQuestionReview { get; set; }
+    public bool NegativeMarking { get; set; }
     public Guid[] AssignedBatchIds { get; set; } = [];
     public List<Guid> QuestionIds { get; set; } = [];
     public int DurationMinutes { get; set; }
@@ -27,6 +31,10 @@ public class PublishQuestionBankAssessmentDto
     public string? SubjectName { get; set; }
     public Guid? TopicId { get; set; }
     public string? TopicName { get; set; }
+    public string? Instructions { get; set; }
+    public bool AllowLateEntry { get; set; }
+    public bool AllowQuestionReview { get; set; }
+    public bool NegativeMarking { get; set; }
     public Guid[] AssignedBatchIds { get; set; } = [];
     public List<Guid> QuestionIds { get; set; } = [];
     public int DurationMinutes { get; set; }
