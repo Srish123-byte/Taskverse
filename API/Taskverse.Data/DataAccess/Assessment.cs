@@ -66,9 +66,6 @@ public class Assessment
     [Column("negative_marking")]
     public bool NegativeMarking { get; set; }
 
-    [Column("marks_per_question", TypeName = "numeric(6,2)")]
-    public decimal MarksPerQuestion { get; set; }
-
     [Column("is_total_marks_auto_calculated")]
     public bool? IsTotalMarksAutoCalculated { get; set; }
 

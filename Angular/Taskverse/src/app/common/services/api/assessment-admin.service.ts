@@ -97,6 +97,52 @@ export interface AssessmentAssignmentCatalog {
   classes: AssessmentAssignmentClass[];
 }
 
+export interface CreateAssessmentRequest {
+  assessmentName: string;
+  subjectId?: string | null;
+  subjectName?: string | null;
+  topicId?: string | null;
+  topicName?: string | null;
+  assignedBatchIds: string[];
+  questionIds: string[];
+  durationMinutes: number;
+  totalMarks: number;
+  startDateTime?: string | null;
+  endDateTime?: string | null;
+}
+
+export interface PublishAssessmentRequest extends CreateAssessmentRequest {
+  assessmentId?: string | null;
+}
+
+export interface AssessmentRecord {
+  assessmentId: string;
+  collegeId: string;
+  subjectId?: string | null;
+  subjectName?: string | null;
+  topicId?: string | null;
+  topicName?: string | null;
+  assessmentName: string;
+  assessmentType: string;
+  assessmentStatus: string;
+  durationMinutes: number;
+  totalMarks: number;
+  difficultyLevel: number;
+  startDateTime?: string | null;
+  endDateTime?: string | null;
+  instructions?: string | null;
+  assignedBatchIds: string[];
+  allowLateEntry: boolean;
+  showResultsImmediately: boolean;
+  allowQuestionReview: boolean;
+  negativeMarking: boolean;
+  isTotalMarksAutoCalculated?: boolean | null;
+  createdBy: string;
+  createdAt: string;
+  modifiedAt?: string | null;
+  questionIds: string[];
+}
+
 export interface DeleteQuestionsRequest {
   questionIds: string[];
 }
@@ -135,6 +181,14 @@ export class AssessmentAdminService {
 
   updateQuestion(questionId: string, request: CreateQuestionRequest): Observable<QuestionBankItem> {
     return this.http.put<QuestionBankItem>(`${this.url}/questions/${questionId}`, request);
+  }
+
+  createAssessment(request: CreateAssessmentRequest): Observable<AssessmentRecord> {
+    return this.http.post<AssessmentRecord>(this.url, request);
+  }
+
+  publishAssessment(request: PublishAssessmentRequest): Observable<AssessmentRecord> {
+    return this.http.post<AssessmentRecord>(`${this.url}/publish`, request);
   }
 
   deleteQuestions(request: DeleteQuestionsRequest, skipGlobalErrorRedirect = false): Observable<DeleteQuestionsResponse> {

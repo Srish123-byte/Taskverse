@@ -11,7 +11,9 @@ public interface ICollegeAdminOrchestrator
     Task<List<ApprovedTrainerDto>> GetApprovedTrainers(Guid collegeId);
     Task<List<SubjectOptionDto>> GetSubjects();
     Task<CollegeClassSummaryDto> CreateClass(Guid collegeId, CreateCollegeClassDto dto);
+    Task<CollegeClassSummaryDto> UpdateClass(Guid collegeId, string classId, UpdateCollegeClassDto dto);
     Task<CollegeBatchSummaryDto> CreateBatch(Guid collegeId, string classId, CreateCollegeBatchDto dto);
+    Task<CollegeBatchSummaryDto> UpdateBatch(Guid collegeId, string classId, string batchId, UpdateCollegeBatchDto dto);
     Task<CollegeBatchSummaryDto> AssignBatchTrainers(Guid collegeId, string classId, string batchId, AssignBatchTrainersDto dto);
     Task DeleteClass(Guid collegeId, string classId);
     Task DeleteBatch(Guid collegeId, string classId, string batchId);

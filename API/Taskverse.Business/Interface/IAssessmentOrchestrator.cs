@@ -5,6 +5,7 @@ namespace Taskverse.Business.Interface;
 public interface IAssessmentOrchestrator
 {
     Task<QuestionBankAssessmentDto> CreateAssessment(CreateQuestionBankAssessmentDto dto);
+    Task<QuestionBankAssessmentDto> PublishAssessment(PublishQuestionBankAssessmentDto dto);
     Task DeleteAssessment(DeleteAssessmentDto dto);
     Task<QuestionBankAssessmentDto> PublishAssessment(Guid assessmentId);
     Task<List<AssessmentQuestionDto>> CreateQuestions(List<CreateQuestionDto> dtos);

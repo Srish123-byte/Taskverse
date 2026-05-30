@@ -30,6 +30,7 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
 
     // Assessment
     Task<ObjectResult> CreateAssessment(CreateQuestionBankAssessmentModel model);
+    Task<ObjectResult> PublishAssessment(PublishQuestionBankAssessmentModel model);
     Task<ObjectResult> DeleteAssessment(DeleteAssessmentModel model);
     Task<ObjectResult> PublishAssessment(Guid assessmentId);
     Task<ObjectResult> CreateQuestions(List<CreateQuestionModel> models);
@@ -82,7 +83,9 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> GetApprovedCollegeTrainers(string collegeId);
     Task<ObjectResult> GetCollegeSubjects();
     Task<ObjectResult> CreateCollegeClass(string collegeId, CreateCollegeClassModel model);
+    Task<ObjectResult> UpdateCollegeClass(string collegeId, string classId, UpdateCollegeClassModel model);
     Task<ObjectResult> CreateCollegeBatch(string collegeId, string classId, CreateCollegeBatchModel model);
+    Task<ObjectResult> UpdateCollegeBatch(string collegeId, string classId, string batchId, UpdateCollegeBatchModel model);
     Task<ObjectResult> AssignCollegeBatchTrainers(string collegeId, string classId, string batchId, AssignBatchTrainersModel model);
     Task<ObjectResult> DeleteCollegeClass(string collegeId, string classId);
     Task<ObjectResult> DeleteCollegeBatch(string collegeId, string classId, string batchId);

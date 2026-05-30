@@ -36,6 +36,15 @@ public class AssessmentManager : IAssessmentManager
     }
 
     public async Task<Assessment> CreateAssessment(Assessment assessment, List<Guid> questionIds)
+        => await CreateAssessmentInternalAsync(assessment, questionIds, AssessmentStatus.Draft);
+
+    public async Task<Assessment> ScheduleAssessment(Assessment assessment, List<Guid> questionIds)
+        => await CreateAssessmentInternalAsync(assessment, questionIds, AssessmentStatus.Scheduled);
+
+    private async Task<Assessment> CreateAssessmentInternalAsync(
+        Assessment assessment,
+        List<Guid> questionIds,
+        AssessmentStatus targetStatus)
     {
         ValidateAssessment(assessment, questionIds);
 
@@ -55,9 +64,10 @@ public class AssessmentManager : IAssessmentManager
             classification.Subject.SubjectName,
             classification.Topic.TopicName);
 
+        ApplyAutoCalculatedTotalMarksIfEnabled(assessment, questions);
         ValidateQuestionBudget(assessment, questions);
 
-        PrepareAssessmentForCreation(assessment, questions);
+        PrepareAssessmentForCreation(assessment, questions, targetStatus);
         assessment.AssessmentQuestions = BuildAssessmentQuestions(assessment.AssessmentId, questions, normalizedQuestionIds);
 
         AssignQuestionsToAssessment(questions, assessment.AssessmentId);
@@ -102,6 +112,7 @@ public class AssessmentManager : IAssessmentManager
 
         var questions = await LoadQuestionsForPublishAsync(assessment);
         ValidateQuestionsForPublish(assessment, questions);
+        ApplyAutoCalculatedTotalMarksIfEnabled(assessment, questions);
         ValidateQuestionBudget(assessment, questions);
 
         PrepareAssessmentForPublish(assessment, questions);
@@ -653,7 +664,10 @@ public class AssessmentManager : IAssessmentManager
     private static void EnsureQuestionsAreAvailableForCreate(IEnumerable<Question> questions)
     {
         var unavailableQuestionIds = questions
-            .Where(question => !question.IsActive || question.AssessmentId.HasValue)
+            // Question-bank questions can be linked to assessments through the
+            // assessment_questions join table. Do not treat the legacy direct
+            // AssessmentId field as a create-time availability blocker.
+            .Where(question => !question.IsActive)
             .Select(question => question.QuestionId)
             .ToList();
 
@@ -757,12 +771,18 @@ public class AssessmentManager : IAssessmentManager
         }
     }
 
-    private static void PrepareAssessmentForCreation(Assessment assessment, IEnumerable<Question> questions)
+    private static void PrepareAssessmentForCreation(
+        Assessment assessment,
+        IEnumerable<Question> questions,
+        AssessmentStatus assessmentStatus)
     {
+        var now = DateTime.UtcNow;
         assessment.AssessmentId = assessment.AssessmentId == Guid.Empty ? Guid.NewGuid() : assessment.AssessmentId;
         assessment.AssessmentType = ResolveAssessmentType(questions);
         assessment.DifficultyLevel = CalculateDifficultyLevel(questions);
-        assessment.CreatedAt = DateTime.UtcNow;
+        assessment.AssessmentStatus = assessmentStatus;
+        assessment.CreatedAt = now;
+        assessment.ModifiedAt = now;
     }
 
     private static void PrepareAssessmentForPublish(Assessment assessment, IEnumerable<Question> questions)
@@ -1353,17 +1373,43 @@ public class AssessmentManager : IAssessmentManager
         }
     }
 
+    private static void ApplyAutoCalculatedTotalMarksIfEnabled(Assessment assessment, IReadOnlyCollection<Question> questions)
+    {
+        if (assessment.IsTotalMarksAutoCalculated != true)
+        {
+            return;
+        }
+
+        assessment.TotalMarks = CalculatePersistedTotalMarks(questions);
+    }
+
+    private static int CalculatePersistedTotalMarks(IEnumerable<Question> questions)
+    {
+        var selectedMarks = questions.Sum(question => question.Marks);
+
+        if (selectedMarks < 0)
+        {
+            throw new InvalidDataException("Selected question marks cannot produce a negative total.");
+        }
+
+        if (decimal.Truncate(selectedMarks) != selectedMarks)
+        {
+            throw new InvalidDataException(
+                $"Selected question marks sum to {selectedMarks}, but assessment total marks currently support only whole numbers.");
+        }
+
+        if (selectedMarks > int.MaxValue)
+        {
+            throw new InvalidDataException("Selected question marks exceed the supported total marks range.");
+        }
+
+        return decimal.ToInt32(selectedMarks);
+    }
+
     private void ValidateQuestionBudget(Assessment assessment, List<Question> questions)
     {
         var selectedQuestionCount = questions.Count;
         var selectedMarks = questions.Sum(question => question.Marks);
-        var allowedByMarks = CalculateAllowedQuestionCountByMarks(assessment.TotalMarks);
-
-        if (allowedByMarks.HasValue && selectedQuestionCount > allowedByMarks.Value)
-        {
-            throw new AssessmentQuestionLimitException(
-                $"Selected question count ({selectedQuestionCount}) exceeds the limit allowed by total marks ({allowedByMarks.Value}).");
-        }
 
         if (selectedMarks > assessment.TotalMarks)
         {
@@ -1390,16 +1436,6 @@ public class AssessmentManager : IAssessmentManager
                 $"Selected questions require {requiredDurationMinutes} minutes, but assessment duration is {assessment.DurationMinutes} minutes. " +
                 $"Allowed by duration: {codingLimit} coding question(s) or {nonCodingLimit} non-coding question(s).");
         }
-    }
-
-    private int? CalculateAllowedQuestionCountByMarks(int totalMarks)
-    {
-        if (totalMarks <= 0 || _assessmentSettings.MarksPerQuestion <= 0)
-        {
-            return null;
-        }
-
-        return (int)Math.Floor(totalMarks / _assessmentSettings.MarksPerQuestion);
     }
 
     private static int CalculateAllowedQuestionCountByDuration(int durationMinutes, decimal timePerQuestionMinutes)

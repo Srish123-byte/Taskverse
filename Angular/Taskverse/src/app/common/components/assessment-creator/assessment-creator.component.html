@@ -73,8 +73,26 @@
             </label>
 
             <label class="field">
+              <span>Passing Percentage</span>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                [(ngModel)]="passingPercentage"
+                (ngModelChange)="enforcePassingPercentageRange()"
+                placeholder="50" />
+            </label>
+
+            <label class="field">
               <span>Total Marks</span>
-              <input type="number" min="0" [(ngModel)]="totalMarks" placeholder="100" />
+              <input
+                type="text"
+                [value]="totalMarksDisplay"
+                readonly
+                aria-readonly="true"
+                class="readonly-value" />
+              <small class="field-help">Auto-calculated from the questions selected in Question Hub.</small>
             </label>
           </div>
         </article>
@@ -109,7 +127,7 @@
             </select>
 
             <label class="search-field">
-              <mat-icon>search</mat-icon>
+              <img src="assets/icons/shared/magnifier.svg" alt="" class="search-icon" aria-hidden="true" />
               <input
                 type="search"
                 [(ngModel)]="questionSearchTerm"
@@ -197,25 +215,69 @@
           </div>
 
           <div class="toggle-list">
-            <label class="toggle-row">
-              <span>Allow Late Entry</span>
-              <mat-slide-toggle [(ngModel)]="allowLateEntry"></mat-slide-toggle>
-            </label>
+            <div class="toggle-row">
+              <div class="toggle-copy">
+                <span>Allow Late Entry</span>
+                <small>Permit access for candidates who join after the start time.</small>
+              </div>
+              <button
+                type="button"
+                class="rule-switch"
+                [class.rule-switch-on]="allowLateEntry"
+                [attr.aria-pressed]="allowLateEntry"
+                aria-label="Toggle allow late entry"
+                (click)="allowLateEntry = !allowLateEntry">
+                <span class="rule-switch-thumb"></span>
+              </button>
+            </div>
 
-            <label class="toggle-row">
-              <span>Show Results Immediately</span>
-              <mat-slide-toggle [(ngModel)]="showResultsImmediately"></mat-slide-toggle>
-            </label>
+            <div class="toggle-row">
+              <div class="toggle-copy">
+                <span>Show Results Immediately</span>
+                <small>Display candidate scores as soon as the assessment is submitted.</small>
+              </div>
+              <button
+                type="button"
+                class="rule-switch"
+                [class.rule-switch-on]="showResultsImmediately"
+                [attr.aria-pressed]="showResultsImmediately"
+                aria-label="Toggle show results immediately"
+                (click)="showResultsImmediately = !showResultsImmediately">
+                <span class="rule-switch-thumb"></span>
+              </button>
+            </div>
 
-            <label class="toggle-row">
-              <span>Question Review</span>
-              <mat-slide-toggle [(ngModel)]="allowQuestionReview"></mat-slide-toggle>
-            </label>
+            <div class="toggle-row">
+              <div class="toggle-copy">
+                <span>Question Review</span>
+                <small>Allow candidates to revisit earlier questions before they finish.</small>
+              </div>
+              <button
+                type="button"
+                class="rule-switch"
+                [class.rule-switch-on]="allowQuestionReview"
+                [attr.aria-pressed]="allowQuestionReview"
+                aria-label="Toggle question review"
+                (click)="allowQuestionReview = !allowQuestionReview">
+                <span class="rule-switch-thumb"></span>
+              </button>
+            </div>
 
-            <label class="toggle-row">
-              <span>Negative Marking</span>
-              <mat-slide-toggle [(ngModel)]="negativeMarking"></mat-slide-toggle>
-            </label>
+            <div class="toggle-row">
+              <div class="toggle-copy">
+                <span>Negative Marking</span>
+                <small>Deduct marks automatically for incorrect responses.</small>
+              </div>
+              <button
+                type="button"
+                class="rule-switch"
+                [class.rule-switch-on]="negativeMarking"
+                [attr.aria-pressed]="negativeMarking"
+                aria-label="Toggle negative marking"
+                (click)="negativeMarking = !negativeMarking">
+                <span class="rule-switch-thumb"></span>
+              </button>
+            </div>
           </div>
         </article>
 
@@ -250,67 +312,69 @@
               </div>
             </div>
 
-            <div class="assignment-summary-block">
-              <div class="summary-line">Classes in Scope</div>
-              <div class="assignment-chip-row" *ngIf="selectedAssignmentClasses.length > 0; else noClassesSelected">
-                <span class="assignment-chip" *ngFor="let classItem of selectedAssignmentClasses; trackBy: trackByAssignmentClassId">
-                  {{ classItem.name }}
-                </span>
-              </div>
-              <ng-template #noClassesSelected>
-                <div class="assignment-empty-copy">Select one or more batches to assign classes.</div>
-              </ng-template>
-            </div>
-
-            <div class="assignment-summary-block">
-              <div class="summary-line">Batches in Scope</div>
-              <div class="assignment-chip-row" *ngIf="selectedAssignmentBatches.length > 0; else noBatchesSelected">
-                <span class="assignment-chip" *ngFor="let batch of selectedAssignmentBatches; trackBy: trackByAssignmentBatchId">
-                  {{ batch.name }}
-                </span>
-              </div>
-              <ng-template #noBatchesSelected>
-                <div class="assignment-empty-copy">No batches selected yet.</div>
-              </ng-template>
-            </div>
-
-            <div class="empty-state" *ngIf="assignmentClasses.length === 0">
-              No classes or batches are available for assignment.
-            </div>
-
-            <div class="assignment-class-list" *ngIf="assignmentClasses.length > 0">
-              <section class="assignment-class-card" *ngFor="let classItem of assignmentClasses; trackBy: trackByAssignmentClassId">
-                <div class="assignment-class-head">
-                  <div class="assignment-class-copy">
-                    <div class="assignment-class-title">{{ classItem.name }}</div>
-                    <div class="assignment-class-meta" *ngIf="classItem.academicYear">Academic Year {{ classItem.academicYear }}</div>
-                  </div>
-
-                  <div class="assignment-class-count">
-                    {{ classItem.batches.length }} {{ classItem.batches.length === 1 ? 'batch' : 'batches' }}
-                  </div>
+            <div class="assignment-scroll-body">
+              <div class="assignment-summary-block">
+                <div class="summary-line">Classes in Scope</div>
+                <div class="assignment-chip-row" *ngIf="selectedAssignmentClasses.length > 0; else noClassesSelected">
+                  <span class="assignment-chip" *ngFor="let classItem of selectedAssignmentClasses; trackBy: trackByAssignmentClassId">
+                    {{ classItem.name }}
+                  </span>
                 </div>
+                <ng-template #noClassesSelected>
+                  <div class="assignment-empty-copy">Select one or more batches to assign classes.</div>
+                </ng-template>
+              </div>
 
-                <div class="empty-state assignment-inline-empty" *ngIf="classItem.batches.length === 0">
-                  No batches available for this class yet.
+              <div class="assignment-summary-block">
+                <div class="summary-line">Batches in Scope</div>
+                <div class="assignment-chip-row" *ngIf="selectedAssignmentBatches.length > 0; else noBatchesSelected">
+                  <span class="assignment-chip" *ngFor="let batch of selectedAssignmentBatches; trackBy: trackByAssignmentBatchId">
+                    {{ batch.name }}
+                  </span>
                 </div>
+                <ng-template #noBatchesSelected>
+                  <div class="assignment-empty-copy">No batches selected yet.</div>
+                </ng-template>
+              </div>
 
-                <div class="batch-list" *ngIf="classItem.batches.length > 0">
-                  <label class="batch-option" *ngFor="let batch of classItem.batches; trackBy: trackByAssignmentBatchId">
-                    <div class="batch-copy">
-                      <span>{{ batch.name }}</span>
-                      <small>{{ classItem.name }}</small>
+              <div class="empty-state" *ngIf="assignmentClasses.length === 0">
+                No classes or batches are available for assignment.
+              </div>
+
+              <div class="assignment-class-list" *ngIf="assignmentClasses.length > 0">
+                <section class="assignment-class-card" *ngFor="let classItem of assignmentClasses; trackBy: trackByAssignmentClassId">
+                  <div class="assignment-class-head">
+                    <div class="assignment-class-copy">
+                      <div class="assignment-class-title">{{ classItem.name }}</div>
+                      <div class="assignment-class-meta" *ngIf="classItem.academicYear">Academic Year {{ classItem.academicYear }}</div>
                     </div>
 
-                    <span class="batch-toggle-shell" [class.is-selected]="isBatchSelected(batch.batchId)">
-                      <input
-                        type="checkbox"
-                        [checked]="isBatchSelected(batch.batchId)"
-                        (change)="toggleBatchSelection(batch.batchId)" />
-                    </span>
-                  </label>
-                </div>
-              </section>
+                    <div class="assignment-class-count">
+                      {{ classItem.batches.length }} {{ classItem.batches.length === 1 ? 'batch' : 'batches' }}
+                    </div>
+                  </div>
+
+                  <div class="empty-state assignment-inline-empty" *ngIf="classItem.batches.length === 0">
+                    No batches available for this class yet.
+                  </div>
+
+                  <div class="batch-list" *ngIf="classItem.batches.length > 0">
+                    <label class="batch-option" *ngFor="let batch of classItem.batches; trackBy: trackByAssignmentBatchId">
+                      <div class="batch-copy">
+                        <span>{{ batch.name }}</span>
+                        <small>{{ classItem.name }}</small>
+                      </div>
+
+                      <span class="batch-toggle-shell" [class.is-selected]="isBatchSelected(batch.batchId)">
+                        <input
+                          type="checkbox"
+                          [checked]="isBatchSelected(batch.batchId)"
+                          (change)="toggleBatchSelection(batch.batchId)" />
+                      </span>
+                    </label>
+                  </div>
+                </section>
+              </div>
             </div>
           </div>
         </article>
@@ -318,12 +382,26 @@
     </section>
   </div>
 
-  <div class="builder-footer" *ngIf="!isInitialPageLoading">
-    <a class="cancel-link" [routerLink]="['/', ...backRouteSegments]">Cancel</a>
+  <div
+    *ngIf="!isInitialPageLoading && submissionErrorMessage"
+    class="validation-popup-backdrop"
+    (click)="closeSubmissionError()">
+    <section class="validation-popup" (click)="$event.stopPropagation()">
+      <h3>Validation Required</h3>
+      <p>{{ submissionErrorMessage }}</p>
+    </section>
+  </div>
+
+  <div class="builder-footer-shell" *ngIf="!isInitialPageLoading">
+    <a class="builder-footer-cancel" [routerLink]="['/', ...backRouteSegments]">Cancel</a>
 
     <div class="footer-actions">
-      <button type="button" class="secondary-action" (click)="saveDraft()">Save as Draft</button>
-      <button type="button" class="primary-action" (click)="scheduleAssessment()">Schedule Assessment</button>
+      <button type="button" class="secondary-action" [disabled]="isSubmitting" (click)="saveDraft()">
+        {{ saveDraftButtonLabel }}
+      </button>
+      <button type="button" class="primary-action" [disabled]="isSubmitting" (click)="scheduleAssessment()">
+        {{ scheduleButtonLabel }}
+      </button>
     </div>
   </div>
 </div>

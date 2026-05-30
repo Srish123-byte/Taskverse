@@ -122,6 +122,30 @@ public class CollegesController : ControllerBase
         }
     }
 
+    [HttpPut("colleges/{collegeId:guid}/classes/{classId:guid}")]
+    [ProducesResponseType(typeof(CollegeClassSummaryRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CollegeClassSummaryRecord>> UpdateClass(
+        Guid collegeId,
+        Guid classId,
+        [FromBody] UpdateCollegeClassRequest request)
+    {
+        try
+        {
+            var dto = await _collegeOrchestrator.UpdateClass(collegeId, classId, request.ToDto());
+            return Ok(dto.ToModel());
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpPost("colleges/{collegeId:guid}/classes/{classId:guid}/batches")]
     [ProducesResponseType(typeof(CollegeBatchSummaryRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -134,6 +158,31 @@ public class CollegesController : ControllerBase
         try
         {
             var dto = await _collegeOrchestrator.CreateBatch(collegeId, classId, request.ToDto());
+            return Ok(dto.ToModel());
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPut("colleges/{collegeId:guid}/classes/{classId:guid}/batches/{batchId:guid}")]
+    [ProducesResponseType(typeof(CollegeBatchSummaryRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CollegeBatchSummaryRecord>> UpdateBatch(
+        Guid collegeId,
+        Guid classId,
+        Guid batchId,
+        [FromBody] UpdateCollegeBatchRequest request)
+    {
+        try
+        {
+            var dto = await _collegeOrchestrator.UpdateBatch(collegeId, classId, batchId, request.ToDto());
             return Ok(dto.ToModel());
         }
         catch (KeyNotFoundException ex)

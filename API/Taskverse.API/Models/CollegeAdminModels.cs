@@ -80,7 +80,23 @@ public class CreateCollegeClassRequestModel
     public string? Department { get; set; }
 }
 
+public class UpdateCollegeClassRequestModel
+{
+    public string Name { get; set; } = string.Empty;
+    public string? AcademicYear { get; set; }
+    public string? Department { get; set; }
+}
+
 public class CreateCollegeBatchRequestModel
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int? Capacity { get; set; }
+    public string? SubjectId { get; set; }
+    public string? SubjectName { get; set; }
+}
+
+public class UpdateCollegeBatchRequestModel
 {
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }

@@ -159,7 +159,7 @@ public class TaskverseContext : DbContext
             entity.HasIndex(b => new { b.ClassId, b.Name }).IsUnique();
 
             // Foreign key: batches.class_id -> classes.class_id
-            entity.HasOne<Class>()
+            entity.HasOne(b => b.Class)
                 .WithMany(c => c.Batches)
                 .HasForeignKey(b => b.ClassId)
                 .OnDelete(DeleteBehavior.Restrict)
@@ -261,7 +261,6 @@ public class TaskverseContext : DbContext
             entity.Property(a => a.ShowResultsImmediately).HasColumnName("show_results_immediately");
             entity.Property(a => a.AllowQuestionReview).HasColumnName("allow_question_review");
             entity.Property(a => a.NegativeMarking).HasColumnName("negative_marking");
-            entity.Property(a => a.MarksPerQuestion).HasColumnName("marks_per_question").HasColumnType("numeric(6,2)");
             entity.Property(a => a.IsTotalMarksAutoCalculated).HasColumnName("is_total_marks_auto_calculated");
             entity.Property(a => a.CreatedBy).HasColumnName("created_by").HasMaxLength(200);
             entity.Property(a => a.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");

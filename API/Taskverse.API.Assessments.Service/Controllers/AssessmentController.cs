@@ -165,6 +165,67 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    [HttpPost("publish")]
+    [ProducesResponseType(typeof(AssessmentRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<AssessmentRecord>> PublishAssessment([FromBody] PublishAssessmentRequest request)
+    {
+        if (request is null)
+        {
+            return BadRequest(new { message = "Assessment publish request is required." });
+        }
+
+        if (request.AssessmentId.HasValue)
+        {
+            return await PublishAssessment(request.AssessmentId.Value);
+        }
+
+        if (_assessmentSettings.AssessmentMaxDurationInMinutes > 0 &&
+            request.DurationMinutes > _assessmentSettings.AssessmentMaxDurationInMinutes)
+        {
+            return BadRequest(new
+            {
+                message = $"Duration minutes cannot exceed {_assessmentSettings.AssessmentMaxDurationInMinutes}."
+            });
+        }
+
+        try
+        {
+            var createRequest = request.ToCreateAssessmentRequest();
+            var assessment = await _assessmentManager.ScheduleAssessment(
+                createRequest.ToEntity(_assessmentSettings, Taskverse.Data.Enums.AssessmentStatus.Scheduled),
+                createRequest.QuestionIds);
+
+            return Ok(assessment.ToRecord());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (AssessmentQuestionLimitException ex)
+        {
+            return UnprocessableEntity(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while publishing the assessment.");
+        }
+    }
+
     [HttpPost("subjects-topics/catalog")]
     [ProducesResponseType(typeof(AssessmentSubjectTopicCatalogRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

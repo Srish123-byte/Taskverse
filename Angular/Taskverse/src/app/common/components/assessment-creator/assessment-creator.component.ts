@@ -1,11 +1,13 @@
 import { ChangeDetectorRef, Component, HostBinding, Input, OnInit } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import {
+  AssessmentRecord,
   AssessmentAdminService,
   AssessmentAssignmentBatch,
   AssessmentAssignmentCatalog,
   AssessmentAssignmentClass,
   AssessmentSubjectCatalogItem,
+  CreateAssessmentRequest,
   AssessmentSubjectTopicCatalog,
   QuestionBankItem
 } from '../../services/api/assessment-admin.service';
@@ -39,6 +41,7 @@ export class AssessmentCreatorComponent implements OnInit {
   catalogErrorMessage = '';
   questionBankErrorMessage = '';
   assignmentErrorMessage = '';
+  private hasStartedAssignmentLoad = false;
 
   subjectCatalog: AssessmentSubjectTopicCatalog = { subjects: [] };
   questions: QuestionBankItem[] = [];
@@ -52,7 +55,7 @@ export class AssessmentCreatorComponent implements OnInit {
   selectedTopicId = '';
   selectedDifficulty = 'all';
   durationMinutes: number | null = 60;
-  totalMarks: number | null = 100;
+  passingPercentage: number | null = 50;
   startDate = '';
   endDate = '';
   instructions = '';
@@ -60,6 +63,9 @@ export class AssessmentCreatorComponent implements OnInit {
   showResultsImmediately = false;
   allowQuestionReview = true;
   negativeMarking = false;
+  isSubmitting = false;
+  submissionErrorMessage = '';
+  private pendingSubmitAction: 'draft' | 'schedule' | null = null;
 
   questionSearchTerm = '';
 
@@ -89,8 +95,36 @@ export class AssessmentCreatorComponent implements OnInit {
     return this.selectedQuestionIds.size;
   }
 
+  get selectedQuestions(): QuestionBankItem[] {
+    return this.questions.filter(question => this.selectedQuestionIds.has(question.questionId));
+  }
+
+  get totalMarks(): number {
+    return this.selectedQuestions.reduce((sum, question) => sum + Number(question.marks ?? 0), 0);
+  }
+
+  get totalMarksDisplay(): string {
+    return this.formatMarks(this.totalMarks);
+  }
+
+  get saveDraftButtonLabel(): string {
+    if (this.isSubmitting && this.pendingSubmitAction === 'draft') {
+      return 'Saving...';
+    }
+
+    return 'Save as Draft';
+  }
+
+  get scheduleButtonLabel(): string {
+    if (this.isSubmitting && this.pendingSubmitAction === 'schedule') {
+      return 'Scheduling...';
+    }
+
+    return 'Schedule Assessment';
+  }
+
   get isInitialPageLoading(): boolean {
-    return this.isCatalogLoading || this.isQuestionBankLoading || this.isAssignmentLoading;
+    return this.isCatalogLoading || this.isQuestionBankLoading;
   }
 
   get assignmentClasses(): AssessmentAssignmentClass[] {
@@ -164,7 +198,6 @@ export class AssessmentCreatorComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.loadAssignmentCatalog();
     this.loadSubjectTopicCatalog();
     this.loadQuestionBank();
   }
@@ -186,6 +219,8 @@ export class AssessmentCreatorComponent implements OnInit {
   }
 
   toggleQuestionSelection(questionId: string): void {
+    this.submissionErrorMessage = '';
+
     if (this.selectedQuestionIds.has(questionId)) {
       this.selectedQuestionIds.delete(questionId);
       return;
@@ -225,11 +260,11 @@ export class AssessmentCreatorComponent implements OnInit {
   }
 
   saveDraft(): void {
-    this.openDeferredActionMessage('Save as Draft');
+    this.submitAssessment('draft');
   }
 
   scheduleAssessment(): void {
-    this.openDeferredActionMessage('Schedule Assessment');
+    this.submitAssessment('schedule');
   }
 
   trackByQuestionId(_: number, question: QuestionBankItem): string {
@@ -260,6 +295,19 @@ export class AssessmentCreatorComponent implements OnInit {
     }
 
     this.onSubjectChange();
+  }
+
+  enforcePassingPercentageRange(): void {
+    if (this.passingPercentage == null || Number.isNaN(this.passingPercentage)) {
+      this.passingPercentage = null;
+      return;
+    }
+
+    this.passingPercentage = Math.min(100, Math.max(0, this.passingPercentage));
+  }
+
+  closeSubmissionError(): void {
+    this.submissionErrorMessage = '';
   }
 
   private loadAssignmentCatalog(): void {
@@ -313,6 +361,7 @@ export class AssessmentCreatorComponent implements OnInit {
       next: catalog => {
         this.subjectCatalog = catalog ?? { subjects: [] };
         this.isCatalogLoading = false;
+        this.maybeStartAssignmentLoad();
         this.changeDetectorRef.detectChanges();
       },
       error: error => {
@@ -321,6 +370,7 @@ export class AssessmentCreatorComponent implements OnInit {
           error?.error?.message ||
           'Unable to load the subject and topic catalog right now.';
         this.isCatalogLoading = false;
+        this.maybeStartAssignmentLoad();
         this.changeDetectorRef.detectChanges();
       }
     });
@@ -337,6 +387,7 @@ export class AssessmentCreatorComponent implements OnInit {
       next: result => {
         this.questions = result?.items ?? [];
         this.isQuestionBankLoading = false;
+        this.maybeStartAssignmentLoad();
         this.changeDetectorRef.detectChanges();
       },
       error: error => {
@@ -345,9 +396,19 @@ export class AssessmentCreatorComponent implements OnInit {
           error?.error?.message ||
           'Unable to load the question bank right now.';
         this.isQuestionBankLoading = false;
+        this.maybeStartAssignmentLoad();
         this.changeDetectorRef.detectChanges();
       }
     });
+  }
+
+  private maybeStartAssignmentLoad(): void {
+    if (this.hasStartedAssignmentLoad || this.isCatalogLoading || this.isQuestionBankLoading) {
+      return;
+    }
+
+    this.hasStartedAssignmentLoad = true;
+    this.loadAssignmentCatalog();
   }
 
   private openDeferredActionMessage(actionName: string): void {
@@ -357,6 +418,168 @@ export class AssessmentCreatorComponent implements OnInit {
       verticalPosition: 'top',
       panelClass: ['question-editor-success-snackbar']
     });
+  }
+
+  private submitAssessment(action: 'draft' | 'schedule'): void {
+    if (this.isSubmitting) {
+      return;
+    }
+
+    const validationError = this.validateAssessmentSubmission();
+    if (validationError) {
+      this.submissionErrorMessage = validationError;
+      this.changeDetectorRef.detectChanges();
+      return;
+    }
+
+    const payload = this.buildCreateAssessmentPayload();
+    if (!payload) {
+      this.changeDetectorRef.detectChanges();
+      return;
+    }
+
+    this.isSubmitting = true;
+    this.pendingSubmitAction = action;
+    this.submissionErrorMessage = '';
+
+    const request$ = action === 'draft'
+      ? this.assessmentAdminService.createAssessment(payload)
+      : this.assessmentAdminService.publishAssessment(payload);
+
+    request$.subscribe({
+      next: assessment => {
+        this.handleSuccessfulSubmission(
+          action === 'draft'
+            ? 'Assessment saved as draft successfully.'
+            : 'Assessment scheduled successfully.',
+          assessment);
+      },
+      error: error => {
+        this.handleSubmissionError(
+          error?.error?.detail ||
+          error?.error?.message ||
+          (action === 'draft'
+            ? 'Unable to create the assessment right now.'
+            : 'Unable to publish the assessment right now.'));
+      }
+    });
+  }
+
+  private handleSuccessfulSubmission(message: string, assessment: AssessmentRecord): void {
+    this.isSubmitting = false;
+    this.pendingSubmitAction = null;
+    this.submissionErrorMessage = '';
+    this.snackBar.open(message, 'Close', {
+      duration: 3500,
+      horizontalPosition: 'center',
+      verticalPosition: 'top',
+      panelClass: ['question-editor-success-snackbar']
+    });
+    this.resetBuilderAfterSubmission(assessment);
+    this.changeDetectorRef.detectChanges();
+  }
+
+  private handleSubmissionError(message: string): void {
+    this.isSubmitting = false;
+    this.pendingSubmitAction = null;
+    this.submissionErrorMessage = message;
+    this.changeDetectorRef.detectChanges();
+  }
+
+  private validateAssessmentSubmission(): string {
+    if (!this.assessmentName.trim()) {
+      return 'Assessment name is required before saving.';
+    }
+
+    if (!this.selectedSubjectId) {
+      return 'Select a subject before saving this assessment.';
+    }
+
+    if (!this.selectedTopicId) {
+      return 'Select a topic before saving this assessment.';
+    }
+
+    if (!this.durationMinutes || this.durationMinutes <= 0) {
+      return 'Duration must be greater than zero.';
+    }
+
+    if (this.selectedBatchIds.size === 0) {
+      return 'Select at least one batch before saving this assessment.';
+    }
+
+    if (this.selectedQuestionIds.size === 0) {
+      return 'Select at least one question before saving this assessment.';
+    }
+
+    return '';
+  }
+
+  private buildCreateAssessmentPayload(): CreateAssessmentRequest | null {
+    const persistedTotalMarks = this.resolvePersistedTotalMarks();
+    if (persistedTotalMarks === null) {
+      return null;
+    }
+
+    const selectedSubject = this.visibleSubjects.find(subject => subject.subjectId === this.selectedSubjectId);
+    const selectedTopic = this.visibleTopics.find(topic => topic.topicId === this.selectedTopicId);
+
+    return {
+      assessmentName: this.assessmentName.trim(),
+      subjectId: this.selectedSubjectId || null,
+      subjectName: selectedSubject?.subjectName ?? null,
+      topicId: this.selectedTopicId || null,
+      topicName: selectedTopic?.topicName ?? null,
+      assignedBatchIds: Array.from(this.selectedBatchIds),
+      questionIds: Array.from(this.selectedQuestionIds),
+      durationMinutes: Number(this.durationMinutes),
+      totalMarks: persistedTotalMarks,
+      startDateTime: this.startDate || null,
+      endDateTime: this.endDate || null
+    };
+  }
+
+  private resolvePersistedTotalMarks(): number | null {
+    const totalMarks = this.totalMarks;
+
+    if (!Number.isFinite(totalMarks) || totalMarks < 0) {
+      this.submissionErrorMessage = 'Total marks could not be calculated from the selected questions.';
+      return null;
+    }
+
+    if (!Number.isInteger(totalMarks)) {
+      this.submissionErrorMessage =
+        'Selected question marks currently sum to a fractional total. Assessment total marks can only be persisted as whole numbers right now.';
+      return null;
+    }
+
+    return totalMarks;
+  }
+
+  private resetBuilderAfterSubmission(assessment: AssessmentRecord): void {
+    this.assessmentName = '';
+    this.selectedSubjectId = '';
+    this.selectedTopicId = '';
+    this.selectedDifficulty = 'all';
+    this.durationMinutes = 60;
+    this.passingPercentage = 50;
+    this.startDate = '';
+    this.endDate = '';
+    this.instructions = '';
+    this.allowLateEntry = assessment.allowLateEntry;
+    this.showResultsImmediately = assessment.showResultsImmediately;
+    this.allowQuestionReview = assessment.allowQuestionReview;
+    this.negativeMarking = assessment.negativeMarking;
+    this.questionSearchTerm = '';
+    this.selectedBatchIds.clear();
+    this.selectedQuestionIds.clear();
+  }
+
+  private formatMarks(totalMarks: number): string {
+    if (Number.isInteger(totalMarks)) {
+      return totalMarks.toString();
+    }
+
+    return totalMarks.toFixed(2).replace(/\.?0+$/, '');
   }
 
   private mapCollegeClassToAssignmentClass(classItem: CollegeClassSummary): AssessmentAssignmentClass {

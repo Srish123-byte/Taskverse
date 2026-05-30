@@ -12,7 +12,23 @@ public static class CollegeMappings
         Department = model.Department
     };
 
+    public static UpdateCollegeClassDto ToDto(this UpdateCollegeClassRequest model) => new()
+    {
+        Name = model.Name,
+        AcademicYear = model.AcademicYear,
+        Department = model.Department
+    };
+
     public static CreateCollegeBatchDto ToDto(this CreateCollegeBatchRequest model) => new()
+    {
+        Name = model.Name,
+        Description = model.Description,
+        Capacity = model.Capacity,
+        SubjectId = model.SubjectId,
+        SubjectName = model.SubjectName
+    };
+
+    public static UpdateCollegeBatchDto ToDto(this UpdateCollegeBatchRequest model) => new()
     {
         Name = model.Name,
         Description = model.Description,

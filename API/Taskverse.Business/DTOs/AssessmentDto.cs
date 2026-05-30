@@ -17,6 +17,24 @@ public class CreateQuestionBankAssessmentDto
     public DateTime? EndDateTime { get; set; }
 }
 
+public class PublishQuestionBankAssessmentDto
+{
+    public Guid? AssessmentId { get; set; }
+    public Guid CollegeId { get; set; }
+    public string CreatedBy { get; set; } = default!;
+    public string AssessmentName { get; set; } = default!;
+    public Guid? SubjectId { get; set; }
+    public string? SubjectName { get; set; }
+    public Guid? TopicId { get; set; }
+    public string? TopicName { get; set; }
+    public Guid[] AssignedBatchIds { get; set; } = [];
+    public List<Guid> QuestionIds { get; set; } = [];
+    public int DurationMinutes { get; set; }
+    public int TotalMarks { get; set; }
+    public DateTime? StartDateTime { get; set; }
+    public DateTime? EndDateTime { get; set; }
+}
+
 public class DeleteAssessmentDto
 {
     public Guid AssessmentId { get; set; }
@@ -47,7 +65,6 @@ public class QuestionBankAssessmentDto
     public bool ShowResultsImmediately { get; set; }
     public bool AllowQuestionReview { get; set; }
     public bool NegativeMarking { get; set; }
-    public decimal MarksPerQuestion { get; set; }
     public bool? IsTotalMarksAutoCalculated { get; set; }
     public string CreatedBy { get; set; } = default!;
     public DateTime CreatedAt { get; set; }

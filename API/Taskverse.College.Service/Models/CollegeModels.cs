@@ -21,7 +21,19 @@ public record CreateCollegeClassRequest(
     string? AcademicYear,
     string? Department);
 
+public record UpdateCollegeClassRequest(
+    string Name,
+    string? AcademicYear,
+    string? Department);
+
 public record CreateCollegeBatchRequest(
+    string Name,
+    string? Description,
+    int? Capacity,
+    string? SubjectId,
+    string? SubjectName);
+
+public record UpdateCollegeBatchRequest(
     string Name,
     string? Description,
     int? Capacity,

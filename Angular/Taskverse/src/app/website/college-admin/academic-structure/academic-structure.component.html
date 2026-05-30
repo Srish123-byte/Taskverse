@@ -12,10 +12,6 @@
       </div>
 
       <div class="hero-actions">
-        <button type="button" class="ghost-action" [disabled]="isLoading || classes.length === 0" (click)="openCreateBatchForm()">
-          <img src="assets/icons/shared/add.svg" alt="" class="hero-action-icon" aria-hidden="true">
-          <span>Create Batch</span>
-        </button>
         <button type="button" class="primary-action" (click)="openCreateClassForm()">
           <img src="assets/icons/shared/add.svg" alt="" class="hero-action-icon" aria-hidden="true">
           <span>Create Class</span>
@@ -30,15 +26,6 @@
         <div class="section-title">
           <h3>Active Classes</h3>
           <p>Live classes returned by the current CollegeAdminController and MS-backed flow.</p>
-        </div>
-
-        <div class="header-actions" aria-label="Table actions">
-          <button type="button" class="icon-button">
-            <mat-icon>filter_alt</mat-icon>
-          </button>
-          <button type="button" class="icon-button">
-            <mat-icon>download</mat-icon>
-          </button>
         </div>
       </div>
 
@@ -87,6 +74,14 @@
             </div>
 
             <div class="class-cell class-actions-cell">
+              <button
+                type="button"
+                class="mini-action mini-action-muted"
+                [disabled]="isDeletingClass(classItem.classId)"
+                (click)="openEditClassForm(classItem)">
+                <img src="assets/icons/nav/settings.svg" alt="" class="mini-action-icon" aria-hidden="true">
+                <span>Edit</span>
+              </button>
               <app-delete-action-button
                 appearance="icon"
                 [ariaLabel]="'Delete class ' + classItem.name"
@@ -139,9 +134,9 @@
                     type="button"
                     class="mini-action mini-action-muted"
                     [disabled]="isDeletingBatch(batchCard.batch!.batchId)"
-                    (click)="$event.stopPropagation()">
+                    (click)="$event.stopPropagation(); openEditBatchForm(classItem, batchCard.batch!)">
                     <img src="assets/icons/nav/settings.svg" alt="" class="mini-action-icon" aria-hidden="true">
-                    <span>Settings</span>
+                    <span>Modify</span>
                   </button>
                   <button
                     type="button"
@@ -180,8 +175,8 @@
     <section class="create-class-modal" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <div>
-          <h3>Create New Class</h3>
-          <p>Configure structural details for the new academic batch.</p>
+          <h3>{{ isEditClassMode ? 'Edit Class' : 'Create New Class' }}</h3>
+          <p>{{ isEditClassMode ? 'Review and update the class details.' : 'Configure structural details for the new academic batch.' }}</p>
         </div>
         <button type="button" class="close-button" (click)="closeCreateClassForm()" aria-label="Close create class form">
           <mat-icon>close</mat-icon>
@@ -214,7 +209,7 @@
               Class name can be at most {{ classNameMaxLength }} characters.
             </small>
             <small *ngIf="createClassForm.controls.name.touched && createClassForm.controls.name.errors?.['restrictedNamePattern']">
-              Only letters, numbers, "/" and "-" are allowed.
+              Only letters, numbers, spaces, "/" and "-" are allowed.
             </small>
           </label>
 
@@ -241,7 +236,7 @@
         <div class="modal-footer">
           <button type="button" class="footer-action footer-action-muted" (click)="closeCreateClassForm()">Cancel</button>
           <button type="submit" class="footer-action footer-action-primary" [disabled]="isSubmittingClass">
-            {{ isSubmittingClass ? 'Submitting...' : 'Create Class' }}
+            {{ isSubmittingClass ? (isEditClassMode ? 'Updating...' : 'Submitting...') : (isEditClassMode ? 'Update Class' : 'Create Class') }}
           </button>
         </div>
       </form>
@@ -256,8 +251,8 @@
             <mat-icon>groups_2</mat-icon>
           </div>
           <div>
-            <h3>Create New Batch</h3>
-            <p>Configure a new group of students for proctored assessments.</p>
+            <h3>{{ isEditBatchMode ? 'Modify Batch' : 'Create New Batch' }}</h3>
+            <p>{{ isEditBatchMode ? 'Review and update the current batch configuration.' : 'Configure a new group of students for proctored assessments.' }}</p>
           </div>
         </div>
         <button type="button" class="close-button" (click)="closeCreateBatchForm()" aria-label="Close create batch form">
@@ -271,26 +266,21 @@
             {{ createBatchErrorMessage }}
           </div>
 
-          <label class="form-field">
-            <span>Select Class</span>
-            <select formControlName="classId">
-              <option value="" disabled>Choose target class...</option>
-              <option *ngFor="let classItem of classes; trackBy: trackByClassId" [value]="classItem.classId">
-                {{ classItem.name }}<ng-container *ngIf="classItem.academicYear"> - {{ classItem.academicYear }}</ng-container>
-              </option>
-            </select>
-            <small *ngIf="createBatchForm.controls.classId.touched && createBatchForm.controls.classId.invalid">
-              Please select a class.
-            </small>
-          </label>
+          <div class="form-field">
+            <span>Linked Class</span>
+            <div class="department-pill">{{ getActiveBatchClassLabel() }}</div>
+          </div>
 
           <label class="form-field form-field-half">
             <span>Batch Name</span>
             <input
               type="text"
               formControlName="name"
-              [attr.maxlength]="classNameMaxLength"
+              [attr.maxlength]="batchNameMaxLength"
               placeholder="Batch A">
+            <small class="field-hint">
+              {{ batchNameHint }}
+            </small>
             <small *ngIf="createBatchForm.controls.name.touched && createBatchForm.controls.name.errors?.['required']">
               Batch name is required.
             </small>
@@ -298,10 +288,10 @@
               Batch name must be at least 2 characters.
             </small>
             <small *ngIf="createBatchForm.controls.name.touched && createBatchForm.controls.name.errors?.['restrictedNameLength']">
-              Batch name can be at most {{ classNameMaxLength }} characters.
+              Batch name can be at most {{ batchNameMaxLength }} characters.
             </small>
             <small *ngIf="createBatchForm.controls.name.touched && createBatchForm.controls.name.errors?.['restrictedNamePattern']">
-              Only letters, numbers, "/" and "-" are allowed.
+              Only letters, numbers, spaces, "/" and "-" are allowed.
             </small>
           </label>
 
@@ -354,7 +344,7 @@
         <div class="modal-footer">
           <button type="button" class="footer-action footer-action-muted" (click)="closeCreateBatchForm()">Cancel</button>
           <button type="submit" class="footer-action footer-action-primary" [disabled]="isSubmittingBatch">
-            {{ isSubmittingBatch ? 'Submitting...' : 'Create Batch' }}
+            {{ isSubmittingBatch ? (isEditBatchMode ? 'Updating...' : 'Submitting...') : (isEditBatchMode ? 'Update Batch' : 'Create Batch') }}
           </button>
         </div>
       </form>

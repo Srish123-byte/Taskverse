@@ -135,6 +135,30 @@ public static class AssessmentMappings
         };
     }
 
+    public static PublishQuestionBankAssessmentDto ToDto(
+        this PublishQuestionBankAssessmentRequestModel model,
+        Guid collegeId,
+        string createdBy)
+    {
+        return new PublishQuestionBankAssessmentDto
+        {
+            AssessmentId = model.AssessmentId,
+            CollegeId = collegeId,
+            CreatedBy = createdBy,
+            AssessmentName = model.AssessmentName,
+            SubjectId = model.SubjectId,
+            SubjectName = model.SubjectName,
+            TopicId = model.TopicId,
+            TopicName = model.TopicName,
+            AssignedBatchIds = model.AssignedBatchIds,
+            QuestionIds = model.QuestionIds,
+            DurationMinutes = model.DurationMinutes,
+            TotalMarks = model.TotalMarks,
+            StartDateTime = UtcDateTime.Normalize(model.StartDateTime),
+            EndDateTime = UtcDateTime.Normalize(model.EndDateTime)
+        };
+    }
+
     public static AssessmentTopicCatalogResponseModel ToResponseModel(this AssessmentTopicCatalogDto dto)
     {
         return new AssessmentTopicCatalogResponseModel
@@ -219,7 +243,6 @@ public static class AssessmentMappings
             ShowResultsImmediately = dto.ShowResultsImmediately,
             AllowQuestionReview = dto.AllowQuestionReview,
             NegativeMarking = dto.NegativeMarking,
-            MarksPerQuestion = dto.MarksPerQuestion,
             IsTotalMarksAutoCalculated = dto.IsTotalMarksAutoCalculated,
             CreatedBy = dto.CreatedBy,
             CreatedAt = UtcDateTime.Normalize(dto.CreatedAt),

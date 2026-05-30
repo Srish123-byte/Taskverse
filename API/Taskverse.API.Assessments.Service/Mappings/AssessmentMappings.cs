@@ -8,7 +8,10 @@ namespace Taskverse.API.Assessments.Service.Mappings;
 
 public static class AssessmentMappings
 {
-    public static Assessment ToEntity(this CreateAssessmentRequest request, AssessmentSettings settings)
+    public static Assessment ToEntity(
+        this CreateAssessmentRequest request,
+        AssessmentSettings settings,
+        AssessmentStatus assessmentStatus = AssessmentStatus.Draft)
     {
         return new Assessment
         {
@@ -18,7 +21,7 @@ public static class AssessmentMappings
             TopicId = request.TopicId,
             TopicName = request.TopicName?.Trim(),
             AssessmentName = request.AssessmentName.Trim(),
-            AssessmentStatus = AssessmentStatus.Draft,
+            AssessmentStatus = assessmentStatus,
             DurationMinutes = request.DurationMinutes,
             TotalMarks = request.TotalMarks,
             StartDateTime = UtcDateTime.Normalize(request.StartDateTime),
@@ -32,9 +35,28 @@ public static class AssessmentMappings
             ShowResultsImmediately = settings.IsResultsAvailableImmediately,
             AllowQuestionReview = settings.AllowQuestionReview,
             NegativeMarking = settings.NegativeMarking,
-            MarksPerQuestion = settings.MarksPerQuestion,
             IsTotalMarksAutoCalculated = settings.IsTotalMarksAutoCalculated,
             CreatedBy = request.CreatedBy
+        };
+    }
+
+    public static CreateAssessmentRequest ToCreateAssessmentRequest(this PublishAssessmentRequest request)
+    {
+        return new CreateAssessmentRequest
+        {
+            CollegeId = request.CollegeId,
+            CreatedBy = request.CreatedBy,
+            AssessmentName = request.AssessmentName,
+            SubjectId = request.SubjectId,
+            SubjectName = request.SubjectName,
+            TopicId = request.TopicId,
+            TopicName = request.TopicName,
+            AssignedBatchIds = request.AssignedBatchIds,
+            QuestionIds = request.QuestionIds,
+            DurationMinutes = request.DurationMinutes,
+            TotalMarks = request.TotalMarks,
+            StartDateTime = request.StartDateTime,
+            EndDateTime = request.EndDateTime
         };
     }
 
@@ -61,7 +83,6 @@ public static class AssessmentMappings
             assessment.ShowResultsImmediately,
             assessment.AllowQuestionReview,
             assessment.NegativeMarking,
-            assessment.MarksPerQuestion,
             assessment.IsTotalMarksAutoCalculated,
             assessment.CreatedBy,
             UtcDateTime.Normalize(assessment.CreatedAt),

@@ -116,7 +116,10 @@ public class AssessmentsController : TaskverseBaseController
 
         try
         {
-            var dto = await _assessmentOrchestrator.PublishAssessment(id);
+            var dto = await _assessmentOrchestrator.PublishAssessment(new Taskverse.Business.DTOs.PublishQuestionBankAssessmentDto
+            {
+                AssessmentId = id
+            });
             return Ok(dto.ToResponseModel());
         }
         catch (ArgumentException ex)
@@ -324,6 +327,70 @@ public class AssessmentsController : TaskverseBaseController
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
+        }
+    }
+
+    [HttpPost("publish")]
+    [SwaggerResponse(200, "Assessment published successfully", typeof(QuestionBankAssessmentResponseModel))]
+    [SwaggerResponse(400, "Invalid request or CollegeId is missing/invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Assessment not found")]
+    [SwaggerResponse(409, "Assessment could not be published due to a conflict")]
+    [SwaggerResponse(422, "Assessment questions exceed allowed limits")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> PublishAssessment([FromBody] PublishQuestionBankAssessmentRequestModel model)
+    {
+        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        if (model is null)
+        {
+            return BadRequest(new { message = "Assessment publish request is required." });
+        }
+
+        try
+        {
+            var requestedBatchIds = model.AssessmentId.HasValue ? [] : model.AssignedBatchIds;
+            var trainerBatchAccessCheck = await EnsureTrainerCanAssignRequestedBatches(collegeId, requestedBatchIds);
+            if (trainerBatchAccessCheck is not null) return trainerBatchAccessCheck;
+
+            var dto = await _assessmentOrchestrator.PublishAssessment(
+                model.ToDto(collegeId, GetCreatedByName()));
+
+            return Ok(dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidDataException ex)
+        {
+            return UnprocessableEntity(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
         }
         catch (HttpRequestException ex)
         {
@@ -1162,7 +1229,7 @@ public class AssessmentsController : TaskverseBaseController
             return userIdFromClaims;
         }
 
-        candidate = UserId;
+        candidate = Request?.Headers["UserId"].ToString();
         return Guid.TryParse(candidate, out var userId) ? userId : null;
     }
 

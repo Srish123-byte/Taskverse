@@ -60,7 +60,21 @@ export interface CreateCollegeClassRequest {
   department?: string;
 }
 
+export interface UpdateCollegeClassRequest {
+  name: string;
+  academicYear?: string;
+  department?: string;
+}
+
 export interface CreateCollegeBatchRequest {
+  name: string;
+  description?: string;
+  capacity?: number;
+  subjectId?: string;
+  subjectName?: string;
+}
+
+export interface UpdateCollegeBatchRequest {
   name: string;
   description?: string;
   capacity?: number;
@@ -93,9 +107,21 @@ export class CollegeAdminService {
       .pipe(map(item => this.mapClass(item)));
   }
 
+  updateClass(classId: string, request: UpdateCollegeClassRequest): Observable<CollegeClassSummary> {
+    return this.http
+      .put<any>(`${this.url}/classes/${classId}`, request)
+      .pipe(map(item => this.mapClass(item)));
+  }
+
   createBatch(classId: string, request: CreateCollegeBatchRequest): Observable<CollegeBatchSummary> {
     return this.http
       .post<any>(`${this.url}/classes/${classId}/batches`, request)
+      .pipe(map(item => this.mapBatch(item)));
+  }
+
+  updateBatch(classId: string, batchId: string, request: UpdateCollegeBatchRequest): Observable<CollegeBatchSummary> {
+    return this.http
+      .put<any>(`${this.url}/classes/${classId}/batches/${batchId}`, request)
       .pipe(map(item => this.mapBatch(item)));
   }
 

@@ -7,7 +7,23 @@ public class CreateCollegeClassDto
     public string? Department { get; set; }
 }
 
+public class UpdateCollegeClassDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string? AcademicYear { get; set; }
+    public string? Department { get; set; }
+}
+
 public class CreateCollegeBatchDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int? Capacity { get; set; }
+    public string? SubjectId { get; set; }
+    public string? SubjectName { get; set; }
+}
+
+public class UpdateCollegeBatchDto
 {
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }

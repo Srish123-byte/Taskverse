@@ -54,7 +54,6 @@ public static class AssessmentMappings
             ShowResultsImmediately = model.ShowResultsImmediately,
             AllowQuestionReview = model.AllowQuestionReview,
             NegativeMarking = model.NegativeMarking,
-            MarksPerQuestion = model.MarksPerQuestion,
             IsTotalMarksAutoCalculated = model.IsTotalMarksAutoCalculated,
             CreatedBy = model.CreatedBy,
             CreatedAt = UtcDateTime.Normalize(model.CreatedAt),
@@ -121,6 +120,23 @@ public static class AssessmentMappings
 
     public static CreateQuestionBankAssessmentModel ToMicroServiceModel(this CreateQuestionBankAssessmentDto dto)
         => new(
+            dto.CollegeId,
+            dto.CreatedBy,
+            dto.AssessmentName,
+            dto.SubjectId,
+            dto.SubjectName,
+            dto.TopicId,
+            dto.TopicName,
+            dto.AssignedBatchIds,
+            dto.QuestionIds,
+            dto.DurationMinutes,
+            dto.TotalMarks,
+            UtcDateTime.Normalize(dto.StartDateTime),
+            UtcDateTime.Normalize(dto.EndDateTime));
+
+    public static PublishQuestionBankAssessmentModel ToMicroServiceModel(this PublishQuestionBankAssessmentDto dto)
+        => new(
+            dto.AssessmentId,
             dto.CollegeId,
             dto.CreatedBy,
             dto.AssessmentName,

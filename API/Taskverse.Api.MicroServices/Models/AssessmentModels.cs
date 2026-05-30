@@ -30,6 +30,36 @@ public record CreateQuestionBankAssessmentModel(
     [property: JsonProperty("end_datetime")]
     DateTime? EndDateTime);
 
+public record PublishQuestionBankAssessmentModel(
+    [property: JsonProperty("assessment_id")]
+    Guid? AssessmentId,
+    [property: JsonProperty("college_id")]
+    Guid CollegeId,
+    [property: JsonProperty("created_by")]
+    string CreatedBy,
+    [property: JsonProperty("assessment_name")]
+    string AssessmentName,
+    [property: JsonProperty("subject_id")]
+    Guid? SubjectId,
+    [property: JsonProperty("subject_name")]
+    string? SubjectName,
+    [property: JsonProperty("topic_id")]
+    Guid? TopicId,
+    [property: JsonProperty("topic_name")]
+    string? TopicName,
+    [property: JsonProperty("assigned_batch_ids")]
+    Guid[] AssignedBatchIds,
+    [property: JsonProperty("question_ids")]
+    List<Guid> QuestionIds,
+    [property: JsonProperty("duration_minutes")]
+    int DurationMinutes,
+    [property: JsonProperty("total_marks")]
+    int TotalMarks,
+    [property: JsonProperty("start_datetime")]
+    DateTime? StartDateTime,
+    [property: JsonProperty("end_datetime")]
+    DateTime? EndDateTime);
+
 public record DeleteAssessmentModel(
     [property: JsonProperty("assessment_id")]
     Guid AssessmentId,
@@ -81,8 +111,6 @@ public record QuestionBankAssessmentModel(
     bool AllowQuestionReview,
     [property: JsonProperty("negative_marking")]
     bool NegativeMarking,
-    [property: JsonProperty("marks_per_question")]
-    decimal MarksPerQuestion,
     [property: JsonProperty("is_total_marks_auto_calculated")]
     bool? IsTotalMarksAutoCalculated,
     [property: JsonProperty("created_by")]

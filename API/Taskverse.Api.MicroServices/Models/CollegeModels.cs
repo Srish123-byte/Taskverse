@@ -54,7 +54,19 @@ public record CreateCollegeClassModel(
     string? AcademicYear,
     string? Department);
 
+public record UpdateCollegeClassModel(
+    string Name,
+    string? AcademicYear,
+    string? Department);
+
 public record CreateCollegeBatchModel(
+    string Name,
+    string? Description,
+    int? Capacity,
+    string? SubjectId,
+    string? SubjectName);
+
+public record UpdateCollegeBatchModel(
     string Name,
     string? Description,
     int? Capacity,

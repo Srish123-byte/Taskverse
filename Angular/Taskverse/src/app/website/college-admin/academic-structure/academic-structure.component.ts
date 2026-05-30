@@ -11,11 +11,15 @@ import {
   CollegeAdminService,
   CollegeBatchSummary,
   CollegeClassSummary,
-  SubjectOption
+  SubjectOption,
+  UpdateCollegeClassRequest,
+  UpdateCollegeBatchRequest
 } from '../../../common/services/api/college-admin.service';
 import {
-  CLASS_OR_BATCH_NAME_HINT,
-  CLASS_OR_BATCH_NAME_MAX_LENGTH,
+  BATCH_NAME_HINT,
+  BATCH_NAME_MAX_LENGTH,
+  CLASS_NAME_HINT,
+  CLASS_NAME_MAX_LENGTH,
   classOrBatchNameValidator
 } from '../../../common/validators/class-batch-name-creation.validators';
 
@@ -50,12 +54,16 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
   @ViewChildren('classBlock') private classBlocks!: QueryList<ElementRef<HTMLElement>>;
-  readonly classNameHint = CLASS_OR_BATCH_NAME_HINT;
-  readonly classNameMaxLength = CLASS_OR_BATCH_NAME_MAX_LENGTH;
+  readonly classNameHint = CLASS_NAME_HINT;
+  readonly classNameMaxLength = CLASS_NAME_MAX_LENGTH;
+  readonly batchNameHint = BATCH_NAME_HINT;
+  readonly batchNameMaxLength = BATCH_NAME_MAX_LENGTH;
 
   isLoading = true;
   isCreateClassOpen = false;
+  isEditClassMode = false;
   isCreateBatchOpen = false;
+  isEditBatchMode = false;
   isTrainerAssignmentOpen = false;
   isTrainerDropdownOpen = false;
   isSubmittingClass = false;
@@ -85,6 +93,8 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
   activeTrainerAssignmentClassName = '';
   activeTrainerAssignmentBatchId = '';
   activeTrainerAssignmentBatchName = '';
+  editingClassId = '';
+  editingBatchId = '';
   classConfiguration: ClassConfiguration = {
     totals: {
       totalClasses: 0,
@@ -98,14 +108,14 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
   readonly yearOptions = Array.from({ length: 9 }, (_, index) => `${2024 + index}`);
 
   readonly createClassForm = this.fb.group({
-    name: ['', [Validators.required, Validators.minLength(2), classOrBatchNameValidator()]],
+    name: ['', [Validators.required, Validators.minLength(2), classOrBatchNameValidator(CLASS_NAME_MAX_LENGTH)]],
     academicYear: ['', [Validators.required]],
     description: ['']
   });
 
   readonly createBatchForm = this.fb.group({
     classId: ['', [Validators.required]],
-    name: ['', [Validators.required, Validators.minLength(2), classOrBatchNameValidator()]],
+    name: ['', [Validators.required, Validators.minLength(2), classOrBatchNameValidator(BATCH_NAME_MAX_LENGTH)]],
     subjectId: [''],
     newSubjectName: [''],
     description: [''],
@@ -152,9 +162,26 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
   }
 
   openCreateClassForm(): void {
+    this.isEditClassMode = false;
+    this.editingClassId = '';
     this.createClassErrorMessage = '';
     this.successMessage = '';
     this.isCreateClassOpen = true;
+  }
+
+  openEditClassForm(classItem: CollegeClassSummary): void {
+    this.isEditClassMode = true;
+    this.editingClassId = classItem.classId;
+    this.createClassErrorMessage = '';
+    this.successMessage = '';
+    this.isCreateBatchOpen = false;
+    this.closeTrainerAssignmentModal();
+    this.isCreateClassOpen = true;
+    this.createClassForm.reset({
+      name: classItem.name,
+      academicYear: classItem.academicYear || '',
+      description: classItem.department || ''
+    });
   }
 
   openCreateBatchForm(classId = ''): void {
@@ -162,13 +189,17 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const targetClassId = classId || this.classConfiguration.classes[0]?.classId || '';
+
+    this.isEditBatchMode = false;
+    this.editingBatchId = '';
     this.createBatchErrorMessage = '';
     this.successMessage = '';
     this.isCreateClassOpen = false;
     this.closeTrainerAssignmentModal();
     this.isCreateBatchOpen = true;
     this.createBatchForm.reset({
-      classId,
+      classId: targetClassId,
       name: '',
       subjectId: '',
       newSubjectName: '',
@@ -181,8 +212,32 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     }
   }
 
+  openEditBatchForm(classItem: CollegeClassSummary, batch: CollegeBatchSummary): void {
+    this.isEditBatchMode = true;
+    this.editingBatchId = batch.batchId;
+    this.createBatchErrorMessage = '';
+    this.successMessage = '';
+    this.isCreateClassOpen = false;
+    this.closeTrainerAssignmentModal();
+    this.isCreateBatchOpen = true;
+    this.createBatchForm.reset({
+      classId: classItem.classId,
+      name: batch.name,
+      subjectId: batch.subjectId || '',
+      newSubjectName: batch.subjectId ? '' : (batch.subjectName || ''),
+      description: batch.description || '',
+      capacity: batch.capacity || null
+    });
+
+    if (!this.hasLoadedSubjects && !this.isLoadingSubjects) {
+      this.loadSubjects();
+    }
+  }
+
   closeCreateClassForm(): void {
     this.isCreateClassOpen = false;
+    this.isEditClassMode = false;
+    this.editingClassId = '';
     this.isSubmittingClass = false;
     this.createClassErrorMessage = '';
     this.createClassForm.reset({
@@ -194,6 +249,8 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
 
   closeCreateBatchForm(): void {
     this.isCreateBatchOpen = false;
+    this.isEditBatchMode = false;
+    this.editingBatchId = '';
     this.isSubmittingBatch = false;
     this.createBatchErrorMessage = '';
     this.createBatchForm.reset({
@@ -267,31 +324,43 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     this.createClassErrorMessage = '';
     this.successMessage = '';
 
-    this.collegeAdminService.createClass({
+    const request: UpdateCollegeClassRequest = {
       name: formValue.name?.trim() || '',
       academicYear: formValue.academicYear?.trim() || '',
       // The current API contract exposes this field as "department",
       // while the backend reads it back as class description.
       department: formValue.description?.trim() || undefined
-    })
+    };
+
+    const request$ = this.isEditClassMode && this.editingClassId
+      ? this.collegeAdminService.updateClass(this.editingClassId, request)
+      : this.collegeAdminService.createClass(request);
+
+    request$
       .pipe(
         take(1),
         finalize(() => {
           this.isSubmittingClass = false;
         }))
       .subscribe({
-        next: createdClass => {
-          this.classConfiguration = {
-            ...this.classConfiguration,
-            classes: [createdClass, ...this.classConfiguration.classes]
-          };
+        next: classResponse => {
+          if (this.isEditClassMode) {
+            this.replaceClassSummary(classResponse);
+            this.successMessage = `Class "${classResponse.name}" was updated successfully.`;
+          } else {
+            this.classConfiguration = {
+              ...this.classConfiguration,
+              classes: [classResponse, ...this.classConfiguration.classes]
+            };
+            this.successMessage = `Class "${classResponse.name}" was created successfully.`;
+          }
+
           this.recalculateTotals();
-          this.successMessage = `Class "${createdClass.name}" was created successfully.`;
           this.closeCreateClassForm();
           this.isSuccessDialogOpen = true;
         },
         error: err => {
-          this.createClassErrorMessage = err?.error?.message || 'Unable to create the class right now.';
+          this.createClassErrorMessage = err?.error?.message || `Unable to ${this.isEditClassMode ? 'update' : 'create'} the class right now.`;
         }
       });
   }
@@ -318,33 +387,45 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     this.createBatchErrorMessage = '';
     this.successMessage = '';
 
-    this.collegeAdminService.createBatch(classId, {
+    const request: UpdateCollegeBatchRequest = {
       name: formValue.name?.trim() || '',
       subjectId: subjectId || undefined,
       subjectName: newSubjectName || undefined,
       description: formValue.description?.trim() || undefined,
       capacity: Number(formValue.capacity) || undefined
-    })
+    };
+
+    const request$ = this.isEditBatchMode && this.editingBatchId
+      ? this.collegeAdminService.updateBatch(classId, this.editingBatchId, request)
+      : this.collegeAdminService.createBatch(classId, request);
+
+    request$
       .pipe(
         take(1),
         finalize(() => {
           this.isSubmittingBatch = false;
         }))
       .subscribe({
-        next: createdBatch => {
-          const selectedClass = this.classConfiguration.classes.find(item => item.classId === classId);
-          if (selectedClass) {
-            selectedClass.batches = [...selectedClass.batches, createdBatch].sort((left, right) => left.name.localeCompare(right.name));
-            selectedClass.totalCapacity += createdBatch.capacity || 0;
+        next: batchResponse => {
+          if (this.isEditBatchMode) {
+            this.replaceBatchSummary(batchResponse);
+            this.successMessage = `Batch "${batchResponse.name}" was updated successfully.`;
+          } else {
+            const selectedClass = this.classConfiguration.classes.find(item => item.classId === classId);
+            if (selectedClass) {
+              selectedClass.batches = [...selectedClass.batches, batchResponse].sort((left, right) => left.name.localeCompare(right.name));
+              selectedClass.totalCapacity += batchResponse.capacity || 0;
+            }
+
+            this.successMessage = `Batch "${batchResponse.name}" was created successfully.`;
           }
 
           this.recalculateTotals();
-          this.successMessage = `Batch "${createdBatch.name}" was created successfully.`;
           this.closeCreateBatchForm();
           this.isSuccessDialogOpen = true;
         },
         error: err => {
-          this.createBatchErrorMessage = err?.error?.message || 'Unable to create the batch right now.';
+          this.createBatchErrorMessage = err?.error?.message || `Unable to ${this.isEditBatchMode ? 'update' : 'create'} the batch right now.`;
         }
       });
   }
@@ -599,6 +680,18 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     return this.approvedTrainers.filter(trainer => this.selectedTrainerIds.has(trainer.trainerId));
   }
 
+  getActiveBatchClassLabel(): string {
+    const classId = this.createBatchForm.controls.classId.value?.trim() || '';
+    const classItem = this.classConfiguration.classes.find(item => item.classId === classId);
+    if (!classItem) {
+      return 'Class not available';
+    }
+
+    return classItem.academicYear
+      ? `${classItem.name} - ${classItem.academicYear}`
+      : classItem.name;
+  }
+
   hasTrainerSelectionChanges(): boolean {
     if (this.initialSelectedTrainerIds.size !== this.selectedTrainerIds.size) {
       return true;
@@ -783,7 +876,33 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
 
         return {
           ...classItem,
-          batches: classItem.batches.map(batch => batch.batchId === updatedBatch.batchId ? updatedBatch : batch)
+          batches: classItem.batches
+            .map(batch => batch.batchId === updatedBatch.batchId ? updatedBatch : batch)
+            .sort((left, right) => left.name.localeCompare(right.name)),
+          totalCapacity: classItem.batches
+            .map(batch => batch.batchId === updatedBatch.batchId ? updatedBatch : batch)
+            .reduce((sum, batch) => sum + (batch.capacity || 0), 0)
+        };
+      })
+    };
+  }
+
+  private replaceClassSummary(updatedClass: CollegeClassSummary): void {
+    this.classConfiguration = {
+      ...this.classConfiguration,
+      classes: this.classConfiguration.classes.map(classItem => {
+        if (classItem.classId !== updatedClass.classId) {
+          return classItem;
+        }
+
+        return {
+          ...classItem,
+          name: updatedClass.name,
+          academicYear: updatedClass.academicYear,
+          department: updatedClass.department,
+          totalStudents: updatedClass.totalStudents,
+          totalCapacity: updatedClass.totalCapacity,
+          createdAt: updatedClass.createdAt
         };
       })
     };

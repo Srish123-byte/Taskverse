@@ -363,6 +363,24 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
         return model.ToDto();
     }
 
+    public async Task<CollegeClassSummaryDto> UpdateClass(Guid collegeId, string classId, UpdateCollegeClassDto dto)
+    {
+        _log.Debug($"CollegeAdminOrchestrator.UpdateClass: collegeId={collegeId}, classId={classId}, name={dto.Name}, academicYear={dto.AcademicYear}");
+
+        if (!Guid.TryParse(classId, out _))
+        {
+            throw new InvalidOperationException("Class id is invalid.");
+        }
+
+        var result = await _microServiceOrchestrator.UpdateCollegeClass(collegeId.ToString(), classId, dto.ToMicroServiceModel());
+        EnsureMicroServiceSuccess(result, nameof(UpdateClass));
+
+        var model = result.DeserializeValue<CollegeClassSummaryModel>()
+            ?? throw new InvalidOperationException($"UpdateClass returned empty for collegeId={collegeId}, classId={classId}.");
+
+        return model.ToDto();
+    }
+
     public async Task<CollegeBatchSummaryDto> CreateBatch(Guid collegeId, string classId, CreateCollegeBatchDto dto)
     {
         _log.Debug($"CollegeAdminOrchestrator.CreateBatch: collegeId={collegeId}, classId={classId}, name={dto.Name}");
@@ -377,6 +395,33 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
 
         var model = result.DeserializeValue<CollegeBatchSummaryModel>()
             ?? throw new InvalidOperationException($"CreateBatch returned empty for collegeId={collegeId}, classId={classId}.");
+
+        return model.ToDto();
+    }
+
+    public async Task<CollegeBatchSummaryDto> UpdateBatch(Guid collegeId, string classId, string batchId, UpdateCollegeBatchDto dto)
+    {
+        _log.Debug($"CollegeAdminOrchestrator.UpdateBatch: collegeId={collegeId}, classId={classId}, batchId={batchId}, name={dto.Name}");
+
+        if (!Guid.TryParse(classId, out _))
+        {
+            throw new InvalidOperationException("Class id is invalid.");
+        }
+
+        if (!Guid.TryParse(batchId, out _))
+        {
+            throw new InvalidOperationException("Batch id is invalid.");
+        }
+
+        var result = await _microServiceOrchestrator.UpdateCollegeBatch(
+            collegeId.ToString(),
+            classId,
+            batchId,
+            dto.ToMicroServiceModel());
+        EnsureMicroServiceSuccess(result, nameof(UpdateBatch));
+
+        var model = result.DeserializeValue<CollegeBatchSummaryModel>()
+            ?? throw new InvalidOperationException($"UpdateBatch returned empty for collegeId={collegeId}, classId={classId}, batchId={batchId}.");
 
         return model.ToDto();
     }
