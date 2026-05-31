@@ -214,6 +214,42 @@ public static class AssessmentMappings
             dto.PageNumber,
             dto.PageSize);
 
+    public static AssessmentManagementSearchModel ToMicroServiceModel(this AssessmentManagementSearchDto dto)
+        => new(
+            dto.CollegeId,
+            dto.RequesterRole,
+            dto.RequesterUserId,
+            dto.CreatedBy,
+            dto.SearchTerm,
+            dto.AssessmentStatus,
+            dto.DifficultyLevel,
+            dto.PageNumber,
+            dto.PageSize);
+
+    public static AssessmentManagementItemDto ToDto(this AssessmentManagementItemModel model)
+        => new()
+        {
+            AssessmentId = model.AssessmentId,
+            AssessmentName = model.AssessmentName,
+            Category = model.Category,
+            TopicName = model.TopicName,
+            AssessmentStatus = model.AssessmentStatus,
+            AssessmentDate = UtcDateTime.Normalize(model.AssessmentDate),
+            TotalMarks = model.TotalMarks,
+            DifficultyLevel = model.DifficultyLevel
+        };
+
+    public static AssessmentManagementSearchResultDto ToDto(this AssessmentManagementSearchResultModel model)
+        => new()
+        {
+            Items = model.Items.Select(item => item.ToDto()).ToList(),
+            TotalCount = model.TotalCount,
+            ActiveCount = model.ActiveCount,
+            CompletedCount = model.CompletedCount,
+            PageNumber = model.PageNumber,
+            PageSize = model.PageSize
+        };
+
     public static AssessmentQuestionListItemDto ToDto(this AssessmentQuestionListItemModel model)
         => new()
         {

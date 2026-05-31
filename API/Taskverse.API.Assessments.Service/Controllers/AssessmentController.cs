@@ -279,6 +279,35 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    [HttpPost("search")]
+    [ProducesResponseType(typeof(AssessmentManagementSearchResultRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<AssessmentManagementSearchResultRecord>> SearchAssessments(
+        [FromBody] AssessmentManagementSearchRequest request)
+    {
+        if (request is null)
+        {
+            return BadRequest(new { message = "Assessment search request is required." });
+        }
+
+        try
+        {
+            var result = await _assessmentManager.SearchAssessments(request);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while retrieving assessments.");
+        }
+    }
+
     [HttpPost("{id:guid}/questions/list")]
     [ProducesResponseType(typeof(PagedAssessmentQuestionListRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

@@ -241,6 +241,74 @@ public record PagedAssessmentQuestionListRecord(
     [property: JsonPropertyName("page_size")]
     int PageSize);
 
+public class AssessmentManagementSearchRequest
+{
+    [Required]
+    [JsonPropertyName("college_id")]
+    public Guid CollegeId { get; set; }
+
+    [MaxLength(50)]
+    [JsonPropertyName("requester_role")]
+    public string RequesterRole { get; set; } = string.Empty;
+
+    [JsonPropertyName("requester_user_id")]
+    public Guid? RequesterUserId { get; set; }
+
+    [Required]
+    [MaxLength(200)]
+    [JsonPropertyName("created_by")]
+    public string CreatedBy { get; set; } = string.Empty;
+
+    [MaxLength(200)]
+    [JsonPropertyName("search_term")]
+    public string? SearchTerm { get; set; }
+
+    [MaxLength(50)]
+    [JsonPropertyName("assessment_status")]
+    public string? AssessmentStatus { get; set; }
+
+    [JsonPropertyName("difficulty_level")]
+    public int? DifficultyLevel { get; set; }
+
+    [JsonPropertyName("page_number")]
+    public int PageNumber { get; set; } = 1;
+
+    [JsonPropertyName("page_size")]
+    public int PageSize { get; set; } = 10;
+}
+
+public record AssessmentManagementItemRecord(
+    [property: JsonPropertyName("assessment_id")]
+    Guid AssessmentId,
+    [property: JsonPropertyName("assessment_name")]
+    string AssessmentName,
+    [property: JsonPropertyName("category")]
+    string Category,
+    [property: JsonPropertyName("topic_name")]
+    string? TopicName,
+    [property: JsonPropertyName("assessment_status")]
+    string AssessmentStatus,
+    [property: JsonPropertyName("assessment_date")]
+    DateTime AssessmentDate,
+    [property: JsonPropertyName("total_marks")]
+    int TotalMarks,
+    [property: JsonPropertyName("difficulty_level")]
+    int DifficultyLevel);
+
+public record AssessmentManagementSearchResultRecord(
+    [property: JsonPropertyName("items")]
+    List<AssessmentManagementItemRecord> Items,
+    [property: JsonPropertyName("total_count")]
+    int TotalCount,
+    [property: JsonPropertyName("active_count")]
+    int ActiveCount,
+    [property: JsonPropertyName("completed_count")]
+    int CompletedCount,
+    [property: JsonPropertyName("page_number")]
+    int PageNumber,
+    [property: JsonPropertyName("page_size")]
+    int PageSize);
+
 public class AssessmentAccessibleBatchesRequest
 {
     [Required]

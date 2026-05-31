@@ -11,6 +11,7 @@ public interface IAssessmentManager
     Task<Assessment> PublishAssessment(Guid assessmentId);
     Task<AssessmentSubjectTopicCatalogRecord> GetSubjectTopicCatalog(AssessmentAccessibleBatchesRequest request);
     Task<AssessmentAssignmentCatalogRecord> GetTrainerAssignedClassesAndBatches(AssessmentAccessibleBatchesRequest request);
+    Task<AssessmentManagementSearchResultRecord> SearchAssessments(AssessmentManagementSearchRequest request);
     Task<PagedAssessmentQuestionListRecord> GetAssessmentQuestionList(Guid assessmentId, int pageNumber, int pageSize);
     Task<List<StudentAssessmentListItemRecord>> GetStudentAssessments(Guid studentUserId, IReadOnlyCollection<string> assessmentStatuses);
     Task<StudentAssessmentDetailRecord> GetStudentAssessmentDetail(Guid assessmentId, Guid studentUserId);

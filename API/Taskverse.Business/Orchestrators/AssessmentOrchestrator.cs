@@ -326,6 +326,31 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         };
     }
 
+    public async Task<AssessmentManagementSearchResultDto> SearchAssessments(AssessmentManagementSearchDto dto)
+    {
+        _log.Debug(
+            $"AssessmentOrchestrator.SearchAssessments: collegeId={dto.CollegeId}, requesterRole={dto.RequesterRole}, search={dto.SearchTerm}, status={dto.AssessmentStatus}, difficultyLevel={dto.DifficultyLevel}, page={dto.PageNumber}, pageSize={dto.PageSize}");
+
+        var result = await _microServiceOrchestrator.SearchAssessments(dto.ToMicroServiceModel());
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<AssessmentManagementSearchResultModel>()
+                ?? throw new InvalidOperationException("SearchAssessments returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"SearchAssessments failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new Exception(message)
+        };
+    }
+
     private static string? ExtractMessage(object? value)
     {
         if (value is null)

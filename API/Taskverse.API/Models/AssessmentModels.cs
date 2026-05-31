@@ -117,6 +117,37 @@ public class PagedQuestionBankResponseModel
     public int PageSize { get; set; }
 }
 
+public class AssessmentManagementSearchRequestModel
+{
+    public string? SearchTerm { get; set; }
+    public string? AssessmentStatus { get; set; }
+    public int? DifficultyLevel { get; set; }
+    public int PageNumber { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
+}
+
+public class AssessmentManagementItemResponseModel
+{
+    public Guid AssessmentId { get; set; }
+    public string AssessmentName { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public string? TopicName { get; set; }
+    public string AssessmentStatus { get; set; } = string.Empty;
+    public DateTime AssessmentDate { get; set; }
+    public int TotalMarks { get; set; }
+    public int DifficultyLevel { get; set; }
+}
+
+public class AssessmentManagementSearchResponseModel
+{
+    public List<AssessmentManagementItemResponseModel> Items { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int ActiveCount { get; set; }
+    public int CompletedCount { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+}
+
 public class AssessmentTopicCatalogResponseModel
 {
     public Guid TopicId { get; set; }

@@ -101,6 +101,27 @@ public static class AssessmentMappings
         };
     }
 
+    public static AssessmentManagementSearchDto ToDto(
+        this AssessmentManagementSearchRequestModel model,
+        Guid collegeId,
+        string requesterRole,
+        Guid? requesterUserId,
+        string createdBy)
+    {
+        return new AssessmentManagementSearchDto
+        {
+            CollegeId = collegeId,
+            RequesterRole = requesterRole,
+            RequesterUserId = requesterUserId,
+            CreatedBy = createdBy,
+            SearchTerm = model.SearchTerm?.Trim(),
+            AssessmentStatus = model.AssessmentStatus?.Trim(),
+            DifficultyLevel = model.DifficultyLevel,
+            PageNumber = model.PageNumber > 0 ? model.PageNumber : 1,
+            PageSize = model.PageSize > 0 ? model.PageSize : 10
+        };
+    }
+
     public static QuestionResponseModel ToResponseModel(this AssessmentQuestionDto dto)
     {
         return new QuestionResponseModel
@@ -134,6 +155,34 @@ public static class AssessmentMappings
         {
             Items = dto.Items.Select(item => item.ToResponseModel()).ToList(),
             TotalCount = dto.TotalCount,
+            PageNumber = dto.PageNumber,
+            PageSize = dto.PageSize
+        };
+    }
+
+    public static AssessmentManagementItemResponseModel ToResponseModel(this AssessmentManagementItemDto dto)
+    {
+        return new AssessmentManagementItemResponseModel
+        {
+            AssessmentId = dto.AssessmentId,
+            AssessmentName = dto.AssessmentName,
+            Category = dto.Category,
+            TopicName = dto.TopicName,
+            AssessmentStatus = dto.AssessmentStatus,
+            AssessmentDate = UtcDateTime.Normalize(dto.AssessmentDate),
+            TotalMarks = dto.TotalMarks,
+            DifficultyLevel = dto.DifficultyLevel
+        };
+    }
+
+    public static AssessmentManagementSearchResponseModel ToResponseModel(this AssessmentManagementSearchResultDto dto)
+    {
+        return new AssessmentManagementSearchResponseModel
+        {
+            Items = dto.Items.Select(item => item.ToResponseModel()).ToList(),
+            TotalCount = dto.TotalCount,
+            ActiveCount = dto.ActiveCount,
+            CompletedCount = dto.CompletedCount,
             PageNumber = dto.PageNumber,
             PageSize = dto.PageSize
         };

@@ -130,6 +130,41 @@ public class PagedQuestionBankDto
     public int PageSize { get; set; }
 }
 
+public class AssessmentManagementSearchDto
+{
+    public Guid CollegeId { get; set; }
+    public string RequesterRole { get; set; } = default!;
+    public Guid? RequesterUserId { get; set; }
+    public string CreatedBy { get; set; } = default!;
+    public string? SearchTerm { get; set; }
+    public string? AssessmentStatus { get; set; }
+    public int? DifficultyLevel { get; set; }
+    public int PageNumber { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
+}
+
+public class AssessmentManagementItemDto
+{
+    public Guid AssessmentId { get; set; }
+    public string AssessmentName { get; set; } = default!;
+    public string Category { get; set; } = default!;
+    public string? TopicName { get; set; }
+    public string AssessmentStatus { get; set; } = default!;
+    public DateTime AssessmentDate { get; set; }
+    public int TotalMarks { get; set; }
+    public int DifficultyLevel { get; set; }
+}
+
+public class AssessmentManagementSearchResultDto
+{
+    public List<AssessmentManagementItemDto> Items { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int ActiveCount { get; set; }
+    public int CompletedCount { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+}
+
 public class AssessmentBootstrapDto
 {
     public Guid CollegeId { get; set; }

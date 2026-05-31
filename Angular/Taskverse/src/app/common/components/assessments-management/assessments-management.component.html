@@ -16,7 +16,7 @@
     <article class="summary-card accent-total">
       <div class="summary-label">Total Assessments</div>
       <div class="summary-value">{{ totalCount }}</div>
-      <div class="summary-meta">Mock catalog for SPA preview</div>
+      <div class="summary-meta">Matched assessments before pagination</div>
     </article>
 
     <article class="summary-card accent-active">
@@ -40,7 +40,7 @@
         type="search"
         [(ngModel)]="searchTerm"
         (ngModelChange)="onFilterChange()"
-        placeholder="Search assessments by name, category, or code..." />
+        placeholder="Search assessments by name, subject, or topic..." />
     </label>
 
     <div class="filter-actions">
@@ -57,7 +57,7 @@
   </section>
 
   <section class="management-table-shell">
-    <div class="table-header-row" *ngIf="visibleAssessments.length > 0">
+    <div class="table-header-row" *ngIf="!isLoading && assessments.length > 0">
       <span>Assessment Name</span>
       <span>Category</span>
       <span>Status</span>
@@ -66,45 +66,54 @@
       <span>Actions</span>
     </div>
 
-    <div *ngIf="visibleAssessments.length === 0" class="empty-state">
+    <div *ngIf="isLoading" class="empty-state">
+      <div class="empty-state-title">Loading assessments...</div>
+      <div class="empty-state-copy">Pulling the latest assessment list for this workspace.</div>
+    </div>
+
+    <div *ngIf="!isLoading && errorMessage" class="empty-state">
+      <div class="empty-state-title">Assessment list unavailable</div>
+      <div class="empty-state-copy">{{ errorMessage }}</div>
+    </div>
+
+    <div *ngIf="!isLoading && !errorMessage && assessments.length === 0" class="empty-state">
       <div class="empty-state-title">No assessments match the current filters</div>
-      <div class="empty-state-copy">Try broadening the search or resetting the filters to see more mock records.</div>
+      <div class="empty-state-copy">Try broadening the search or resetting the filters to see more results.</div>
     </div>
 
     <article
-      *ngFor="let assessment of visibleAssessments; trackBy: trackByAssessmentId"
+      *ngFor="let assessment of assessments; trackBy: trackByAssessmentId"
       class="table-row">
       <div class="assessment-name-cell">
         <div class="assessment-name">{{ assessment.assessmentName }}</div>
-        <div class="assessment-code">{{ assessment.assessmentCode }}</div>
       </div>
 
       <div class="category-cell">
-        <span class="category-pill">{{ assessment.category }}</span>
+        <span class="category-pill">{{ assessment.category || 'Uncategorized' }}</span>
       </div>
 
       <div class="status-cell">
-        <span class="status-dot" [ngClass]="getStatusClass(assessment.status)"></span>
-        <span class="status-label">{{ assessment.status }}</span>
+        <span class="status-dot" [ngClass]="getStatusClass(assessment.assessmentStatus)"></span>
+        <span class="status-label">{{ assessment.assessmentStatus }}</span>
       </div>
 
-      <div class="date-cell">{{ assessment.scheduledDate }}</div>
+      <div class="date-cell">{{ formatAssessmentDate(assessment.assessmentDate) }}</div>
 
       <div class="marks-cell">{{ assessment.totalMarks }} Marks</div>
 
       <div class="actions-cell">
         <button type="button" class="icon-button" (click)="editAssessment(assessment)" aria-label="Edit assessment">
-          <mat-icon>edit</mat-icon>
+          <img src="assets/icons/nav/edit.svg" alt="" class="row-action-icon" aria-hidden="true" />
         </button>
         <button type="button" class="icon-button icon-button-danger" (click)="deleteAssessment(assessment)" aria-label="Delete assessment">
-          <mat-icon>delete_outline</mat-icon>
+          <img src="assets/icons/nav/trash.svg" alt="" class="row-action-icon" aria-hidden="true" />
         </button>
       </div>
     </article>
 
-    <div class="table-footer" *ngIf="filteredAssessments.length > 0">
+    <div class="table-footer" *ngIf="!isLoading && totalCount > 0">
       <span class="footer-copy">
-        Showing {{ pageStart }}-{{ pageEnd }} of {{ filteredAssessments.length }} assessments
+        Showing {{ pageStart }}-{{ pageEnd }} of {{ totalCount }} assessments
       </span>
 
       <div class="pagination-controls">
@@ -118,8 +127,4 @@
       </div>
     </div>
   </section>
-
-  <div class="integration-note">
-    This screen is currently mock-backed for UI approval. API wiring can be layered in later without changing the page structure.
-  </div>
 </div>

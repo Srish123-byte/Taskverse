@@ -272,6 +272,84 @@ public class AssessmentManager : IAssessmentManager
         return new AssessmentAssignmentCatalogRecord(classRecords);
     }
 
+    public async Task<AssessmentManagementSearchResultRecord> SearchAssessments(AssessmentManagementSearchRequest request)
+    {
+        ValidateAssessmentManagementSearchRequest(request);
+
+        var safePageNumber = request.PageNumber > 0 ? request.PageNumber : DefaultPageNumber;
+        var safePageSize = request.PageSize is > 0 and <= MaximumPageSize ? request.PageSize : DefaultPageSize;
+        var normalizedCreatedBy = request.CreatedBy.Trim();
+        var normalizedSearchTerm = request.SearchTerm?.Trim().ToLowerInvariant();
+        var requestedStatus = NormalizeAssessmentManagementStatus(request.AssessmentStatus);
+
+        var query = _context.Assessments
+            .AsNoTracking()
+            .Include(item => item.Subject)
+            .Include(item => item.Topic)
+            .Where(item =>
+                item.CollegeId == request.CollegeId &&
+                item.AssessmentStatus != AssessmentStatus.Soft_Delete);
+
+        if (string.Equals(request.RequesterRole.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(item => item.CreatedBy.ToLower() == normalizedCreatedBy.ToLower());
+        }
+        else
+        {
+            query = query.Where(item =>
+                item.AssessmentStatus != AssessmentStatus.Draft ||
+                item.CreatedBy.ToLower() == normalizedCreatedBy.ToLower());
+        }
+
+        if (!string.IsNullOrWhiteSpace(normalizedSearchTerm))
+        {
+            query = query.Where(item =>
+                item.AssessmentName.ToLower().Contains(normalizedSearchTerm) ||
+                (item.Subject != null && item.Subject.SubjectName.ToLower().Contains(normalizedSearchTerm)) ||
+                (item.Topic != null && item.Topic.TopicName.ToLower().Contains(normalizedSearchTerm)));
+        }
+
+        if (request.DifficultyLevel.HasValue)
+        {
+            query = query.Where(item => item.DifficultyLevel == request.DifficultyLevel.Value);
+        }
+
+        if (requestedStatus.HasValue)
+        {
+            query = query.Where(item => item.AssessmentStatus == requestedStatus.Value);
+        }
+
+        var totalCount = await query.CountAsync();
+        var activeCount = await query.CountAsync(item =>
+            item.AssessmentStatus == AssessmentStatus.Scheduled ||
+            item.AssessmentStatus == AssessmentStatus.Live);
+        var completedCount = await query.CountAsync(item => item.AssessmentStatus == AssessmentStatus.Completed);
+
+        var items = await query
+            .OrderByDescending(item => item.StartDateTime ?? item.CreatedAt)
+            .ThenByDescending(item => item.CreatedAt)
+            .Skip((safePageNumber - 1) * safePageSize)
+            .Take(safePageSize)
+            .Select(item => new AssessmentManagementItemRecord(
+                item.AssessmentId,
+                item.AssessmentName,
+                item.Subject != null ? item.Subject.SubjectName : string.Empty,
+                item.Topic != null ? item.Topic.TopicName : null,
+                MapAssessmentManagementStatus(item.AssessmentStatus),
+                item.StartDateTime ?? item.CreatedAt,
+                item.TotalMarks,
+                item.DifficultyLevel))
+            .ToListAsync();
+
+        return new AssessmentManagementSearchResultRecord(
+            items,
+            totalCount,
+            activeCount,
+            completedCount,
+            safePageNumber,
+            safePageSize);
+    }
+
     public async Task<PagedAssessmentQuestionListRecord> GetAssessmentQuestionList(
         Guid assessmentId,
         int pageNumber,
@@ -761,6 +839,35 @@ public class AssessmentManager : IAssessmentManager
         }
     }
 
+    private static void ValidateAssessmentManagementSearchRequest(AssessmentManagementSearchRequest request)
+    {
+        if (request is null)
+        {
+            throw new ArgumentException("Assessment search request is required.");
+        }
+
+        if (request.CollegeId == Guid.Empty)
+        {
+            throw new ArgumentException("CollegeId is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.RequesterRole))
+        {
+            throw new ArgumentException("Requester role is required.");
+        }
+
+        if (!string.Equals(request.RequesterRole.Trim(), "CollegeAdmin", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(request.RequesterRole.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Only CollegeAdmin and Trainer can search assessments.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.CreatedBy))
+        {
+            throw new ArgumentException("CreatedBy is required.");
+        }
+    }
+
     private static void ValidateTrainerAssignmentRequest(AssessmentAccessibleBatchesRequest request)
     {
         ValidateAccessibleBatchesRequest(request);
@@ -769,6 +876,36 @@ public class AssessmentManager : IAssessmentManager
         {
             throw new ArgumentException("Trainer role is required for trainer assignment requests.");
         }
+    }
+
+    private static AssessmentStatus? NormalizeAssessmentManagementStatus(string? requestedStatus)
+    {
+        if (string.IsNullOrWhiteSpace(requestedStatus) ||
+            string.Equals(requestedStatus.Trim(), "ALL", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return requestedStatus.Trim().ToUpperInvariant() switch
+        {
+            "LIVE" => AssessmentStatus.Live,
+            "UPCOMING" => AssessmentStatus.Scheduled,
+            "COMPLETED" => AssessmentStatus.Completed,
+            "DRAFT" => AssessmentStatus.Draft,
+            _ => throw new ArgumentException($"Unsupported assessment status filter '{requestedStatus}'.")
+        };
+    }
+
+    private static string MapAssessmentManagementStatus(AssessmentStatus status)
+    {
+        return status switch
+        {
+            AssessmentStatus.Live => "LIVE",
+            AssessmentStatus.Scheduled => "UPCOMING",
+            AssessmentStatus.Completed => "COMPLETED",
+            AssessmentStatus.Draft => "DRAFT",
+            _ => status.ToString().ToUpperInvariant()
+        };
     }
 
     private static void PrepareAssessmentForCreation(

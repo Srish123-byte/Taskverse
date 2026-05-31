@@ -61,6 +61,34 @@ export interface PagedQuestionBankResult {
   pageSize: number;
 }
 
+export interface AssessmentManagementSearchRequest {
+  searchTerm?: string;
+  assessmentStatus?: string;
+  difficultyLevel?: number;
+  pageNumber: number;
+  pageSize: number;
+}
+
+export interface AssessmentManagementItem {
+  assessmentId: string;
+  assessmentName: string;
+  category: string;
+  topicName?: string | null;
+  assessmentStatus: string;
+  assessmentDate: string;
+  totalMarks: number;
+  difficultyLevel: number;
+}
+
+export interface AssessmentManagementSearchResult {
+  items: AssessmentManagementItem[];
+  totalCount: number;
+  activeCount: number;
+  completedCount: number;
+  pageNumber: number;
+  pageSize: number;
+}
+
 export interface AssessmentTopicCatalogItem {
   topicId: string;
   topicName: string;
@@ -169,6 +197,12 @@ export class AssessmentAdminService {
     return this.http.post<PagedQuestionBankResult>(`${this.url}/questions/search`, request);
   }
 
+  searchAssessments(request: AssessmentManagementSearchRequest): Observable<AssessmentManagementSearchResult> {
+    return this.http
+      .post<any>(`${this.url}/search`, request)
+      .pipe(map((result: any) => this.mapAssessmentManagementSearchResult(result)));
+  }
+
   createQuestions(request: CreateQuestionRequest[]): Observable<QuestionBankItem[]> {
     return this.http.post<QuestionBankItem[]>(`${this.url}/questions`, request);
   }
@@ -230,6 +264,30 @@ export class AssessmentAdminService {
       classId: item?.classId ?? item?.ClassId ?? '',
       collegeId: item?.collegeId ?? item?.CollegeId ?? '',
       name: item?.name ?? item?.Name ?? ''
+    };
+  }
+
+  private mapAssessmentManagementSearchResult(result: any): AssessmentManagementSearchResult {
+    return {
+      items: (result?.items ?? result?.Items ?? []).map((item: any) => this.mapAssessmentManagementItem(item)),
+      totalCount: result?.totalCount ?? result?.TotalCount ?? 0,
+      activeCount: result?.activeCount ?? result?.ActiveCount ?? 0,
+      completedCount: result?.completedCount ?? result?.CompletedCount ?? 0,
+      pageNumber: result?.pageNumber ?? result?.PageNumber ?? 1,
+      pageSize: result?.pageSize ?? result?.PageSize ?? 10
+    };
+  }
+
+  private mapAssessmentManagementItem(item: any): AssessmentManagementItem {
+    return {
+      assessmentId: item?.assessmentId ?? item?.AssessmentId ?? '',
+      assessmentName: item?.assessmentName ?? item?.AssessmentName ?? '',
+      category: item?.category ?? item?.Category ?? '',
+      topicName: item?.topicName ?? item?.TopicName ?? null,
+      assessmentStatus: item?.assessmentStatus ?? item?.AssessmentStatus ?? '',
+      assessmentDate: item?.assessmentDate ?? item?.AssessmentDate ?? '',
+      totalMarks: item?.totalMarks ?? item?.TotalMarks ?? 0,
+      difficultyLevel: item?.difficultyLevel ?? item?.DifficultyLevel ?? 0
     };
   }
 }

@@ -305,6 +305,47 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    [HttpPost("search")]
+    [SwaggerResponse(200, "Paged assessment management result", typeof(AssessmentManagementSearchResponseModel))]
+    [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> SearchAssessments([FromBody] AssessmentManagementSearchRequestModel model)
+    {
+        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        if (model is null)
+        {
+            return BadRequest(new { message = "Assessment search request is required." });
+        }
+
+        try
+        {
+            var dto = await _assessmentOrchestrator.SearchAssessments(
+                model.ToDto(collegeId, GetRequesterRole(), GetCurrentUserId(), GetCreatedByName()));
+
+            return Ok(dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
+        }
+    }
+
     [HttpGet("subjects-topics/catalog")]
     [SwaggerResponse(200, "Accessible subject-topic catalog for the assessment builder", typeof(AssessmentSubjectTopicCatalogResponseModel))]
     [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]

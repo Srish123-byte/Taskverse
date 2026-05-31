@@ -1,19 +1,18 @@
-import { ChangeDetectorRef, Component, HostBinding, Input, OnInit } from '@angular/core';
+import { formatDate } from '@angular/common';
+import { ChangeDetectorRef, Component, HostBinding, Input, OnDestroy, OnInit } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Subject, takeUntil } from 'rxjs';
+import { RoleType } from '../../enums/role-type.enum';
+import {
+  AssessmentAdminService,
+  AssessmentManagementItem,
+  AssessmentManagementSearchResult
+} from '../../services/api/assessment-admin.service';
+import { AccountService } from '../../services/api/account.service';
+import { Session } from '../../services/session/session.service';
 
-type AssessmentStatus = 'LIVE' | 'UPCOMING' | 'COMPLETED' | 'DRAFT';
-type AssessmentDifficulty = 'Easy' | 'Medium' | 'Hard';
-
-interface AssessmentManagementItem {
-  assessmentId: string;
-  assessmentCode: string;
-  assessmentName: string;
-  category: string;
-  status: AssessmentStatus;
-  scheduledDate: string;
-  totalMarks: number;
-  difficulty: AssessmentDifficulty;
-}
+type AssessmentStatusFilter = 'all' | 'LIVE' | 'UPCOMING' | 'COMPLETED' | 'DRAFT';
+type AssessmentDifficultyFilter = 'all' | 'Easy' | 'Medium' | 'Hard';
 
 interface FilterOption {
   value: string;
@@ -26,7 +25,7 @@ interface FilterOption {
   templateUrl: './assessments-management.component.html',
   styleUrl: './assessments-management.component.scss'
 })
-export class AssessmentsManagementComponent implements OnInit {
+export class AssessmentsManagementComponent implements OnInit, OnDestroy {
   @Input() heroKicker = 'Admin Console';
   @Input() pageTitle = 'Assessments Management';
   @Input() pageWelcome = 'Configure, monitor, and deploy high-stakes technical assessments.';
@@ -49,13 +48,20 @@ export class AssessmentsManagementComponent implements OnInit {
   ];
 
   searchTerm = '';
-  selectedStatus = 'all';
-  selectedDifficulty = 'all';
+  selectedStatus: AssessmentStatusFilter = 'all';
+  selectedDifficulty: AssessmentDifficultyFilter = 'all';
   currentPage = 1;
+  isLoading = false;
+  errorMessage = '';
 
   assessments: AssessmentManagementItem[] = [];
-  filteredAssessments: AssessmentManagementItem[] = [];
-  visibleAssessments: AssessmentManagementItem[] = [];
+  totalCount = 0;
+  activeCount = 0;
+  completedCount = 0;
+
+  private readonly destroy$ = new Subject<void>();
+  private hasLoadedInitialAssessments = false;
+  private isBootstrappingContext = false;
 
   @HostBinding('class.theme-trainer')
   get isTrainerTheme(): boolean {
@@ -67,42 +73,50 @@ export class AssessmentsManagementComponent implements OnInit {
     return this.theme === 'college-admin';
   }
 
-  constructor(
-    private readonly snackBar: MatSnackBar,
-    private readonly changeDetectorRef: ChangeDetectorRef
-  ) {}
-
-  ngOnInit(): void {
-    this.assessments = this.buildSeedAssessments();
-    this.applyFilters();
-  }
-
-  get totalCount(): number {
-    return this.assessments.length;
-  }
-
-  get activeCount(): number {
-    return this.assessments.filter(item => item.status === 'LIVE' || item.status === 'UPCOMING').length;
-  }
-
-  get completedCount(): number {
-    return this.assessments.filter(item => item.status === 'COMPLETED').length;
-  }
-
   get totalPages(): number {
-    return Math.max(1, Math.ceil(this.filteredAssessments.length / this.pageSize));
+    return Math.max(1, Math.ceil(this.totalCount / this.pageSize));
   }
 
   get pageStart(): number {
-    return this.filteredAssessments.length === 0 ? 0 : (this.currentPage - 1) * this.pageSize + 1;
+    return this.totalCount === 0 ? 0 : (this.currentPage - 1) * this.pageSize + 1;
   }
 
   get pageEnd(): number {
-    return Math.min(this.currentPage * this.pageSize, this.filteredAssessments.length);
+    return this.totalCount === 0 ? 0 : Math.min(this.pageStart + this.assessments.length - 1, this.totalCount);
   }
 
   get createAssessmentRouteSegments(): string[] {
     return this.createAssessmentRoute.split('/').filter(segment => segment.length > 0);
+  }
+
+  constructor(
+    private readonly assessmentAdminService: AssessmentAdminService,
+    private readonly accountService: AccountService,
+    private readonly snackBar: MatSnackBar,
+    private readonly session: Session,
+    private readonly changeDetectorRef: ChangeDetectorRef
+  ) {}
+
+  ngOnInit(): void {
+    if (this.hasAssessmentAccessContext()) {
+      this.loadAssessments();
+      return;
+    }
+
+    this.bootstrapAssessmentAccessContext();
+
+    this.session.user$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        if (!this.hasLoadedInitialAssessments && this.hasAssessmentAccessContext()) {
+          this.loadAssessments();
+        }
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   trackByAssessmentId(_: number, assessment: AssessmentManagementItem): string {
@@ -111,7 +125,7 @@ export class AssessmentsManagementComponent implements OnInit {
 
   onFilterChange(): void {
     this.currentPage = 1;
-    this.applyFilters();
+    this.loadAssessments();
   }
 
   clearFilters(): void {
@@ -119,25 +133,25 @@ export class AssessmentsManagementComponent implements OnInit {
     this.selectedStatus = 'all';
     this.selectedDifficulty = 'all';
     this.currentPage = 1;
-    this.applyFilters();
+    this.loadAssessments();
   }
 
   prevPage(): void {
-    if (this.currentPage <= 1) {
+    if (this.currentPage <= 1 || this.isLoading) {
       return;
     }
 
     this.currentPage -= 1;
-    this.updateVisibleAssessments();
+    this.loadAssessments();
   }
 
   nextPage(): void {
-    if (this.currentPage >= this.totalPages) {
+    if (this.currentPage >= this.totalPages || this.isLoading) {
       return;
     }
 
     this.currentPage += 1;
-    this.updateVisibleAssessments();
+    this.loadAssessments();
   }
 
   editAssessment(assessment: AssessmentManagementItem): void {
@@ -145,163 +159,76 @@ export class AssessmentsManagementComponent implements OnInit {
   }
 
   deleteAssessment(assessment: AssessmentManagementItem): void {
-    this.assessments = this.assessments.filter(item => item.assessmentId !== assessment.assessmentId);
-
-    if (this.currentPage > 1 && this.pageStart > this.assessments.length) {
-      this.currentPage -= 1;
-    }
-
-    this.applyFilters();
-    this.openSnackBar(`"${assessment.assessmentName}" was removed from the mock management list.`);
+    this.openSnackBar(`Delete flow for "${assessment.assessmentName}" will be connected next.`);
   }
 
-  getStatusClass(status: AssessmentStatus): string {
+  getStatusClass(status: string): string {
     return `status-${status.toLowerCase()}`;
   }
 
-  private applyFilters(): void {
-    const normalizedSearch = this.searchTerm.trim().toLowerCase();
-
-    this.filteredAssessments = this.assessments.filter(assessment => {
-      const matchesSearch = normalizedSearch.length === 0 ||
-        assessment.assessmentName.toLowerCase().includes(normalizedSearch) ||
-        assessment.category.toLowerCase().includes(normalizedSearch) ||
-        assessment.assessmentCode.toLowerCase().includes(normalizedSearch);
-
-      const matchesStatus = this.selectedStatus === 'all' || assessment.status === this.selectedStatus;
-      const matchesDifficulty = this.selectedDifficulty === 'all' || assessment.difficulty === this.selectedDifficulty;
-
-      return matchesSearch && matchesStatus && matchesDifficulty;
-    });
-
-    this.currentPage = Math.min(this.currentPage, this.totalPages);
-    this.updateVisibleAssessments();
+  formatAssessmentDate(value: string): string {
+    return formatDate(value, 'MMM dd, yyyy', 'en-US');
   }
 
-  private updateVisibleAssessments(): void {
-    const startIndex = (this.currentPage - 1) * this.pageSize;
-    this.visibleAssessments = this.filteredAssessments.slice(startIndex, startIndex + this.pageSize);
+  getDifficultyLabel(difficultyLevel: number): string {
+    switch (difficultyLevel) {
+      case 1:
+        return 'Easy';
+      case 2:
+        return 'Medium';
+      case 3:
+        return 'Hard';
+      default:
+        return 'Unspecified';
+    }
+  }
+
+  private loadAssessments(): void {
+    this.hasLoadedInitialAssessments = true;
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    this.assessmentAdminService.searchAssessments({
+      searchTerm: this.searchTerm.trim() || undefined,
+      assessmentStatus: this.selectedStatus === 'all' ? undefined : this.selectedStatus,
+      difficultyLevel: this.mapDifficultyFilter(this.selectedDifficulty),
+      pageNumber: this.currentPage,
+      pageSize: this.pageSize
+    }).subscribe({
+      next: result => this.applyAssessmentResult(result),
+      error: error => {
+        this.assessments = [];
+        this.totalCount = 0;
+        this.activeCount = 0;
+        this.completedCount = 0;
+        this.errorMessage = error?.error?.message ?? 'Unable to load assessments right now.';
+        this.isLoading = false;
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
+  private applyAssessmentResult(result: AssessmentManagementSearchResult): void {
+    this.assessments = result.items ?? [];
+    this.totalCount = result.totalCount ?? 0;
+    this.activeCount = result.activeCount ?? 0;
+    this.completedCount = result.completedCount ?? 0;
+    this.currentPage = result.pageNumber > 0 ? result.pageNumber : 1;
+    this.isLoading = false;
     this.changeDetectorRef.detectChanges();
   }
 
-  private buildSeedAssessments(): AssessmentManagementItem[] {
-    if (this.theme === 'trainer') {
-      return [
-        {
-          assessmentId: 'trainer-1',
-          assessmentCode: 'TR-AS-2026-01',
-          assessmentName: 'Frontend Systems Drill',
-          category: 'Engineering',
-          status: 'LIVE',
-          scheduledDate: 'Jun 04, 2026',
-          totalMarks: 90,
-          difficulty: 'Medium'
-        },
-        {
-          assessmentId: 'trainer-2',
-          assessmentCode: 'TR-AS-2026-02',
-          assessmentName: 'Angular Patterns Sprint',
-          category: 'Engineering',
-          status: 'UPCOMING',
-          scheduledDate: 'Jun 12, 2026',
-          totalMarks: 75,
-          difficulty: 'Medium'
-        },
-        {
-          assessmentId: 'trainer-3',
-          assessmentCode: 'TR-AS-2026-03',
-          assessmentName: 'Node Services Capstone',
-          category: 'Platform',
-          status: 'COMPLETED',
-          scheduledDate: 'May 16, 2026',
-          totalMarks: 120,
-          difficulty: 'Hard'
-        },
-        {
-          assessmentId: 'trainer-4',
-          assessmentCode: 'TR-AS-2026-04',
-          assessmentName: 'Data Modelling Checkpoint',
-          category: 'Databases',
-          status: 'LIVE',
-          scheduledDate: 'Jun 08, 2026',
-          totalMarks: 80,
-          difficulty: 'Easy'
-        },
-        {
-          assessmentId: 'trainer-5',
-          assessmentCode: 'TR-AS-2026-05',
-          assessmentName: 'TypeScript Fluency Lab',
-          category: 'Programming',
-          status: 'DRAFT',
-          scheduledDate: 'Jun 18, 2026',
-          totalMarks: 60,
-          difficulty: 'Easy'
-        }
-      ];
+  private mapDifficultyFilter(value: AssessmentDifficultyFilter): number | undefined {
+    switch (value) {
+      case 'Easy':
+        return 1;
+      case 'Medium':
+        return 2;
+      case 'Hard':
+        return 3;
+      default:
+        return undefined;
     }
-
-    return [
-      {
-        assessmentId: 'admin-1',
-        assessmentCode: 'CA-AS-2026-01',
-        assessmentName: 'Python Basics Midterm',
-        category: 'Engineering',
-        status: 'LIVE',
-        scheduledDate: 'Jun 02, 2026',
-        totalMarks: 100,
-        difficulty: 'Easy'
-      },
-      {
-        assessmentId: 'admin-2',
-        assessmentCode: 'CA-AS-2026-02',
-        assessmentName: 'Data Structures Final',
-        category: 'Computer Science',
-        status: 'UPCOMING',
-        scheduledDate: 'Jun 10, 2026',
-        totalMarks: 150,
-        difficulty: 'Hard'
-      },
-      {
-        assessmentId: 'admin-3',
-        assessmentCode: 'CA-AS-2026-03',
-        assessmentName: 'Algorithms Quiz 1',
-        category: 'Engineering',
-        status: 'COMPLETED',
-        scheduledDate: 'May 19, 2026',
-        totalMarks: 50,
-        difficulty: 'Medium'
-      },
-      {
-        assessmentId: 'admin-4',
-        assessmentCode: 'CA-AS-2026-04',
-        assessmentName: 'Cloud Readiness Check',
-        category: 'Infrastructure',
-        status: 'LIVE',
-        scheduledDate: 'Jun 06, 2026',
-        totalMarks: 80,
-        difficulty: 'Medium'
-      },
-      {
-        assessmentId: 'admin-5',
-        assessmentCode: 'CA-AS-2026-05',
-        assessmentName: 'Database Reliability Mock',
-        category: 'Databases',
-        status: 'UPCOMING',
-        scheduledDate: 'Jun 14, 2026',
-        totalMarks: 120,
-        difficulty: 'Hard'
-      },
-      {
-        assessmentId: 'admin-6',
-        assessmentCode: 'CA-AS-2026-06',
-        assessmentName: 'Java Foundations Screening',
-        category: 'Programming',
-        status: 'DRAFT',
-        scheduledDate: 'Jun 20, 2026',
-        totalMarks: 70,
-        difficulty: 'Easy'
-      }
-    ];
   }
 
   private openSnackBar(message: string): void {
@@ -311,5 +238,45 @@ export class AssessmentsManagementComponent implements OnInit {
       verticalPosition: 'top',
       panelClass: ['question-editor-success-snackbar']
     });
+  }
+
+  private hasAssessmentAccessContext(): boolean {
+    return !!this.session.role && !!this.session.collegeId;
+  }
+
+  private bootstrapAssessmentAccessContext(): void {
+    if (this.isBootstrappingContext || !this.shouldFetchUserProfileForAccessContext()) {
+      return;
+    }
+
+    this.isBootstrappingContext = true;
+
+    this.accountService.getUserProfile().subscribe({
+      next: user => {
+        this.session.user = user;
+        this.session.userEmail = user.email;
+        this.session.userId = user.userId;
+        this.session.role = user.role;
+
+        if (!this.hasLoadedInitialAssessments && this.hasAssessmentAccessContext()) {
+          this.loadAssessments();
+        }
+      },
+      error: () => {
+        this.isBootstrappingContext = false;
+        this.errorMessage = 'Unable to prepare assessment access right now.';
+        this.changeDetectorRef.detectChanges();
+      },
+      complete: () => {
+        this.isBootstrappingContext = false;
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
+  private shouldFetchUserProfileForAccessContext(): boolean {
+    return !!this.session.jwtToken &&
+      (this.session.role === RoleType.CollegeAdmin || this.session.role === RoleType.Trainer) &&
+      !this.session.collegeId;
   }
 }
