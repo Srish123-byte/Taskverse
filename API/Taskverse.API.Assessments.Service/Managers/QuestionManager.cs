@@ -479,7 +479,7 @@ public class QuestionManager : IQuestionManager
             throw new ArgumentException("Topic is required.");
         }
 
-        if (string.IsNullOrWhiteSpace(question.TopicTag))
+        if (question.TopicTag is null || question.TopicTag.Length == 0 || question.TopicTag.All(string.IsNullOrWhiteSpace))
         {
             throw new ArgumentException("Topic tag is required.");
         }
@@ -550,7 +550,7 @@ public class QuestionManager : IQuestionManager
             NormalizeForLookup(question.Stream),
             NormalizeForLookup(question.Subject),
             NormalizeForLookup(question.Topic),
-            NormalizeForLookup(question.TopicTag),
+            NormalizeTopicTagsForLookup(question.TopicTag),
             NormalizeForLookup(question.QuestionType),
             NormalizeForLookup(question.QuestionText),
             normalizedOptions,
@@ -588,5 +588,16 @@ public class QuestionManager : IQuestionManager
         }
 
         return string.Join(" ", value.Trim().ToLowerInvariant().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private static string NormalizeTopicTagsForLookup(IEnumerable<string>? values)
+    {
+        return string.Join(
+            "~",
+            (values ?? [])
+                .Select(NormalizeForLookup)
+                .Where(value => value.Length > 0)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(value => value, StringComparer.Ordinal));
     }
 }

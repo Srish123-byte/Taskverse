@@ -1,11 +1,12 @@
 import { Location } from '@angular/common';
 import { ChangeDetectorRef, Component, HostBinding, Input, OnInit } from '@angular/core';
 import { FormArray, FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
+import { forkJoin } from 'rxjs';
 import {
   AssessmentAdminService,
+  AssessmentSubjectTopicCatalog,
   CreateQuestionRequest,
   PagedQuestionBankResult,
   QuestionBankItem
@@ -20,12 +21,7 @@ type QuestionType = 'mcq' | 'fill in the blanks';
   styleUrl: './question-editor.component.scss'
 })
 export class QuestionEditorComponent implements OnInit {
-  private static readonly successSnackBarConfig = {
-    duration: 3500,
-    horizontalPosition: 'center' as const,
-    verticalPosition: 'top' as const,
-    panelClass: ['question-editor-success-snackbar']
-  };
+  private static readonly addNewOptionValue = '__add_new__';
 
   @Input() theme: 'college-admin' | 'trainer' = 'college-admin';
   @Input() questionBankRoute = '';
@@ -57,6 +53,12 @@ export class QuestionEditorComponent implements OnInit {
   subjectOptions: string[] = [];
   topicOptions: string[] = [];
   streamOptions: string[] = [];
+  subjectCatalog: AssessmentSubjectTopicCatalog = { subjects: [] };
+  private questionBankSubjectOptions: string[] = [];
+  private questionBankTopicOptions: string[] = [];
+  streamSelection = '';
+  subjectSelection = '';
+  topicSelection = '';
 
   isLoading = false;
   isSaving = false;
@@ -72,14 +74,13 @@ export class QuestionEditorComponent implements OnInit {
     private readonly location: Location,
     private readonly router: Router,
     private readonly route: ActivatedRoute,
-    private readonly changeDetectorRef: ChangeDetectorRef,
-    private readonly snackBar: MatSnackBar
+    private readonly changeDetectorRef: ChangeDetectorRef
   ) {
     this.form = this.formBuilder.group({
       stream: ['', [Validators.required, Validators.maxLength(100)]],
       subject: ['', [Validators.required, Validators.maxLength(100)]],
       topic: ['', [Validators.required, Validators.maxLength(200)]],
-      topicTag: ['', [Validators.required, Validators.maxLength(200)]],
+      topicTag: ['', [Validators.required, Validators.maxLength(500)]],
       difficultyLevel: [1, [Validators.required]],
       questionType: ['mcq' as QuestionType, [Validators.required]],
       questionText: ['', [Validators.required]],
@@ -162,6 +163,22 @@ export class QuestionEditorComponent implements OnInit {
     return this.questionTypeControl.value === 'mcq';
   }
 
+  get addNewOptionValue(): string {
+    return QuestionEditorComponent.addNewOptionValue;
+  }
+
+  get isCustomStream(): boolean {
+    return this.streamSelection === this.addNewOptionValue;
+  }
+
+  get isCustomSubject(): boolean {
+    return this.subjectSelection === this.addNewOptionValue;
+  }
+
+  get isCustomTopic(): boolean {
+    return this.topicSelection === this.addNewOptionValue;
+  }
+
   get canGoBack(): boolean {
     return window.history.length > 1;
   }
@@ -182,6 +199,64 @@ export class QuestionEditorComponent implements OnInit {
     }
 
     return this.isEditMode ? 'Update Question' : 'Save to Repository';
+  }
+
+  onStreamSelectionChange(value: string): void {
+    this.streamSelection = value;
+
+    if (value === this.addNewOptionValue) {
+      this.streamControl.setValue('', { emitEvent: false });
+      return;
+    }
+
+    this.streamControl.setValue(value, { emitEvent: false });
+  }
+
+  onSubjectSelectionChange(value: string): void {
+    this.subjectSelection = value;
+
+    if (value === this.addNewOptionValue) {
+      this.subjectControl.setValue('', { emitEvent: false });
+      this.topicControl.setValue('', { emitEvent: false });
+      this.topicSelection = '';
+      return;
+    }
+
+    this.subjectControl.setValue(value, { emitEvent: false });
+    this.syncClassificationSelections();
+
+    if (!this.topicOptions.includes(this.topicControl.value?.trim() ?? '')) {
+      this.topicControl.setValue('', { emitEvent: false });
+      this.syncClassificationSelections();
+    }
+  }
+
+  onTopicSelectionChange(value: string): void {
+    this.topicSelection = value;
+
+    if (value === this.addNewOptionValue) {
+      this.topicControl.setValue('', { emitEvent: false });
+      return;
+    }
+
+    this.topicControl.setValue(value, { emitEvent: false });
+  }
+
+  resetStreamSelection(): void {
+    this.streamSelection = '';
+    this.streamControl.setValue('', { emitEvent: false });
+  }
+
+  resetSubjectSelection(): void {
+    this.subjectSelection = '';
+    this.subjectControl.setValue('', { emitEvent: false });
+    this.topicControl.setValue('', { emitEvent: false });
+    this.syncClassificationSelections();
+  }
+
+  resetTopicSelection(): void {
+    this.topicSelection = '';
+    this.topicControl.setValue('', { emitEvent: false });
   }
 
   goToQuestionBank(): void {
@@ -206,6 +281,10 @@ export class QuestionEditorComponent implements OnInit {
     this.goToQuestionBank();
   }
 
+  closeSuccessMessage(): void {
+    this.successMessage = '';
+  }
+
   saveToRepository(): void {
     if (this.isSaving) {
       return;
@@ -220,19 +299,21 @@ export class QuestionEditorComponent implements OnInit {
       return;
     }
 
+    if (this.parseTopicTags(this.topicTagControl.value).length === 0) {
+      this.form.markAllAsTouched();
+      this.errorMessage = 'Enter at least one valid topic tag before saving.';
+      return;
+    }
+
     const payload = this.buildPayload();
     this.isSaving = true;
 
     if (this.isEditMode) {
       this.assessmentAdminService.updateQuestion(this.questionId, payload).subscribe({
         next: question => {
-          this.successMessage = '';
+          this.successMessage = 'Question updated successfully.';
           this.errorMessage = '';
           this.patchFormFromQuestion(question);
-          this.snackBar.open(
-            'Question updated successfully.',
-            'Close',
-            QuestionEditorComponent.successSnackBarConfig);
           this.isSaving = false;
           this.changeDetectorRef.detectChanges();
         },
@@ -249,12 +330,8 @@ export class QuestionEditorComponent implements OnInit {
 
     this.assessmentAdminService.createQuestions([payload]).subscribe({
       next: () => {
-        this.successMessage = '';
+        this.successMessage = 'Question saved successfully.';
         this.errorMessage = '';
-        this.snackBar.open(
-          'Question saved successfully.',
-          'Close',
-          QuestionEditorComponent.successSnackBarConfig);
         this.resetForm();
         this.loadExistingValues();
       },
@@ -289,14 +366,21 @@ export class QuestionEditorComponent implements OnInit {
 
     this.isLoading = true;
 
-    this.assessmentAdminService.searchQuestionBank({
-      pageNumber: 1,
-      pageSize: 100
+    forkJoin({
+      questionBank: this.assessmentAdminService.searchQuestionBank({
+        pageNumber: 1,
+        pageSize: 100
+      }),
+      subjectCatalog: this.assessmentAdminService.getSubjectTopicCatalog()
     }).subscribe({
-      next: result => {
-        this.applyExistingValues(result);
+      next: ({ questionBank, subjectCatalog }) => {
+        this.applyExistingValues(questionBank, subjectCatalog);
       },
       error: () => {
+        this.subjectCatalog = { subjects: [] };
+        this.subjectOptions = [];
+        this.topicOptions = [];
+        this.streamOptions = [];
         this.isLoading = false;
         this.changeDetectorRef.detectChanges();
       }
@@ -321,10 +405,15 @@ export class QuestionEditorComponent implements OnInit {
     });
   }
 
-  private applyExistingValues(result: PagedQuestionBankResult): void {
+  private applyExistingValues(
+    result: PagedQuestionBankResult,
+    subjectCatalog: AssessmentSubjectTopicCatalog
+  ): void {
     this.streamOptions = this.toDistinctSortedValues(result.items.map(item => item.stream));
-    this.subjectOptions = this.toDistinctSortedValues(result.items.map(item => item.subject));
-    this.topicOptions = this.toDistinctSortedValues(result.items.map(item => item.topic));
+    this.questionBankSubjectOptions = this.toDistinctSortedValues(result.items.map(item => item.subject));
+    this.questionBankTopicOptions = this.toDistinctSortedValues(result.items.map(item => item.topic));
+    this.subjectCatalog = subjectCatalog ?? { subjects: [] };
+    this.syncClassificationSelections();
     this.isLoading = false;
     this.changeDetectorRef.detectChanges();
   }
@@ -347,7 +436,7 @@ export class QuestionEditorComponent implements OnInit {
       stream: question.stream ?? '',
       subject: question.subject ?? '',
       topic: question.topic ?? '',
-      topicTag: question.topicTag ?? '',
+      topicTag: this.formatTopicTags(question.topicTag),
       difficultyLevel: question.difficultyLevel ?? 1,
       questionType,
       questionText: question.questionText ?? '',
@@ -361,6 +450,7 @@ export class QuestionEditorComponent implements OnInit {
       control.setValue(options[index] ?? '', { emitEvent: false });
     });
 
+    this.syncClassificationSelections();
     this.applyQuestionTypeRules(questionType);
   }
 
@@ -427,7 +517,7 @@ export class QuestionEditorComponent implements OnInit {
       stream: this.streamControl.value?.trim() ?? '',
       subject: this.subjectControl.value?.trim() ?? '',
       topic: this.topicControl.value?.trim() ?? '',
-      topicTag: this.topicTagControl.value?.trim() ?? '',
+      topicTag: this.parseTopicTags(this.topicTagControl.value),
       questionType,
       questionText: this.questionTextControl.value?.trim() ?? '',
       options: questionType === 'mcq'
@@ -453,6 +543,71 @@ export class QuestionEditorComponent implements OnInit {
     return this.getOptionControl(selectedIndex)?.value?.trim() ?? '';
   }
 
+  private parseTopicTags(value: string | null): string[] {
+    const normalizedTags = (value ?? '')
+      .split(',')
+      .map(tag => tag.trim())
+      .filter(tag => tag.length > 0);
+
+    return [...new Set(normalizedTags)];
+  }
+
+  private formatTopicTags(tags: string[] | null | undefined): string {
+    return (tags ?? []).join(', ');
+  }
+
+  private syncClassificationSelections(): void {
+    const catalogSubjectOptions = this.subjectCatalog.subjects
+      .map(subject => subject.subjectName?.trim())
+      .filter((subjectName): subjectName is string => Boolean(subjectName));
+
+    this.subjectOptions = this.theme === 'college-admin'
+      ? this.toDistinctSortedValues([...catalogSubjectOptions, ...this.questionBankSubjectOptions])
+      : catalogSubjectOptions.sort((left, right) => left.localeCompare(right));
+
+    this.topicOptions = this.resolveTopicOptions();
+    this.streamSelection = this.resolveSelectionValue(this.streamControl.value, this.streamOptions);
+    this.subjectSelection = this.resolveSelectionValue(this.subjectControl.value, this.subjectOptions);
+    this.topicSelection = this.resolveSelectionValue(this.topicControl.value, this.topicOptions);
+  }
+
+  private resolveTopicOptions(): string[] {
+    const selectedSubject = this.subjectControl.value?.trim() ?? '';
+    if (!selectedSubject) {
+      return [];
+    }
+
+    const subject = this.subjectCatalog.subjects.find(item => item.subjectName === selectedSubject);
+    if (!subject) {
+      return this.theme === 'college-admin'
+        ? this.questionBankTopicOptions
+        : [];
+    }
+
+    const catalogTopicOptions = subject.topics
+      .map(topic => topic.topicName?.trim())
+      .filter((topicName): topicName is string => Boolean(topicName))
+      .sort((left, right) => left.localeCompare(right));
+
+    if (this.theme !== 'college-admin') {
+      return catalogTopicOptions;
+    }
+
+    return this.toDistinctSortedValues([...catalogTopicOptions, ...this.questionBankTopicOptions]);
+  }
+
+  private resolveSelectionValue(value: string | null, options: string[]): string {
+    const normalizedValue = value?.trim() ?? '';
+
+    if (!normalizedValue) {
+      return '';
+    }
+
+    return options.includes(normalizedValue)
+      ? normalizedValue
+      : this.addNewOptionValue;
+  }
+
   private resetForm(): void {
     this.form.reset({
       stream: '',
@@ -470,6 +625,7 @@ export class QuestionEditorComponent implements OnInit {
 
     this.optionsArray.controls.forEach(control => control.setValue(''));
     this.applyQuestionTypeRules('mcq');
+    this.syncClassificationSelections();
     this.isSaving = false;
     this.changeDetectorRef.detectChanges();
   }

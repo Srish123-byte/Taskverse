@@ -104,6 +104,25 @@
   outline: none;
 }
 
+.custom-entry-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.custom-entry-reset {
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  background: rgba(30, 41, 59, 0.82);
+  color: #dbe7f3;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .field textarea {
   resize: vertical;
   min-height: 132px;
@@ -185,6 +204,78 @@
   border-color: rgba(248, 113, 113, 0.35);
 }
 
+.success-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(2, 8, 23, 0.42);
+  backdrop-filter: blur(6px);
+}
+
+.success-popup {
+  width: min(100%, 420px);
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 28px 26px 24px;
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(17, 24, 39, 0.99) 0%, rgba(15, 23, 42, 0.99) 100%),
+    radial-gradient(circle at top, rgba(56, 189, 248, 0.16), transparent 42%);
+  box-shadow: 0 32px 64px rgba(2, 8, 23, 0.36);
+  text-align: center;
+}
+
+.success-popup-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(104, 208, 251, 0.96) 0%, rgba(52, 159, 224, 0.96) 100%);
+  color: #08213e;
+  position: relative;
+}
+
+.success-popup-icon::before {
+  content: '';
+  width: 14px;
+  height: 24px;
+  border-right: 4px solid #08213e;
+  border-bottom: 4px solid #08213e;
+  transform: rotate(45deg) translate(-2px, -1px);
+}
+
+.success-popup h3,
+.success-popup p {
+  margin: 0;
+}
+
+.success-popup h3 {
+  color: #f8fafc;
+  font-size: 1.15rem;
+}
+
+.success-popup p {
+  color: #bfd2e8;
+  line-height: 1.55;
+}
+
+.success-popup-action {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(24, 35, 60, 0.94) 0%, rgba(16, 24, 41, 0.96) 100%);
+  color: #e5eef9;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 :host(.theme-trainer) .back-link {
   color: #2f7a62;
 }
@@ -222,6 +313,12 @@
   color: #11352b;
 }
 
+:host(.theme-trainer) .custom-entry-reset {
+  border-color: rgba(43, 94, 74, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  color: #11352b;
+}
+
 :host(.theme-trainer) .option-badge {
   background: rgba(95, 196, 154, 0.18);
   color: #2f7a62;
@@ -250,6 +347,33 @@
   color: #991b1b;
 }
 
+:host(.theme-trainer) .success-popup {
+  border-color: rgba(43, 94, 74, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(245, 250, 247, 0.99) 100%),
+    radial-gradient(circle at top, rgba(149, 213, 178, 0.2), transparent 42%);
+  box-shadow: 0 28px 56px rgba(17, 53, 43, 0.18);
+}
+
+:host(.theme-trainer) .success-popup h3 {
+  color: #11352b;
+}
+
+:host(.theme-trainer) .success-popup p {
+  color: #4e6f63;
+}
+
+:host(.theme-trainer) .success-popup-icon {
+  background: linear-gradient(135deg, #95d5b2 0%, #5fc49a 100%);
+  color: #11352b;
+}
+
+:host(.theme-trainer) .success-popup-action {
+  border-color: rgba(43, 94, 74, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  color: #11352b;
+}
+
 @media (max-width: 900px) {
   .form-grid-2,
   .form-grid-3 {
@@ -258,6 +382,10 @@
 
   .field-span-2 {
     grid-column: span 1;
+  }
+
+  .custom-entry-shell {
+    grid-template-columns: 1fr;
   }
 }
 

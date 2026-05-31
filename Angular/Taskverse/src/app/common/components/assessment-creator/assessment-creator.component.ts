@@ -1,5 +1,6 @@
 import { ChangeDetectorRef, Component, HostBinding, Input, OnInit } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import {
   AssessmentRecord,
   AssessmentAdminService,
@@ -11,6 +12,7 @@ import {
   AssessmentSubjectTopicCatalog,
   QuestionBankItem
 } from '../../services/api/assessment-admin.service';
+import { RouteAddress } from '../../constants/routes.constants';
 import { CollegeAdminService, CollegeBatchSummary, CollegeClassSummary } from '../../services/api/college-admin.service';
 
 interface DifficultyOption {
@@ -55,6 +57,8 @@ export class AssessmentCreatorComponent implements OnInit {
   selectedSubjectId = '';
   selectedTopicId = '';
   selectedDifficulty = 'all';
+  selectedQuestionBankSubjectId = '';
+  selectedQuestionBankTopicId = '';
   durationMinutes: number | null = 60;
   passingPercentage: number | null = 50;
   startDate = '';
@@ -82,6 +86,18 @@ export class AssessmentCreatorComponent implements OnInit {
 
   get backRouteSegments(): string[] {
     return this.backRoute.split('/').filter(segment => segment.length > 0);
+  }
+
+  get addQuestionRoute(): string {
+    return this.theme === 'trainer'
+      ? RouteAddress.Trainer.AddQuestion
+      : RouteAddress.CollegeAdmin.AddQuestion;
+  }
+
+  get currentAssessmentRoute(): string {
+    return this.theme === 'trainer'
+      ? RouteAddress.Trainer.NewAssessment
+      : RouteAddress.CollegeAdmin.NewAssessment;
   }
 
   get selectedBatchCount(): number {
@@ -165,12 +181,12 @@ export class AssessmentCreatorComponent implements OnInit {
         question.difficultyLevel === Number(this.selectedDifficulty);
 
       const matchesSubject =
-        !this.selectedSubjectId ||
-        question.subjectId === this.selectedSubjectId;
+        !this.selectedQuestionBankSubjectId ||
+        question.subjectId === this.selectedQuestionBankSubjectId;
 
       const matchesTopic =
-        !this.selectedTopicId ||
-        question.topicId === this.selectedTopicId;
+        !this.selectedQuestionBankTopicId ||
+        question.topicId === this.selectedQuestionBankTopicId;
 
       return matchesSearch && matchesDifficulty && matchesSubject && matchesTopic;
     });
@@ -189,11 +205,21 @@ export class AssessmentCreatorComponent implements OnInit {
     return subject.topics;
   }
 
+  get questionBankSubjects(): AssessmentSubjectCatalogItem[] {
+    return this.subjectCatalog.subjects;
+  }
+
+  get questionBankTopics() {
+    const subject = this.questionBankSubjects.find(item => item.subjectId === this.selectedQuestionBankSubjectId);
+    return subject?.topics ?? [];
+  }
+
   constructor(
     private readonly assessmentAdminService: AssessmentAdminService,
     private readonly collegeAdminService: CollegeAdminService,
     private readonly snackBar: MatSnackBar,
-    private readonly changeDetectorRef: ChangeDetectorRef
+    private readonly changeDetectorRef: ChangeDetectorRef,
+    private readonly router: Router
   ) {}
 
   ngOnInit(): void {
@@ -210,6 +236,18 @@ export class AssessmentCreatorComponent implements OnInit {
     if (this.selectedTopicId &&
         !this.visibleTopics.some(topic => topic.topicId === this.selectedTopicId)) {
       this.selectedTopicId = '';
+    }
+  }
+
+  onQuestionBankSubjectChange(): void {
+    if (this.selectedQuestionBankSubjectId &&
+        !this.questionBankSubjects.some(subject => subject.subjectId === this.selectedQuestionBankSubjectId)) {
+      this.selectedQuestionBankSubjectId = '';
+    }
+
+    if (this.selectedQuestionBankTopicId &&
+        !this.questionBankTopics.some(topic => topic.topicId === this.selectedQuestionBankTopicId)) {
+      this.selectedQuestionBankTopicId = '';
     }
   }
 
@@ -255,7 +293,9 @@ export class AssessmentCreatorComponent implements OnInit {
   }
 
   openAddQuestionPlaceholder(): void {
-    this.openDeferredActionMessage('Add New Question');
+    void this.router.navigateByUrl(`/${this.addQuestionRoute}`, {
+      state: { returnUrl: `/${this.currentAssessmentRoute}` }
+    });
   }
 
   saveDraft(): void {
@@ -406,15 +446,6 @@ export class AssessmentCreatorComponent implements OnInit {
 
     this.hasStartedAssignmentLoad = true;
     this.loadAssignmentCatalog();
-  }
-
-  private openDeferredActionMessage(actionName: string): void {
-    this.snackBar.open(`${actionName} wiring will be added in the next pass.`, 'Close', {
-      duration: 3500,
-      horizontalPosition: 'center',
-      verticalPosition: 'top',
-      panelClass: ['question-editor-success-snackbar']
-    });
   }
 
   private submitAssessment(action: 'draft' | 'schedule'): void {
@@ -580,6 +611,8 @@ export class AssessmentCreatorComponent implements OnInit {
     this.selectedSubjectId = '';
     this.selectedTopicId = '';
     this.selectedDifficulty = 'all';
+    this.selectedQuestionBankSubjectId = '';
+    this.selectedQuestionBankTopicId = '';
     this.durationMinutes = 60;
     this.passingPercentage = 50;
     this.startDate = '';

@@ -13,23 +13,68 @@
 
   <div *ngIf="errorMessage" class="page-state page-state-error">{{ errorMessage }}</div>
 
+  <div *ngIf="successMessage" class="success-popup-backdrop">
+    <section class="success-popup" (click)="$event.stopPropagation()">
+      <div class="success-popup-icon" aria-hidden="true"></div>
+      <h3>Saved Successfully</h3>
+      <p>{{ successMessage }}</p>
+      <button type="button" class="success-popup-action" (click)="closeSuccessMessage()">Cancel</button>
+    </section>
+  </div>
+
   <form [formGroup]="form" class="editor-form" (ngSubmit)="saveToRepository()">
     <section class="editor-card">
       <div class="section-title">Classification</div>
       <div class="form-grid form-grid-3">
         <label class="field">
           <span>Stream *</span>
-          <input type="text" formControlName="stream" list="stream-options" />
+          <ng-container *ngIf="!isCustomStream; else customStreamField">
+            <select [value]="streamSelection" (change)="onStreamSelectionChange($any($event.target).value)">
+              <option value="">Select stream</option>
+              <option *ngFor="let item of streamOptions" [value]="item">{{ item }}</option>
+              <option [value]="addNewOptionValue">Add new stream</option>
+            </select>
+          </ng-container>
+          <ng-template #customStreamField>
+            <div class="custom-entry-shell">
+              <input type="text" formControlName="stream" placeholder="Enter new stream" />
+              <button type="button" class="custom-entry-reset" (click)="resetStreamSelection()">Use existing</button>
+            </div>
+          </ng-template>
         </label>
 
         <label class="field">
           <span>Subject *</span>
-          <input type="text" formControlName="subject" list="subject-options" />
+          <ng-container *ngIf="!isCustomSubject; else customSubjectField">
+            <select [value]="subjectSelection" (change)="onSubjectSelectionChange($any($event.target).value)">
+              <option value="">Select subject</option>
+              <option *ngFor="let item of subjectOptions" [value]="item">{{ item }}</option>
+              <option [value]="addNewOptionValue">Add new subject</option>
+            </select>
+          </ng-container>
+          <ng-template #customSubjectField>
+            <div class="custom-entry-shell">
+              <input type="text" formControlName="subject" placeholder="Enter new subject" />
+              <button type="button" class="custom-entry-reset" (click)="resetSubjectSelection()">Use existing</button>
+            </div>
+          </ng-template>
         </label>
 
         <label class="field">
           <span>Topic *</span>
-          <input type="text" formControlName="topic" list="topic-options" />
+          <ng-container *ngIf="!isCustomTopic; else customTopicField">
+            <select [value]="topicSelection" (change)="onTopicSelectionChange($any($event.target).value)">
+              <option value="">Select topic</option>
+              <option *ngFor="let item of topicOptions" [value]="item">{{ item }}</option>
+              <option [value]="addNewOptionValue">Add new topic</option>
+            </select>
+          </ng-container>
+          <ng-template #customTopicField>
+            <div class="custom-entry-shell">
+              <input type="text" formControlName="topic" placeholder="Enter new topic" />
+              <button type="button" class="custom-entry-reset" (click)="resetTopicSelection()">Use existing</button>
+            </div>
+          </ng-template>
         </label>
 
         <label class="field">
@@ -102,7 +147,8 @@
       <div class="section-title">Discovery &amp; Tags</div>
       <label class="field">
         <span>Topic Tag *</span>
-        <input type="text" formControlName="topicTag" />
+        <input type="text" formControlName="topicTag" placeholder="Arrays, loops, recursion" />
+        <small>Enter multiple topic tags separated by commas.</small>
       </label>
     </section>
 
@@ -111,16 +157,4 @@
       <button type="submit" class="primary-action" [disabled]="isSaving || isLoading">{{ submitButtonLabel }}</button>
     </div>
   </form>
-
-  <datalist id="stream-options">
-    <option *ngFor="let item of streamOptions" [value]="item"></option>
-  </datalist>
-
-  <datalist id="subject-options">
-    <option *ngFor="let item of subjectOptions" [value]="item"></option>
-  </datalist>
-
-  <datalist id="topic-options">
-    <option *ngFor="let item of topicOptions" [value]="item"></option>
-  </datalist>
 </div>

@@ -17,7 +17,7 @@
       </div>
 
       <a class="back-link" [routerLink]="['/', ...backRouteSegments]">
-        <mat-icon>arrow_back</mat-icon>
+        <img src="assets/icons/shared/back-arrow.svg" alt="" class="back-link-icon" aria-hidden="true" />
         <span>Back to Assessments</span>
       </a>
     </section>
@@ -125,6 +125,20 @@
           <div class="hub-filters">
             <select [(ngModel)]="selectedDifficulty">
               <option *ngFor="let option of difficultyOptions" [value]="option.value">{{ option.label }}</option>
+            </select>
+
+            <select [(ngModel)]="selectedQuestionBankSubjectId" (ngModelChange)="onQuestionBankSubjectChange()">
+              <option value="">All subjects</option>
+              <option *ngFor="let subject of questionBankSubjects; trackBy: trackBySubjectId" [value]="subject.subjectId">
+                {{ subject.subjectName }}
+              </option>
+            </select>
+
+            <select [(ngModel)]="selectedQuestionBankTopicId">
+              <option value="">All topics</option>
+              <option *ngFor="let topic of questionBankTopics" [value]="topic.topicId">
+                {{ topic.topicName }}
+              </option>
             </select>
 
             <label class="search-field">

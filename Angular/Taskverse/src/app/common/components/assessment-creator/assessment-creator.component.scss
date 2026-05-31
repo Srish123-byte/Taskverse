@@ -73,6 +73,12 @@
   text-decoration: none;
 }
 
+.back-link-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
 .builder-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(300px, 0.8fr);
@@ -220,7 +226,7 @@
 
 .hub-filters {
   display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 180px)) minmax(220px, 1fr);
   gap: 12px;
   margin-bottom: 16px;
 }

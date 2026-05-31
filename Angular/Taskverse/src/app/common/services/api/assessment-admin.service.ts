@@ -19,7 +19,7 @@ export interface CreateQuestionRequest {
   subject?: string;
   topicId?: string;
   topic?: string;
-  topicTag: string;
+  topicTag: string[];
   questionType: string;
   questionText: string;
   options?: string[];
@@ -39,7 +39,7 @@ export interface QuestionBankItem {
   stream?: string | null;
   subject?: string | null;
   topic?: string | null;
-  topicTag?: string | null;
+  topicTag?: string[] | null;
   questionType: string;
   questionText: string;
   options?: string[] | null;

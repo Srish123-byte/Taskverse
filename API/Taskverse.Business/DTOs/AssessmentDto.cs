@@ -90,7 +90,7 @@ public class CreateQuestionDto
     public string? Subject { get; set; }
     public Guid? TopicId { get; set; }
     public string? Topic { get; set; }
-    public string TopicTag { get; set; } = default!;
+    public List<string> TopicTag { get; set; } = [];
     public string QuestionType { get; set; } = default!;
     public string QuestionText { get; set; } = default!;
     public List<string>? Options { get; set; }
@@ -188,7 +188,7 @@ public class AssessmentQuestionDto
     public string? Stream { get; set; }
     public string? Subject { get; set; }
     public string? Topic { get; set; }
-    public string? TopicTag { get; set; }
+    public List<string>? TopicTag { get; set; }
     public string QuestionType { get; set; } = default!;
     public string QuestionText { get; set; } = default!;
     public List<string>? Options { get; set; }

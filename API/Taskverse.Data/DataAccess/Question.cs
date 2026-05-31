@@ -29,9 +29,8 @@ public class Question
     [Column("topic")]
     public string? Topic { get; set; }
 
-    [MaxLength(200)]
-    [Column("topic_tag")]
-    public string? TopicTag { get; set; }
+    [Column("topic_tag", TypeName = "text[]")]
+    public string[]? TopicTag { get; set; }
 
     [Required]
     [MaxLength(50)]

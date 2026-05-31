@@ -106,7 +106,7 @@ export class QuestionImportParserService {
       subject: subject || undefined,
       topicId: topicId || undefined,
       topic: topic || undefined,
-      topicTag: this.requireText(getValue('topicTag'), 'TopicTag', rowNumber),
+      topicTag: this.parseTopicTags(getValue('topicTag'), rowNumber),
       questionType,
       questionText: this.requireText(getValue('questionText'), 'QuestionText', rowNumber),
       options,
@@ -167,6 +167,19 @@ export class QuestionImportParserService {
       default:
         throw new Error(`Row ${rowNumber}: DifficultyLevel must be 1, 2, 3, Easy, Medium, or Hard.`);
     }
+  }
+
+  private parseTopicTags(value: string, rowNumber: number): string[] {
+    const normalizedTags = value
+      .split(',')
+      .map(tag => this.normalizeNullableText(tag))
+      .filter((tag): tag is string => Boolean(tag));
+
+    if (normalizedTags.length === 0) {
+      throw new Error(`Row ${rowNumber}: TopicTag is required and must contain at least one tag.`);
+    }
+
+    return [...new Set(normalizedTags)];
   }
 
   private normalizeQuestionType(value: string, rowNumber: number): string {

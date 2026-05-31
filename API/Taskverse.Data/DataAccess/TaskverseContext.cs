@@ -377,7 +377,7 @@ public class TaskverseContext : DbContext
             entity.Property(q => q.Stream).HasColumnName("stream").HasMaxLength(100);
             entity.Property(q => q.Subject).HasColumnName("subject").HasMaxLength(100);
             entity.Property(q => q.Topic).HasColumnName("topic").HasMaxLength(200);
-            entity.Property(q => q.TopicTag).HasColumnName("topic_tag").HasMaxLength(200);
+            entity.Property(q => q.TopicTag).HasColumnName("topic_tag").HasColumnType("text[]");
             entity.Property(q => q.QuestionType).HasColumnName("question_type").IsRequired().HasMaxLength(50);
             entity.Property(q => q.QuestionText).HasColumnName("question_text").IsRequired();
             entity.Property(q => q.Options).HasColumnName("options").HasColumnType("jsonb");
