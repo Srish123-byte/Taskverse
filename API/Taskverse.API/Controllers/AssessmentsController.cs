@@ -170,11 +170,11 @@ public class AssessmentsController : TaskverseBaseController
     [SwaggerResponse(500, "Unexpected error")]
     public async Task<IActionResult> DeleteAssessment(Guid id)
     {
-        var accessCheck = EnsureSuperAdminOrCollegeAdminAccess();
+        var accessCheck = EnsureSuperAdminOrCollegeAdminOrTrainerAccess();
         if (accessCheck is not null) return accessCheck;
 
         Guid? collegeId = null;
-        if (User.IsInRole(CollegeAdminRole))
+        if (User.IsInRole(CollegeAdminRole) || User.IsInRole(TrainerRole))
         {
             var tenantCheck = TryGetCollegeId(out var parsedCollegeId);
             if (tenantCheck is not null) return tenantCheck;
@@ -186,6 +186,7 @@ public class AssessmentsController : TaskverseBaseController
             await _assessmentOrchestrator.DeleteAssessment(new Taskverse.Business.DTOs.DeleteAssessmentDto
             {
                 AssessmentId = id,
+                IsDeleted = true,
                 DeletedBy = GetCreatedByName(),
                 RequesterRole = GetRequesterRole(),
                 CollegeId = collegeId

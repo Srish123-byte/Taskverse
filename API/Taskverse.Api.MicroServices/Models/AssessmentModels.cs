@@ -79,6 +79,8 @@ public record PublishQuestionBankAssessmentModel(
 public record DeleteAssessmentModel(
     [property: JsonProperty("assessment_id")]
     Guid AssessmentId,
+    [property: JsonProperty("is_deleted")]
+    bool? IsDeleted,
     [property: JsonProperty("deleted_by")]
     string DeletedBy,
     [property: JsonProperty("requester_role")]

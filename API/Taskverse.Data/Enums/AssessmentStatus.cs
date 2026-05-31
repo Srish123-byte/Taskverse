@@ -10,5 +10,5 @@ public enum AssessmentStatus
     Live = 3,
     Completed = 4,
     Cancelled = 5,
-    Soft_Delete = 6
+    Soft_Deleted = 6
 }

@@ -80,6 +80,9 @@ public class Assessment
     [Column("modified_at")]
     public DateTime? ModifiedAt { get; set; }
 
+    [Column("is_deleted")]
+    public bool? IsDeleted { get; set; }
+
     [Column("soft_deleted_at")]
     public DateTime? SoftDeletedAt { get; set; }
 

@@ -138,6 +138,9 @@ public class DeleteAssessmentRequest
     [JsonPropertyName("assessment_id")]
     public Guid AssessmentId { get; set; }
 
+    [JsonPropertyName("is_deleted")]
+    public bool? IsDeleted { get; set; }
+
     [Required]
     [MaxLength(200)]
     [JsonPropertyName("deleted_by")]

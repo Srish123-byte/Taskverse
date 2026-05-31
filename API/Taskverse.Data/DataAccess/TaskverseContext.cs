@@ -265,9 +265,10 @@ public class TaskverseContext : DbContext
             entity.Property(a => a.CreatedBy).HasColumnName("created_by").HasMaxLength(200);
             entity.Property(a => a.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(a => a.ModifiedAt).HasColumnName("modified_at");
+            entity.Property(a => a.IsDeleted).HasColumnName("is_deleted");
             entity.Property(a => a.SoftDeletedAt).HasColumnName("soft_deleted_at");
             entity.Property(a => a.SoftDeletedBy).HasColumnName("soft_deleted_by").HasMaxLength(200);
-            entity.HasQueryFilter(a => a.AssessmentStatus != AssessmentStatus.Soft_Delete);
+            entity.HasQueryFilter(a => a.AssessmentStatus != AssessmentStatus.Soft_Deleted);
 
             entity.HasIndex(a => a.SubjectId);
             entity.HasIndex(a => a.TopicId);

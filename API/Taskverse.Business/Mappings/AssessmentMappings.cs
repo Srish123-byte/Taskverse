@@ -162,6 +162,7 @@ public static class AssessmentMappings
     public static DeleteAssessmentModel ToMicroServiceModel(this DeleteAssessmentDto dto)
         => new(
             dto.AssessmentId,
+            dto.IsDeleted,
             dto.DeletedBy,
             dto.RequesterRole,
             dto.CollegeId);

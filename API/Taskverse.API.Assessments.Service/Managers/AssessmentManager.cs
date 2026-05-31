@@ -83,11 +83,13 @@ public class AssessmentManager : IAssessmentManager
         ValidateDeleteAssessmentRequest(request);
 
         var assessment = await GetAssessmentByIdAsync(assessmentId);
+        EnsureAssessmentCanBeDeleted(assessment);
         EnsureDeleteAuthorized(assessment, request);
 
         var deletedAt = DateTime.UtcNow;
 
-        assessment.AssessmentStatus = AssessmentStatus.Soft_Delete;
+        assessment.IsDeleted = request.IsDeleted ?? true;
+        assessment.AssessmentStatus = AssessmentStatus.Soft_Deleted;
         assessment.SoftDeletedAt = deletedAt;
         assessment.SoftDeletedBy = request.DeletedBy.Trim();
         assessment.ModifiedAt = deletedAt;
@@ -288,7 +290,7 @@ public class AssessmentManager : IAssessmentManager
             .Include(item => item.Topic)
             .Where(item =>
                 item.CollegeId == request.CollegeId &&
-                item.AssessmentStatus != AssessmentStatus.Soft_Delete);
+                item.AssessmentStatus != AssessmentStatus.Soft_Deleted);
 
         if (string.Equals(request.RequesterRole.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase))
         {
@@ -889,9 +891,10 @@ public class AssessmentManager : IAssessmentManager
         return requestedStatus.Trim().ToUpperInvariant() switch
         {
             "LIVE" => AssessmentStatus.Live,
-            "UPCOMING" => AssessmentStatus.Scheduled,
+            "SCHEDULED" => AssessmentStatus.Scheduled,
             "COMPLETED" => AssessmentStatus.Completed,
             "DRAFT" => AssessmentStatus.Draft,
+            "CANCELLED" => AssessmentStatus.Cancelled,
             _ => throw new ArgumentException($"Unsupported assessment status filter '{requestedStatus}'.")
         };
     }
@@ -901,9 +904,10 @@ public class AssessmentManager : IAssessmentManager
         return status switch
         {
             AssessmentStatus.Live => "LIVE",
-            AssessmentStatus.Scheduled => "UPCOMING",
+            AssessmentStatus.Scheduled => "SCHEDULED",
             AssessmentStatus.Completed => "COMPLETED",
             AssessmentStatus.Draft => "DRAFT",
+            AssessmentStatus.Cancelled => "CANCELLED",
             _ => status.ToString().ToUpperInvariant()
         };
     }
@@ -980,8 +984,41 @@ public class AssessmentManager : IAssessmentManager
         return assessment;
     }
 
+    private static void EnsureAssessmentCanBeDeleted(Assessment assessment)
+    {
+        if (assessment.AssessmentStatus == AssessmentStatus.Live)
+        {
+            throw new InvalidOperationException("Live assessments cannot be deleted. Cancel the assessment first.");
+        }
+
+        if (assessment.AssessmentStatus == AssessmentStatus.Soft_Deleted || assessment.IsDeleted == true)
+        {
+            throw new InvalidOperationException("This assessment has already been soft deleted.");
+        }
+    }
+
     private static void EnsureDeleteAuthorized(Assessment assessment, DeleteAssessmentRequest request)
     {
+        if (IsTrainer(request.RequesterRole))
+        {
+            if (!request.CollegeId.HasValue || request.CollegeId.Value == Guid.Empty)
+            {
+                throw new ArgumentException("CollegeId is required for trainer delete operations.");
+            }
+
+            if (assessment.CollegeId != request.CollegeId.Value)
+            {
+                throw new UnauthorizedAccessException("Trainer can delete assessments only for its own college.");
+            }
+
+            if (!string.Equals(assessment.CreatedBy?.Trim(), request.DeletedBy?.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException("Trainer can delete only the assessments created by the same trainer.");
+            }
+
+            return;
+        }
+
         if (IsCollegeAdmin(request.RequesterRole))
         {
             if (!request.CollegeId.HasValue || request.CollegeId.Value == Guid.Empty)
@@ -999,7 +1036,7 @@ public class AssessmentManager : IAssessmentManager
 
         if (!IsSuperAdmin(request.RequesterRole))
         {
-            throw new UnauthorizedAccessException("Only SuperAdmin and CollegeAdmin can delete assessments.");
+            throw new UnauthorizedAccessException("Only SuperAdmin, CollegeAdmin, and Trainer can delete assessments.");
         }
     }
 
@@ -1126,7 +1163,7 @@ public class AssessmentManager : IAssessmentManager
             .AsNoTracking()
             .Where(assessment =>
                 assessment.CollegeId == collegeId &&
-                assessment.AssessmentStatus != AssessmentStatus.Soft_Delete &&
+                assessment.AssessmentStatus != AssessmentStatus.Soft_Deleted &&
                 assessment.AssignedBatchIds.Contains(batchId));
     }
 
@@ -1610,6 +1647,9 @@ public class AssessmentManager : IAssessmentManager
 
     private static bool IsSuperAdmin(string requesterRole)
         => string.Equals(requesterRole?.Trim(), "SuperAdmin", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsTrainer(string requesterRole)
+        => string.Equals(requesterRole?.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase);
 
     private static int CalculateDifficultyLevel(IEnumerable<Question> questions)
     {

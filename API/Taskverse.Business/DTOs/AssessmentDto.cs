@@ -46,6 +46,7 @@ public class PublishQuestionBankAssessmentDto
 public class DeleteAssessmentDto
 {
     public Guid AssessmentId { get; set; }
+    public bool? IsDeleted { get; set; }
     public string DeletedBy { get; set; } = default!;
     public string RequesterRole { get; set; } = default!;
     public Guid? CollegeId { get; set; }

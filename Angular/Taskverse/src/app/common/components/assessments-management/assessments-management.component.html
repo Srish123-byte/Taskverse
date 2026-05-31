@@ -105,7 +105,12 @@
         <button type="button" class="icon-button" (click)="editAssessment(assessment)" aria-label="Edit assessment">
           <img src="assets/icons/nav/edit.svg" alt="" class="row-action-icon" aria-hidden="true" />
         </button>
-        <button type="button" class="icon-button icon-button-danger" (click)="deleteAssessment(assessment)" aria-label="Delete assessment">
+        <button
+          type="button"
+          class="icon-button icon-button-danger"
+          [disabled]="!!deletingAssessmentId"
+          (click)="deleteAssessment(assessment)"
+          aria-label="Delete assessment">
           <img src="assets/icons/nav/trash.svg" alt="" class="row-action-icon" aria-hidden="true" />
         </button>
       </div>
@@ -125,6 +130,23 @@
           <mat-icon>chevron_right</mat-icon>
         </button>
       </div>
+    </div>
+  </section>
+
+</div>
+
+<div *ngIf="pendingDeleteAssessment" class="delete-dialog-backdrop" (click)="closeDeleteDialog()">
+  <section class="delete-dialog" (click)="$event.stopPropagation()" aria-modal="true" role="dialog" aria-labelledby="deleteAssessmentTitle">
+    <h3 id="deleteAssessmentTitle">Do you want to delete this assessment?</h3>
+    <p>
+      <strong>{{ pendingDeleteAssessment.assessmentName }}</strong> can only be recovered by SuperAdmin within 30 days.
+    </p>
+
+    <div class="delete-dialog-actions">
+      <button type="button" class="secondary-action" [disabled]="!!deletingAssessmentId" (click)="closeDeleteDialog()">No</button>
+      <button type="button" class="primary-action danger-confirm" [disabled]="!!deletingAssessmentId" (click)="confirmDeleteAssessment()">
+        {{ deletingAssessmentId === pendingDeleteAssessment.assessmentId ? 'Deleting...' : 'Yes' }}
+      </button>
     </div>
   </section>
 </div>

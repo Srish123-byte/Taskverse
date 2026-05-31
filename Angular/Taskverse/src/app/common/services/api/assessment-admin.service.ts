@@ -238,8 +238,8 @@ export class AssessmentAdminService {
     );
   }
 
-  deleteAssessment(assessmentId: string): Observable<void> {
-    return this.http.delete<void>(`${this.url}/${assessmentId}`);
+  deleteAssessment(assessmentId: string, skipGlobalErrorRedirect = false): Observable<void> {
+    return this.http.delete<void>(`${this.url}/${assessmentId}`, undefined, undefined, skipGlobalErrorRedirect);
   }
 
   private mapAssignmentCatalog(catalog: any): AssessmentAssignmentCatalog {

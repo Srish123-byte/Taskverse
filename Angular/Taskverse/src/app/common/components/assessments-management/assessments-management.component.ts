@@ -1,7 +1,8 @@
 import { formatDate } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectorRef, Component, HostBinding, Input, OnDestroy, OnInit } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Subject, takeUntil } from 'rxjs';
+import { finalize, Subject, takeUntil } from 'rxjs';
 import { RoleType } from '../../enums/role-type.enum';
 import {
   AssessmentAdminService,
@@ -11,7 +12,7 @@ import {
 import { AccountService } from '../../services/api/account.service';
 import { Session } from '../../services/session/session.service';
 
-type AssessmentStatusFilter = 'all' | 'LIVE' | 'UPCOMING' | 'COMPLETED' | 'DRAFT';
+type AssessmentStatusFilter = 'all' | 'DRAFT' | 'SCHEDULED' | 'LIVE' | 'COMPLETED' | 'CANCELLED';
 type AssessmentDifficultyFilter = 'all' | 'Easy' | 'Medium' | 'Hard';
 
 interface FilterOption {
@@ -26,6 +27,19 @@ interface FilterOption {
   styleUrl: './assessments-management.component.scss'
 })
 export class AssessmentsManagementComponent implements OnInit, OnDestroy {
+  private static readonly deleteErrorSnackBarConfig = {
+    duration: 4500,
+    horizontalPosition: 'center' as const,
+    verticalPosition: 'top' as const,
+    panelClass: ['question-bank-restriction-snackbar']
+  };
+  private static readonly deleteSuccessSnackBarConfig = {
+    duration: 4000,
+    horizontalPosition: 'center' as const,
+    verticalPosition: 'top' as const,
+    panelClass: ['question-editor-success-snackbar']
+  };
+
   @Input() heroKicker = 'Admin Console';
   @Input() pageTitle = 'Assessments Management';
   @Input() pageWelcome = 'Configure, monitor, and deploy high-stakes technical assessments.';
@@ -34,17 +48,18 @@ export class AssessmentsManagementComponent implements OnInit, OnDestroy {
 
   readonly pageSize = 3;
   readonly statusOptions: FilterOption[] = [
-    { value: 'all', label: 'Status: All' },
-    { value: 'LIVE', label: 'Status: Live' },
-    { value: 'UPCOMING', label: 'Status: Upcoming' },
-    { value: 'COMPLETED', label: 'Status: Completed' },
-    { value: 'DRAFT', label: 'Status: Draft' }
+    { value: 'all', label: 'All' },
+    { value: 'DRAFT', label: 'Draft' },
+    { value: 'SCHEDULED', label: 'Scheduled' },
+    { value: 'LIVE', label: 'Live' },
+    { value: 'COMPLETED', label: 'Completed' },
+    { value: 'CANCELLED', label: 'Cancelled' }
   ];
   readonly difficultyOptions: FilterOption[] = [
-    { value: 'all', label: 'Difficulty: All' },
-    { value: 'Easy', label: 'Difficulty: Easy' },
-    { value: 'Medium', label: 'Difficulty: Medium' },
-    { value: 'Hard', label: 'Difficulty: Hard' }
+    { value: 'all', label: 'All' },
+    { value: 'Easy', label: 'Easy' },
+    { value: 'Medium', label: 'Medium' },
+    { value: 'Hard', label: 'Hard' }
   ];
 
   searchTerm = '';
@@ -58,6 +73,8 @@ export class AssessmentsManagementComponent implements OnInit, OnDestroy {
   totalCount = 0;
   activeCount = 0;
   completedCount = 0;
+  deletingAssessmentId: string | null = null;
+  pendingDeleteAssessment: AssessmentManagementItem | null = null;
 
   private readonly destroy$ = new Subject<void>();
   private hasLoadedInitialAssessments = false;
@@ -159,7 +176,55 @@ export class AssessmentsManagementComponent implements OnInit, OnDestroy {
   }
 
   deleteAssessment(assessment: AssessmentManagementItem): void {
-    this.openSnackBar(`Delete flow for "${assessment.assessmentName}" will be connected next.`);
+    if (!assessment?.assessmentId || this.deletingAssessmentId) {
+      return;
+    }
+
+    if (this.isLiveAssessment(assessment)) {
+      this.snackBar.open(
+        'Live assessments cannot be deleted. Cancel the assessment first.',
+        'Close',
+        AssessmentsManagementComponent.deleteErrorSnackBarConfig
+      );
+      return;
+    }
+
+    this.pendingDeleteAssessment = assessment;
+  }
+
+  closeDeleteDialog(): void {
+    if (this.deletingAssessmentId) {
+      return;
+    }
+
+    this.pendingDeleteAssessment = null;
+  }
+
+  confirmDeleteAssessment(): void {
+    const assessment = this.pendingDeleteAssessment;
+    if (!assessment?.assessmentId || this.deletingAssessmentId) {
+      return;
+    }
+
+    this.deletingAssessmentId = assessment.assessmentId;
+
+    this.assessmentAdminService.deleteAssessment(assessment.assessmentId, true)
+      .pipe(finalize(() => {
+        this.deletingAssessmentId = null;
+        this.changeDetectorRef.detectChanges();
+      }))
+      .subscribe({
+        next: () => {
+          this.handleDeleteSuccess(assessment);
+        },
+        error: error => {
+          this.snackBar.open(
+            this.getDeleteRestrictionMessage(error),
+            'Close',
+            AssessmentsManagementComponent.deleteErrorSnackBarConfig
+          );
+        }
+      });
   }
 
   getStatusClass(status: string): string {
@@ -238,6 +303,68 @@ export class AssessmentsManagementComponent implements OnInit, OnDestroy {
       verticalPosition: 'top',
       panelClass: ['question-editor-success-snackbar']
     });
+  }
+
+  private isLiveAssessment(assessment: AssessmentManagementItem): boolean {
+    return assessment.assessmentStatus.trim().toUpperCase() === 'LIVE';
+  }
+
+  private getDeleteRestrictionMessage(error: HttpErrorResponse): string {
+    const detail = error?.error?.detail;
+    const message = error?.error?.message;
+    const normalizedMessage = `${detail ?? ''} ${message ?? ''}`.toLowerCase();
+
+    if (normalizedMessage.includes('cancel the assessment first') || normalizedMessage.includes('live assessments cannot be deleted')) {
+      return 'Live assessments cannot be deleted. Cancel the assessment first.';
+    }
+
+    if (normalizedMessage.includes('same trainer') || normalizedMessage.includes('not authorized')) {
+      return 'You can only delete assessments that you created.';
+    }
+
+    if (normalizedMessage.includes('own college')) {
+      return 'This assessment cannot be deleted from the current college workspace.';
+    }
+
+    if (normalizedMessage.includes('already been soft deleted')) {
+      return 'This assessment has already been soft deleted.';
+    }
+
+    return message || detail || 'Unable to delete this assessment right now.';
+  }
+
+  private handleDeleteSuccess(assessment: AssessmentManagementItem): void {
+    const removedCurrentPageLastVisibleRow = this.assessments.length === 1;
+    const normalizedStatus = assessment.assessmentStatus.trim().toUpperCase();
+
+    this.assessments = this.assessments.filter(item => item.assessmentId !== assessment.assessmentId);
+    this.totalCount = Math.max(0, this.totalCount - 1);
+    if (normalizedStatus === 'LIVE' || normalizedStatus === 'SCHEDULED') {
+      this.activeCount = Math.max(0, this.activeCount - 1);
+    }
+
+    if (normalizedStatus === 'COMPLETED') {
+      this.completedCount = Math.max(0, this.completedCount - 1);
+    }
+
+    this.pendingDeleteAssessment = null;
+
+    this.snackBar.open(
+      'Assessment soft deleted. Recovery remains available to SuperAdmin for 30 days.',
+      'Close',
+      AssessmentsManagementComponent.deleteSuccessSnackBarConfig
+    );
+
+    if (this.totalCount > 0) {
+      if (removedCurrentPageLastVisibleRow && this.currentPage > 1) {
+        this.currentPage -= 1;
+      }
+
+      this.loadAssessments();
+      return;
+    }
+
+    this.changeDetectorRef.detectChanges();
   }
 
   private hasAssessmentAccessContext(): boolean {
