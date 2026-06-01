@@ -12,6 +12,22 @@ public partial class MicroServiceOrchestrator
         return await Post<QuestionBankAssessmentModel>(url, model);
     }
 
+    public async Task<ObjectResult> GetAssessment(Guid assessmentId, Guid collegeId, string requesterRole, string requesterName)
+    {
+        var encodedRole = Uri.EscapeDataString(requesterRole ?? string.Empty);
+        var encodedRequesterName = Uri.EscapeDataString(requesterName ?? string.Empty);
+        var url =
+            $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/{assessmentId}?collegeId={collegeId}&requesterRole={encodedRole}&requesterName={encodedRequesterName}";
+
+        return await Get<QuestionBankAssessmentModel>(url);
+    }
+
+    public async Task<ObjectResult> UpdateAssessment(UpdateQuestionBankAssessmentModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/{model.AssessmentId}";
+        return await Put<QuestionBankAssessmentModel>(url, model);
+    }
+
     public async Task<ObjectResult> PublishAssessment(PublishQuestionBankAssessmentModel model)
     {
         var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/publish";

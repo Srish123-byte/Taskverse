@@ -159,6 +159,28 @@ public static class AssessmentMappings
             UtcDateTime.Normalize(dto.StartDateTime),
             UtcDateTime.Normalize(dto.EndDateTime));
 
+    public static UpdateQuestionBankAssessmentModel ToMicroServiceModel(this UpdateQuestionBankAssessmentDto dto)
+        => new(
+            dto.AssessmentId,
+            dto.CollegeId,
+            dto.UpdatedBy,
+            dto.RequesterRole,
+            dto.AssessmentName,
+            dto.SubjectId,
+            dto.SubjectName,
+            dto.TopicId,
+            dto.TopicName,
+            dto.Instructions,
+            dto.AllowLateEntry,
+            dto.AllowQuestionReview,
+            dto.NegativeMarking,
+            dto.AssignedBatchIds,
+            dto.QuestionIds,
+            dto.DurationMinutes,
+            dto.TotalMarks,
+            UtcDateTime.Normalize(dto.StartDateTime),
+            UtcDateTime.Normalize(dto.EndDateTime));
+
     public static DeleteAssessmentModel ToMicroServiceModel(this DeleteAssessmentDto dto)
         => new(
             dto.AssessmentId,

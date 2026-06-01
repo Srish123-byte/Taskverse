@@ -1,6 +1,6 @@
 import { Location } from '@angular/common';
 import { ChangeDetectorRef, Component, HostBinding, Input, OnInit } from '@angular/core';
-import { FormArray, FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
+import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { forkJoin } from 'rxjs';
@@ -22,6 +22,7 @@ type QuestionType = 'mcq' | 'fill in the blanks';
 })
 export class QuestionEditorComponent implements OnInit {
   private static readonly addNewOptionValue = '__add_new__';
+  private static readonly fillInTheBlankPlaceholderPattern = /_{3,}/;
 
   @Input() theme: 'college-admin' | 'trainer' = 'college-admin';
   @Input() questionBankRoute = '';
@@ -83,7 +84,7 @@ export class QuestionEditorComponent implements OnInit {
       topicTag: ['', [Validators.required, Validators.maxLength(500)]],
       difficultyLevel: [1, [Validators.required]],
       questionType: ['mcq' as QuestionType, [Validators.required]],
-      questionText: ['', [Validators.required]],
+      questionText: ['', [Validators.required, this.fillInTheBlankQuestionTextValidator()]],
       marks: [1, [Validators.required, Validators.min(0)]],
       negativeMarks: [0, [Validators.required, Validators.min(0)]],
       options: this.formBuilder.array([
@@ -161,6 +162,11 @@ export class QuestionEditorComponent implements OnInit {
 
   get isMcq(): boolean {
     return this.questionTypeControl.value === 'mcq';
+  }
+
+  get usesSelectableOptions(): boolean {
+    const questionType = this.questionTypeControl.value;
+    return questionType === 'mcq' || questionType === 'fill in the blanks';
   }
 
   get addNewOptionValue(): string {
@@ -295,7 +301,11 @@ export class QuestionEditorComponent implements OnInit {
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      this.errorMessage = 'Please complete the required fields before saving.';
+      if (this.questionTextControl.hasError('fillInTheBlankPlaceholder')) {
+        this.errorMessage = 'Fill in the blanks questions must include a blank shown with underscore characters like ____ in the question text.';
+      } else {
+        this.errorMessage = 'Please complete the required fields before saving.';
+      }
       return;
     }
 
@@ -428,7 +438,7 @@ export class QuestionEditorComponent implements OnInit {
   private patchFormFromQuestion(question: QuestionBankItem): void {
     const questionType = (question.questionType?.toLowerCase() ?? 'mcq') as QuestionType;
     const options = question.options ?? [];
-    const answerLabel = questionType === 'mcq'
+    const answerLabel = this.usesOptionLabelAnswer(questionType)
       ? this.resolveAnswerLabel(options, question.answer)
       : (question.answer ?? '');
 
@@ -484,7 +494,7 @@ export class QuestionEditorComponent implements OnInit {
   }
 
   private applyQuestionTypeRules(questionType: QuestionType): void {
-    if (questionType === 'mcq') {
+    if (questionType === 'mcq' || questionType === 'fill in the blanks') {
       this.optionsArray.controls.forEach(control => {
         control.addValidators(Validators.required);
         control.updateValueAndValidity({ emitEvent: false });
@@ -496,6 +506,7 @@ export class QuestionEditorComponent implements OnInit {
 
       this.answerControl.addValidators(Validators.required);
       this.answerControl.updateValueAndValidity({ emitEvent: false });
+      this.questionTextControl.updateValueAndValidity({ emitEvent: false });
       return;
     }
 
@@ -508,6 +519,7 @@ export class QuestionEditorComponent implements OnInit {
     this.answerControl.setValue('', { emitEvent: false });
     this.answerControl.addValidators(Validators.required);
     this.answerControl.updateValueAndValidity({ emitEvent: false });
+    this.questionTextControl.updateValueAndValidity({ emitEvent: false });
   }
 
   private buildPayload(): CreateQuestionRequest {
@@ -520,7 +532,7 @@ export class QuestionEditorComponent implements OnInit {
       topicTag: this.parseTopicTags(this.topicTagControl.value),
       questionType,
       questionText: this.questionTextControl.value?.trim() ?? '',
-      options: questionType === 'mcq'
+      options: questionType === 'mcq' || questionType === 'fill in the blanks'
         ? this.optionsArray.controls
             .map(control => control.value?.trim() ?? '')
             .filter(value => value.length > 0)
@@ -534,7 +546,7 @@ export class QuestionEditorComponent implements OnInit {
   }
 
   private getAnswerPayloadValue(questionType: QuestionType): string {
-    if (questionType !== 'mcq') {
+    if (!this.usesOptionLabelAnswer(questionType)) {
       return this.answerControl.value?.trim() ?? '';
     }
 
@@ -628,5 +640,23 @@ export class QuestionEditorComponent implements OnInit {
     this.syncClassificationSelections();
     this.isSaving = false;
     this.changeDetectorRef.detectChanges();
+  }
+
+  private fillInTheBlankQuestionTextValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const questionType = (this.form?.get('questionType')?.value ?? 'mcq') as QuestionType;
+      if (questionType !== 'fill in the blanks') {
+        return null;
+      }
+
+      const value = `${control.value ?? ''}`.trim();
+      return QuestionEditorComponent.fillInTheBlankPlaceholderPattern.test(value)
+        ? null
+        : { fillInTheBlankPlaceholder: true };
+    };
+  }
+
+  private usesOptionLabelAnswer(questionType: QuestionType): boolean {
+    return questionType === 'mcq' || questionType === 'fill in the blanks';
   }
 }

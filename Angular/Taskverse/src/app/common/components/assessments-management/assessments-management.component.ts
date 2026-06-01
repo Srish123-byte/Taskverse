@@ -2,6 +2,7 @@ import { formatDate } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectorRef, Component, HostBinding, Input, OnDestroy, OnInit } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { finalize, Subject, takeUntil } from 'rxjs';
 import { RoleType } from '../../enums/role-type.enum';
 import {
@@ -45,6 +46,7 @@ export class AssessmentsManagementComponent implements OnInit, OnDestroy {
   @Input() pageWelcome = 'Configure, monitor, and deploy high-stakes technical assessments.';
   @Input() theme: 'college-admin' | 'trainer' = 'college-admin';
   @Input() createAssessmentRoute = '';
+  @Input() editAssessmentRouteBase = '';
 
   readonly pageSize = 3;
   readonly statusOptions: FilterOption[] = [
@@ -111,7 +113,8 @@ export class AssessmentsManagementComponent implements OnInit, OnDestroy {
     private readonly accountService: AccountService,
     private readonly snackBar: MatSnackBar,
     private readonly session: Session,
-    private readonly changeDetectorRef: ChangeDetectorRef
+    private readonly changeDetectorRef: ChangeDetectorRef,
+    private readonly router: Router
   ) {}
 
   ngOnInit(): void {
@@ -172,7 +175,21 @@ export class AssessmentsManagementComponent implements OnInit, OnDestroy {
   }
 
   editAssessment(assessment: AssessmentManagementItem): void {
-    this.openSnackBar(`Edit flow for "${assessment.assessmentName}" will be connected next.`);
+    if (!this.isEditAllowed(assessment)) {
+      this.openSnackBar(this.getEditRestrictionMessage(assessment));
+      return;
+    }
+
+    if (!assessment?.assessmentId || !this.editAssessmentRouteBase) {
+      this.openSnackBar('Unable to open the assessment editor right now.');
+      return;
+    }
+
+    const routeSegments = this.editAssessmentRouteBase
+      .split('/')
+      .filter(segment => segment.length > 0);
+
+    void this.router.navigate(['/', ...routeSegments, assessment.assessmentId]);
   }
 
   deleteAssessment(assessment: AssessmentManagementItem): void {
@@ -309,6 +326,25 @@ export class AssessmentsManagementComponent implements OnInit, OnDestroy {
     return assessment.assessmentStatus.trim().toUpperCase() === 'LIVE';
   }
 
+  isEditAllowed(assessment: AssessmentManagementItem): boolean {
+    const normalizedStatus = assessment.assessmentStatus.trim().toUpperCase();
+    return normalizedStatus === 'DRAFT' || normalizedStatus === 'SCHEDULED' || normalizedStatus === 'CANCELLED';
+  }
+
+  getEditRestrictionMessage(assessment: AssessmentManagementItem): string {
+    const normalizedStatus = assessment.assessmentStatus.trim().toUpperCase();
+
+    if (normalizedStatus === 'LIVE') {
+      return "Edit isn't allowed once the assessment is Live";
+    }
+
+    if (normalizedStatus === 'COMPLETED') {
+      return "Edit isn't allowed once the assessment is Completed";
+    }
+
+    return `Edit isn't allowed once the assessment is ${assessment.assessmentStatus}`;
+  }
+
   private getDeleteRestrictionMessage(error: HttpErrorResponse): string {
     const detail = error?.error?.detail;
     const message = error?.error?.message;
@@ -350,7 +386,7 @@ export class AssessmentsManagementComponent implements OnInit, OnDestroy {
     this.pendingDeleteAssessment = null;
 
     this.snackBar.open(
-      'Assessment soft deleted. Recovery remains available to SuperAdmin for 30 days.',
+      'Assessment deleted successfully.',
       'Close',
       AssessmentsManagementComponent.deleteSuccessSnackBarConfig
     );

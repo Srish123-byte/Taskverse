@@ -1,13 +1,15 @@
 using Microsoft.EntityFrameworkCore;
-using Taskverse.Data.DataAccess;
-using Taskverse.API.Assessments.Service.Mappings;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using Taskverse.API.Assessments.Service.Mappings;
+using Taskverse.Data.DataAccess;
 using Taskverse.Data.Enums;
 
 namespace Taskverse.API.Assessments.Service.Managers;
 
 public class QuestionManager : IQuestionManager
 {
+    private static readonly Regex FillInTheBlankPlaceholderPattern = new("_{3,}", RegexOptions.Compiled);
     private static readonly HashSet<string> AllowedQuestionTypes =
     [
         "mcq",
@@ -502,9 +504,22 @@ public class QuestionManager : IQuestionManager
             throw new ArgumentException("Question text is required.");
         }
 
-        if (normalizedQuestionType == "mcq" && !HasValidOptions(question.Options))
+        if (normalizedQuestionType == "mcq" && !HasMinimumValidOptions(question.Options, 4))
         {
             throw new ArgumentException("Options are required for mcq questions.");
+        }
+
+        if (normalizedQuestionType == "fill in the blanks")
+        {
+            if (!FillInTheBlankPlaceholderPattern.IsMatch(question.QuestionText))
+            {
+                throw new ArgumentException("Fill in the blanks questions must include a blank shown with underscore characters like ____ in the question text.");
+            }
+
+            if (!HasMinimumValidOptions(question.Options, 4))
+            {
+                throw new ArgumentException("Four options are required for fill in the blanks questions.");
+            }
         }
 
         if (string.IsNullOrWhiteSpace(question.Answer))
@@ -523,7 +538,7 @@ public class QuestionManager : IQuestionManager
         }
     }
 
-    private static bool HasValidOptions(string? options)
+    private static bool HasMinimumValidOptions(string? options, int minimumCount)
     {
         if (string.IsNullOrWhiteSpace(options))
         {
@@ -533,7 +548,9 @@ public class QuestionManager : IQuestionManager
         try
         {
             var parsedOptions = JsonSerializer.Deserialize<List<string>>(options);
-            return parsedOptions is { Count: > 0 } && parsedOptions.All(option => !string.IsNullOrWhiteSpace(option));
+            return parsedOptions is not null &&
+                   parsedOptions.Count >= minimumCount &&
+                   parsedOptions.All(option => !string.IsNullOrWhiteSpace(option));
         }
         catch
         {

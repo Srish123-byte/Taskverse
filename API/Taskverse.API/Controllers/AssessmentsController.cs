@@ -104,6 +104,123 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    [HttpGet("{id:guid}")]
+    [SwaggerResponse(200, "Assessment retrieved successfully", typeof(QuestionBankAssessmentResponseModel))]
+    [SwaggerResponse(400, "Invalid request or CollegeId is missing/invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Assessment not found")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> GetAssessment(Guid id)
+    {
+        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        try
+        {
+            var dto = await _assessmentOrchestrator.GetAssessment(
+                id,
+                collegeId,
+                GetRequesterRole(),
+                GetCreatedByName());
+
+            return Ok(dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
+        }
+    }
+
+    [HttpPut("{id:guid}")]
+    [SwaggerResponse(200, "Assessment updated successfully", typeof(QuestionBankAssessmentResponseModel))]
+    [SwaggerResponse(400, "Invalid request or CollegeId is missing/invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Assessment not found")]
+    [SwaggerResponse(409, "Assessment could not be updated due to a conflict")]
+    [SwaggerResponse(422, "Selected questions exceed the allowed assessment limit")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> UpdateAssessment(Guid id, [FromBody] UpdateQuestionBankAssessmentRequestModel model)
+    {
+        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        if (model is null)
+        {
+            return BadRequest(new { message = "Assessment update request is required." });
+        }
+
+        var instructionValidationError = ValidateInstructionWordLimit(model.Instructions);
+        if (instructionValidationError is not null)
+        {
+            return BadRequest(new { message = instructionValidationError });
+        }
+
+        try
+        {
+            var trainerBatchAccessCheck = await EnsureTrainerCanAssignRequestedBatches(collegeId, model.AssignedBatchIds);
+            if (trainerBatchAccessCheck is not null) return trainerBatchAccessCheck;
+
+            var dto = await _assessmentOrchestrator.UpdateAssessment(
+                model.ToDto(id, collegeId, GetCreatedByName(), GetRequesterRole()));
+
+            return Ok(dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidDataException ex)
+        {
+            return UnprocessableEntity(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
+        }
+    }
+
     [HttpPost("{id:guid}/publish")]
     [SwaggerResponse(200, "Assessment published successfully", typeof(QuestionBankAssessmentResponseModel))]
     [SwaggerResponse(400, "Invalid request or CollegeId is missing/invalid")]

@@ -132,6 +132,80 @@ public class PublishAssessmentRequest
     public DateTime? EndDateTime { get; set; }
 }
 
+public class UpdateAssessmentRequest
+{
+    [Required]
+    [JsonPropertyName("assessment_id")]
+    public Guid AssessmentId { get; set; }
+
+    [Required]
+    [JsonPropertyName("college_id")]
+    public Guid CollegeId { get; set; }
+
+    [Required]
+    [MaxLength(200)]
+    [JsonPropertyName("updated_by")]
+    public string UpdatedBy { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(50)]
+    [JsonPropertyName("requester_role")]
+    public string RequesterRole { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(120)]
+    [JsonPropertyName("assessment_name")]
+    public string AssessmentName { get; set; } = string.Empty;
+
+    [JsonPropertyName("subject_id")]
+    public Guid? SubjectId { get; set; }
+
+    [MaxLength(100)]
+    [JsonPropertyName("subject_name")]
+    public string? SubjectName { get; set; }
+
+    [JsonPropertyName("topic_id")]
+    public Guid? TopicId { get; set; }
+
+    [MaxLength(200)]
+    [JsonPropertyName("topic_name")]
+    public string? TopicName { get; set; }
+
+    [MaxLength(2000)]
+    [JsonPropertyName("instructions")]
+    public string? Instructions { get; set; }
+
+    [JsonPropertyName("allow_late_entry")]
+    public bool AllowLateEntry { get; set; }
+
+    [JsonPropertyName("allow_question_review")]
+    public bool AllowQuestionReview { get; set; }
+
+    [JsonPropertyName("negative_marking")]
+    public bool NegativeMarking { get; set; }
+
+    [JsonPropertyName("assigned_batch_ids")]
+    public Guid[] AssignedBatchIds { get; set; } = [];
+
+    [Required]
+    [JsonPropertyName("question_ids")]
+    public List<Guid> QuestionIds { get; set; } = [];
+
+    [Range(1, int.MaxValue)]
+    [JsonPropertyName("duration_minutes")]
+    public int DurationMinutes { get; set; }
+
+    [Range(0, int.MaxValue)]
+    [JsonPropertyName("total_marks")]
+    public int TotalMarks { get; set; }
+
+    [JsonPropertyName("start_datetime")]
+    public DateTime? StartDateTime { get; set; }
+
+    [JsonPropertyName("end_datetime")]
+    public DateTime? EndDateTime { get; set; }
+}
+
 public class DeleteAssessmentRequest
 {
     [Required]

@@ -221,12 +221,20 @@ export class AssessmentAdminService {
     return this.http.put<QuestionBankItem>(`${this.url}/questions/${questionId}`, request);
   }
 
-  createAssessment(request: CreateAssessmentRequest): Observable<AssessmentRecord> {
-    return this.http.post<AssessmentRecord>(this.url, request);
+  createAssessment(request: CreateAssessmentRequest, skipGlobalErrorRedirect = false): Observable<AssessmentRecord> {
+    return this.http.post<AssessmentRecord>(this.url, request, undefined, skipGlobalErrorRedirect);
   }
 
-  publishAssessment(request: PublishAssessmentRequest): Observable<AssessmentRecord> {
-    return this.http.post<AssessmentRecord>(`${this.url}/publish`, request);
+  getAssessment(assessmentId: string): Observable<AssessmentRecord> {
+    return this.http.get<AssessmentRecord>(`${this.url}/${assessmentId}`);
+  }
+
+  updateAssessment(assessmentId: string, request: CreateAssessmentRequest, skipGlobalErrorRedirect = false): Observable<AssessmentRecord> {
+    return this.http.put<AssessmentRecord>(`${this.url}/${assessmentId}`, request, skipGlobalErrorRedirect);
+  }
+
+  publishAssessment(request: PublishAssessmentRequest, skipGlobalErrorRedirect = false): Observable<AssessmentRecord> {
+    return this.http.post<AssessmentRecord>(`${this.url}/publish`, request, undefined, skipGlobalErrorRedirect);
   }
 
   deleteQuestions(request: DeleteQuestionsRequest, skipGlobalErrorRedirect = false): Observable<DeleteQuestionsResponse> {

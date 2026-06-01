@@ -22,7 +22,7 @@
     </section>
   </div>
 
-  <form [formGroup]="form" class="editor-form" (ngSubmit)="saveToRepository()">
+  <form [formGroup]="form" class="editor-form" (ngSubmit)="saveToRepository()" novalidate>
     <section class="editor-card">
       <div class="section-title">Classification</div>
       <div class="form-grid form-grid-3">
@@ -113,10 +113,13 @@
       <label class="field">
         <span>Question Text *</span>
         <textarea rows="6" formControlName="questionText"></textarea>
+        <small *ngIf="questionTypeControl.value === 'fill in the blanks'">
+          Include a blank using underscore characters like <code>____</code> in the question text.
+        </small>
       </label>
     </section>
 
-    <section *ngIf="isMcq" class="editor-card">
+    <section *ngIf="usesSelectableOptions" class="editor-card">
       <div class="section-title">Options &amp; Correct Answer</div>
       <div class="options-list">
         <label *ngFor="let control of optionsArray.controls; let index = index" class="option-row">
@@ -127,7 +130,7 @@
       </div>
     </section>
 
-    <section *ngIf="!isMcq" class="editor-card">
+    <section *ngIf="!usesSelectableOptions" class="editor-card">
       <div class="section-title">Correct Answer</div>
       <label class="field">
         <span>Answer *</span>
@@ -154,7 +157,7 @@
 
     <div class="action-row">
       <button type="button" class="secondary-action" (click)="cancel()">Discard Changes</button>
-      <button type="submit" class="primary-action" [disabled]="isSaving || isLoading">{{ submitButtonLabel }}</button>
+      <button type="button" class="primary-action" [disabled]="isSaving || isLoading" (click)="saveToRepository()">{{ submitButtonLabel }}</button>
     </div>
   </form>
 </div>

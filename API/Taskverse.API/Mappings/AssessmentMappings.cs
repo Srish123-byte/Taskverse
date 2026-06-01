@@ -216,6 +216,37 @@ public static class AssessmentMappings
         };
     }
 
+    public static UpdateQuestionBankAssessmentDto ToDto(
+        this UpdateQuestionBankAssessmentRequestModel model,
+        Guid assessmentId,
+        Guid collegeId,
+        string updatedBy,
+        string requesterRole)
+    {
+        return new UpdateQuestionBankAssessmentDto
+        {
+            AssessmentId = assessmentId,
+            CollegeId = collegeId,
+            UpdatedBy = updatedBy,
+            RequesterRole = requesterRole,
+            AssessmentName = model.AssessmentName,
+            SubjectId = model.SubjectId,
+            SubjectName = model.SubjectName,
+            TopicId = model.TopicId,
+            TopicName = model.TopicName,
+            Instructions = model.Instructions?.Trim(),
+            AllowLateEntry = model.AllowLateEntry,
+            AllowQuestionReview = model.AllowQuestionReview,
+            NegativeMarking = model.NegativeMarking,
+            AssignedBatchIds = model.AssignedBatchIds,
+            QuestionIds = model.QuestionIds,
+            DurationMinutes = model.DurationMinutes,
+            TotalMarks = model.TotalMarks,
+            StartDateTime = UtcDateTime.Normalize(model.StartDateTime),
+            EndDateTime = UtcDateTime.Normalize(model.EndDateTime)
+        };
+    }
+
     public static AssessmentTopicCatalogResponseModel ToResponseModel(this AssessmentTopicCatalogDto dto)
     {
         return new AssessmentTopicCatalogResponseModel

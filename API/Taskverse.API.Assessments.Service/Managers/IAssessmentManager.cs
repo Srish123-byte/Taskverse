@@ -6,6 +6,8 @@ namespace Taskverse.API.Assessments.Service.Managers;
 public interface IAssessmentManager
 {
     Task<Assessment> CreateAssessment(Assessment assessment, List<Guid> questionIds);
+    Task<Assessment> GetAssessment(Guid assessmentId, Guid collegeId, string requesterRole, string requesterName);
+    Task<Assessment> UpdateAssessment(Guid assessmentId, UpdateAssessmentRequest request);
     Task<Assessment> ScheduleAssessment(Assessment assessment, List<Guid> questionIds);
     Task DeleteAssessment(Guid assessmentId, DeleteAssessmentRequest request);
     Task<Assessment> PublishAssessment(Guid assessmentId);

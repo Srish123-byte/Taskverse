@@ -39,6 +39,25 @@ public class PublishQuestionBankAssessmentRequestModel
     public DateTime? EndDateTime { get; set; }
 }
 
+public class UpdateQuestionBankAssessmentRequestModel
+{
+    public string AssessmentName { get; set; } = string.Empty;
+    public Guid? SubjectId { get; set; }
+    public string? SubjectName { get; set; }
+    public Guid? TopicId { get; set; }
+    public string? TopicName { get; set; }
+    public string? Instructions { get; set; }
+    public bool AllowLateEntry { get; set; }
+    public bool AllowQuestionReview { get; set; }
+    public bool NegativeMarking { get; set; }
+    public Guid[] AssignedBatchIds { get; set; } = [];
+    public List<Guid> QuestionIds { get; set; } = [];
+    public int DurationMinutes { get; set; }
+    public int TotalMarks { get; set; }
+    public DateTime? StartDateTime { get; set; }
+    public DateTime? EndDateTime { get; set; }
+}
+
 public class QuestionBankAssessmentResponseModel
 {
     public Guid AssessmentId { get; set; }

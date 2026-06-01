@@ -11,9 +11,9 @@
   <div class="builder-scroll-shell">
     <section class="page-head">
       <div class="head-copy">
-        <span class="head-kicker">Create New</span>
-        <h2>Create New Assessment</h2>
-        <p>Design, schedule and assign high-precision assessments with role-aware batch and topic access.</p>
+        <span class="head-kicker">{{ pageKicker }}</span>
+        <h2>{{ pageTitle }}</h2>
+        <p>{{ pageDescription }}</p>
       </div>
 
       <a class="back-link" [routerLink]="['/', ...backRouteSegments]">
@@ -22,7 +22,11 @@
       </a>
     </section>
 
-    <section class="builder-layout">
+    <section *ngIf="hasBlockingLoadError" class="state-shell">
+      <div class="inline-error-state">{{ assessmentLoadErrorMessage }}</div>
+    </section>
+
+    <section *ngIf="!hasBlockingLoadError" class="builder-layout">
       <div class="builder-main">
         <article class="surface-card" *ngIf="!isInitialPageLoading">
           <div class="card-title-row">
@@ -398,7 +402,7 @@
   </div>
 
   <div
-    *ngIf="!isInitialPageLoading && submissionErrorMessage"
+    *ngIf="!isInitialPageLoading && !hasBlockingLoadError && submissionErrorMessage"
     class="validation-popup-backdrop"
     (click)="closeSubmissionError()">
     <section class="validation-popup" (click)="$event.stopPropagation()">
@@ -407,15 +411,15 @@
     </section>
   </div>
 
-  <div class="builder-footer-shell" *ngIf="!isInitialPageLoading">
+  <div class="builder-footer-shell" *ngIf="!isInitialPageLoading && !hasBlockingLoadError">
     <a class="builder-footer-cancel" [routerLink]="['/', ...backRouteSegments]">Cancel</a>
 
     <div class="footer-actions">
-      <button type="button" class="secondary-action" [disabled]="isSubmitting" (click)="saveDraft()">
+      <button *ngIf="!isEditMode" type="button" class="secondary-action" [disabled]="isSubmitting" (click)="saveDraft()">
         {{ saveDraftButtonLabel }}
       </button>
       <button type="button" class="primary-action" [disabled]="isSubmitting" (click)="scheduleAssessment()">
-        {{ scheduleButtonLabel }}
+        {{ primaryActionLabel }}
       </button>
     </div>
   </div>

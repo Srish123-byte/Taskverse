@@ -76,6 +76,46 @@ public record PublishQuestionBankAssessmentModel(
     [property: JsonProperty("end_datetime")]
     DateTime? EndDateTime);
 
+public record UpdateQuestionBankAssessmentModel(
+    [property: JsonProperty("assessment_id")]
+    Guid AssessmentId,
+    [property: JsonProperty("college_id")]
+    Guid CollegeId,
+    [property: JsonProperty("updated_by")]
+    string UpdatedBy,
+    [property: JsonProperty("requester_role")]
+    string RequesterRole,
+    [property: JsonProperty("assessment_name")]
+    string AssessmentName,
+    [property: JsonProperty("subject_id")]
+    Guid? SubjectId,
+    [property: JsonProperty("subject_name")]
+    string? SubjectName,
+    [property: JsonProperty("topic_id")]
+    Guid? TopicId,
+    [property: JsonProperty("topic_name")]
+    string? TopicName,
+    [property: JsonProperty("instructions")]
+    string? Instructions,
+    [property: JsonProperty("allow_late_entry")]
+    bool AllowLateEntry,
+    [property: JsonProperty("allow_question_review")]
+    bool AllowQuestionReview,
+    [property: JsonProperty("negative_marking")]
+    bool NegativeMarking,
+    [property: JsonProperty("assigned_batch_ids")]
+    Guid[] AssignedBatchIds,
+    [property: JsonProperty("question_ids")]
+    List<Guid> QuestionIds,
+    [property: JsonProperty("duration_minutes")]
+    int DurationMinutes,
+    [property: JsonProperty("total_marks")]
+    int TotalMarks,
+    [property: JsonProperty("start_datetime")]
+    DateTime? StartDateTime,
+    [property: JsonProperty("end_datetime")]
+    DateTime? EndDateTime);
+
 public record DeleteAssessmentModel(
     [property: JsonProperty("assessment_id")]
     Guid AssessmentId,

@@ -64,6 +64,39 @@ public static class AssessmentMappings
         };
     }
 
+    public static Assessment ToEntity(
+        this UpdateAssessmentRequest request,
+        AssessmentSettings settings,
+        AssessmentStatus assessmentStatus)
+    {
+        return new Assessment
+        {
+            AssessmentId = request.AssessmentId,
+            CollegeId = request.CollegeId,
+            SubjectId = request.SubjectId,
+            SubjectName = request.SubjectName?.Trim(),
+            TopicId = request.TopicId,
+            TopicName = request.TopicName?.Trim(),
+            AssessmentName = request.AssessmentName.Trim(),
+            AssessmentStatus = assessmentStatus,
+            DurationMinutes = request.DurationMinutes,
+            TotalMarks = request.TotalMarks,
+            StartDateTime = UtcDateTime.Normalize(request.StartDateTime),
+            EndDateTime = UtcDateTime.Normalize(request.EndDateTime),
+            Instructions = string.IsNullOrWhiteSpace(request.Instructions) ? null : request.Instructions.Trim(),
+            AssignedBatchIds = request.AssignedBatchIds
+                .Where(batchId => batchId != Guid.Empty)
+                .Distinct()
+                .ToArray(),
+            AllowLateEntry = request.AllowLateEntry,
+            ShowResultsImmediately = settings.IsResultsAvailableImmediately,
+            AllowQuestionReview = request.AllowQuestionReview,
+            NegativeMarking = request.NegativeMarking,
+            IsTotalMarksAutoCalculated = settings.IsTotalMarksAutoCalculated,
+            CreatedBy = request.UpdatedBy
+        };
+    }
+
     public static AssessmentRecord ToRecord(this Assessment assessment)
     {
         return new AssessmentRecord(

@@ -133,7 +133,7 @@
             [disabled]="currentPage === 1"
             (click)="prevPage()"
             aria-label="Previous page">
-            &#8249;
+            <mat-icon class="pagination-angle-icon" aria-hidden="true">&#8249;</mat-icon>
           </button>
 
           <button
@@ -151,7 +151,7 @@
             [disabled]="currentPage === totalPages"
             (click)="nextPage()"
             aria-label="Next page">
-            &#8250;
+            <mat-icon class="pagination-angle-icon" aria-hidden="true">&#8250;</mat-icon>
           </button>
         </div>
       </div>

@@ -28,6 +28,43 @@ public class AssessmentController : ControllerBase
         _logger = logger;
     }
 
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType(typeof(AssessmentRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<AssessmentRecord>> GetAssessment(
+        Guid id,
+        [FromQuery] Guid collegeId,
+        [FromQuery] string requesterRole,
+        [FromQuery] string requesterName)
+    {
+        try
+        {
+            var assessment = await _assessmentManager.GetAssessment(id, collegeId, requesterRole, requesterName);
+            return Ok(assessment.ToRecord());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while retrieving the assessment.");
+        }
+    }
+
     [HttpPost]
     [ProducesResponseType(typeof(AssessmentRecord), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -78,6 +115,67 @@ public class AssessmentController : ControllerBase
             return BuildUnexpectedError(
                 ex,
                 "An unexpected error occurred while creating the assessment.");
+        }
+    }
+
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(AssessmentRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<AssessmentRecord>> UpdateAssessment(Guid id, [FromBody] UpdateAssessmentRequest request)
+    {
+        if (request is null)
+        {
+            return BadRequest(new { message = "Assessment update request is required." });
+        }
+
+        if (request.AssessmentId != Guid.Empty && request.AssessmentId != id)
+        {
+            return BadRequest(new { message = "Assessment id in route and body must match." });
+        }
+
+        request.AssessmentId = id;
+
+        var instructionValidationError = ValidateInstructionWordLimit(request.Instructions);
+        if (instructionValidationError is not null)
+        {
+            return BadRequest(new { message = instructionValidationError });
+        }
+
+        try
+        {
+            var assessment = await _assessmentManager.UpdateAssessment(id, request);
+            return Ok(assessment.ToRecord());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (AssessmentQuestionLimitException ex)
+        {
+            return UnprocessableEntity(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while updating the assessment.");
         }
     }
 

@@ -1,6 +1,6 @@
-import { ChangeDetectorRef, Component, HostBinding, Input, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, HostBinding, Input, OnDestroy, OnInit } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Router } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import {
   AssessmentRecord,
   AssessmentAdminService,
@@ -14,11 +14,14 @@ import {
 } from '../../services/api/assessment-admin.service';
 import { RouteAddress } from '../../constants/routes.constants';
 import { CollegeAdminService, CollegeBatchSummary, CollegeClassSummary } from '../../services/api/college-admin.service';
+import { Subject, takeUntil } from 'rxjs';
 
 interface DifficultyOption {
   value: string;
   label: string;
 }
+
+type AssessmentBuilderMode = 'create' | 'edit';
 
 @Component({
   selector: 'app-assessment-creator',
@@ -26,7 +29,7 @@ interface DifficultyOption {
   templateUrl: './assessment-creator.component.html',
   styleUrl: './assessment-creator.component.scss'
 })
-export class AssessmentCreatorComponent implements OnInit {
+export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   private static readonly maxInstructionWordCount = 1000;
   @Input() theme: 'college-admin' | 'trainer' = 'college-admin';
   @Input() backRoute = '';
@@ -41,10 +44,13 @@ export class AssessmentCreatorComponent implements OnInit {
   isCatalogLoading = true;
   isQuestionBankLoading = true;
   isAssignmentLoading = true;
+  isAssessmentLoading = false;
   catalogErrorMessage = '';
   questionBankErrorMessage = '';
   assignmentErrorMessage = '';
+  assessmentLoadErrorMessage = '';
   private hasStartedAssignmentLoad = false;
+  private readonly destroy$ = new Subject<void>();
 
   subjectCatalog: AssessmentSubjectTopicCatalog = { subjects: [] };
   questions: QuestionBankItem[] = [];
@@ -70,6 +76,8 @@ export class AssessmentCreatorComponent implements OnInit {
   negativeMarking = false;
   isSubmitting = false;
   submissionErrorMessage = '';
+  builderMode: AssessmentBuilderMode = 'create';
+  editingAssessmentId: string | null = null;
   private pendingSubmitAction: 'draft' | 'schedule' | null = null;
 
   questionSearchTerm = '';
@@ -95,9 +103,53 @@ export class AssessmentCreatorComponent implements OnInit {
   }
 
   get currentAssessmentRoute(): string {
-    return this.theme === 'trainer'
-      ? RouteAddress.Trainer.NewAssessment
-      : RouteAddress.CollegeAdmin.NewAssessment;
+    const baseRoute = this.theme === 'trainer'
+      ? (this.isEditMode ? RouteAddress.Trainer.EditAssessment : RouteAddress.Trainer.NewAssessment)
+      : (this.isEditMode ? RouteAddress.CollegeAdmin.EditAssessment : RouteAddress.CollegeAdmin.NewAssessment);
+
+    if (this.isEditMode && this.editingAssessmentId) {
+      return `${baseRoute}/${this.editingAssessmentId}`;
+    }
+
+    return baseRoute;
+  }
+
+  get isEditMode(): boolean {
+    return this.builderMode === 'edit';
+  }
+
+  get pageKicker(): string {
+    return this.isEditMode ? 'Edit Assessment' : 'Create New';
+  }
+
+  get pageTitle(): string {
+    return this.isEditMode ? 'Edit Assessment' : 'Create New Assessment';
+  }
+
+  get pageDescription(): string {
+    return this.isEditMode
+      ? 'Review and update the selected assessment with the latest batches, questions, timing, and instructions.'
+      : 'Design, schedule and assign high-precision assessments with role-aware batch and topic access.';
+  }
+
+  get primaryActionLabel(): string {
+    if (!this.isEditMode) {
+      return this.scheduleButtonLabel;
+    }
+
+    if (this.isSubmitting) {
+      return 'Updating...';
+    }
+
+    return 'Update Assessment';
+  }
+
+  get isInitialPageLoading(): boolean {
+    return this.isCatalogLoading || this.isQuestionBankLoading || (this.isEditMode && this.isAssessmentLoading);
+  }
+
+  get hasBlockingLoadError(): boolean {
+    return this.isEditMode && !!this.assessmentLoadErrorMessage;
   }
 
   get selectedBatchCount(): number {
@@ -146,10 +198,6 @@ export class AssessmentCreatorComponent implements OnInit {
     }
 
     return 'Schedule Assessment';
-  }
-
-  get isInitialPageLoading(): boolean {
-    return this.isCatalogLoading || this.isQuestionBankLoading;
   }
 
   get assignmentClasses(): AssessmentAssignmentClass[] {
@@ -219,12 +267,40 @@ export class AssessmentCreatorComponent implements OnInit {
     private readonly collegeAdminService: CollegeAdminService,
     private readonly snackBar: MatSnackBar,
     private readonly changeDetectorRef: ChangeDetectorRef,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly activatedRoute: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
     this.loadSubjectTopicCatalog();
     this.loadQuestionBank();
+
+    this.activatedRoute.paramMap
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(paramMap => this.applyRouteContext(paramMap));
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  saveDraft(): void {
+    if (this.isEditMode) {
+      this.updateAssessment();
+      return;
+    }
+
+    this.submitAssessment('draft');
+  }
+
+  scheduleAssessment(): void {
+    if (this.isEditMode) {
+      this.updateAssessment();
+      return;
+    }
+
+    this.submitAssessment('schedule');
   }
 
   onSubjectChange(): void {
@@ -296,14 +372,6 @@ export class AssessmentCreatorComponent implements OnInit {
     void this.router.navigateByUrl(`/${this.addQuestionRoute}`, {
       state: { returnUrl: `/${this.currentAssessmentRoute}` }
     });
-  }
-
-  saveDraft(): void {
-    this.submitAssessment('draft');
-  }
-
-  scheduleAssessment(): void {
-    this.submitAssessment('schedule');
   }
 
   trackByQuestionId(_: number, question: QuestionBankItem): string {
@@ -448,6 +516,24 @@ export class AssessmentCreatorComponent implements OnInit {
     this.loadAssignmentCatalog();
   }
 
+  private applyRouteContext(paramMap: ParamMap): void {
+    const assessmentId = paramMap.get('id');
+
+    if (assessmentId) {
+      this.builderMode = 'edit';
+      this.editingAssessmentId = assessmentId;
+      this.loadAssessmentForEdit(assessmentId);
+      return;
+    }
+
+    this.builderMode = 'create';
+    this.editingAssessmentId = null;
+    this.isAssessmentLoading = false;
+    this.assessmentLoadErrorMessage = '';
+    this.resetBuilderForm();
+    this.changeDetectorRef.detectChanges();
+  }
+
   private submitAssessment(action: 'draft' | 'schedule'): void {
     if (this.isSubmitting) {
       return;
@@ -471,8 +557,8 @@ export class AssessmentCreatorComponent implements OnInit {
     this.submissionErrorMessage = '';
 
     const request$ = action === 'draft'
-      ? this.assessmentAdminService.createAssessment(payload)
-      : this.assessmentAdminService.publishAssessment(payload);
+      ? this.assessmentAdminService.createAssessment(payload, true)
+      : this.assessmentAdminService.publishAssessment(payload, true);
 
     request$.subscribe({
       next: assessment => {
@@ -484,11 +570,51 @@ export class AssessmentCreatorComponent implements OnInit {
       },
       error: error => {
         this.handleSubmissionError(
+          this.getAssessmentSubmissionErrorMessage(error, action));
+      }
+    });
+  }
+
+  private updateAssessment(): void {
+    if (this.isSubmitting || !this.editingAssessmentId) {
+      return;
+    }
+
+    const validationError = this.validateAssessmentSubmission();
+    if (validationError) {
+      this.submissionErrorMessage = validationError;
+      this.changeDetectorRef.detectChanges();
+      return;
+    }
+
+    const payload = this.buildCreateAssessmentPayload();
+    if (!payload) {
+      this.changeDetectorRef.detectChanges();
+      return;
+    }
+
+    this.isSubmitting = true;
+    this.pendingSubmitAction = null;
+    this.submissionErrorMessage = '';
+
+    this.assessmentAdminService.updateAssessment(this.editingAssessmentId, payload, true).subscribe({
+      next: assessment => {
+        this.isSubmitting = false;
+        this.submissionErrorMessage = '';
+        this.applyAssessmentRecord(assessment);
+        this.snackBar.open('Assessment updated successfully.', 'Close', {
+          duration: 3500,
+          horizontalPosition: 'center',
+          verticalPosition: 'top',
+          panelClass: ['question-editor-success-snackbar']
+        });
+        this.changeDetectorRef.detectChanges();
+      },
+      error: error => {
+        this.handleSubmissionError(
           error?.error?.detail ||
           error?.error?.message ||
-          (action === 'draft'
-            ? 'Unable to create the assessment right now.'
-            : 'Unable to publish the assessment right now.'));
+          'Unable to update the assessment right now.');
       }
     });
   }
@@ -512,6 +638,22 @@ export class AssessmentCreatorComponent implements OnInit {
     this.pendingSubmitAction = null;
     this.submissionErrorMessage = message;
     this.changeDetectorRef.detectChanges();
+  }
+
+  private getAssessmentSubmissionErrorMessage(error: any, action: 'draft' | 'schedule'): string {
+    const detail = error?.error?.detail;
+    const message = error?.error?.message;
+    const normalizedMessage = `${detail ?? ''} ${message ?? ''}`.toLowerCase();
+
+    if (normalizedMessage.includes('already been created for the selected batches')) {
+      return 'Assessment has already been created for the selected batches.';
+    }
+
+    return detail ||
+      message ||
+      (action === 'draft'
+        ? 'Unable to create the assessment right now.'
+        : 'Unable to publish the assessment right now.');
   }
 
   private validateAssessmentSubmission(): string {
@@ -606,7 +748,64 @@ export class AssessmentCreatorComponent implements OnInit {
     return totalMarks;
   }
 
+  private loadAssessmentForEdit(assessmentId: string): void {
+    this.isAssessmentLoading = true;
+    this.assessmentLoadErrorMessage = '';
+    this.submissionErrorMessage = '';
+
+    this.assessmentAdminService.getAssessment(assessmentId).subscribe({
+      next: assessment => {
+        this.applyAssessmentRecord(assessment);
+        this.isAssessmentLoading = false;
+        this.changeDetectorRef.detectChanges();
+      },
+      error: error => {
+        this.isAssessmentLoading = false;
+        this.assessmentLoadErrorMessage =
+          error?.error?.detail ||
+          error?.error?.message ||
+          'Unable to load the selected assessment right now.';
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
+  private applyAssessmentRecord(assessment: AssessmentRecord): void {
+    this.assessmentName = assessment.assessmentName ?? '';
+    this.selectedSubjectId = assessment.subjectId ?? '';
+    this.selectedTopicId = assessment.topicId ?? '';
+    this.selectedDifficulty = 'all';
+    this.selectedQuestionBankSubjectId = assessment.subjectId ?? '';
+    this.selectedQuestionBankTopicId = assessment.topicId ?? '';
+    this.durationMinutes = assessment.durationMinutes ?? 60;
+    this.startDate = this.toDateTimeLocalInputValue(assessment.startDateTime);
+    this.endDate = this.toDateTimeLocalInputValue(assessment.endDateTime);
+    this.instructions = assessment.instructions ?? '';
+    this.allowLateEntry = assessment.allowLateEntry;
+    this.showResultsImmediately = assessment.showResultsImmediately;
+    this.allowQuestionReview = assessment.allowQuestionReview;
+    this.negativeMarking = assessment.negativeMarking;
+    this.selectedBatchIds = new Set(assessment.assignedBatchIds ?? []);
+    this.selectedQuestionIds = new Set(assessment.questionIds ?? []);
+    this.questionSearchTerm = '';
+    this.onSubjectChange();
+    this.onQuestionBankSubjectChange();
+  }
+
   private resetBuilderAfterSubmission(assessment: AssessmentRecord): void {
+    if (this.isEditMode) {
+      this.applyAssessmentRecord(assessment);
+      return;
+    }
+
+    this.resetBuilderForm();
+    this.allowLateEntry = assessment.allowLateEntry;
+    this.showResultsImmediately = assessment.showResultsImmediately;
+    this.allowQuestionReview = assessment.allowQuestionReview;
+    this.negativeMarking = assessment.negativeMarking;
+  }
+
+  private resetBuilderForm(): void {
     this.assessmentName = '';
     this.selectedSubjectId = '';
     this.selectedTopicId = '';
@@ -618,10 +817,10 @@ export class AssessmentCreatorComponent implements OnInit {
     this.startDate = '';
     this.endDate = '';
     this.instructions = '';
-    this.allowLateEntry = assessment.allowLateEntry;
-    this.showResultsImmediately = assessment.showResultsImmediately;
-    this.allowQuestionReview = assessment.allowQuestionReview;
-    this.negativeMarking = assessment.negativeMarking;
+    this.allowLateEntry = false;
+    this.showResultsImmediately = false;
+    this.allowQuestionReview = true;
+    this.negativeMarking = false;
     this.questionSearchTerm = '';
     this.selectedBatchIds.clear();
     this.selectedQuestionIds.clear();
@@ -662,6 +861,19 @@ export class AssessmentCreatorComponent implements OnInit {
     const minutes = `${value.getMinutes()}`.padStart(2, '0');
 
     return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
+
+  private toDateTimeLocalInputValue(value?: string | null): string {
+    if (!value) {
+      return '';
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return '';
+    }
+
+    return this.formatDateTimeLocalValue(parsed);
   }
 
   private mapCollegeClassToAssignmentClass(classItem: CollegeClassSummary): AssessmentAssignmentClass {
