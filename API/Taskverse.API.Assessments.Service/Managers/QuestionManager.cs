@@ -7,6 +7,9 @@ using Taskverse.Data.Enums;
 
 namespace Taskverse.API.Assessments.Service.Managers;
 
+/// <summary>
+/// Handles validation, retrieval, update, delete, and search operations for question-bank entries.
+/// </summary>
 public class QuestionManager : IQuestionManager
 {
     private static readonly Regex FillInTheBlankPlaceholderPattern = new("_{3,}", RegexOptions.Compiled);
@@ -23,6 +26,7 @@ public class QuestionManager : IQuestionManager
         _context = context;
     }
 
+    /// <inheritdoc />
     public async Task<List<Question>> CreateQuestions(List<QuestionImportItem> questions)
     {
         if (questions.Count == 0)
@@ -113,6 +117,7 @@ public class QuestionManager : IQuestionManager
         return uniqueQuestionsToCreate;
     }
 
+    /// <inheritdoc />
     public async Task<Question> GetQuestionById(Guid collegeId, Guid questionId)
     {
         if (collegeId == Guid.Empty)
@@ -143,6 +148,7 @@ public class QuestionManager : IQuestionManager
         return question;
     }
 
+    /// <inheritdoc />
     public async Task<Question> UpdateQuestion(Guid questionId, Question updatedQuestion, string? requesterRole)
     {
         await NormalizeSubjectTopicAsync(updatedQuestion);
@@ -218,6 +224,7 @@ public class QuestionManager : IQuestionManager
         }
     }
 
+    /// <inheritdoc />
     public async Task<List<Guid>> DeleteQuestions(
         string createdBy,
         string? requesterRole,
@@ -349,6 +356,7 @@ public class QuestionManager : IQuestionManager
         return statusSet;
     }
 
+    /// <inheritdoc />
     public async Task<(List<Question> Items, int TotalCount)> SearchQuestionBank(
         Guid collegeId,
         int? difficultyLevel,

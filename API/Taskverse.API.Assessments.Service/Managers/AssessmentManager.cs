@@ -9,6 +9,9 @@ using Taskverse.Data.DataAccess;
 
 namespace Taskverse.API.Assessments.Service.Managers;
 
+/// <summary>
+/// Coordinates assessment persistence, validation, authorization, and student attempt workflows.
+/// </summary>
 public class AssessmentManager : IAssessmentManager
 {
     private const int DefaultPageNumber = 1;
@@ -35,9 +38,11 @@ public class AssessmentManager : IAssessmentManager
         _logger = logger;
     }
 
+    /// <inheritdoc />
     public async Task<Assessment> CreateAssessment(Assessment assessment, List<Guid> questionIds)
         => await CreateAssessmentInternalAsync(assessment, questionIds, AssessmentStatus.Draft);
 
+    /// <inheritdoc />
     public async Task<Assessment> GetAssessment(Guid assessmentId, Guid collegeId, string requesterRole, string requesterName)
     {
         if (collegeId == Guid.Empty)
@@ -60,6 +65,7 @@ public class AssessmentManager : IAssessmentManager
         return assessment;
     }
 
+    /// <inheritdoc />
     public async Task<Assessment> UpdateAssessment(Guid assessmentId, UpdateAssessmentRequest request)
     {
         ValidateUpdateAssessmentRequest(request);
@@ -104,6 +110,7 @@ public class AssessmentManager : IAssessmentManager
         return assessment;
     }
 
+    /// <inheritdoc />
     public async Task<Assessment> ScheduleAssessment(Assessment assessment, List<Guid> questionIds)
         => await CreateAssessmentInternalAsync(assessment, questionIds, AssessmentStatus.Scheduled);
 
@@ -147,6 +154,7 @@ public class AssessmentManager : IAssessmentManager
         return assessment;
     }
 
+    /// <inheritdoc />
     public async Task DeleteAssessment(Guid assessmentId, DeleteAssessmentRequest request)
     {
         ValidateDeleteAssessmentRequest(request);
@@ -166,6 +174,7 @@ public class AssessmentManager : IAssessmentManager
         await SaveChangesWithWrapAsync("Unable to delete the assessment.");
     }
 
+    /// <inheritdoc />
     public async Task<Assessment> PublishAssessment(Guid assessmentId)
     {
         var assessment = await _context.Assessments
@@ -203,6 +212,7 @@ public class AssessmentManager : IAssessmentManager
         return assessment;
     }
 
+    /// <inheritdoc />
     public async Task<AssessmentSubjectTopicCatalogRecord> GetSubjectTopicCatalog(AssessmentAccessibleBatchesRequest request)
     {
         ValidateAccessibleBatchesRequest(request);
@@ -259,6 +269,7 @@ public class AssessmentManager : IAssessmentManager
         return new AssessmentSubjectTopicCatalogRecord(subjects);
     }
 
+    /// <inheritdoc />
     public async Task<AssessmentAssignmentCatalogRecord> GetTrainerAssignedClassesAndBatches(AssessmentAccessibleBatchesRequest request)
     {
         ValidateTrainerAssignmentRequest(request);
@@ -343,6 +354,7 @@ public class AssessmentManager : IAssessmentManager
         return new AssessmentAssignmentCatalogRecord(classRecords);
     }
 
+    /// <inheritdoc />
     public async Task<AssessmentManagementSearchResultRecord> SearchAssessments(AssessmentManagementSearchRequest request)
     {
         ValidateAssessmentManagementSearchRequest(request);
@@ -421,6 +433,7 @@ public class AssessmentManager : IAssessmentManager
             safePageSize);
     }
 
+    /// <inheritdoc />
     public async Task<PagedAssessmentQuestionListRecord> GetAssessmentQuestionList(
         Guid assessmentId,
         int pageNumber,
@@ -469,6 +482,7 @@ public class AssessmentManager : IAssessmentManager
             safePageSize);
     }
 
+    /// <inheritdoc />
     public async Task<List<StudentAssessmentListItemRecord>> GetStudentAssessments(
         Guid studentUserId,
         IReadOnlyCollection<string> assessmentStatuses)
@@ -499,6 +513,7 @@ public class AssessmentManager : IAssessmentManager
             : await GetActiveStudentAssessmentsAsync(student, student.BatchId.Value, normalizedStatuses);
     }
 
+    /// <inheritdoc />
     public async Task<StudentAssessmentDetailRecord> GetStudentAssessmentDetail(Guid assessmentId, Guid studentUserId)
     {
         if (assessmentId == Guid.Empty)
@@ -540,6 +555,7 @@ public class AssessmentManager : IAssessmentManager
         return assessment.ToStudentAssessmentDetailRecord(assessment.AssessmentQuestions.Count);
     }
 
+    /// <inheritdoc />
     public async Task<StudentAssessmentStartRecord> StartStudentAssessment(Guid assessmentId, Guid studentUserId)
     {
         ValidateStudentAttemptRequest(assessmentId, studentUserId);
@@ -592,6 +608,7 @@ public class AssessmentManager : IAssessmentManager
         return attempt.ToStudentAssessmentStartRecord();
     }
 
+    /// <inheritdoc />
     public async Task<StudentAttemptRecoveryRecord> GetStudentAttemptRecovery(Guid attemptId, Guid studentUserId)
     {
         if (attemptId == Guid.Empty)
@@ -615,6 +632,7 @@ public class AssessmentManager : IAssessmentManager
         return await BuildStudentAttemptRecoveryAsync(attempt, assessment);
     }
 
+    /// <inheritdoc />
     public async Task<StudentAttemptAnswerRecord> SaveStudentAttemptAnswer(
         Guid attemptId,
         Guid questionId,
@@ -681,6 +699,7 @@ public class AssessmentManager : IAssessmentManager
         return savedAnswer.ToStudentAttemptAnswerRecord();
     }
 
+    /// <inheritdoc />
     public async Task<StudentAttemptSubmitRecord> SubmitStudentAttempt(Guid attemptId, Guid studentUserId)
     {
         if (attemptId == Guid.Empty)
