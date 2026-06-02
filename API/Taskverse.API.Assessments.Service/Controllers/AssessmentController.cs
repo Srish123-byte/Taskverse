@@ -105,7 +105,7 @@ public class AssessmentController : ControllerBase
         {
             var assessment = await _assessmentManager.CreateAssessment(
                 request.ToEntity(_assessmentSettings),
-                request.QuestionIds);
+                request.QuestionIds ?? []);
 
             var response = assessment.ToRecord();
             return Created($"api/assessments/{assessment.AssessmentId}", response);

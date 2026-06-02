@@ -229,6 +229,7 @@ public static class AssessmentMappings
             CollegeId = collegeId,
             UpdatedBy = updatedBy,
             RequesterRole = requesterRole,
+            IsDraftSave = model.IsDraftSave,
             AssessmentName = model.AssessmentName,
             SubjectId = model.SubjectId,
             SubjectName = model.SubjectName,

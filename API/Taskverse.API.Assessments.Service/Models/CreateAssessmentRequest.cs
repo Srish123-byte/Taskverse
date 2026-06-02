@@ -14,8 +14,6 @@ public class CreateAssessmentRequest
     [JsonPropertyName("created_by")]
     public string CreatedBy { get; set; } = string.Empty;
 
-    [Required]
-    [MaxLength(120)]
     [JsonPropertyName("assessment_name")]
     public string AssessmentName { get; set; } = string.Empty;
 
@@ -49,11 +47,9 @@ public class CreateAssessmentRequest
     [JsonPropertyName("assigned_batch_ids")]
     public Guid[] AssignedBatchIds { get; set; } = [];
 
-    [Required]
     [JsonPropertyName("question_ids")]
     public List<Guid> QuestionIds { get; set; } = [];
 
-    [Range(1, int.MaxValue)]
     [JsonPropertyName("duration_minutes")]
     public int DurationMinutes { get; set; }
 
@@ -152,8 +148,6 @@ public class UpdateAssessmentRequest
     [JsonPropertyName("requester_role")]
     public string RequesterRole { get; set; } = string.Empty;
 
-    [Required]
-    [MaxLength(120)]
     [JsonPropertyName("assessment_name")]
     public string AssessmentName { get; set; } = string.Empty;
 
@@ -187,11 +181,9 @@ public class UpdateAssessmentRequest
     [JsonPropertyName("assigned_batch_ids")]
     public Guid[] AssignedBatchIds { get; set; } = [];
 
-    [Required]
     [JsonPropertyName("question_ids")]
     public List<Guid> QuestionIds { get; set; } = [];
 
-    [Range(1, int.MaxValue)]
     [JsonPropertyName("duration_minutes")]
     public int DurationMinutes { get; set; }
 
@@ -204,6 +196,9 @@ public class UpdateAssessmentRequest
 
     [JsonPropertyName("end_datetime")]
     public DateTime? EndDateTime { get; set; }
+
+    [JsonPropertyName("is_draft_save")]
+    public bool IsDraftSave { get; set; }
 }
 
 public class DeleteAssessmentRequest

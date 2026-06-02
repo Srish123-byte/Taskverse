@@ -64,6 +64,7 @@ public class UpdateQuestionBankAssessmentDto
     public int TotalMarks { get; set; }
     public DateTime? StartDateTime { get; set; }
     public DateTime? EndDateTime { get; set; }
+    public bool IsDraftSave { get; set; }
 }
 
 public class DeleteAssessmentDto

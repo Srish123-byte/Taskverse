@@ -141,6 +141,7 @@ export interface CreateAssessmentRequest {
   totalMarks: number;
   startDateTime?: string | null;
   endDateTime?: string | null;
+  isDraftSave?: boolean;
 }
 
 export interface PublishAssessmentRequest extends CreateAssessmentRequest {

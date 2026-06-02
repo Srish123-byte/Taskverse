@@ -73,7 +73,10 @@ public class AssessmentsController : TaskverseBaseController
 
         try
         {
-            var trainerBatchAccessCheck = await EnsureTrainerCanAssignRequestedBatches(collegeId, model.AssignedBatchIds);
+            var trainerBatchAccessCheck = await EnsureTrainerCanAssignRequestedBatches(
+                collegeId,
+                model.AssignedBatchIds,
+                requireAtLeastOneBatch: false);
             if (trainerBatchAccessCheck is not null) return trainerBatchAccessCheck;
 
             var dto = await _assessmentOrchestrator.CreateAssessment(
@@ -201,7 +204,10 @@ public class AssessmentsController : TaskverseBaseController
 
         try
         {
-            var trainerBatchAccessCheck = await EnsureTrainerCanAssignRequestedBatches(collegeId, model.AssignedBatchIds);
+            var trainerBatchAccessCheck = await EnsureTrainerCanAssignRequestedBatches(
+                collegeId,
+                model.AssignedBatchIds,
+                requireAtLeastOneBatch: !model.IsDraftSave);
             if (trainerBatchAccessCheck is not null) return trainerBatchAccessCheck;
 
             var dto = await _assessmentOrchestrator.UpdateAssessment(
@@ -1445,7 +1451,10 @@ public class AssessmentsController : TaskverseBaseController
             ?? "unknown-user";
     }
 
-    private async Task<IActionResult?> EnsureTrainerCanAssignRequestedBatches(Guid collegeId, IEnumerable<Guid>? requestedBatchIds)
+    private async Task<IActionResult?> EnsureTrainerCanAssignRequestedBatches(
+        Guid collegeId,
+        IEnumerable<Guid>? requestedBatchIds,
+        bool requireAtLeastOneBatch = true)
     {
         if (!User.IsInRole(TrainerRole))
         {
@@ -1459,6 +1468,11 @@ public class AssessmentsController : TaskverseBaseController
 
         if (normalizedBatchIds.Length == 0)
         {
+            if (!requireAtLeastOneBatch)
+            {
+                return null;
+            }
+
             return StatusCode(StatusCodes.Status403Forbidden, new
             {
                 message = "Trainer assessments must be assigned to at least one batch."

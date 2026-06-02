@@ -415,6 +415,9 @@
     <a class="builder-footer-cancel" [routerLink]="['/', ...backRouteSegments]">Cancel</a>
 
     <div class="footer-actions">
+      <button *ngIf="isEditMode" type="button" class="secondary-action" [disabled]="isSubmitting" (click)="saveDraft()">
+        {{ saveDraftButtonLabel }}
+      </button>
       <button *ngIf="!isEditMode" type="button" class="secondary-action" [disabled]="isSubmitting" (click)="saveDraft()">
         {{ saveDraftButtonLabel }}
       </button>

@@ -114,7 +114,9 @@ public record UpdateQuestionBankAssessmentModel(
     [property: JsonProperty("start_datetime")]
     DateTime? StartDateTime,
     [property: JsonProperty("end_datetime")]
-    DateTime? EndDateTime);
+    DateTime? EndDateTime,
+    [property: JsonProperty("is_draft_save")]
+    bool IsDraftSave);
 
 public record DeleteAssessmentModel(
     [property: JsonProperty("assessment_id")]

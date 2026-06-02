@@ -13,6 +13,8 @@ public static class AssessmentMappings
         AssessmentSettings settings,
         AssessmentStatus assessmentStatus = AssessmentStatus.Draft)
     {
+        var isDraft = assessmentStatus == AssessmentStatus.Draft;
+
         return new Assessment
         {
             CollegeId = request.CollegeId,
@@ -20,14 +22,14 @@ public static class AssessmentMappings
             SubjectName = request.SubjectName?.Trim(),
             TopicId = request.TopicId,
             TopicName = request.TopicName?.Trim(),
-            AssessmentName = request.AssessmentName.Trim(),
+            AssessmentName = NormalizeAssessmentName(request.AssessmentName, isDraft),
             AssessmentStatus = assessmentStatus,
-            DurationMinutes = request.DurationMinutes,
-            TotalMarks = request.TotalMarks,
+            DurationMinutes = NormalizeDurationMinutes(request.DurationMinutes, isDraft),
+            TotalMarks = NormalizeTotalMarks(request.TotalMarks),
             StartDateTime = UtcDateTime.Normalize(request.StartDateTime),
             EndDateTime = UtcDateTime.Normalize(request.EndDateTime),
             Instructions = string.IsNullOrWhiteSpace(request.Instructions) ? null : request.Instructions.Trim(),
-            AssignedBatchIds = request.AssignedBatchIds
+            AssignedBatchIds = (request.AssignedBatchIds ?? [])
                 .Where(batchId => batchId != Guid.Empty)
                 .Distinct()
                 .ToArray(),
@@ -77,14 +79,14 @@ public static class AssessmentMappings
             SubjectName = request.SubjectName?.Trim(),
             TopicId = request.TopicId,
             TopicName = request.TopicName?.Trim(),
-            AssessmentName = request.AssessmentName.Trim(),
+            AssessmentName = NormalizeAssessmentName(request.AssessmentName, assessmentStatus == AssessmentStatus.Draft),
             AssessmentStatus = assessmentStatus,
-            DurationMinutes = request.DurationMinutes,
-            TotalMarks = request.TotalMarks,
+            DurationMinutes = NormalizeDurationMinutes(request.DurationMinutes, assessmentStatus == AssessmentStatus.Draft),
+            TotalMarks = NormalizeTotalMarks(request.TotalMarks),
             StartDateTime = UtcDateTime.Normalize(request.StartDateTime),
             EndDateTime = UtcDateTime.Normalize(request.EndDateTime),
             Instructions = string.IsNullOrWhiteSpace(request.Instructions) ? null : request.Instructions.Trim(),
-            AssignedBatchIds = request.AssignedBatchIds
+            AssignedBatchIds = (request.AssignedBatchIds ?? [])
                 .Where(batchId => batchId != Guid.Empty)
                 .Distinct()
                 .ToArray(),
@@ -129,6 +131,30 @@ public static class AssessmentMappings
                 .Select(question => question.QuestionId)
                 .ToList());
     }
+
+    private static string NormalizeAssessmentName(string? assessmentName, bool allowDraftDefault)
+    {
+        var normalizedName = assessmentName?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedName))
+        {
+            return normalizedName;
+        }
+
+        return allowDraftDefault ? "Untitled draft" : string.Empty;
+    }
+
+    private static int NormalizeDurationMinutes(int durationMinutes, bool allowDraftDefault)
+    {
+        if (durationMinutes > 0)
+        {
+            return durationMinutes;
+        }
+
+        return allowDraftDefault ? 1 : durationMinutes;
+    }
+
+    private static int NormalizeTotalMarks(int totalMarks)
+        => totalMarks < 0 ? 0 : totalMarks;
 
     private static string ToApiAssessmentType(AssessmentType assessmentType)
     {

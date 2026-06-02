@@ -287,7 +287,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
 
   saveDraft(): void {
     if (this.isEditMode) {
-      this.updateAssessment();
+      this.updateAssessment('draft');
       return;
     }
 
@@ -296,7 +296,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
 
   scheduleAssessment(): void {
     if (this.isEditMode) {
-      this.updateAssessment();
+      this.updateAssessment('update');
       return;
     }
 
@@ -539,7 +539,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const validationError = this.validateAssessmentSubmission();
+    const validationError = this.validateAssessmentSubmission(action);
     if (validationError) {
       this.submissionErrorMessage = validationError;
       this.changeDetectorRef.detectChanges();
@@ -575,12 +575,12 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     });
   }
 
-  private updateAssessment(): void {
+  private updateAssessment(action: 'draft' | 'update'): void {
     if (this.isSubmitting || !this.editingAssessmentId) {
       return;
     }
 
-    const validationError = this.validateAssessmentSubmission();
+    const validationError = this.validateAssessmentSubmission(action);
     if (validationError) {
       this.submissionErrorMessage = validationError;
       this.changeDetectorRef.detectChanges();
@@ -593,8 +593,10 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       return;
     }
 
+    payload.isDraftSave = action === 'draft';
+
     this.isSubmitting = true;
-    this.pendingSubmitAction = null;
+    this.pendingSubmitAction = action === 'draft' ? 'draft' : null;
     this.submissionErrorMessage = '';
 
     this.assessmentAdminService.updateAssessment(this.editingAssessmentId, payload, true).subscribe({
@@ -602,7 +604,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
         this.isSubmitting = false;
         this.submissionErrorMessage = '';
         this.applyAssessmentRecord(assessment);
-        this.snackBar.open('Assessment updated successfully.', 'Close', {
+        this.snackBar.open(action === 'draft' ? 'Assessment saved as draft successfully.' : 'Assessment updated successfully.', 'Close', {
           duration: 3500,
           horizontalPosition: 'center',
           verticalPosition: 'top',
@@ -656,7 +658,22 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
         : 'Unable to publish the assessment right now.');
   }
 
-  private validateAssessmentSubmission(): string {
+  private validateAssessmentSubmission(action: 'draft' | 'schedule' | 'update'): string {
+    const startDateTime = this.parseDateTimeLocalValue(this.startDate);
+    const endDateTime = this.parseDateTimeLocalValue(this.endDate);
+
+    if (startDateTime && endDateTime && endDateTime <= startDateTime) {
+      return 'End time must be later than the start time.';
+    }
+
+    if (this.instructionWordCount > AssessmentCreatorComponent.maxInstructionWordCount) {
+      return `Instructions cannot exceed ${AssessmentCreatorComponent.maxInstructionWordCount} words.`;
+    }
+
+    if (action === 'draft') {
+      return '';
+    }
+
     if (!this.assessmentName.trim()) {
       return 'Assessment name is required before saving.';
     }
@@ -674,18 +691,12 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     }
 
     const now = new Date();
-    const startDateTime = this.parseDateTimeLocalValue(this.startDate);
     if (startDateTime && startDateTime < now) {
       return 'Start time must be later than the current time.';
     }
 
-    const endDateTime = this.parseDateTimeLocalValue(this.endDate);
     if (endDateTime && endDateTime < now) {
       return 'End time must be later than the current time.';
-    }
-
-    if (startDateTime && endDateTime && endDateTime <= startDateTime) {
-      return 'End time must be later than the start time.';
     }
 
     if (this.selectedBatchIds.size === 0) {
@@ -694,10 +705,6 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
 
     if (this.selectedQuestionIds.size === 0) {
       return 'Select at least one question before saving this assessment.';
-    }
-
-    if (this.instructionWordCount > AssessmentCreatorComponent.maxInstructionWordCount) {
-      return `Instructions cannot exceed ${AssessmentCreatorComponent.maxInstructionWordCount} words.`;
     }
 
     return '';

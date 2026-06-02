@@ -17,6 +17,10 @@ public class AssessmentManager : IAssessmentManager
     private const int DefaultPageNumber = 1;
     private const int DefaultPageSize = 10;
     private const int MaximumPageSize = 100;
+    private static readonly TimeSpan PartialDraftStartOffset = TimeSpan.FromHours(1);
+    private static readonly TimeSpan PartialDraftMinimumDuration = TimeSpan.FromMinutes(1);
+    private const string PartialDraftSubjectName = "Draft Subject";
+    private const string PartialDraftTopicName = "Draft Topic";
 
     private readonly TaskverseContext _context;
     private readonly AssessmentSettings _assessmentSettings;
@@ -40,7 +44,7 @@ public class AssessmentManager : IAssessmentManager
 
     /// <inheritdoc />
     public async Task<Assessment> CreateAssessment(Assessment assessment, List<Guid> questionIds)
-        => await CreateAssessmentInternalAsync(assessment, questionIds, AssessmentStatus.Draft);
+        => await CreateAssessmentInternalAsync(assessment, questionIds, AssessmentStatus.Draft, allowPartialDraft: true);
 
     /// <inheritdoc />
     public async Task<Assessment> GetAssessment(Guid assessmentId, Guid collegeId, string requesterRole, string requesterName)
@@ -73,6 +77,11 @@ public class AssessmentManager : IAssessmentManager
         var assessment = await GetAssessmentForUpdateAsync(assessmentId);
         EnsureAssessmentCanBeUpdated(assessment);
         EnsureUpdateAuthorized(assessment, request);
+
+        if (request.IsDraftSave)
+        {
+            return await UpdateAssessmentDraftAsync(assessment, request);
+        }
 
         var updatedAssessment = request.ToEntity(_assessmentSettings, assessment.AssessmentStatus);
         updatedAssessment.ShowResultsImmediately = assessment.ShowResultsImmediately;
@@ -110,6 +119,33 @@ public class AssessmentManager : IAssessmentManager
         return assessment;
     }
 
+    private async Task<Assessment> UpdateAssessmentDraftAsync(Assessment assessment, UpdateAssessmentRequest request)
+    {
+        var updatedAssessment = request.ToEntity(_assessmentSettings, AssessmentStatus.Draft);
+        updatedAssessment.ShowResultsImmediately = assessment.ShowResultsImmediately;
+        updatedAssessment.IsTotalMarksAutoCalculated = assessment.IsTotalMarksAutoCalculated;
+        updatedAssessment.CreatedBy = assessment.CreatedBy;
+        updatedAssessment.CreatedAt = assessment.CreatedAt;
+        updatedAssessment.ModifiedAt = DateTime.UtcNow;
+
+        ApplyPartialDraftRequiredDefaults(updatedAssessment, DateTime.UtcNow);
+        await EnsurePartialDraftClassificationAsync(updatedAssessment);
+
+        var normalizedQuestionIds = (request.QuestionIds ?? []).NormalizeQuestionIds();
+        var normalizedAssignedBatchIds = NormalizeAssignedBatchIds(updatedAssessment.AssignedBatchIds);
+        await ValidateAssignedBatchesAsync(updatedAssessment.CollegeId, normalizedAssignedBatchIds);
+        updatedAssessment.AssignedBatchIds = normalizedAssignedBatchIds;
+
+        var questions = await LoadQuestionsForDraftUpdateAsync(updatedAssessment.CollegeId, normalizedQuestionIds);
+
+        ApplyPartialDraftUpdates(assessment, updatedAssessment);
+        await SyncAssessmentQuestionsAsync(assessment, questions, normalizedQuestionIds);
+
+        await SaveChangesWithWrapAsync("Unable to save the assessment draft.");
+
+        return assessment;
+    }
+
     /// <inheritdoc />
     public async Task<Assessment> ScheduleAssessment(Assessment assessment, List<Guid> questionIds)
         => await CreateAssessmentInternalAsync(assessment, questionIds, AssessmentStatus.Scheduled);
@@ -117,8 +153,14 @@ public class AssessmentManager : IAssessmentManager
     private async Task<Assessment> CreateAssessmentInternalAsync(
         Assessment assessment,
         List<Guid> questionIds,
-        AssessmentStatus targetStatus)
+        AssessmentStatus targetStatus,
+        bool allowPartialDraft = false)
     {
+        if (allowPartialDraft && ShouldPersistAsPartialDraft(assessment, questionIds))
+        {
+            return await CreatePartialDraftAsync(assessment);
+        }
+
         ValidateAssessment(assessment, questionIds);
 
         var classification = await ResolveAssessmentClassificationAsync(assessment);
@@ -152,6 +194,96 @@ public class AssessmentManager : IAssessmentManager
         await SaveChangesWithWrapAsync("Unable to save the assessment.");
 
         return assessment;
+    }
+
+    private async Task<Assessment> CreatePartialDraftAsync(Assessment assessment)
+    {
+        ValidatePartialDraft(assessment);
+
+        var now = DateTime.UtcNow;
+        ApplyPartialDraftRequiredDefaults(assessment, now);
+        await EnsurePartialDraftClassificationAsync(assessment);
+        assessment.AssessmentId = assessment.AssessmentId == Guid.Empty ? Guid.NewGuid() : assessment.AssessmentId;
+        assessment.AssessmentType = AssessmentType.Objective;
+        assessment.AssessmentStatus = AssessmentStatus.Draft;
+        assessment.DifficultyLevel = 1;
+        assessment.AssignedBatchIds = NormalizeAssignedBatchIds(assessment.AssignedBatchIds);
+        assessment.CreatedAt = now;
+        assessment.ModifiedAt = now;
+
+        _context.Assessments.Add(assessment);
+        await SaveChangesWithWrapAsync("Unable to save the assessment draft.");
+
+        return assessment;
+    }
+
+    private static void ApplyPartialDraftRequiredDefaults(Assessment assessment, DateTime utcNow)
+    {
+        if (string.IsNullOrWhiteSpace(assessment.AssessmentName))
+        {
+            assessment.AssessmentName = "Untitled draft";
+        }
+
+        if (assessment.DurationMinutes <= 0)
+        {
+            assessment.DurationMinutes = 1;
+        }
+
+        if (assessment.TotalMarks < 0)
+        {
+            assessment.TotalMarks = 0;
+        }
+
+        assessment.AssignedBatchIds = NormalizeAssignedBatchIds(assessment.AssignedBatchIds);
+
+        var safeStartDateTime = assessment.StartDateTime ?? utcNow.Add(PartialDraftStartOffset);
+        if (safeStartDateTime <= utcNow)
+        {
+            safeStartDateTime = utcNow.Add(PartialDraftStartOffset);
+        }
+
+        assessment.StartDateTime = safeStartDateTime;
+
+        var minimumEndDateTime = safeStartDateTime.Add(PartialDraftMinimumDuration);
+        if (!assessment.EndDateTime.HasValue || assessment.EndDateTime.Value <= safeStartDateTime)
+        {
+            assessment.EndDateTime = minimumEndDateTime;
+        }
+    }
+
+    private async Task EnsurePartialDraftClassificationAsync(Assessment assessment)
+    {
+        if (!assessment.SubjectId.HasValue &&
+            string.IsNullOrWhiteSpace(assessment.SubjectName) &&
+            !assessment.TopicId.HasValue)
+        {
+            assessment.SubjectName = PartialDraftSubjectName;
+        }
+
+        if (!assessment.TopicId.HasValue && string.IsNullOrWhiteSpace(assessment.TopicName))
+        {
+            assessment.TopicName = PartialDraftTopicName;
+        }
+
+        var classification = await ResolveAssessmentClassificationAsync(assessment);
+        ApplyClassification(assessment, classification);
+    }
+
+    private async Task<List<Question>> LoadQuestionsForDraftUpdateAsync(Guid collegeId, IReadOnlyList<Guid> questionIds)
+    {
+        if (questionIds.Count == 0)
+        {
+            return [];
+        }
+
+        var questions = await _context.Questions
+            .Where(question => questionIds.Contains(question.QuestionId))
+            .ToListAsync();
+
+        EnsureQuestionsExist(questionIds, questions);
+        EnsureQuestionsBelongToCollege(questions, collegeId);
+
+        return questions;
     }
 
     /// <inheritdoc />
@@ -1088,6 +1220,32 @@ public class AssessmentManager : IAssessmentManager
         target.ModifiedAt = source.ModifiedAt;
     }
 
+    private static void ApplyPartialDraftUpdates(Assessment target, Assessment source)
+    {
+        target.SubjectId = source.SubjectId;
+        target.Subject = source.Subject;
+        target.SubjectName = source.SubjectName;
+        target.TopicId = source.TopicId;
+        target.Topic = source.Topic;
+        target.TopicName = source.TopicName;
+        target.AssessmentName = source.AssessmentName;
+        target.AssessmentType = AssessmentType.Objective;
+        target.AssessmentStatus = AssessmentStatus.Draft;
+        target.DurationMinutes = source.DurationMinutes;
+        target.TotalMarks = source.TotalMarks;
+        target.DifficultyLevel = 1;
+        target.StartDateTime = source.StartDateTime;
+        target.EndDateTime = source.EndDateTime;
+        target.Instructions = source.Instructions;
+        target.AssignedBatchIds = source.AssignedBatchIds;
+        target.AllowLateEntry = source.AllowLateEntry;
+        target.ShowResultsImmediately = source.ShowResultsImmediately;
+        target.AllowQuestionReview = source.AllowQuestionReview;
+        target.NegativeMarking = source.NegativeMarking;
+        target.IsTotalMarksAutoCalculated = source.IsTotalMarksAutoCalculated;
+        target.ModifiedAt = source.ModifiedAt;
+    }
+
     private async Task SyncAssessmentQuestionsAsync(
         Assessment assessment,
         IReadOnlyCollection<Question> questions,
@@ -1844,6 +2002,50 @@ public class AssessmentManager : IAssessmentManager
         {
             throw new ArgumentException("At least one question id is required.");
         }
+    }
+
+    private static void ValidatePartialDraft(Assessment assessment)
+    {
+        if (assessment.CollegeId == Guid.Empty)
+        {
+            throw new ArgumentException("CollegeId is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(assessment.CreatedBy))
+        {
+            throw new ArgumentException("CreatedBy is required.");
+        }
+
+        if (assessment.TotalMarks < 0)
+        {
+            throw new ArgumentException("Total marks cannot be negative.");
+        }
+
+        if (assessment.EndDateTime.HasValue &&
+            assessment.StartDateTime.HasValue &&
+            assessment.EndDateTime <= assessment.StartDateTime)
+        {
+            throw new ArgumentException("End datetime must be greater than start datetime.");
+        }
+    }
+
+    private static bool ShouldPersistAsPartialDraft(Assessment assessment, List<Guid> questionIds)
+    {
+        return string.IsNullOrWhiteSpace(assessment.AssessmentName) ||
+               !HasCompleteAssessmentClassification(assessment) ||
+               assessment.DurationMinutes <= 0 ||
+               NormalizeAssignedBatchIds(assessment.AssignedBatchIds).Length == 0 ||
+               questionIds.Count == 0;
+    }
+
+    private static bool HasCompleteAssessmentClassification(Assessment assessment)
+    {
+        var hasSubject = assessment.SubjectId.HasValue ||
+                         !string.IsNullOrWhiteSpace(assessment.SubjectName);
+        var hasTopic = assessment.TopicId.HasValue ||
+                       !string.IsNullOrWhiteSpace(assessment.TopicName);
+
+        return hasSubject && hasTopic;
     }
 
     private static void ValidateDeleteAssessmentRequest(DeleteAssessmentRequest request)

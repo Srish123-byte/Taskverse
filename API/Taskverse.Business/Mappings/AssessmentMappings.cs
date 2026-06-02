@@ -179,7 +179,8 @@ public static class AssessmentMappings
             dto.DurationMinutes,
             dto.TotalMarks,
             UtcDateTime.Normalize(dto.StartDateTime),
-            UtcDateTime.Normalize(dto.EndDateTime));
+            UtcDateTime.Normalize(dto.EndDateTime),
+            dto.IsDraftSave);
 
     public static DeleteAssessmentModel ToMicroServiceModel(this DeleteAssessmentDto dto)
         => new(
