@@ -7,12 +7,56 @@ public class CreateQuestionBankAssessmentRequestModel
     public string? SubjectName { get; set; }
     public Guid? TopicId { get; set; }
     public string? TopicName { get; set; }
+    public string? Instructions { get; set; }
+    public bool AllowLateEntry { get; set; }
+    public bool AllowQuestionReview { get; set; }
+    public bool NegativeMarking { get; set; }
     public Guid[] AssignedBatchIds { get; set; } = [];
     public List<Guid> QuestionIds { get; set; } = [];
     public int DurationMinutes { get; set; }
     public int TotalMarks { get; set; }
     public DateTime? StartDateTime { get; set; }
     public DateTime? EndDateTime { get; set; }
+}
+
+public class PublishQuestionBankAssessmentRequestModel
+{
+    public Guid? AssessmentId { get; set; }
+    public string AssessmentName { get; set; } = string.Empty;
+    public Guid? SubjectId { get; set; }
+    public string? SubjectName { get; set; }
+    public Guid? TopicId { get; set; }
+    public string? TopicName { get; set; }
+    public string? Instructions { get; set; }
+    public bool AllowLateEntry { get; set; }
+    public bool AllowQuestionReview { get; set; }
+    public bool NegativeMarking { get; set; }
+    public Guid[] AssignedBatchIds { get; set; } = [];
+    public List<Guid> QuestionIds { get; set; } = [];
+    public int DurationMinutes { get; set; }
+    public int TotalMarks { get; set; }
+    public DateTime? StartDateTime { get; set; }
+    public DateTime? EndDateTime { get; set; }
+}
+
+public class UpdateQuestionBankAssessmentRequestModel
+{
+    public string AssessmentName { get; set; } = string.Empty;
+    public Guid? SubjectId { get; set; }
+    public string? SubjectName { get; set; }
+    public Guid? TopicId { get; set; }
+    public string? TopicName { get; set; }
+    public string? Instructions { get; set; }
+    public bool AllowLateEntry { get; set; }
+    public bool AllowQuestionReview { get; set; }
+    public bool NegativeMarking { get; set; }
+    public Guid[] AssignedBatchIds { get; set; } = [];
+    public List<Guid> QuestionIds { get; set; } = [];
+    public int DurationMinutes { get; set; }
+    public int TotalMarks { get; set; }
+    public DateTime? StartDateTime { get; set; }
+    public DateTime? EndDateTime { get; set; }
+    public bool IsDraftSave { get; set; }
 }
 
 public class QuestionBankAssessmentResponseModel
@@ -37,8 +81,7 @@ public class QuestionBankAssessmentResponseModel
     public bool ShowResultsImmediately { get; set; }
     public bool AllowQuestionReview { get; set; }
     public bool NegativeMarking { get; set; }
-    public decimal MarksPerQuestion { get; set; }
-    public bool IsTotalMarksAutoCalculated { get; set; }
+    public bool? IsTotalMarksAutoCalculated { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public DateTime? ModifiedAt { get; set; }
@@ -53,7 +96,7 @@ public class CreateQuestionRequestModel
     public string? Subject { get; set; }
     public Guid? TopicId { get; set; }
     public string? Topic { get; set; }
-    public string TopicTag { get; set; } = string.Empty;
+    public List<string> TopicTag { get; set; } = [];
     public string QuestionType { get; set; } = string.Empty;
     public string QuestionText { get; set; } = string.Empty;
     public List<string>? Options { get; set; }
@@ -94,6 +137,79 @@ public class PagedQuestionBankResponseModel
     public int PageSize { get; set; }
 }
 
+public class AssessmentManagementSearchRequestModel
+{
+    public string? SearchTerm { get; set; }
+    public string? AssessmentStatus { get; set; }
+    public int? DifficultyLevel { get; set; }
+    public int PageNumber { get; set; } = 1;
+    public int PageSize { get; set; } = 10;
+}
+
+public class AssessmentManagementItemResponseModel
+{
+    public Guid AssessmentId { get; set; }
+    public string AssessmentName { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public string? TopicName { get; set; }
+    public string AssessmentStatus { get; set; } = string.Empty;
+    public DateTime AssessmentDate { get; set; }
+    public int TotalMarks { get; set; }
+    public int DifficultyLevel { get; set; }
+}
+
+public class AssessmentManagementSearchResponseModel
+{
+    public List<AssessmentManagementItemResponseModel> Items { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int ActiveCount { get; set; }
+    public int CompletedCount { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+}
+
+public class AssessmentTopicCatalogResponseModel
+{
+    public Guid TopicId { get; set; }
+    public string TopicName { get; set; } = string.Empty;
+    public Guid[] BatchIds { get; set; } = [];
+}
+
+public class AssessmentSubjectCatalogResponseModel
+{
+    public Guid SubjectId { get; set; }
+    public string SubjectName { get; set; } = string.Empty;
+    public Guid[] BatchIds { get; set; } = [];
+    public List<AssessmentTopicCatalogResponseModel> Topics { get; set; } = [];
+}
+
+public class AssessmentSubjectTopicCatalogResponseModel
+{
+    public List<AssessmentSubjectCatalogResponseModel> Subjects { get; set; } = [];
+}
+
+public class AssessmentAssignmentBatchResponseModel
+{
+    public string BatchId { get; set; } = string.Empty;
+    public string ClassId { get; set; } = string.Empty;
+    public string CollegeId { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+}
+
+public class AssessmentAssignmentClassResponseModel
+{
+    public string ClassId { get; set; } = string.Empty;
+    public string CollegeId { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? AcademicYear { get; set; }
+    public List<AssessmentAssignmentBatchResponseModel> Batches { get; set; } = [];
+}
+
+public class AssessmentAssignmentCatalogResponseModel
+{
+    public List<AssessmentAssignmentClassResponseModel> Classes { get; set; } = [];
+}
+
 public class QuestionResponseModel
 {
     public Guid QuestionId { get; set; }
@@ -103,7 +219,7 @@ public class QuestionResponseModel
     public string? Stream { get; set; }
     public string? Subject { get; set; }
     public string? Topic { get; set; }
-    public string? TopicTag { get; set; }
+    public List<string>? TopicTag { get; set; }
     public string QuestionType { get; set; } = string.Empty;
     public string QuestionText { get; set; } = string.Empty;
     public List<string>? Options { get; set; }

@@ -13,6 +13,7 @@ public static class QuestionMappings
             .Select(NormalizeWhitespace)
             .Where(option => !string.IsNullOrWhiteSpace(option))
             .ToList();
+        var normalizedTopicTags = NormalizeTopicTags(request.TopicTag);
 
         return new Question
         {
@@ -22,7 +23,7 @@ public static class QuestionMappings
             Subject = NormalizeWhitespace(request.Subject),
             TopicId = request.TopicId,
             Topic = NormalizeWhitespace(request.Topic),
-            TopicTag = NormalizeWhitespace(request.TopicTag),
+            TopicTag = normalizedTopicTags,
             QuestionType = NormalizeWhitespace(request.QuestionType) ?? string.Empty,
             QuestionText = NormalizeWhitespace(request.QuestionText) ?? string.Empty,
             Options = normalizedOptions is null ? null : JsonSerializer.Serialize(normalizedOptions),
@@ -45,7 +46,7 @@ public static class QuestionMappings
             question.Stream,
             question.Subject,
             question.Topic,
-            question.TopicTag,
+            question.TopicTag?.ToList(),
             question.QuestionType,
             question.QuestionText,
             DeserializeOptions(question.Options),
@@ -105,5 +106,16 @@ public static class QuestionMappings
         }
 
         return string.Join(" ", value.Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private static string[] NormalizeTopicTags(IEnumerable<string>? values)
+    {
+        return (values ?? [])
+            .Select(NormalizeWhitespace)
+            .OfType<string>()
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 }

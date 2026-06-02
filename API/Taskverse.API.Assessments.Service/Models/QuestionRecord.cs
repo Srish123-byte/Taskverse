@@ -8,7 +8,7 @@ public record QuestionRecord(
     string? Stream,
     string? Subject,
     string? Topic,
-    string? TopicTag,
+    List<string>? TopicTag,
     string QuestionType,
     string QuestionText,
     List<string>? Options,

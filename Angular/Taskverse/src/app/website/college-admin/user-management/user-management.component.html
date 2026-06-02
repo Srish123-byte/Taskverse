@@ -32,11 +32,14 @@
 
         <div class="filter-field">
           <label for="searchFilter">Search Name/Email</label>
-          <input
-            id="searchFilter"
-            type="text"
-            [(ngModel)]="searchTerm"
-            placeholder="e.g. Alex Johnson" />
+          <label class="search-input-shell" for="searchFilter">
+            <img src="assets/icons/shared/magnifier.svg" alt="" class="search-icon" aria-hidden="true" />
+            <input
+              id="searchFilter"
+              type="search"
+              [(ngModel)]="searchTerm"
+              placeholder="e.g. Alex Johnson" />
+          </label>
         </div>
 
         <button type="button" class="reset-button" (click)="resetFilters()">Reset Filters</button>

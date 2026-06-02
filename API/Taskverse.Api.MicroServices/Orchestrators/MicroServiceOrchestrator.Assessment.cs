@@ -12,6 +12,28 @@ public partial class MicroServiceOrchestrator
         return await Post<QuestionBankAssessmentModel>(url, model);
     }
 
+    public async Task<ObjectResult> GetAssessment(Guid assessmentId, Guid collegeId, string requesterRole, string requesterName)
+    {
+        var encodedRole = Uri.EscapeDataString(requesterRole ?? string.Empty);
+        var encodedRequesterName = Uri.EscapeDataString(requesterName ?? string.Empty);
+        var url =
+            $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/{assessmentId}?collegeId={collegeId}&requesterRole={encodedRole}&requesterName={encodedRequesterName}";
+
+        return await Get<QuestionBankAssessmentModel>(url);
+    }
+
+    public async Task<ObjectResult> UpdateAssessment(UpdateQuestionBankAssessmentModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/{model.AssessmentId}";
+        return await Put<QuestionBankAssessmentModel>(url, model);
+    }
+
+    public async Task<ObjectResult> PublishAssessment(PublishQuestionBankAssessmentModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/publish";
+        return await Post<QuestionBankAssessmentModel>(url, model);
+    }
+
     public async Task<ObjectResult> DeleteAssessment(DeleteAssessmentModel model)
     {
         var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/{model.AssessmentId}";
@@ -48,10 +70,28 @@ public partial class MicroServiceOrchestrator
         return await Delete<List<Guid>>(url, model);
     }
 
+    public async Task<ObjectResult> GetSubjectTopicCatalog(AssessmentBootstrapModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/subjects-topics/catalog";
+        return await Post<AssessmentSubjectTopicCatalogModel>(url, model);
+    }
+
+    public async Task<ObjectResult> GetTrainerAssignedClassesAndBatches(AssessmentBootstrapModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/trainer/assigned-classes-batches";
+        return await Post<AssessmentAssignmentCatalogModel>(url, model);
+    }
+
     public async Task<ObjectResult> SearchQuestionBank(QuestionBankSearchModel model)
     {
         var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/questions/search";
         return await Post<PagedQuestionBankModel>(url, model);
+    }
+
+    public async Task<ObjectResult> SearchAssessments(AssessmentManagementSearchModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/search";
+        return await Post<AssessmentManagementSearchResultModel>(url, model);
     }
 
     public async Task<ObjectResult> GetAssessmentQuestionList(Guid assessmentId, AssessmentQuestionListSearchModel model)

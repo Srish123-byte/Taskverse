@@ -78,10 +78,22 @@ public partial class MicroServiceOrchestrator
         return await Post<CollegeClassSummaryModel>(url, model);
     }
 
+    public async Task<ObjectResult> UpdateCollegeClass(string collegeId, string classId, UpdateCollegeClassModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/classes/{classId}";
+        return await Put<CollegeClassSummaryModel>(url, model);
+    }
+
     public async Task<ObjectResult> CreateCollegeBatch(string collegeId, string classId, CreateCollegeBatchModel model)
     {
         var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/classes/{classId}/batches";
         return await Post<CollegeBatchSummaryModel>(url, model);
+    }
+
+    public async Task<ObjectResult> UpdateCollegeBatch(string collegeId, string classId, string batchId, UpdateCollegeBatchModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/classes/{classId}/batches/{batchId}";
+        return await Put<CollegeBatchSummaryModel>(url, model);
     }
 
     public async Task<ObjectResult> AssignCollegeBatchTrainers(string collegeId, string classId, string batchId, AssignBatchTrainersModel model)

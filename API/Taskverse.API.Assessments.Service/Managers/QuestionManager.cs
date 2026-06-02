@@ -1,13 +1,18 @@
 using Microsoft.EntityFrameworkCore;
-using Taskverse.Data.DataAccess;
-using Taskverse.API.Assessments.Service.Mappings;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using Taskverse.API.Assessments.Service.Mappings;
+using Taskverse.Data.DataAccess;
 using Taskverse.Data.Enums;
 
 namespace Taskverse.API.Assessments.Service.Managers;
 
+/// <summary>
+/// Handles validation, retrieval, update, delete, and search operations for question-bank entries.
+/// </summary>
 public class QuestionManager : IQuestionManager
 {
+    private static readonly Regex FillInTheBlankPlaceholderPattern = new("_{3,}", RegexOptions.Compiled);
     private static readonly HashSet<string> AllowedQuestionTypes =
     [
         "mcq",
@@ -21,6 +26,7 @@ public class QuestionManager : IQuestionManager
         _context = context;
     }
 
+    /// <inheritdoc />
     public async Task<List<Question>> CreateQuestions(List<QuestionImportItem> questions)
     {
         if (questions.Count == 0)
@@ -111,6 +117,7 @@ public class QuestionManager : IQuestionManager
         return uniqueQuestionsToCreate;
     }
 
+    /// <inheritdoc />
     public async Task<Question> GetQuestionById(Guid collegeId, Guid questionId)
     {
         if (collegeId == Guid.Empty)
@@ -141,6 +148,7 @@ public class QuestionManager : IQuestionManager
         return question;
     }
 
+    /// <inheritdoc />
     public async Task<Question> UpdateQuestion(Guid questionId, Question updatedQuestion, string? requesterRole)
     {
         await NormalizeSubjectTopicAsync(updatedQuestion);
@@ -216,6 +224,7 @@ public class QuestionManager : IQuestionManager
         }
     }
 
+    /// <inheritdoc />
     public async Task<List<Guid>> DeleteQuestions(
         string createdBy,
         string? requesterRole,
@@ -347,6 +356,7 @@ public class QuestionManager : IQuestionManager
         return statusSet;
     }
 
+    /// <inheritdoc />
     public async Task<(List<Question> Items, int TotalCount)> SearchQuestionBank(
         Guid collegeId,
         int? difficultyLevel,
@@ -479,7 +489,7 @@ public class QuestionManager : IQuestionManager
             throw new ArgumentException("Topic is required.");
         }
 
-        if (string.IsNullOrWhiteSpace(question.TopicTag))
+        if (question.TopicTag is null || question.TopicTag.Length == 0 || question.TopicTag.All(string.IsNullOrWhiteSpace))
         {
             throw new ArgumentException("Topic tag is required.");
         }
@@ -502,9 +512,22 @@ public class QuestionManager : IQuestionManager
             throw new ArgumentException("Question text is required.");
         }
 
-        if (normalizedQuestionType == "mcq" && !HasValidOptions(question.Options))
+        if (normalizedQuestionType == "mcq" && !HasMinimumValidOptions(question.Options, 4))
         {
             throw new ArgumentException("Options are required for mcq questions.");
+        }
+
+        if (normalizedQuestionType == "fill in the blanks")
+        {
+            if (!FillInTheBlankPlaceholderPattern.IsMatch(question.QuestionText))
+            {
+                throw new ArgumentException("Fill in the blanks questions must include a blank shown with underscore characters like ____ in the question text.");
+            }
+
+            if (!HasMinimumValidOptions(question.Options, 4))
+            {
+                throw new ArgumentException("Four options are required for fill in the blanks questions.");
+            }
         }
 
         if (string.IsNullOrWhiteSpace(question.Answer))
@@ -523,7 +546,7 @@ public class QuestionManager : IQuestionManager
         }
     }
 
-    private static bool HasValidOptions(string? options)
+    private static bool HasMinimumValidOptions(string? options, int minimumCount)
     {
         if (string.IsNullOrWhiteSpace(options))
         {
@@ -533,7 +556,9 @@ public class QuestionManager : IQuestionManager
         try
         {
             var parsedOptions = JsonSerializer.Deserialize<List<string>>(options);
-            return parsedOptions is { Count: > 0 } && parsedOptions.All(option => !string.IsNullOrWhiteSpace(option));
+            return parsedOptions is not null &&
+                   parsedOptions.Count >= minimumCount &&
+                   parsedOptions.All(option => !string.IsNullOrWhiteSpace(option));
         }
         catch
         {
@@ -550,7 +575,7 @@ public class QuestionManager : IQuestionManager
             NormalizeForLookup(question.Stream),
             NormalizeForLookup(question.Subject),
             NormalizeForLookup(question.Topic),
-            NormalizeForLookup(question.TopicTag),
+            NormalizeTopicTagsForLookup(question.TopicTag),
             NormalizeForLookup(question.QuestionType),
             NormalizeForLookup(question.QuestionText),
             normalizedOptions,
@@ -588,5 +613,16 @@ public class QuestionManager : IQuestionManager
         }
 
         return string.Join(" ", value.Trim().ToLowerInvariant().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private static string NormalizeTopicTagsForLookup(IEnumerable<string>? values)
+    {
+        return string.Join(
+            "~",
+            (values ?? [])
+                .Select(NormalizeForLookup)
+                .Where(value => value.Length > 0)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(value => value, StringComparer.Ordinal));
     }
 }

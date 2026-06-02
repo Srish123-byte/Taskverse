@@ -30,13 +30,19 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
 
     // Assessment
     Task<ObjectResult> CreateAssessment(CreateQuestionBankAssessmentModel model);
+    Task<ObjectResult> GetAssessment(Guid assessmentId, Guid collegeId, string requesterRole, string requesterName);
+    Task<ObjectResult> UpdateAssessment(UpdateQuestionBankAssessmentModel model);
+    Task<ObjectResult> PublishAssessment(PublishQuestionBankAssessmentModel model);
     Task<ObjectResult> DeleteAssessment(DeleteAssessmentModel model);
     Task<ObjectResult> PublishAssessment(Guid assessmentId);
     Task<ObjectResult> CreateQuestions(List<CreateQuestionModel> models);
     Task<ObjectResult> GetQuestion(Guid questionId, Guid collegeId);
     Task<ObjectResult> UpdateQuestion(Guid questionId, CreateQuestionModel model);
     Task<ObjectResult> DeleteQuestions(DeleteQuestionsModel model);
+    Task<ObjectResult> GetSubjectTopicCatalog(AssessmentBootstrapModel model);
+    Task<ObjectResult> GetTrainerAssignedClassesAndBatches(AssessmentBootstrapModel model);
     Task<ObjectResult> SearchQuestionBank(QuestionBankSearchModel model);
+    Task<ObjectResult> SearchAssessments(AssessmentManagementSearchModel model);
     Task<ObjectResult> GetAssessmentQuestionList(Guid assessmentId, AssessmentQuestionListSearchModel model);
     Task<ObjectResult> GetStudentAssessments(StudentAssessmentListSearchModel model, IReadOnlyCollection<string> assessmentStatuses);
     Task<ObjectResult> GetStudentAssessmentDetail(Guid assessmentId, Guid studentUserId);
@@ -80,7 +86,9 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> GetApprovedCollegeTrainers(string collegeId);
     Task<ObjectResult> GetCollegeSubjects();
     Task<ObjectResult> CreateCollegeClass(string collegeId, CreateCollegeClassModel model);
+    Task<ObjectResult> UpdateCollegeClass(string collegeId, string classId, UpdateCollegeClassModel model);
     Task<ObjectResult> CreateCollegeBatch(string collegeId, string classId, CreateCollegeBatchModel model);
+    Task<ObjectResult> UpdateCollegeBatch(string collegeId, string classId, string batchId, UpdateCollegeBatchModel model);
     Task<ObjectResult> AssignCollegeBatchTrainers(string collegeId, string classId, string batchId, AssignBatchTrainersModel model);
     Task<ObjectResult> DeleteCollegeClass(string collegeId, string classId);
     Task<ObjectResult> DeleteCollegeBatch(string collegeId, string classId, string batchId);

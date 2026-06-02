@@ -1,0 +1,159 @@
+<div class="page-container">
+  <section class="assessments-hero">
+    <div class="hero-copy">
+      <span class="hero-kicker">{{ heroKicker }}</span>
+      <h2 class="page-title">{{ pageTitle }}</h2>
+      <p class="page-welcome">{{ pageWelcome }}</p>
+    </div>
+
+    <button type="button" class="primary-action" [routerLink]="['/', ...createAssessmentRouteSegments]">
+      <img src="assets/icons/shared/add.svg" alt="" class="action-icon" aria-hidden="true" />
+      <span>Create New Assessment</span>
+    </button>
+  </section>
+
+  <section class="summary-grid">
+    <article class="summary-card accent-total">
+      <div class="summary-label">Total Assessments</div>
+      <div class="summary-value">{{ totalCount }}</div>
+      <div class="summary-meta">Matched assessments before pagination</div>
+    </article>
+
+    <article class="summary-card accent-active">
+      <div class="summary-label">Active Assessments</div>
+      <div class="summary-value">{{ activeCount }}</div>
+      <div class="summary-meta">Live and upcoming sessions</div>
+    </article>
+
+    <article class="summary-card accent-completed">
+      <div class="summary-label">Completed</div>
+      <div class="summary-value">{{ completedCount }}</div>
+      <div class="summary-meta">Completed assessment runs</div>
+    </article>
+  </section>
+
+  <section class="filters-shell">
+    <label class="search-field" for="assessmentManagementSearch">
+      <img src="assets/icons/shared/magnifier.svg" alt="" class="search-icon" aria-hidden="true" />
+      <input
+        id="assessmentManagementSearch"
+        type="search"
+        [(ngModel)]="searchTerm"
+        (ngModelChange)="onFilterChange()"
+        placeholder="Search assessments by name, subject, or topic..." />
+    </label>
+
+    <div class="filter-actions">
+      <select [(ngModel)]="selectedStatus" (ngModelChange)="onFilterChange()" aria-label="Filter by status">
+        <option *ngFor="let option of statusOptions" [value]="option.value">{{ option.label }}</option>
+      </select>
+
+      <select [(ngModel)]="selectedDifficulty" (ngModelChange)="onFilterChange()" aria-label="Filter by difficulty">
+        <option *ngFor="let option of difficultyOptions" [value]="option.value">{{ option.label }}</option>
+      </select>
+
+      <button type="button" class="secondary-action" (click)="clearFilters()">Reset</button>
+    </div>
+  </section>
+
+  <section class="management-table-shell">
+    <div class="table-header-row" *ngIf="!isLoading && assessments.length > 0">
+      <span>Assessment Name</span>
+      <span>Category</span>
+      <span>Status</span>
+      <span>Date</span>
+      <span>Total Marks</span>
+      <span>Actions</span>
+    </div>
+
+    <div *ngIf="isLoading" class="empty-state">
+      <div class="empty-state-title">Loading assessments...</div>
+      <div class="empty-state-copy">Pulling the latest assessment list for this workspace.</div>
+    </div>
+
+    <div *ngIf="!isLoading && errorMessage" class="empty-state">
+      <div class="empty-state-title">Assessment list unavailable</div>
+      <div class="empty-state-copy">{{ errorMessage }}</div>
+    </div>
+
+    <div *ngIf="!isLoading && !errorMessage && assessments.length === 0" class="empty-state">
+      <div class="empty-state-title">No assessments match the current filters</div>
+      <div class="empty-state-copy">Try broadening the search or resetting the filters to see more results.</div>
+    </div>
+
+    <article
+      *ngFor="let assessment of assessments; trackBy: trackByAssessmentId"
+      class="table-row">
+      <div class="assessment-name-cell">
+        <div class="assessment-name">{{ assessment.assessmentName }}</div>
+      </div>
+
+      <div class="category-cell">
+        <span class="category-pill">{{ assessment.category || 'Uncategorized' }}</span>
+      </div>
+
+      <div class="status-cell">
+        <span class="status-dot" [ngClass]="getStatusClass(assessment.assessmentStatus)"></span>
+        <span class="status-label">{{ assessment.assessmentStatus }}</span>
+      </div>
+
+      <div class="date-cell">{{ formatAssessmentDate(assessment.assessmentDate) }}</div>
+
+      <div class="marks-cell">{{ assessment.totalMarks }} Marks</div>
+
+      <div class="actions-cell">
+        <button
+          type="button"
+          class="icon-button"
+          [class.icon-button-blocked]="!isEditAllowed(assessment)"
+          [attr.aria-disabled]="!isEditAllowed(assessment)"
+          [attr.title]="!isEditAllowed(assessment) ? getEditRestrictionMessage(assessment) : 'Edit assessment'"
+          (click)="editAssessment(assessment)"
+          aria-label="Edit assessment">
+          <img src="assets/icons/nav/edit.svg" alt="" class="row-action-icon" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          class="icon-button icon-button-danger"
+          [disabled]="!!deletingAssessmentId"
+          (click)="deleteAssessment(assessment)"
+          aria-label="Delete assessment">
+          <img src="assets/icons/nav/trash.svg" alt="" class="row-action-icon" aria-hidden="true" />
+        </button>
+      </div>
+    </article>
+
+    <div class="table-footer" *ngIf="!isLoading && totalCount > 0">
+      <span class="footer-copy">
+        Showing {{ pageStart }}-{{ pageEnd }} of {{ totalCount }} assessments
+      </span>
+
+      <div class="pagination-controls">
+        <button type="button" class="page-button" [disabled]="currentPage === 1" (click)="prevPage()" aria-label="Previous page">
+          <mat-icon class="pagination-angle-icon" aria-hidden="true">&#8249;</mat-icon>
+        </button>
+        <span class="page-indicator">Page {{ currentPage }} of {{ totalPages }}</span>
+        <button type="button" class="page-button" [disabled]="currentPage === totalPages" (click)="nextPage()" aria-label="Next page">
+          <mat-icon class="pagination-angle-icon" aria-hidden="true">&#8250;</mat-icon>
+        </button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div *ngIf="pendingDeleteAssessment" class="delete-dialog-backdrop" (click)="closeDeleteDialog()">
+  <section class="delete-dialog" (click)="$event.stopPropagation()" aria-modal="true" role="dialog" aria-labelledby="deleteAssessmentTitle">
+    <h3 id="deleteAssessmentTitle">Assessments deleted can only be recovered by Super Admin, are you sure you want to proceed?</h3>
+    <p>
+      <strong>{{ pendingDeleteAssessment.assessmentName }}</strong> will be deleted from the assessment list.
+    </p>
+
+    <div class="delete-dialog-actions">
+      <button type="button" class="secondary-action" [disabled]="!!deletingAssessmentId" (click)="closeDeleteDialog()">No</button>
+      <button type="button" class="primary-action danger-confirm" [disabled]="!!deletingAssessmentId" (click)="confirmDeleteAssessment()">
+        {{ deletingAssessmentId === pendingDeleteAssessment.assessmentId ? 'Deleting...' : 'Yes' }}
+      </button>
+    </div>
+  </section>
+</div>

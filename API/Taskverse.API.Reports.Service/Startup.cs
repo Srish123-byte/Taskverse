@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Taskverse.API.Reports.Service.Managers;
+using Taskverse.API.Reports.Service.Models;
 using Taskverse.API.Reports.Service.Services;
 using Taskverse.Data.DataAccess;
 
@@ -26,6 +27,7 @@ public class Startup
     public void ConfigureServices(IServiceCollection services)
     {
         ConfigureMvc(services);
+        ConfigureSettings(services);
         ConfigureDatabase(services);
         ConfigureDependencyInjection(services);
         ConfigureSwagger(services);
@@ -59,6 +61,12 @@ public class Startup
         services.AddSingleton(dataSource);
         services.AddDbContext<TaskverseContext>(options =>
             options.UseNpgsql(dataSource));
+    }
+
+    private void ConfigureSettings(IServiceCollection services)
+    {
+        services.Configure<ResultEvaluationSettings>(
+            Configuration.GetSection(ResultEvaluationSettings.SectionName));
     }
 
     private static void ConfigureDependencyInjection(IServiceCollection services)

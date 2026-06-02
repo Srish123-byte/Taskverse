@@ -131,6 +131,66 @@ public class CollegeOrchestrator : ICollegeOrchestrator
         };
     }
 
+    public async Task<CollegeClassSummaryDto> UpdateClass(Guid collegeId, Guid classId, UpdateCollegeClassDto dto)
+    {
+        var name = NormalizeRequired(dto.Name, "Class name");
+        var academicYear = NormalizeOptional(dto.AcademicYear);
+        var department = NormalizeOptional(dto.Department);
+
+        var entity = await _context.Classes
+            .FirstOrDefaultAsync(item => item.ClassId == classId && item.CollegeId == collegeId);
+
+        if (entity is null)
+        {
+            throw new KeyNotFoundException($"Class '{classId}' was not found for this college.");
+        }
+
+        var exists = await _context.Classes.AnyAsync(item =>
+            item.CollegeId == collegeId &&
+            item.ClassId != classId &&
+            item.Name == name &&
+            item.AcademicYear == academicYear);
+
+        if (exists)
+        {
+            throw new InvalidOperationException($"A class named '{name}' already exists for academic year '{academicYear ?? "N/A"}'.");
+        }
+
+        entity.Name = name;
+        entity.AcademicYear = academicYear;
+        entity.Description = department;
+        entity.ModifiedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        var totals = await _context.Batches
+            .AsNoTracking()
+            .Where(item => item.ClassId == entity.ClassId && item.CollegeId == collegeId)
+            .GroupJoin(
+                _context.Students.AsNoTracking().Where(student => student.CollegeId == collegeId && student.Status == UserStatus.APPROVED),
+                batch => batch.BatchId,
+                student => student.BatchId ?? Guid.Empty,
+                (batch, students) => new
+                {
+                    Capacity = batch.Capacity ?? 0,
+                    StudentCount = students.Count()
+                })
+            .ToListAsync();
+
+        return new CollegeClassSummaryDto
+        {
+            ClassId = entity.ClassId.ToString(),
+            CollegeId = entity.CollegeId.ToString(),
+            Name = entity.Name,
+            AcademicYear = entity.AcademicYear,
+            Department = entity.Description,
+            TotalStudents = totals.Sum(item => item.StudentCount),
+            TotalCapacity = totals.Sum(item => item.Capacity),
+            CreatedAt = entity.CreatedAt,
+            Batches = []
+        };
+    }
+
     public async Task<CollegeBatchSummaryDto> CreateBatch(Guid collegeId, Guid classId, CreateCollegeBatchDto dto)
     {
         var name = NormalizeRequired(dto.Name, "Batch name");
@@ -181,6 +241,74 @@ public class CollegeOrchestrator : ICollegeOrchestrator
         });
         await _context.SaveChangesAsync();
         return await BuildBatchSummary(entity);
+    }
+
+    public async Task<CollegeBatchSummaryDto> UpdateBatch(Guid collegeId, Guid classId, Guid batchId, UpdateCollegeBatchDto dto)
+    {
+        var name = NormalizeRequired(dto.Name, "Batch name");
+        var description = NormalizeOptional(dto.Description);
+        var requestedSubjectName = NormalizeOptional(dto.SubjectName);
+        var capacity = dto.Capacity.GetValueOrDefault();
+        if (capacity < 0)
+        {
+            throw new InvalidOperationException("Batch capacity cannot be negative.");
+        }
+
+        var batch = await _context.Batches
+            .FirstOrDefaultAsync(item =>
+                item.BatchId == batchId &&
+                item.ClassId == classId &&
+                item.CollegeId == collegeId);
+
+        if (batch is null)
+        {
+            throw new KeyNotFoundException($"Batch '{batchId}' was not found for class '{classId}' in this college.");
+        }
+
+        var classExists = await _context.Classes
+            .AsNoTracking()
+            .AnyAsync(item => item.ClassId == classId && item.CollegeId == collegeId);
+
+        if (!classExists)
+        {
+            throw new KeyNotFoundException($"Class '{classId}' was not found for this college.");
+        }
+
+        var exists = await _context.Batches.AnyAsync(item =>
+            item.ClassId == classId &&
+            item.BatchId != batchId &&
+            item.Name == name);
+        if (exists)
+        {
+            throw new InvalidOperationException($"A batch named '{name}' already exists for this class.");
+        }
+
+        var subject = await ResolveSubject(dto.SubjectId, requestedSubjectName);
+
+        batch.Name = name;
+        batch.Description = description;
+        batch.Capacity = capacity;
+        batch.ModifiedAt = DateTime.UtcNow;
+
+        var existingSubjectMappings = await _context.SubjectBatches
+            .Where(item => item.BatchId == batchId)
+            .ToListAsync();
+
+        if (existingSubjectMappings.Count > 0)
+        {
+            _context.SubjectBatches.RemoveRange(existingSubjectMappings);
+        }
+
+        _context.SubjectBatches.Add(new SubjectBatch
+        {
+            SubjectBatchId = Guid.NewGuid(),
+            SubjectId = subject.SubjectId,
+            BatchId = batch.BatchId,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await _context.SaveChangesAsync();
+        return await BuildBatchSummary(batch);
     }
 
     public async Task<CollegeBatchSummaryDto> AssignBatchTrainers(Guid collegeId, Guid classId, Guid batchId, AssignBatchTrainersDto dto)

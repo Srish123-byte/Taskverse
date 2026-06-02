@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using Taskverse.Api.MicroServices.Interfaces;
 using Taskverse.Api.MicroServices.Models;
+using Taskverse.Api.MicroServices.Utilities;
 using Taskverse.Business.DTOs;
 using Taskverse.Business.Interface;
 using Taskverse.Business.Mappings;
@@ -25,7 +26,15 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
     {
         _log.Debug($"AssessmentOrchestrator.CreateAssessment: assessmentName={dto.AssessmentName}, collegeId={dto.CollegeId}, questionCount={dto.QuestionIds.Count}");
 
-        var result = await _microServiceOrchestrator.CreateAssessment(dto.ToMicroServiceModel());
+        ObjectResult result;
+        try
+        {
+            result = await _microServiceOrchestrator.CreateAssessment(dto.ToMicroServiceModel());
+        }
+        catch (InvalidOperationException ex) when (string.Equals(ex.Message, MicroServiceBusinessCondition.AddressNotFound, StringComparison.Ordinal))
+        {
+            throw new HttpRequestException("Assessment microservice address is missing or invalid.", ex);
+        }
 
         if (result.IsSuccess())
         {
@@ -36,6 +45,120 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         }
 
         var message = ExtractMessage(result.Value) ?? $"CreateAssessment failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status403Forbidden => new UnauthorizedAccessException(message),
+            StatusCodes.Status404NotFound => new KeyNotFoundException(message),
+            StatusCodes.Status409Conflict => new InvalidOperationException(message),
+            StatusCodes.Status422UnprocessableEntity => new InvalidDataException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new Exception(message)
+        };
+    }
+
+    public async Task<QuestionBankAssessmentDto> GetAssessment(
+        Guid assessmentId,
+        Guid collegeId,
+        string requesterRole,
+        string requesterName)
+    {
+        _log.Debug(
+            $"AssessmentOrchestrator.GetAssessment: assessmentId={assessmentId}, collegeId={collegeId}, requesterRole={requesterRole}");
+
+        ObjectResult result;
+        try
+        {
+            result = await _microServiceOrchestrator.GetAssessment(assessmentId, collegeId, requesterRole, requesterName);
+        }
+        catch (InvalidOperationException ex) when (string.Equals(ex.Message, MicroServiceBusinessCondition.AddressNotFound, StringComparison.Ordinal))
+        {
+            throw new HttpRequestException("Assessment microservice address is missing or invalid.", ex);
+        }
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<QuestionBankAssessmentModel>()
+                ?? throw new InvalidOperationException("GetAssessment returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"GetAssessment failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status403Forbidden => new UnauthorizedAccessException(message),
+            StatusCodes.Status404NotFound => new KeyNotFoundException(message),
+            StatusCodes.Status409Conflict => new InvalidOperationException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new Exception(message)
+        };
+    }
+
+    public async Task<QuestionBankAssessmentDto> UpdateAssessment(UpdateQuestionBankAssessmentDto dto)
+    {
+        _log.Debug(
+            $"AssessmentOrchestrator.UpdateAssessment: assessmentId={dto.AssessmentId}, assessmentName={dto.AssessmentName}, collegeId={dto.CollegeId}, requesterRole={dto.RequesterRole}, questionCount={dto.QuestionIds.Count}");
+
+        ObjectResult result;
+        try
+        {
+            result = await _microServiceOrchestrator.UpdateAssessment(dto.ToMicroServiceModel());
+        }
+        catch (InvalidOperationException ex) when (string.Equals(ex.Message, MicroServiceBusinessCondition.AddressNotFound, StringComparison.Ordinal))
+        {
+            throw new HttpRequestException("Assessment microservice address is missing or invalid.", ex);
+        }
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<QuestionBankAssessmentModel>()
+                ?? throw new InvalidOperationException("UpdateAssessment returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"UpdateAssessment failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status403Forbidden => new UnauthorizedAccessException(message),
+            StatusCodes.Status404NotFound => new KeyNotFoundException(message),
+            StatusCodes.Status409Conflict => new InvalidOperationException(message),
+            StatusCodes.Status422UnprocessableEntity => new InvalidDataException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new Exception(message)
+        };
+    }
+
+    public async Task<QuestionBankAssessmentDto> PublishAssessment(PublishQuestionBankAssessmentDto dto)
+    {
+        _log.Debug(
+            $"AssessmentOrchestrator.PublishAssessment: assessmentId={dto.AssessmentId}, assessmentName={dto.AssessmentName}, collegeId={dto.CollegeId}, questionCount={dto.QuestionIds.Count}");
+
+        ObjectResult result;
+        try
+        {
+            result = await _microServiceOrchestrator.PublishAssessment(dto.ToMicroServiceModel());
+        }
+        catch (InvalidOperationException ex) when (string.Equals(ex.Message, MicroServiceBusinessCondition.AddressNotFound, StringComparison.Ordinal))
+        {
+            throw new HttpRequestException("Assessment microservice address is missing or invalid.", ex);
+        }
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<QuestionBankAssessmentModel>()
+                ?? throw new InvalidOperationException("PublishAssessment returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"PublishAssessment failed with status {result.StatusCode}.";
 
         throw result.StatusCode switch
         {
@@ -206,6 +329,56 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         };
     }
 
+    public async Task<AssessmentSubjectTopicCatalogDto> GetSubjectTopicCatalog(AssessmentBootstrapDto dto)
+    {
+        _log.Debug(
+            $"AssessmentOrchestrator.GetSubjectTopicCatalog: collegeId={dto.CollegeId}, requesterRole={dto.RequesterRole}, requesterUserId={dto.RequesterUserId}");
+
+        var result = await _microServiceOrchestrator.GetSubjectTopicCatalog(dto.ToMicroServiceModel());
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<AssessmentSubjectTopicCatalogModel>()
+                ?? throw new InvalidOperationException("GetSubjectTopicCatalog returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"GetSubjectTopicCatalog failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new Exception(message)
+        };
+    }
+
+    public async Task<AssessmentAssignmentCatalogDto> GetTrainerAssignedClassesAndBatches(AssessmentBootstrapDto dto)
+    {
+        _log.Debug(
+            $"AssessmentOrchestrator.GetTrainerAssignedClassesAndBatches: collegeId={dto.CollegeId}, requesterRole={dto.RequesterRole}, requesterUserId={dto.RequesterUserId}");
+
+        var result = await _microServiceOrchestrator.GetTrainerAssignedClassesAndBatches(dto.ToMicroServiceModel());
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<AssessmentAssignmentCatalogModel>()
+                ?? throw new InvalidOperationException("GetTrainerAssignedClassesAndBatches returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"GetTrainerAssignedClassesAndBatches failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new Exception(message)
+        };
+    }
+
     public async Task<PagedQuestionBankDto> SearchQuestionBank(QuestionBankSearchDto dto)
     {
         _log.Debug($"AssessmentOrchestrator.SearchQuestionBank: collegeId={dto.CollegeId}, subject={dto.Subject}, topic={dto.Topic}, difficultyLevel={dto.DifficultyLevel}, page={dto.PageNumber}, pageSize={dto.PageSize}");
@@ -221,6 +394,31 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         }
 
         var message = ExtractMessage(result.Value) ?? $"SearchQuestionBank failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new Exception(message)
+        };
+    }
+
+    public async Task<AssessmentManagementSearchResultDto> SearchAssessments(AssessmentManagementSearchDto dto)
+    {
+        _log.Debug(
+            $"AssessmentOrchestrator.SearchAssessments: collegeId={dto.CollegeId}, requesterRole={dto.RequesterRole}, search={dto.SearchTerm}, status={dto.AssessmentStatus}, difficultyLevel={dto.DifficultyLevel}, page={dto.PageNumber}, pageSize={dto.PageSize}");
+
+        var result = await _microServiceOrchestrator.SearchAssessments(dto.ToMicroServiceModel());
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<AssessmentManagementSearchResultModel>()
+                ?? throw new InvalidOperationException("SearchAssessments returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"SearchAssessments failed with status {result.StatusCode}.";
 
         throw result.StatusCode switch
         {

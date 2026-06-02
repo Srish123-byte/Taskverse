@@ -1,28 +1,7 @@
-<div class="page-container">
-  <h2 class="page-title">Assessment Builder</h2>
-  <p class="page-content">
-    Create, schedule, review, and retire assessments for your college from this workspace.
-  </p>
-
-  <section class="assessment-delete-panel">
-    <div class="panel-copy">
-      <h3>Soft Delete Assessment</h3>
-      <p>College admins can soft delete assessments only for their own college. Super admins can recover them within 30 days.</p>
-    </div>
-
-    <label class="field-label" for="collegeAssessmentDeleteId">Assessment ID</label>
-    <input
-      id="collegeAssessmentDeleteId"
-      type="text"
-      [(ngModel)]="assessmentId"
-      [disabled]="isDeleting"
-      placeholder="Enter assessment GUID" />
-
-    <button type="button" class="danger-button" [disabled]="isDeleting || !assessmentId.trim()" (click)="deleteAssessment()">
-      {{ isDeleting ? 'Deleting...' : 'Soft Delete Assessment' }}
-    </button>
-
-    <p *ngIf="successMessage" class="status-message status-success">{{ successMessage }}</p>
-    <p *ngIf="errorMessage" class="status-message status-error">{{ errorMessage }}</p>
-  </section>
-</div>
+<app-assessments-management
+  heroKicker="Admin Console"
+  pageTitle="Assessments Management"
+  pageWelcome="Configure, monitor, and deploy high-stakes technical assessments."
+  createAssessmentRoute="college-admin/assessments-management/new-assessment"
+  editAssessmentRouteBase="college-admin/assessments-management/edit-assessment">
+</app-assessments-management>

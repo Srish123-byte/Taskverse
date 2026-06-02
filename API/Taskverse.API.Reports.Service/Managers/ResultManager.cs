@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Taskverse.API.Reports.Service.Models;
 using Taskverse.API.Reports.Service.Services;
 using Taskverse.Data.Enums;
@@ -8,17 +9,18 @@ namespace Taskverse.API.Reports.Service.Managers;
 
 public class ResultManager : IResultManager
 {
-    private const decimal PassingPercentage = 50m;
-
     private readonly TaskverseContext _context;
     private readonly IResultEvaluationStrategyFactory _strategyFactory;
+    private readonly ResultEvaluationSettings _resultEvaluationSettings;
 
     public ResultManager(
         TaskverseContext context,
-        IResultEvaluationStrategyFactory strategyFactory)
+        IResultEvaluationStrategyFactory strategyFactory,
+        IOptions<ResultEvaluationSettings> resultEvaluationSettings)
     {
         _context = context;
         _strategyFactory = strategyFactory;
+        _resultEvaluationSettings = resultEvaluationSettings.Value;
     }
 
     public async Task<AttemptResultResponse> EvaluateAttemptAsync(
@@ -133,7 +135,7 @@ public class ResultManager : IResultManager
             : Math.Round((obtainedMarks / totalMarks) * 100m, 2, MidpointRounding.AwayFromZero);
         var resultStatus = hasCodingQuestions
             ? ResultStatus.Pending
-            : percentage >= PassingPercentage ? ResultStatus.Pass : ResultStatus.Fail;
+            : percentage >= GetPassingPercentage() ? ResultStatus.Pass : ResultStatus.Fail;
 
         attempt.CorrectAnswers = correctAnswers;
         attempt.WrongAnswers = wrongAnswers;
@@ -227,5 +229,17 @@ public class ResultManager : IResultManager
         {
             rankedResults[index].Rank = index + 1;
         }
+    }
+
+    private decimal GetPassingPercentage()
+    {
+        var configuredValue = _resultEvaluationSettings.PassingPercentage;
+        if (configuredValue is < 0m or > 100m)
+        {
+            throw new InvalidOperationException(
+                $"Configured passing percentage '{configuredValue}' is invalid. It must be between 0 and 100.");
+        }
+
+        return configuredValue;
     }
 }

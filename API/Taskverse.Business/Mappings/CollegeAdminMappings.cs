@@ -10,7 +10,19 @@ public static class CollegeAdminMappings
         dto.AcademicYear,
         dto.Department);
 
+    public static UpdateCollegeClassModel ToMicroServiceModel(this UpdateCollegeClassDto dto) => new(
+        dto.Name,
+        dto.AcademicYear,
+        dto.Department);
+
     public static CreateCollegeBatchModel ToMicroServiceModel(this CreateCollegeBatchDto dto) => new(
+        dto.Name,
+        dto.Description,
+        dto.Capacity,
+        dto.SubjectId,
+        dto.SubjectName);
+
+    public static UpdateCollegeBatchModel ToMicroServiceModel(this UpdateCollegeBatchDto dto) => new(
         dto.Name,
         dto.Description,
         dto.Capacity,

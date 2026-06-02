@@ -16,4 +16,8 @@
 		<ProjectReference Include="..\Taskverse.Data\Taskverse.Data.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="Clients\" />
+	</ItemGroup>
+
 </Project>

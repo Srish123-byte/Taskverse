@@ -66,11 +66,8 @@ public class Assessment
     [Column("negative_marking")]
     public bool NegativeMarking { get; set; }
 
-    [Column("marks_per_question", TypeName = "numeric(6,2)")]
-    public decimal MarksPerQuestion { get; set; }
-
     [Column("is_total_marks_auto_calculated")]
-    public bool IsTotalMarksAutoCalculated { get; set; }
+    public bool? IsTotalMarksAutoCalculated { get; set; }
 
     [Required]
     [MaxLength(200)]
@@ -82,6 +79,9 @@ public class Assessment
 
     [Column("modified_at")]
     public DateTime? ModifiedAt { get; set; }
+
+    [Column("is_deleted")]
+    public bool? IsDeleted { get; set; }
 
     [Column("soft_deleted_at")]
     public DateTime? SoftDeletedAt { get; set; }

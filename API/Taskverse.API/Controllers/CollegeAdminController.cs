@@ -105,6 +105,34 @@ public class CollegeAdminController : TaskverseBaseController
         }
     }
 
+    [HttpPut("classes/{classId}")]
+    [SwaggerResponse(200, "Class updated", typeof(CollegeClassSummaryResponseModel))]
+    [SwaggerResponse(400, "CollegeId header is missing or invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Class not found")]
+    public async Task<IActionResult> UpdateClass(string classId, [FromBody] UpdateCollegeClassRequestModel model)
+    {
+        var accessCheck = EnsureCollegeAdminAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        try
+        {
+            var dto = await _collegeAdminOrchestrator.UpdateClass(collegeId, classId, model.ToDto());
+            return Ok(dto.ToResponseModel());
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpPost("classes/{classId}/batches")]
     [SwaggerResponse(200, "Batch created", typeof(CollegeBatchSummaryResponseModel))]
     [SwaggerResponse(400, "CollegeId header is missing or invalid")]
@@ -121,6 +149,37 @@ public class CollegeAdminController : TaskverseBaseController
         try
         {
             var dto = await _collegeAdminOrchestrator.CreateBatch(collegeId, classId, model.ToDto());
+            return Ok(dto.ToResponseModel());
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPut("classes/{classId}/batches/{batchId}")]
+    [SwaggerResponse(200, "Batch updated", typeof(CollegeBatchSummaryResponseModel))]
+    [SwaggerResponse(400, "CollegeId header is missing or invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Class or batch not found")]
+    public async Task<IActionResult> UpdateBatch(
+        string classId,
+        string batchId,
+        [FromBody] UpdateCollegeBatchRequestModel model)
+    {
+        var accessCheck = EnsureCollegeAdminAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        try
+        {
+            var dto = await _collegeAdminOrchestrator.UpdateBatch(collegeId, classId, batchId, model.ToDto());
             return Ok(dto.ToResponseModel());
         }
         catch (KeyNotFoundException ex)

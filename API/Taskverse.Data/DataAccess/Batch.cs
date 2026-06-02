@@ -6,6 +6,8 @@ namespace Taskverse.Data.DataAccess;
 [Table("batches")]
 public class Batch
 {
+    public string ClassName;
+
     [Key]
     [Column("batch_id")]
     public Guid BatchId { get; set; } = Guid.NewGuid();
@@ -32,12 +34,15 @@ public class Batch
     [Column("modified_at")]
     public DateTime? ModifiedAt { get; set; }
 
+    // Navigation to the owning class
+    public Class Class { get; set; } = default!;
+
     // Navigation to students
-    public ICollection<Student> Students { get; set; }
+    public ICollection<Student> Students { get; set; } = [];
 
     // Navigation to trainer assignments
-    public ICollection<TrainerBatch> TrainerBatches { get; set; }
+    public ICollection<TrainerBatch> TrainerBatches { get; set; } = [];
 
     // Navigation to subject assignments
-    public ICollection<SubjectBatch> SubjectBatches { get; set; }
+    public ICollection<SubjectBatch> SubjectBatches { get; set; } = [];
 }

@@ -9,10 +9,14 @@ using Taskverse.Data.DataAccess;
 
 namespace Taskverse.Api.Controllers;
 
+/// <summary>
+/// Exposes assessment, question-bank, and student assessment endpoints through the main API gateway.
+/// </summary>
 [Route("api/assessments")]
 [Produces("application/json")]
 public class AssessmentsController : TaskverseBaseController
 {
+    private const int MaxInstructionWordCount = 1000;
     private const string SuperAdminRole = "SuperAdmin";
     private const string CollegeAdminRole = "CollegeAdmin";
     private const string TrainerRole = "Trainer";
@@ -34,6 +38,11 @@ public class AssessmentsController : TaskverseBaseController
         _logger = logger;
     }
 
+    /// <summary>
+    /// Creates an assessment for the current college-admin or trainer context.
+    /// </summary>
+    /// <param name="model">The assessment payload to create.</param>
+    /// <returns>The created assessment response.</returns>
     [HttpPost]
     [SwaggerResponse(201, "Assessment created successfully", typeof(QuestionBankAssessmentResponseModel))]
     [SwaggerResponse(400, "Invalid request or CollegeId is missing/invalid")]
@@ -56,9 +65,18 @@ public class AssessmentsController : TaskverseBaseController
             return BadRequest(new { message = "Assessment request is required." });
         }
 
+        var instructionValidationError = ValidateInstructionWordLimit(model.Instructions);
+        if (instructionValidationError is not null)
+        {
+            return BadRequest(new { message = instructionValidationError });
+        }
+
         try
         {
-            var trainerBatchAccessCheck = await EnsureTrainerCanAssignRequestedBatches(collegeId, model.AssignedBatchIds);
+            var trainerBatchAccessCheck = await EnsureTrainerCanAssignRequestedBatches(
+                collegeId,
+                model.AssignedBatchIds,
+                requireAtLeastOneBatch: false);
             if (trainerBatchAccessCheck is not null) return trainerBatchAccessCheck;
 
             var dto = await _assessmentOrchestrator.CreateAssessment(
@@ -97,26 +115,104 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
-    [HttpPost("{id:guid}/publish")]
-    [SwaggerResponse(200, "Assessment published successfully", typeof(QuestionBankAssessmentResponseModel))]
+    /// <summary>
+    /// Retrieves a single assessment that the current caller is allowed to view.
+    /// </summary>
+    /// <param name="id">The assessment identifier.</param>
+    /// <returns>The requested assessment response.</returns>
+    [HttpGet("{id:guid}")]
+    [SwaggerResponse(200, "Assessment retrieved successfully", typeof(QuestionBankAssessmentResponseModel))]
     [SwaggerResponse(400, "Invalid request or CollegeId is missing/invalid")]
     [SwaggerResponse(403, "Forbidden")]
     [SwaggerResponse(404, "Assessment not found")]
-    [SwaggerResponse(409, "Assessment could not be published due to a conflict")]
-    [SwaggerResponse(422, "Assessment questions exceed allowed limits")]
     [SwaggerResponse(503, "Assessments microservice is unavailable")]
     [SwaggerResponse(500, "Unexpected error")]
-    public async Task<IActionResult> PublishAssessment(Guid id)
+    public async Task<IActionResult> GetAssessment(Guid id)
     {
         var accessCheck = EnsureCollegeAdminOrTrainerAccess();
         if (accessCheck is not null) return accessCheck;
 
-        var tenantCheck = TryGetCollegeId(out _);
+        var tenantCheck = TryGetCollegeId(out var collegeId);
         if (tenantCheck is not null) return tenantCheck;
 
         try
         {
-            var dto = await _assessmentOrchestrator.PublishAssessment(id);
+            var dto = await _assessmentOrchestrator.GetAssessment(
+                id,
+                collegeId,
+                GetRequesterRole(),
+                GetCreatedByName());
+
+            return Ok(dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
+        }
+    }
+
+    /// <summary>
+    /// Updates an assessment for the current college-admin or trainer context.
+    /// </summary>
+    /// <param name="id">The assessment identifier.</param>
+    /// <param name="model">The requested assessment updates.</param>
+    /// <returns>The updated assessment response.</returns>
+    [HttpPut("{id:guid}")]
+    [SwaggerResponse(200, "Assessment updated successfully", typeof(QuestionBankAssessmentResponseModel))]
+    [SwaggerResponse(400, "Invalid request or CollegeId is missing/invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Assessment not found")]
+    [SwaggerResponse(409, "Assessment could not be updated due to a conflict")]
+    [SwaggerResponse(422, "Selected questions exceed the allowed assessment limit")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> UpdateAssessment(Guid id, [FromBody] UpdateQuestionBankAssessmentRequestModel model)
+    {
+        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        if (model is null)
+        {
+            return BadRequest(new { message = "Assessment update request is required." });
+        }
+
+        var instructionValidationError = ValidateInstructionWordLimit(model.Instructions);
+        if (instructionValidationError is not null)
+        {
+            return BadRequest(new { message = instructionValidationError });
+        }
+
+        try
+        {
+            var trainerBatchAccessCheck = await EnsureTrainerCanAssignRequestedBatches(
+                collegeId,
+                model.AssignedBatchIds,
+                requireAtLeastOneBatch: !model.IsDraftSave);
+            if (trainerBatchAccessCheck is not null) return trainerBatchAccessCheck;
+
+            var dto = await _assessmentOrchestrator.UpdateAssessment(
+                model.ToDto(id, collegeId, GetCreatedByName(), GetRequesterRole()));
+
             return Ok(dto.ToResponseModel());
         }
         catch (ArgumentException ex)
@@ -150,6 +246,72 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    /// <summary>
+    /// Publishes an existing assessment by identifier.
+    /// </summary>
+    /// <param name="id">The assessment identifier.</param>
+    /// <returns>The published assessment response.</returns>
+    [HttpPost("{id:guid}/publish")]
+    [SwaggerResponse(200, "Assessment published successfully", typeof(QuestionBankAssessmentResponseModel))]
+    [SwaggerResponse(400, "Invalid request or CollegeId is missing/invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Assessment not found")]
+    [SwaggerResponse(409, "Assessment could not be published due to a conflict")]
+    [SwaggerResponse(422, "Assessment questions exceed allowed limits")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> PublishAssessment(Guid id)
+    {
+        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out _);
+        if (tenantCheck is not null) return tenantCheck;
+
+        try
+        {
+            var dto = await _assessmentOrchestrator.PublishAssessment(new Taskverse.Business.DTOs.PublishQuestionBankAssessmentDto
+            {
+                AssessmentId = id
+            });
+            return Ok(dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidDataException ex)
+        {
+            return UnprocessableEntity(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
+        }
+    }
+
+    /// <summary>
+    /// Soft deletes an assessment for an authorized requester.
+    /// </summary>
+    /// <param name="id">The assessment identifier.</param>
+    /// <returns>A no-content response when deletion succeeds.</returns>
     [HttpDelete("{id:guid}")]
     [SwaggerResponse(204, "Assessment deleted successfully")]
     [SwaggerResponse(400, "Invalid request or CollegeId is missing/invalid")]
@@ -160,11 +322,11 @@ public class AssessmentsController : TaskverseBaseController
     [SwaggerResponse(500, "Unexpected error")]
     public async Task<IActionResult> DeleteAssessment(Guid id)
     {
-        var accessCheck = EnsureSuperAdminOrCollegeAdminAccess();
+        var accessCheck = EnsureSuperAdminOrCollegeAdminOrTrainerAccess();
         if (accessCheck is not null) return accessCheck;
 
         Guid? collegeId = null;
-        if (User.IsInRole(CollegeAdminRole))
+        if (User.IsInRole(CollegeAdminRole) || User.IsInRole(TrainerRole))
         {
             var tenantCheck = TryGetCollegeId(out var parsedCollegeId);
             if (tenantCheck is not null) return tenantCheck;
@@ -176,6 +338,7 @@ public class AssessmentsController : TaskverseBaseController
             await _assessmentOrchestrator.DeleteAssessment(new Taskverse.Business.DTOs.DeleteAssessmentDto
             {
                 AssessmentId = id,
+                IsDeleted = true,
                 DeletedBy = GetCreatedByName(),
                 RequesterRole = GetRequesterRole(),
                 CollegeId = collegeId
@@ -210,6 +373,11 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    /// <summary>
+    /// Creates one or more question-bank entries for the current college scope.
+    /// </summary>
+    /// <param name="models">The question payloads to create.</param>
+    /// <returns>The created question responses.</returns>
     [HttpPost("questions")]
     [SwaggerResponse(201, "Questions created successfully", typeof(List<QuestionResponseModel>))]
     [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]
@@ -256,6 +424,11 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    /// <summary>
+    /// Searches the question bank for the current college scope.
+    /// </summary>
+    /// <param name="model">The search filters and paging options.</param>
+    /// <returns>The paged question-bank result.</returns>
     [HttpPost("questions/search")]
     [SwaggerResponse(200, "Paged question bank result", typeof(PagedQuestionBankResponseModel))]
     [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]
@@ -295,6 +468,230 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    /// <summary>
+    /// Searches assessments for the management screens available to the current caller.
+    /// </summary>
+    /// <param name="model">The search filters and paging options.</param>
+    /// <returns>The paged assessment management result.</returns>
+    [HttpPost("search")]
+    [SwaggerResponse(200, "Paged assessment management result", typeof(AssessmentManagementSearchResponseModel))]
+    [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> SearchAssessments([FromBody] AssessmentManagementSearchRequestModel model)
+    {
+        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        if (model is null)
+        {
+            return BadRequest(new { message = "Assessment search request is required." });
+        }
+
+        try
+        {
+            var dto = await _assessmentOrchestrator.SearchAssessments(
+                model.ToDto(collegeId, GetRequesterRole(), GetCurrentUserId(), GetCreatedByName()));
+
+            return Ok(dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
+        }
+    }
+
+    /// <summary>
+    /// Returns the subject and topic catalog visible to the current caller.
+    /// </summary>
+    /// <returns>The accessible subject-topic catalog.</returns>
+    [HttpGet("subjects-topics/catalog")]
+    [SwaggerResponse(200, "Accessible subject-topic catalog for the assessment builder", typeof(AssessmentSubjectTopicCatalogResponseModel))]
+    [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> GetSubjectTopicCatalog()
+    {
+        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        try
+        {
+            var dto = new Taskverse.Business.DTOs.AssessmentBootstrapDto
+            {
+                CollegeId = collegeId,
+                RequesterRole = GetRequesterRole(),
+                RequesterUserId = GetCurrentUserId()
+            };
+
+            var result = await _assessmentOrchestrator.GetSubjectTopicCatalog(dto);
+            return Ok(result.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
+        }
+    }
+
+    /// <summary>
+    /// Publishes an existing assessment or creates and publishes a scheduled assessment.
+    /// </summary>
+    /// <param name="model">The publish request payload.</param>
+    /// <returns>The published assessment response.</returns>
+    [HttpPost("publish")]
+    [SwaggerResponse(200, "Assessment published successfully", typeof(QuestionBankAssessmentResponseModel))]
+    [SwaggerResponse(400, "Invalid request or CollegeId is missing/invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Assessment not found")]
+    [SwaggerResponse(409, "Assessment could not be published due to a conflict")]
+    [SwaggerResponse(422, "Assessment questions exceed allowed limits")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> PublishAssessment([FromBody] PublishQuestionBankAssessmentRequestModel model)
+    {
+        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        if (model is null)
+        {
+            return BadRequest(new { message = "Assessment publish request is required." });
+        }
+
+        var instructionValidationError = ValidateInstructionWordLimit(model.Instructions);
+        if (instructionValidationError is not null)
+        {
+            return BadRequest(new { message = instructionValidationError });
+        }
+
+        try
+        {
+            var requestedBatchIds = model.AssessmentId.HasValue ? [] : model.AssignedBatchIds;
+            var trainerBatchAccessCheck = await EnsureTrainerCanAssignRequestedBatches(collegeId, requestedBatchIds);
+            if (trainerBatchAccessCheck is not null) return trainerBatchAccessCheck;
+
+            var dto = await _assessmentOrchestrator.PublishAssessment(
+                model.ToDto(collegeId, GetCreatedByName()));
+
+            return Ok(dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidDataException ex)
+        {
+            return UnprocessableEntity(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
+        }
+    }
+
+    /// <summary>
+    /// Returns the classes and batches assigned to the current trainer.
+    /// </summary>
+    /// <returns>The trainer assignment catalog.</returns>
+    [HttpGet("trainer/assigned-classes-batches")]
+    [SwaggerResponse(200, "Assigned classes and batches for the trainer assessment builder", typeof(AssessmentAssignmentCatalogResponseModel))]
+    [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> GetTrainerAssignedClassesAndBatches()
+    {
+        if (User?.Identity?.IsAuthenticated != true || !User.IsInRole(TrainerRole))
+        {
+            return Forbid();
+        }
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        var currentUserId = GetCurrentUserId();
+        if (!currentUserId.HasValue)
+        {
+            return BadRequest(new { message = "Trainer user context is missing or invalid." });
+        }
+
+        try
+        {
+            var dto = new Taskverse.Business.DTOs.AssessmentBootstrapDto
+            {
+                CollegeId = collegeId,
+                RequesterRole = TrainerRole,
+                RequesterUserId = currentUserId.Value
+            };
+
+            var result = await _assessmentOrchestrator.GetTrainerAssignedClassesAndBatches(dto);
+            return Ok(result.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
+        }
+    }
+
+    /// <summary>
+    /// Retrieves a single question-bank entry by identifier.
+    /// </summary>
+    /// <param name="id">The question identifier.</param>
+    /// <returns>The requested question response.</returns>
     [HttpGet("questions/{id:guid}")]
     [SwaggerResponse(200, "Question loaded successfully", typeof(QuestionResponseModel))]
     [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]
@@ -349,6 +746,12 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    /// <summary>
+    /// Updates a question-bank entry by identifier.
+    /// </summary>
+    /// <param name="id">The question identifier.</param>
+    /// <param name="model">The updated question payload.</param>
+    /// <returns>The updated question response.</returns>
     [HttpPut("questions/{id:guid}")]
     [SwaggerResponse(200, "Question updated successfully", typeof(QuestionResponseModel))]
     [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]
@@ -401,6 +804,11 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    /// <summary>
+    /// Deletes one or more question-bank entries for the current caller.
+    /// </summary>
+    /// <param name="model">The question identifiers and requester context.</param>
+    /// <returns>The deleted question identifiers.</returns>
     [HttpDelete("questions")]
     [SwaggerResponse(200, "Questions deleted successfully", typeof(DeleteQuestionsResponseModel))]
     [SwaggerResponse(400, "Invalid request")]
@@ -456,6 +864,12 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    /// <summary>
+    /// Returns a paged list of questions assigned to an assessment.
+    /// </summary>
+    /// <param name="id">The assessment identifier.</param>
+    /// <param name="model">The paging request.</param>
+    /// <returns>The paged assessment question list.</returns>
     [HttpPost("{id:guid}/questions/list")]
     [SwaggerResponse(200, "Paged question list for the assessment", typeof(PagedAssessmentQuestionListResponseModel))]
     [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]
@@ -505,6 +919,11 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    /// <summary>
+    /// Returns assessments available to the logged-in student for the requested statuses.
+    /// </summary>
+    /// <param name="assessmentStatuses">The statuses to include in the response.</param>
+    /// <returns>The student assessment list.</returns>
     [HttpPost("/api/student/assessments")]
     [SwaggerResponse(200, "Assigned assessments for the logged-in student", typeof(List<StudentAssessmentListResponseModel>))]
     [SwaggerResponse(400, "Invalid assessment status filter or student context")]
@@ -559,6 +978,11 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    /// <summary>
+    /// Returns published assessment results for the specified student.
+    /// </summary>
+    /// <param name="studentId">The student identifier.</param>
+    /// <returns>The student's result list.</returns>
     [HttpGet("/api/student/{studentId:guid}/results")]
     [SwaggerResponse(200, "Available results for the specified student", typeof(List<StudentResultResponseModel>))]
     [SwaggerResponse(400, "Invalid student id")]
@@ -602,6 +1026,11 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    /// <summary>
+    /// Returns the assessment detail required by the logged-in student to begin or continue an attempt.
+    /// </summary>
+    /// <param name="assessmentId">The assessment identifier.</param>
+    /// <returns>The student assessment detail.</returns>
     [HttpGet("/api/student/assessments/{assessmentId:guid}")]
     [SwaggerResponse(200, "Assessment details for the logged-in student", typeof(StudentAssessmentDetailResponseModel))]
     [SwaggerResponse(400, "Invalid student context")]
@@ -664,6 +1093,11 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    /// <summary>
+    /// Starts an assessment attempt for the logged-in student.
+    /// </summary>
+    /// <param name="assessmentId">The assessment identifier.</param>
+    /// <returns>The started attempt response.</returns>
     [HttpPost("/api/student/assessments/{assessmentId:guid}/start")]
     [SwaggerResponse(200, "Assessment attempt started for the logged-in student", typeof(StudentAssessmentStartResponseModel))]
     [SwaggerResponse(400, "Invalid student context")]
@@ -719,6 +1153,11 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    /// <summary>
+    /// Recovers the in-progress attempt state for the logged-in student.
+    /// </summary>
+    /// <param name="attemptId">The attempt identifier.</param>
+    /// <returns>The recoverable attempt state.</returns>
     [HttpGet("/api/student/attempts/{attemptId:guid}")]
     [SwaggerResponse(200, "Recoverable assessment attempt state for the logged-in student", typeof(StudentAttemptRecoveryResponseModel))]
     [SwaggerResponse(400, "Invalid student context")]
@@ -774,6 +1213,11 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    /// <summary>
+    /// Submits the specified assessment attempt for the logged-in student.
+    /// </summary>
+    /// <param name="attemptId">The attempt identifier.</param>
+    /// <returns>The submitted attempt response.</returns>
     [HttpPost("/api/student/attempts/{attemptId:guid}/submit")]
     [SwaggerResponse(200, "Attempt submitted for the logged-in student", typeof(StudentAttemptSubmitResponseModel))]
     [SwaggerResponse(400, "Invalid student context or request")]
@@ -829,6 +1273,13 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    /// <summary>
+    /// Saves an answer for a single question within the logged-in student's attempt.
+    /// </summary>
+    /// <param name="attemptId">The attempt identifier.</param>
+    /// <param name="questionId">The question identifier.</param>
+    /// <param name="model">The answer payload to save.</param>
+    /// <returns>The saved answer response.</returns>
     [HttpPut("/api/student/attempts/{attemptId:guid}/{questionId:guid}/answers")]
     [SwaggerResponse(200, "Attempt answer saved for the logged-in student", typeof(StudentAttemptAnswerResponseModel))]
     [SwaggerResponse(400, "Invalid student context or request")]
@@ -1000,7 +1451,10 @@ public class AssessmentsController : TaskverseBaseController
             ?? "unknown-user";
     }
 
-    private async Task<IActionResult?> EnsureTrainerCanAssignRequestedBatches(Guid collegeId, IEnumerable<Guid>? requestedBatchIds)
+    private async Task<IActionResult?> EnsureTrainerCanAssignRequestedBatches(
+        Guid collegeId,
+        IEnumerable<Guid>? requestedBatchIds,
+        bool requireAtLeastOneBatch = true)
     {
         if (!User.IsInRole(TrainerRole))
         {
@@ -1014,6 +1468,11 @@ public class AssessmentsController : TaskverseBaseController
 
         if (normalizedBatchIds.Length == 0)
         {
+            if (!requireAtLeastOneBatch)
+            {
+                return null;
+            }
+
             return StatusCode(StatusCodes.Status403Forbidden, new
             {
                 message = "Trainer assessments must be assigned to at least one batch."
@@ -1072,7 +1531,7 @@ public class AssessmentsController : TaskverseBaseController
             return userIdFromClaims;
         }
 
-        candidate = UserId;
+        candidate = Request?.Headers["UserId"].ToString();
         return Guid.TryParse(candidate, out var userId) ? userId : null;
     }
 
@@ -1094,5 +1553,20 @@ public class AssessmentsController : TaskverseBaseController
         }
 
         return UserRole;
+    }
+
+    private static string? ValidateInstructionWordLimit(string? instructions)
+    {
+        return CountWords(instructions) > MaxInstructionWordCount
+            ? $"Instructions cannot exceed {MaxInstructionWordCount} words."
+            : null;
+    }
+
+    private static int CountWords(string? value)
+    {
+        var normalized = value?.Trim();
+        return string.IsNullOrWhiteSpace(normalized)
+            ? 0
+            : normalized.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
     }
 }

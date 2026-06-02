@@ -20,6 +20,10 @@ public static class AssessmentMappings
             SubjectName = model.SubjectName,
             TopicId = model.TopicId,
             TopicName = model.TopicName,
+            Instructions = model.Instructions?.Trim(),
+            AllowLateEntry = model.AllowLateEntry,
+            AllowQuestionReview = model.AllowQuestionReview,
+            NegativeMarking = model.NegativeMarking,
             AssignedBatchIds = model.AssignedBatchIds,
             QuestionIds = model.QuestionIds,
             DurationMinutes = model.DurationMinutes,
@@ -97,6 +101,27 @@ public static class AssessmentMappings
         };
     }
 
+    public static AssessmentManagementSearchDto ToDto(
+        this AssessmentManagementSearchRequestModel model,
+        Guid collegeId,
+        string requesterRole,
+        Guid? requesterUserId,
+        string createdBy)
+    {
+        return new AssessmentManagementSearchDto
+        {
+            CollegeId = collegeId,
+            RequesterRole = requesterRole,
+            RequesterUserId = requesterUserId,
+            CreatedBy = createdBy,
+            SearchTerm = model.SearchTerm?.Trim(),
+            AssessmentStatus = model.AssessmentStatus?.Trim(),
+            DifficultyLevel = model.DifficultyLevel,
+            PageNumber = model.PageNumber > 0 ? model.PageNumber : 1,
+            PageSize = model.PageSize > 0 ? model.PageSize : 10
+        };
+    }
+
     public static QuestionResponseModel ToResponseModel(this AssessmentQuestionDto dto)
     {
         return new QuestionResponseModel
@@ -135,6 +160,154 @@ public static class AssessmentMappings
         };
     }
 
+    public static AssessmentManagementItemResponseModel ToResponseModel(this AssessmentManagementItemDto dto)
+    {
+        return new AssessmentManagementItemResponseModel
+        {
+            AssessmentId = dto.AssessmentId,
+            AssessmentName = dto.AssessmentName,
+            Category = dto.Category,
+            TopicName = dto.TopicName,
+            AssessmentStatus = dto.AssessmentStatus,
+            AssessmentDate = UtcDateTime.Normalize(dto.AssessmentDate),
+            TotalMarks = dto.TotalMarks,
+            DifficultyLevel = dto.DifficultyLevel
+        };
+    }
+
+    public static AssessmentManagementSearchResponseModel ToResponseModel(this AssessmentManagementSearchResultDto dto)
+    {
+        return new AssessmentManagementSearchResponseModel
+        {
+            Items = dto.Items.Select(item => item.ToResponseModel()).ToList(),
+            TotalCount = dto.TotalCount,
+            ActiveCount = dto.ActiveCount,
+            CompletedCount = dto.CompletedCount,
+            PageNumber = dto.PageNumber,
+            PageSize = dto.PageSize
+        };
+    }
+
+    public static PublishQuestionBankAssessmentDto ToDto(
+        this PublishQuestionBankAssessmentRequestModel model,
+        Guid collegeId,
+        string createdBy)
+    {
+        return new PublishQuestionBankAssessmentDto
+        {
+            AssessmentId = model.AssessmentId,
+            CollegeId = collegeId,
+            CreatedBy = createdBy,
+            AssessmentName = model.AssessmentName,
+            SubjectId = model.SubjectId,
+            SubjectName = model.SubjectName,
+            TopicId = model.TopicId,
+            TopicName = model.TopicName,
+            Instructions = model.Instructions?.Trim(),
+            AllowLateEntry = model.AllowLateEntry,
+            AllowQuestionReview = model.AllowQuestionReview,
+            NegativeMarking = model.NegativeMarking,
+            AssignedBatchIds = model.AssignedBatchIds,
+            QuestionIds = model.QuestionIds,
+            DurationMinutes = model.DurationMinutes,
+            TotalMarks = model.TotalMarks,
+            StartDateTime = UtcDateTime.Normalize(model.StartDateTime),
+            EndDateTime = UtcDateTime.Normalize(model.EndDateTime)
+        };
+    }
+
+    public static UpdateQuestionBankAssessmentDto ToDto(
+        this UpdateQuestionBankAssessmentRequestModel model,
+        Guid assessmentId,
+        Guid collegeId,
+        string updatedBy,
+        string requesterRole)
+    {
+        return new UpdateQuestionBankAssessmentDto
+        {
+            AssessmentId = assessmentId,
+            CollegeId = collegeId,
+            UpdatedBy = updatedBy,
+            RequesterRole = requesterRole,
+            IsDraftSave = model.IsDraftSave,
+            AssessmentName = model.AssessmentName,
+            SubjectId = model.SubjectId,
+            SubjectName = model.SubjectName,
+            TopicId = model.TopicId,
+            TopicName = model.TopicName,
+            Instructions = model.Instructions?.Trim(),
+            AllowLateEntry = model.AllowLateEntry,
+            AllowQuestionReview = model.AllowQuestionReview,
+            NegativeMarking = model.NegativeMarking,
+            AssignedBatchIds = model.AssignedBatchIds,
+            QuestionIds = model.QuestionIds,
+            DurationMinutes = model.DurationMinutes,
+            TotalMarks = model.TotalMarks,
+            StartDateTime = UtcDateTime.Normalize(model.StartDateTime),
+            EndDateTime = UtcDateTime.Normalize(model.EndDateTime)
+        };
+    }
+
+    public static AssessmentTopicCatalogResponseModel ToResponseModel(this AssessmentTopicCatalogDto dto)
+    {
+        return new AssessmentTopicCatalogResponseModel
+        {
+            TopicId = dto.TopicId,
+            TopicName = dto.TopicName,
+            BatchIds = dto.BatchIds
+        };
+    }
+
+    public static AssessmentSubjectCatalogResponseModel ToResponseModel(this AssessmentSubjectCatalogDto dto)
+    {
+        return new AssessmentSubjectCatalogResponseModel
+        {
+            SubjectId = dto.SubjectId,
+            SubjectName = dto.SubjectName,
+            BatchIds = dto.BatchIds,
+            Topics = dto.Topics.Select(item => item.ToResponseModel()).ToList()
+        };
+    }
+
+    public static AssessmentSubjectTopicCatalogResponseModel ToResponseModel(this AssessmentSubjectTopicCatalogDto dto)
+    {
+        return new AssessmentSubjectTopicCatalogResponseModel
+        {
+            Subjects = dto.Subjects.Select(item => item.ToResponseModel()).ToList()
+        };
+    }
+
+    public static AssessmentAssignmentBatchResponseModel ToResponseModel(this AssessmentAssignmentBatchDto dto)
+    {
+        return new AssessmentAssignmentBatchResponseModel
+        {
+            BatchId = dto.BatchId,
+            ClassId = dto.ClassId,
+            CollegeId = dto.CollegeId,
+            Name = dto.Name
+        };
+    }
+
+    public static AssessmentAssignmentClassResponseModel ToResponseModel(this AssessmentAssignmentClassDto dto)
+    {
+        return new AssessmentAssignmentClassResponseModel
+        {
+            ClassId = dto.ClassId,
+            CollegeId = dto.CollegeId,
+            Name = dto.Name,
+            AcademicYear = dto.AcademicYear,
+            Batches = dto.Batches.Select(item => item.ToResponseModel()).ToList()
+        };
+    }
+
+    public static AssessmentAssignmentCatalogResponseModel ToResponseModel(this AssessmentAssignmentCatalogDto dto)
+    {
+        return new AssessmentAssignmentCatalogResponseModel
+        {
+            Classes = dto.Classes.Select(item => item.ToResponseModel()).ToList()
+        };
+    }
+
     public static QuestionBankAssessmentResponseModel ToResponseModel(this QuestionBankAssessmentDto dto)
     {
         return new QuestionBankAssessmentResponseModel
@@ -159,7 +332,6 @@ public static class AssessmentMappings
             ShowResultsImmediately = dto.ShowResultsImmediately,
             AllowQuestionReview = dto.AllowQuestionReview,
             NegativeMarking = dto.NegativeMarking,
-            MarksPerQuestion = dto.MarksPerQuestion,
             IsTotalMarksAutoCalculated = dto.IsTotalMarksAutoCalculated,
             CreatedBy = dto.CreatedBy,
             CreatedAt = UtcDateTime.Normalize(dto.CreatedAt),

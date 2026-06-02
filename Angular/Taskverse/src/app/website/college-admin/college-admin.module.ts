@@ -13,6 +13,7 @@ import { ReportsComponent } from './reports/reports.component';
 import { SettingsComponent } from './settings/settings.component';
 import { HelpCenterComponent } from './help-center/help-center.component';
 import { QuestionEditorPageComponent } from './question-editor/question-editor.component';
+import { NewAssessmentComponent } from './new-assessment/new-assessment.component';
 
 @NgModule({
   declarations: [
@@ -22,6 +23,7 @@ import { QuestionEditorPageComponent } from './question-editor/question-editor.c
     UserManagementComponent,
     AcademicStructureComponent,
     AssessmentBuilderComponent,
+    NewAssessmentComponent,
     QuestionsManagementComponent,
     QuestionEditorPageComponent,
     ReportsComponent,

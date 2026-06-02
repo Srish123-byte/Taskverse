@@ -1,0 +1,445 @@
+import { formatDate } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
+import { ChangeDetectorRef, Component, HostBinding, Input, OnDestroy, OnInit } from '@angular/core';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
+import { finalize, Subject, takeUntil } from 'rxjs';
+import { RoleType } from '../../enums/role-type.enum';
+import {
+  AssessmentAdminService,
+  AssessmentManagementItem,
+  AssessmentManagementSearchResult
+} from '../../services/api/assessment-admin.service';
+import { AccountService } from '../../services/api/account.service';
+import { Session } from '../../services/session/session.service';
+
+type AssessmentStatusFilter = 'all' | 'DRAFT' | 'SCHEDULED' | 'LIVE' | 'COMPLETED' | 'CANCELLED';
+type AssessmentDifficultyFilter = 'all' | 'Easy' | 'Medium' | 'Hard';
+
+interface FilterOption {
+  value: string;
+  label: string;
+}
+
+@Component({
+  selector: 'app-assessments-management',
+  standalone: false,
+  templateUrl: './assessments-management.component.html',
+  styleUrl: './assessments-management.component.scss'
+})
+export class AssessmentsManagementComponent implements OnInit, OnDestroy {
+  private static readonly deleteErrorSnackBarConfig = {
+    duration: 4500,
+    horizontalPosition: 'center' as const,
+    verticalPosition: 'top' as const,
+    panelClass: ['question-bank-restriction-snackbar']
+  };
+  private static readonly deleteSuccessSnackBarConfig = {
+    duration: 4000,
+    horizontalPosition: 'center' as const,
+    verticalPosition: 'top' as const,
+    panelClass: ['question-editor-success-snackbar']
+  };
+
+  @Input() heroKicker = 'Admin Console';
+  @Input() pageTitle = 'Assessments Management';
+  @Input() pageWelcome = 'Configure, monitor, and deploy high-stakes technical assessments.';
+  @Input() theme: 'college-admin' | 'trainer' = 'college-admin';
+  @Input() createAssessmentRoute = '';
+  @Input() editAssessmentRouteBase = '';
+
+  readonly pageSize = 3;
+  readonly statusOptions: FilterOption[] = [
+    { value: 'all', label: 'All' },
+    { value: 'DRAFT', label: 'Draft' },
+    { value: 'SCHEDULED', label: 'Scheduled' },
+    { value: 'LIVE', label: 'Live' },
+    { value: 'COMPLETED', label: 'Completed' },
+    { value: 'CANCELLED', label: 'Cancelled' }
+  ];
+  readonly difficultyOptions: FilterOption[] = [
+    { value: 'all', label: 'All' },
+    { value: 'Easy', label: 'Easy' },
+    { value: 'Medium', label: 'Medium' },
+    { value: 'Hard', label: 'Hard' }
+  ];
+
+  searchTerm = '';
+  selectedStatus: AssessmentStatusFilter = 'all';
+  selectedDifficulty: AssessmentDifficultyFilter = 'all';
+  currentPage = 1;
+  isLoading = false;
+  errorMessage = '';
+
+  assessments: AssessmentManagementItem[] = [];
+  totalCount = 0;
+  activeCount = 0;
+  completedCount = 0;
+  deletingAssessmentId: string | null = null;
+  pendingDeleteAssessment: AssessmentManagementItem | null = null;
+
+  private readonly destroy$ = new Subject<void>();
+  private hasLoadedInitialAssessments = false;
+  private isBootstrappingContext = false;
+
+  @HostBinding('class.theme-trainer')
+  get isTrainerTheme(): boolean {
+    return this.theme === 'trainer';
+  }
+
+  @HostBinding('class.theme-college-admin')
+  get isCollegeAdminTheme(): boolean {
+    return this.theme === 'college-admin';
+  }
+
+  get totalPages(): number {
+    return Math.max(1, Math.ceil(this.totalCount / this.pageSize));
+  }
+
+  get pageStart(): number {
+    return this.totalCount === 0 ? 0 : (this.currentPage - 1) * this.pageSize + 1;
+  }
+
+  get pageEnd(): number {
+    return this.totalCount === 0 ? 0 : Math.min(this.pageStart + this.assessments.length - 1, this.totalCount);
+  }
+
+  get createAssessmentRouteSegments(): string[] {
+    return this.createAssessmentRoute.split('/').filter(segment => segment.length > 0);
+  }
+
+  constructor(
+    private readonly assessmentAdminService: AssessmentAdminService,
+    private readonly accountService: AccountService,
+    private readonly snackBar: MatSnackBar,
+    private readonly session: Session,
+    private readonly changeDetectorRef: ChangeDetectorRef,
+    private readonly router: Router
+  ) {}
+
+  ngOnInit(): void {
+    if (this.hasAssessmentAccessContext()) {
+      this.loadAssessments();
+      return;
+    }
+
+    this.bootstrapAssessmentAccessContext();
+
+    this.session.user$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        if (!this.hasLoadedInitialAssessments && this.hasAssessmentAccessContext()) {
+          this.loadAssessments();
+        }
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  trackByAssessmentId(_: number, assessment: AssessmentManagementItem): string {
+    return assessment.assessmentId;
+  }
+
+  onFilterChange(): void {
+    this.currentPage = 1;
+    this.loadAssessments();
+  }
+
+  clearFilters(): void {
+    this.searchTerm = '';
+    this.selectedStatus = 'all';
+    this.selectedDifficulty = 'all';
+    this.currentPage = 1;
+    this.loadAssessments();
+  }
+
+  prevPage(): void {
+    if (this.currentPage <= 1 || this.isLoading) {
+      return;
+    }
+
+    this.currentPage -= 1;
+    this.loadAssessments();
+  }
+
+  nextPage(): void {
+    if (this.currentPage >= this.totalPages || this.isLoading) {
+      return;
+    }
+
+    this.currentPage += 1;
+    this.loadAssessments();
+  }
+
+  editAssessment(assessment: AssessmentManagementItem): void {
+    if (!this.isEditAllowed(assessment)) {
+      this.openSnackBar(this.getEditRestrictionMessage(assessment));
+      return;
+    }
+
+    if (!assessment?.assessmentId || !this.editAssessmentRouteBase) {
+      this.openSnackBar('Unable to open the assessment editor right now.');
+      return;
+    }
+
+    const routeSegments = this.editAssessmentRouteBase
+      .split('/')
+      .filter(segment => segment.length > 0);
+
+    void this.router.navigate(['/', ...routeSegments, assessment.assessmentId]);
+  }
+
+  deleteAssessment(assessment: AssessmentManagementItem): void {
+    if (!assessment?.assessmentId || this.deletingAssessmentId) {
+      return;
+    }
+
+    if (this.isLiveAssessment(assessment)) {
+      this.snackBar.open(
+        'Live assessments cannot be deleted. Cancel the assessment first.',
+        'Close',
+        AssessmentsManagementComponent.deleteErrorSnackBarConfig
+      );
+      return;
+    }
+
+    this.pendingDeleteAssessment = assessment;
+  }
+
+  closeDeleteDialog(): void {
+    if (this.deletingAssessmentId) {
+      return;
+    }
+
+    this.pendingDeleteAssessment = null;
+  }
+
+  confirmDeleteAssessment(): void {
+    const assessment = this.pendingDeleteAssessment;
+    if (!assessment?.assessmentId || this.deletingAssessmentId) {
+      return;
+    }
+
+    this.deletingAssessmentId = assessment.assessmentId;
+
+    this.assessmentAdminService.deleteAssessment(assessment.assessmentId, true)
+      .pipe(finalize(() => {
+        this.deletingAssessmentId = null;
+        this.changeDetectorRef.detectChanges();
+      }))
+      .subscribe({
+        next: () => {
+          this.handleDeleteSuccess(assessment);
+        },
+        error: error => {
+          this.snackBar.open(
+            this.getDeleteRestrictionMessage(error),
+            'Close',
+            AssessmentsManagementComponent.deleteErrorSnackBarConfig
+          );
+        }
+      });
+  }
+
+  getStatusClass(status: string): string {
+    return `status-${status.toLowerCase()}`;
+  }
+
+  formatAssessmentDate(value: string): string {
+    return formatDate(value, 'MMM dd, yyyy', 'en-US');
+  }
+
+  getDifficultyLabel(difficultyLevel: number): string {
+    switch (difficultyLevel) {
+      case 1:
+        return 'Easy';
+      case 2:
+        return 'Medium';
+      case 3:
+        return 'Hard';
+      default:
+        return 'Unspecified';
+    }
+  }
+
+  private loadAssessments(): void {
+    this.hasLoadedInitialAssessments = true;
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    this.assessmentAdminService.searchAssessments({
+      searchTerm: this.searchTerm.trim() || undefined,
+      assessmentStatus: this.selectedStatus === 'all' ? undefined : this.selectedStatus,
+      difficultyLevel: this.mapDifficultyFilter(this.selectedDifficulty),
+      pageNumber: this.currentPage,
+      pageSize: this.pageSize
+    }).subscribe({
+      next: result => this.applyAssessmentResult(result),
+      error: error => {
+        this.assessments = [];
+        this.totalCount = 0;
+        this.activeCount = 0;
+        this.completedCount = 0;
+        this.errorMessage = error?.error?.message ?? 'Unable to load assessments right now.';
+        this.isLoading = false;
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
+  private applyAssessmentResult(result: AssessmentManagementSearchResult): void {
+    this.assessments = result.items ?? [];
+    this.totalCount = result.totalCount ?? 0;
+    this.activeCount = result.activeCount ?? 0;
+    this.completedCount = result.completedCount ?? 0;
+    this.currentPage = result.pageNumber > 0 ? result.pageNumber : 1;
+    this.isLoading = false;
+    this.changeDetectorRef.detectChanges();
+  }
+
+  private mapDifficultyFilter(value: AssessmentDifficultyFilter): number | undefined {
+    switch (value) {
+      case 'Easy':
+        return 1;
+      case 'Medium':
+        return 2;
+      case 'Hard':
+        return 3;
+      default:
+        return undefined;
+    }
+  }
+
+  private openSnackBar(message: string): void {
+    this.snackBar.open(message, 'Close', {
+      duration: 3500,
+      horizontalPosition: 'center',
+      verticalPosition: 'top',
+      panelClass: ['question-editor-success-snackbar']
+    });
+  }
+
+  private isLiveAssessment(assessment: AssessmentManagementItem): boolean {
+    return assessment.assessmentStatus.trim().toUpperCase() === 'LIVE';
+  }
+
+  isEditAllowed(assessment: AssessmentManagementItem): boolean {
+    const normalizedStatus = assessment.assessmentStatus.trim().toUpperCase();
+    return normalizedStatus === 'DRAFT' || normalizedStatus === 'SCHEDULED' || normalizedStatus === 'CANCELLED';
+  }
+
+  getEditRestrictionMessage(assessment: AssessmentManagementItem): string {
+    const normalizedStatus = assessment.assessmentStatus.trim().toUpperCase();
+
+    if (normalizedStatus === 'LIVE') {
+      return "Edit isn't allowed once the assessment is Live";
+    }
+
+    if (normalizedStatus === 'COMPLETED') {
+      return "Edit isn't allowed once the assessment is Completed";
+    }
+
+    return `Edit isn't allowed once the assessment is ${assessment.assessmentStatus}`;
+  }
+
+  private getDeleteRestrictionMessage(error: HttpErrorResponse): string {
+    const detail = error?.error?.detail;
+    const message = error?.error?.message;
+    const normalizedMessage = `${detail ?? ''} ${message ?? ''}`.toLowerCase();
+
+    if (normalizedMessage.includes('cancel the assessment first') || normalizedMessage.includes('live assessments cannot be deleted')) {
+      return 'Live assessments cannot be deleted. Cancel the assessment first.';
+    }
+
+    if (normalizedMessage.includes('same trainer') || normalizedMessage.includes('not authorized')) {
+      return 'You can only delete assessments that you created.';
+    }
+
+    if (normalizedMessage.includes('own college')) {
+      return 'This assessment cannot be deleted from the current college workspace.';
+    }
+
+    if (normalizedMessage.includes('already been soft deleted')) {
+      return 'This assessment has already been soft deleted.';
+    }
+
+    return message || detail || 'Unable to delete this assessment right now.';
+  }
+
+  private handleDeleteSuccess(assessment: AssessmentManagementItem): void {
+    const removedCurrentPageLastVisibleRow = this.assessments.length === 1;
+    const normalizedStatus = assessment.assessmentStatus.trim().toUpperCase();
+
+    this.assessments = this.assessments.filter(item => item.assessmentId !== assessment.assessmentId);
+    this.totalCount = Math.max(0, this.totalCount - 1);
+    if (normalizedStatus === 'LIVE' || normalizedStatus === 'SCHEDULED') {
+      this.activeCount = Math.max(0, this.activeCount - 1);
+    }
+
+    if (normalizedStatus === 'COMPLETED') {
+      this.completedCount = Math.max(0, this.completedCount - 1);
+    }
+
+    this.pendingDeleteAssessment = null;
+
+    this.snackBar.open(
+      'Assessment deleted successfully.',
+      'Close',
+      AssessmentsManagementComponent.deleteSuccessSnackBarConfig
+    );
+
+    if (this.totalCount > 0) {
+      if (removedCurrentPageLastVisibleRow && this.currentPage > 1) {
+        this.currentPage -= 1;
+      }
+
+      this.loadAssessments();
+      return;
+    }
+
+    this.changeDetectorRef.detectChanges();
+  }
+
+  private hasAssessmentAccessContext(): boolean {
+    return !!this.session.role && !!this.session.collegeId;
+  }
+
+  private bootstrapAssessmentAccessContext(): void {
+    if (this.isBootstrappingContext || !this.shouldFetchUserProfileForAccessContext()) {
+      return;
+    }
+
+    this.isBootstrappingContext = true;
+
+    this.accountService.getUserProfile().subscribe({
+      next: user => {
+        this.session.user = user;
+        this.session.userEmail = user.email;
+        this.session.userId = user.userId;
+        this.session.role = user.role;
+
+        if (!this.hasLoadedInitialAssessments && this.hasAssessmentAccessContext()) {
+          this.loadAssessments();
+        }
+      },
+      error: () => {
+        this.isBootstrappingContext = false;
+        this.errorMessage = 'Unable to prepare assessment access right now.';
+        this.changeDetectorRef.detectChanges();
+      },
+      complete: () => {
+        this.isBootstrappingContext = false;
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
+  private shouldFetchUserProfileForAccessContext(): boolean {
+    return !!this.session.jwtToken &&
+      (this.session.role === RoleType.CollegeAdmin || this.session.role === RoleType.Trainer) &&
+      !this.session.collegeId;
+  }
+}

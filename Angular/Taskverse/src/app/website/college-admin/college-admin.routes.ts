@@ -10,6 +10,7 @@ import { ReportsComponent } from './reports/reports.component';
 import { SettingsComponent } from './settings/settings.component';
 import { HelpCenterComponent } from './help-center/help-center.component';
 import { QuestionEditorPageComponent } from './question-editor/question-editor.component';
+import { NewAssessmentComponent } from './new-assessment/new-assessment.component';
 
 const routes: Routes = [
   {
@@ -24,7 +25,9 @@ const routes: Routes = [
       { path: 'questions-management', component: QuestionsManagementComponent },
       { path: 'questions-management/new', component: QuestionEditorPageComponent },
       { path: 'questions-management/edit/:id', component: QuestionEditorPageComponent },
-      { path: 'assessment-builder', component: AssessmentBuilderComponent },
+      { path: 'assessments-management', component: AssessmentBuilderComponent },
+      { path: 'assessments-management/new-assessment', component: NewAssessmentComponent },
+      { path: 'assessments-management/edit-assessment/:id', component: NewAssessmentComponent },
       { path: 'reports', component: ReportsComponent },
       { path: 'help-center', component: HelpCenterComponent },
       { path: 'settings', component: SettingsComponent }

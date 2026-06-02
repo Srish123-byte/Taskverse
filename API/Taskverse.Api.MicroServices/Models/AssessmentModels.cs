@@ -17,6 +17,14 @@ public record CreateQuestionBankAssessmentModel(
     Guid? TopicId,
     [property: JsonProperty("topic_name")]
     string? TopicName,
+    [property: JsonProperty("instructions")]
+    string? Instructions,
+    [property: JsonProperty("allow_late_entry")]
+    bool AllowLateEntry,
+    [property: JsonProperty("allow_question_review")]
+    bool AllowQuestionReview,
+    [property: JsonProperty("negative_marking")]
+    bool NegativeMarking,
     [property: JsonProperty("assigned_batch_ids")]
     Guid[] AssignedBatchIds,
     [property: JsonProperty("question_ids")]
@@ -30,9 +38,91 @@ public record CreateQuestionBankAssessmentModel(
     [property: JsonProperty("end_datetime")]
     DateTime? EndDateTime);
 
+public record PublishQuestionBankAssessmentModel(
+    [property: JsonProperty("assessment_id")]
+    Guid? AssessmentId,
+    [property: JsonProperty("college_id")]
+    Guid CollegeId,
+    [property: JsonProperty("created_by")]
+    string CreatedBy,
+    [property: JsonProperty("assessment_name")]
+    string AssessmentName,
+    [property: JsonProperty("subject_id")]
+    Guid? SubjectId,
+    [property: JsonProperty("subject_name")]
+    string? SubjectName,
+    [property: JsonProperty("topic_id")]
+    Guid? TopicId,
+    [property: JsonProperty("topic_name")]
+    string? TopicName,
+    [property: JsonProperty("instructions")]
+    string? Instructions,
+    [property: JsonProperty("allow_late_entry")]
+    bool AllowLateEntry,
+    [property: JsonProperty("allow_question_review")]
+    bool AllowQuestionReview,
+    [property: JsonProperty("negative_marking")]
+    bool NegativeMarking,
+    [property: JsonProperty("assigned_batch_ids")]
+    Guid[] AssignedBatchIds,
+    [property: JsonProperty("question_ids")]
+    List<Guid> QuestionIds,
+    [property: JsonProperty("duration_minutes")]
+    int DurationMinutes,
+    [property: JsonProperty("total_marks")]
+    int TotalMarks,
+    [property: JsonProperty("start_datetime")]
+    DateTime? StartDateTime,
+    [property: JsonProperty("end_datetime")]
+    DateTime? EndDateTime);
+
+public record UpdateQuestionBankAssessmentModel(
+    [property: JsonProperty("assessment_id")]
+    Guid AssessmentId,
+    [property: JsonProperty("college_id")]
+    Guid CollegeId,
+    [property: JsonProperty("updated_by")]
+    string UpdatedBy,
+    [property: JsonProperty("requester_role")]
+    string RequesterRole,
+    [property: JsonProperty("assessment_name")]
+    string AssessmentName,
+    [property: JsonProperty("subject_id")]
+    Guid? SubjectId,
+    [property: JsonProperty("subject_name")]
+    string? SubjectName,
+    [property: JsonProperty("topic_id")]
+    Guid? TopicId,
+    [property: JsonProperty("topic_name")]
+    string? TopicName,
+    [property: JsonProperty("instructions")]
+    string? Instructions,
+    [property: JsonProperty("allow_late_entry")]
+    bool AllowLateEntry,
+    [property: JsonProperty("allow_question_review")]
+    bool AllowQuestionReview,
+    [property: JsonProperty("negative_marking")]
+    bool NegativeMarking,
+    [property: JsonProperty("assigned_batch_ids")]
+    Guid[] AssignedBatchIds,
+    [property: JsonProperty("question_ids")]
+    List<Guid> QuestionIds,
+    [property: JsonProperty("duration_minutes")]
+    int DurationMinutes,
+    [property: JsonProperty("total_marks")]
+    int TotalMarks,
+    [property: JsonProperty("start_datetime")]
+    DateTime? StartDateTime,
+    [property: JsonProperty("end_datetime")]
+    DateTime? EndDateTime,
+    [property: JsonProperty("is_draft_save")]
+    bool IsDraftSave);
+
 public record DeleteAssessmentModel(
     [property: JsonProperty("assessment_id")]
     Guid AssessmentId,
+    [property: JsonProperty("is_deleted")]
+    bool? IsDeleted,
     [property: JsonProperty("deleted_by")]
     string DeletedBy,
     [property: JsonProperty("requester_role")]
@@ -81,10 +171,8 @@ public record QuestionBankAssessmentModel(
     bool AllowQuestionReview,
     [property: JsonProperty("negative_marking")]
     bool NegativeMarking,
-    [property: JsonProperty("marks_per_question")]
-    decimal MarksPerQuestion,
     [property: JsonProperty("is_total_marks_auto_calculated")]
-    bool IsTotalMarksAutoCalculated,
+    bool? IsTotalMarksAutoCalculated,
     [property: JsonProperty("created_by")]
     string CreatedBy,
     [property: JsonProperty("created_at")]
@@ -103,7 +191,7 @@ public record CreateQuestionModel(
     string? Subject,
     Guid? TopicId,
     string? Topic,
-    string TopicTag,
+    List<string> TopicTag,
     string QuestionType,
     string QuestionText,
     List<string>? Options,
@@ -136,6 +224,114 @@ public record PagedQuestionBankModel(
     int PageNumber,
     int PageSize);
 
+public record AssessmentManagementSearchModel(
+    [property: JsonProperty("college_id")]
+    Guid CollegeId,
+    [property: JsonProperty("requester_role")]
+    string RequesterRole,
+    [property: JsonProperty("requester_user_id")]
+    Guid? RequesterUserId,
+    [property: JsonProperty("created_by")]
+    string CreatedBy,
+    [property: JsonProperty("search_term")]
+    string? SearchTerm,
+    [property: JsonProperty("assessment_status")]
+    string? AssessmentStatus,
+    [property: JsonProperty("difficulty_level")]
+    int? DifficultyLevel,
+    [property: JsonProperty("page_number")]
+    int PageNumber = 1,
+    [property: JsonProperty("page_size")]
+    int PageSize = 10);
+
+public record AssessmentManagementItemModel(
+    [property: JsonProperty("assessment_id")]
+    Guid AssessmentId,
+    [property: JsonProperty("assessment_name")]
+    string AssessmentName,
+    [property: JsonProperty("category")]
+    string Category,
+    [property: JsonProperty("topic_name")]
+    string? TopicName,
+    [property: JsonProperty("assessment_status")]
+    string AssessmentStatus,
+    [property: JsonProperty("assessment_date")]
+    DateTime AssessmentDate,
+    [property: JsonProperty("total_marks")]
+    int TotalMarks,
+    [property: JsonProperty("difficulty_level")]
+    int DifficultyLevel);
+
+public record AssessmentManagementSearchResultModel(
+    [property: JsonProperty("items")]
+    List<AssessmentManagementItemModel> Items,
+    [property: JsonProperty("total_count")]
+    int TotalCount,
+    [property: JsonProperty("active_count")]
+    int ActiveCount,
+    [property: JsonProperty("completed_count")]
+    int CompletedCount,
+    [property: JsonProperty("page_number")]
+    int PageNumber,
+    [property: JsonProperty("page_size")]
+    int PageSize);
+
+public record AssessmentBootstrapModel(
+    [property: JsonProperty("college_id")]
+    Guid CollegeId,
+    [property: JsonProperty("requester_role")]
+    string RequesterRole,
+    [property: JsonProperty("requester_user_id")]
+    Guid? RequesterUserId);
+
+public record AssessmentTopicCatalogModel(
+    [property: JsonProperty("topic_id")]
+    Guid TopicId,
+    [property: JsonProperty("topic_name")]
+    string TopicName,
+    [property: JsonProperty("batch_ids")]
+    Guid[] BatchIds);
+
+public record AssessmentSubjectCatalogModel(
+    [property: JsonProperty("subject_id")]
+    Guid SubjectId,
+    [property: JsonProperty("subject_name")]
+    string SubjectName,
+    [property: JsonProperty("batch_ids")]
+    Guid[] BatchIds,
+    [property: JsonProperty("topics")]
+    List<AssessmentTopicCatalogModel> Topics);
+
+public record AssessmentSubjectTopicCatalogModel(
+    [property: JsonProperty("subjects")]
+    List<AssessmentSubjectCatalogModel> Subjects);
+
+public record AssessmentAssignmentBatchModel(
+    [property: JsonProperty("batch_id")]
+    Guid BatchId,
+    [property: JsonProperty("class_id")]
+    Guid ClassId,
+    [property: JsonProperty("college_id")]
+    Guid CollegeId,
+    [property: JsonProperty("name")]
+    string Name);
+
+public record AssessmentAssignmentClassModel(
+    [property: JsonProperty("class_id")]
+    Guid ClassId,
+    [property: JsonProperty("college_id")]
+    Guid CollegeId,
+    [property: JsonProperty("name")]
+    string Name,
+    [property: JsonProperty("academic_year")]
+    string? AcademicYear,
+    [property: JsonProperty("batches")]
+    List<AssessmentAssignmentBatchModel> Batches);
+
+public record AssessmentAssignmentCatalogModel(
+    [property: JsonProperty("classes")]
+    List<AssessmentAssignmentClassModel> Classes);
+
 public record AssessmentQuestionModel(
     Guid QuestionId,
     Guid CollegeId,
@@ -144,7 +340,7 @@ public record AssessmentQuestionModel(
     string? Stream,
     string? Subject,
     string? Topic,
-    string? TopicTag,
+    List<string>? TopicTag,
     string QuestionType,
     string QuestionText,
     List<string>? Options,

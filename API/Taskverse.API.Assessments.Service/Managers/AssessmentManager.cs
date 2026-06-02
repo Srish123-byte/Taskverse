@@ -9,11 +9,18 @@ using Taskverse.Data.DataAccess;
 
 namespace Taskverse.API.Assessments.Service.Managers;
 
+/// <summary>
+/// Coordinates assessment persistence, validation, authorization, and student attempt workflows.
+/// </summary>
 public class AssessmentManager : IAssessmentManager
 {
     private const int DefaultPageNumber = 1;
     private const int DefaultPageSize = 10;
     private const int MaximumPageSize = 100;
+    private static readonly TimeSpan PartialDraftStartOffset = TimeSpan.FromHours(1);
+    private static readonly TimeSpan PartialDraftMinimumDuration = TimeSpan.FromMinutes(1);
+    private const string PartialDraftSubjectName = "Draft Subject";
+    private const string PartialDraftTopicName = "Draft Topic";
 
     private readonly TaskverseContext _context;
     private readonly AssessmentSettings _assessmentSettings;
@@ -35,8 +42,125 @@ public class AssessmentManager : IAssessmentManager
         _logger = logger;
     }
 
+    /// <inheritdoc />
     public async Task<Assessment> CreateAssessment(Assessment assessment, List<Guid> questionIds)
+        => await CreateAssessmentInternalAsync(assessment, questionIds, AssessmentStatus.Draft, allowPartialDraft: true);
+
+    /// <inheritdoc />
+    public async Task<Assessment> GetAssessment(Guid assessmentId, Guid collegeId, string requesterRole, string requesterName)
     {
+        if (collegeId == Guid.Empty)
+        {
+            throw new ArgumentException("CollegeId is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(requesterRole))
+        {
+            throw new ArgumentException("RequesterRole is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(requesterName))
+        {
+            throw new ArgumentException("RequesterName is required.");
+        }
+
+        var assessment = await GetAssessmentForUpdateAsync(assessmentId);
+        EnsureAssessmentReadAuthorized(assessment, collegeId, requesterRole, requesterName);
+        return assessment;
+    }
+
+    /// <inheritdoc />
+    public async Task<Assessment> UpdateAssessment(Guid assessmentId, UpdateAssessmentRequest request)
+    {
+        ValidateUpdateAssessmentRequest(request);
+
+        var assessment = await GetAssessmentForUpdateAsync(assessmentId);
+        EnsureAssessmentCanBeUpdated(assessment);
+        EnsureUpdateAuthorized(assessment, request);
+
+        if (request.IsDraftSave)
+        {
+            return await UpdateAssessmentDraftAsync(assessment, request);
+        }
+
+        var updatedAssessment = request.ToEntity(_assessmentSettings, assessment.AssessmentStatus);
+        updatedAssessment.ShowResultsImmediately = assessment.ShowResultsImmediately;
+        updatedAssessment.IsTotalMarksAutoCalculated = assessment.IsTotalMarksAutoCalculated;
+        updatedAssessment.CreatedBy = assessment.CreatedBy;
+        updatedAssessment.CreatedAt = assessment.CreatedAt;
+        updatedAssessment.ModifiedAt = DateTime.UtcNow;
+
+        ValidateAssessment(updatedAssessment, request.QuestionIds);
+
+        var classification = await ResolveAssessmentClassificationAsync(updatedAssessment);
+        ApplyClassification(updatedAssessment, classification);
+
+        var normalizedQuestionIds = request.QuestionIds.NormalizeQuestionIds();
+        var normalizedAssignedBatchIds = NormalizeAssignedBatchIds(updatedAssessment.AssignedBatchIds);
+
+        await ValidateAssignedBatchesAsync(updatedAssessment.CollegeId, normalizedAssignedBatchIds);
+
+        updatedAssessment.AssignedBatchIds = normalizedAssignedBatchIds;
+
+        var questions = await LoadAndValidateQuestionsForCreateAsync(
+            updatedAssessment,
+            normalizedQuestionIds,
+            classification.Subject.SubjectName,
+            classification.Topic.TopicName);
+
+        ApplyAutoCalculatedTotalMarksIfEnabled(updatedAssessment, questions);
+        ValidateQuestionBudget(updatedAssessment, questions);
+
+        ApplyAssessmentUpdates(assessment, updatedAssessment, questions);
+        await SyncAssessmentQuestionsAsync(assessment, questions, normalizedQuestionIds);
+
+        await SaveChangesWithWrapAsync("Unable to update the assessment.");
+
+        return assessment;
+    }
+
+    private async Task<Assessment> UpdateAssessmentDraftAsync(Assessment assessment, UpdateAssessmentRequest request)
+    {
+        var updatedAssessment = request.ToEntity(_assessmentSettings, AssessmentStatus.Draft);
+        updatedAssessment.ShowResultsImmediately = assessment.ShowResultsImmediately;
+        updatedAssessment.IsTotalMarksAutoCalculated = assessment.IsTotalMarksAutoCalculated;
+        updatedAssessment.CreatedBy = assessment.CreatedBy;
+        updatedAssessment.CreatedAt = assessment.CreatedAt;
+        updatedAssessment.ModifiedAt = DateTime.UtcNow;
+
+        ApplyPartialDraftRequiredDefaults(updatedAssessment, DateTime.UtcNow);
+        await EnsurePartialDraftClassificationAsync(updatedAssessment);
+
+        var normalizedQuestionIds = (request.QuestionIds ?? []).NormalizeQuestionIds();
+        var normalizedAssignedBatchIds = NormalizeAssignedBatchIds(updatedAssessment.AssignedBatchIds);
+        await ValidateAssignedBatchesAsync(updatedAssessment.CollegeId, normalizedAssignedBatchIds);
+        updatedAssessment.AssignedBatchIds = normalizedAssignedBatchIds;
+
+        var questions = await LoadQuestionsForDraftUpdateAsync(updatedAssessment.CollegeId, normalizedQuestionIds);
+
+        ApplyPartialDraftUpdates(assessment, updatedAssessment);
+        await SyncAssessmentQuestionsAsync(assessment, questions, normalizedQuestionIds);
+
+        await SaveChangesWithWrapAsync("Unable to save the assessment draft.");
+
+        return assessment;
+    }
+
+    /// <inheritdoc />
+    public async Task<Assessment> ScheduleAssessment(Assessment assessment, List<Guid> questionIds)
+        => await CreateAssessmentInternalAsync(assessment, questionIds, AssessmentStatus.Scheduled);
+
+    private async Task<Assessment> CreateAssessmentInternalAsync(
+        Assessment assessment,
+        List<Guid> questionIds,
+        AssessmentStatus targetStatus,
+        bool allowPartialDraft = false)
+    {
+        if (allowPartialDraft && ShouldPersistAsPartialDraft(assessment, questionIds))
+        {
+            return await CreatePartialDraftAsync(assessment);
+        }
+
         ValidateAssessment(assessment, questionIds);
 
         var classification = await ResolveAssessmentClassificationAsync(assessment);
@@ -46,6 +170,9 @@ public class AssessmentManager : IAssessmentManager
         var normalizedAssignedBatchIds = NormalizeAssignedBatchIds(assessment.AssignedBatchIds);
 
         await ValidateAssignedBatchesAsync(assessment.CollegeId, normalizedAssignedBatchIds);
+        await EnsureAssessmentNotAlreadyCreatedForSelectedBatchesAsync(
+            assessment.CollegeId,
+            normalizedAssignedBatchIds);
 
         assessment.AssignedBatchIds = normalizedAssignedBatchIds;
 
@@ -55,9 +182,10 @@ public class AssessmentManager : IAssessmentManager
             classification.Subject.SubjectName,
             classification.Topic.TopicName);
 
+        ApplyAutoCalculatedTotalMarksIfEnabled(assessment, questions);
         ValidateQuestionBudget(assessment, questions);
 
-        PrepareAssessmentForCreation(assessment, questions);
+        PrepareAssessmentForCreation(assessment, questions, targetStatus);
         assessment.AssessmentQuestions = BuildAssessmentQuestions(assessment.AssessmentId, questions, normalizedQuestionIds);
 
         AssignQuestionsToAssessment(questions, assessment.AssessmentId);
@@ -68,16 +196,109 @@ public class AssessmentManager : IAssessmentManager
         return assessment;
     }
 
+    private async Task<Assessment> CreatePartialDraftAsync(Assessment assessment)
+    {
+        ValidatePartialDraft(assessment);
+
+        var now = DateTime.UtcNow;
+        ApplyPartialDraftRequiredDefaults(assessment, now);
+        await EnsurePartialDraftClassificationAsync(assessment);
+        assessment.AssessmentId = assessment.AssessmentId == Guid.Empty ? Guid.NewGuid() : assessment.AssessmentId;
+        assessment.AssessmentType = AssessmentType.Objective;
+        assessment.AssessmentStatus = AssessmentStatus.Draft;
+        assessment.DifficultyLevel = 1;
+        assessment.AssignedBatchIds = NormalizeAssignedBatchIds(assessment.AssignedBatchIds);
+        assessment.CreatedAt = now;
+        assessment.ModifiedAt = now;
+
+        _context.Assessments.Add(assessment);
+        await SaveChangesWithWrapAsync("Unable to save the assessment draft.");
+
+        return assessment;
+    }
+
+    private static void ApplyPartialDraftRequiredDefaults(Assessment assessment, DateTime utcNow)
+    {
+        if (string.IsNullOrWhiteSpace(assessment.AssessmentName))
+        {
+            assessment.AssessmentName = "Untitled draft";
+        }
+
+        if (assessment.DurationMinutes <= 0)
+        {
+            assessment.DurationMinutes = 1;
+        }
+
+        if (assessment.TotalMarks < 0)
+        {
+            assessment.TotalMarks = 0;
+        }
+
+        assessment.AssignedBatchIds = NormalizeAssignedBatchIds(assessment.AssignedBatchIds);
+
+        var safeStartDateTime = assessment.StartDateTime ?? utcNow.Add(PartialDraftStartOffset);
+        if (safeStartDateTime <= utcNow)
+        {
+            safeStartDateTime = utcNow.Add(PartialDraftStartOffset);
+        }
+
+        assessment.StartDateTime = safeStartDateTime;
+
+        var minimumEndDateTime = safeStartDateTime.Add(PartialDraftMinimumDuration);
+        if (!assessment.EndDateTime.HasValue || assessment.EndDateTime.Value <= safeStartDateTime)
+        {
+            assessment.EndDateTime = minimumEndDateTime;
+        }
+    }
+
+    private async Task EnsurePartialDraftClassificationAsync(Assessment assessment)
+    {
+        if (!assessment.SubjectId.HasValue &&
+            string.IsNullOrWhiteSpace(assessment.SubjectName) &&
+            !assessment.TopicId.HasValue)
+        {
+            assessment.SubjectName = PartialDraftSubjectName;
+        }
+
+        if (!assessment.TopicId.HasValue && string.IsNullOrWhiteSpace(assessment.TopicName))
+        {
+            assessment.TopicName = PartialDraftTopicName;
+        }
+
+        var classification = await ResolveAssessmentClassificationAsync(assessment);
+        ApplyClassification(assessment, classification);
+    }
+
+    private async Task<List<Question>> LoadQuestionsForDraftUpdateAsync(Guid collegeId, IReadOnlyList<Guid> questionIds)
+    {
+        if (questionIds.Count == 0)
+        {
+            return [];
+        }
+
+        var questions = await _context.Questions
+            .Where(question => questionIds.Contains(question.QuestionId))
+            .ToListAsync();
+
+        EnsureQuestionsExist(questionIds, questions);
+        EnsureQuestionsBelongToCollege(questions, collegeId);
+
+        return questions;
+    }
+
+    /// <inheritdoc />
     public async Task DeleteAssessment(Guid assessmentId, DeleteAssessmentRequest request)
     {
         ValidateDeleteAssessmentRequest(request);
 
         var assessment = await GetAssessmentByIdAsync(assessmentId);
+        EnsureAssessmentCanBeDeleted(assessment);
         EnsureDeleteAuthorized(assessment, request);
 
         var deletedAt = DateTime.UtcNow;
 
-        assessment.AssessmentStatus = AssessmentStatus.Soft_Delete;
+        assessment.IsDeleted = request.IsDeleted ?? true;
+        assessment.AssessmentStatus = AssessmentStatus.Soft_Deleted;
         assessment.SoftDeletedAt = deletedAt;
         assessment.SoftDeletedBy = request.DeletedBy.Trim();
         assessment.ModifiedAt = deletedAt;
@@ -85,6 +306,7 @@ public class AssessmentManager : IAssessmentManager
         await SaveChangesWithWrapAsync("Unable to delete the assessment.");
     }
 
+    /// <inheritdoc />
     public async Task<Assessment> PublishAssessment(Guid assessmentId)
     {
         var assessment = await _context.Assessments
@@ -102,6 +324,7 @@ public class AssessmentManager : IAssessmentManager
 
         var questions = await LoadQuestionsForPublishAsync(assessment);
         ValidateQuestionsForPublish(assessment, questions);
+        ApplyAutoCalculatedTotalMarksIfEnabled(assessment, questions);
         ValidateQuestionBudget(assessment, questions);
 
         PrepareAssessmentForPublish(assessment, questions);
@@ -121,6 +344,228 @@ public class AssessmentManager : IAssessmentManager
         return assessment;
     }
 
+    /// <inheritdoc />
+    public async Task<AssessmentSubjectTopicCatalogRecord> GetSubjectTopicCatalog(AssessmentAccessibleBatchesRequest request)
+    {
+        ValidateAccessibleBatchesRequest(request);
+
+        var accessibleBatchIds = await BuildAccessibleBatchQuery(request)
+            .Select(batch => batch.BatchId)
+            .ToListAsync();
+
+        if (accessibleBatchIds.Count == 0)
+        {
+            return new AssessmentSubjectTopicCatalogRecord([]);
+        }
+
+        var subjectBatchLinks = await _context.SubjectBatches
+            .AsNoTracking()
+            .Where(link => accessibleBatchIds.Contains(link.BatchId))
+            .Include(link => link.Subject)
+                .ThenInclude(subject => subject.Topics.Where(topic => topic.IsActive))
+            .ToListAsync();
+
+        var subjects = subjectBatchLinks
+            .Where(link => link.Subject.IsActive)
+            .GroupBy(link => new { link.Subject.SubjectId, link.Subject.SubjectName })
+            .Select(subjectGroup =>
+            {
+                var batchIds = subjectGroup
+                    .Select(link => link.BatchId)
+                    .Distinct()
+                    .OrderBy(batchId => batchId)
+                    .ToArray();
+
+                var topics = subjectGroup
+                    .SelectMany(link => link.Subject.Topics.Select(topic => new { link.BatchId, Topic = topic }))
+                    .GroupBy(item => new { item.Topic.TopicId, item.Topic.TopicName })
+                    .Select(topicGroup => new AssessmentTopicCatalogRecord(
+                        topicGroup.Key.TopicId,
+                        topicGroup.Key.TopicName,
+                        topicGroup.Select(item => item.BatchId)
+                            .Distinct()
+                            .OrderBy(batchId => batchId)
+                            .ToArray()))
+                    .OrderBy(item => item.TopicName)
+                    .ToList();
+
+                return new AssessmentSubjectCatalogRecord(
+                    subjectGroup.Key.SubjectId,
+                    subjectGroup.Key.SubjectName,
+                    batchIds,
+                    topics);
+            })
+            .OrderBy(item => item.SubjectName)
+            .ToList();
+
+        return new AssessmentSubjectTopicCatalogRecord(subjects);
+    }
+
+    /// <inheritdoc />
+    public async Task<AssessmentAssignmentCatalogRecord> GetTrainerAssignedClassesAndBatches(AssessmentAccessibleBatchesRequest request)
+    {
+        ValidateTrainerAssignmentRequest(request);
+
+        var trainer = await _context.Trainers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item =>
+                item.UserId == request.RequesterUserId!.Value &&
+                item.CollegeId == request.CollegeId);
+
+        if (trainer is null)
+        {
+            return new AssessmentAssignmentCatalogRecord([]);
+        }
+
+        var trainerClassIds = await _context.TrainerClasses
+            .AsNoTracking()
+            .Where(item => item.TrainerId == trainer.TrainerId)
+            .Select(item => item.ClassId)
+            .ToListAsync();
+
+        var assignedBatchRows = await _context.TrainerBatches
+            .AsNoTracking()
+            .Where(item => item.TrainerId == trainer.TrainerId)
+            .Select(item => new
+            {
+                item.Batch.BatchId,
+                item.Batch.ClassId,
+                item.Batch.CollegeId,
+                item.Batch.Name
+            })
+            .ToListAsync();
+
+        var accessibleClassIds = trainerClassIds
+            .Concat(assignedBatchRows.Select(item => item.ClassId))
+            .Distinct()
+            .ToList();
+
+        if (accessibleClassIds.Count == 0)
+        {
+            return new AssessmentAssignmentCatalogRecord([]);
+        }
+
+        var classes = await _context.Classes
+            .AsNoTracking()
+            .Where(item => item.CollegeId == request.CollegeId && accessibleClassIds.Contains(item.ClassId))
+            .OrderBy(item => item.Name)
+            .ThenBy(item => item.AcademicYear)
+            .Select(item => new
+            {
+                item.ClassId,
+                item.CollegeId,
+                item.Name,
+                item.AcademicYear
+            })
+            .ToListAsync();
+
+        var batchesByClass = assignedBatchRows
+            .GroupBy(item => item.ClassId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderBy(item => item.Name)
+                    .Select(item => new AssessmentAssignmentBatchRecord(
+                        item.BatchId,
+                        item.ClassId,
+                        item.CollegeId,
+                        item.Name))
+                    .ToList());
+
+        var classRecords = classes
+            .Select(item => new AssessmentAssignmentClassRecord(
+                item.ClassId,
+                item.CollegeId,
+                item.Name,
+                item.AcademicYear,
+                batchesByClass.TryGetValue(item.ClassId, out var batches)
+                    ? batches
+                    : []))
+            .ToList();
+
+        return new AssessmentAssignmentCatalogRecord(classRecords);
+    }
+
+    /// <inheritdoc />
+    public async Task<AssessmentManagementSearchResultRecord> SearchAssessments(AssessmentManagementSearchRequest request)
+    {
+        ValidateAssessmentManagementSearchRequest(request);
+
+        var safePageNumber = request.PageNumber > 0 ? request.PageNumber : DefaultPageNumber;
+        var safePageSize = request.PageSize is > 0 and <= MaximumPageSize ? request.PageSize : DefaultPageSize;
+        var normalizedCreatedBy = request.CreatedBy.Trim();
+        var normalizedSearchTerm = request.SearchTerm?.Trim().ToLowerInvariant();
+        var requestedStatus = NormalizeAssessmentManagementStatus(request.AssessmentStatus);
+
+        var query = _context.Assessments
+            .AsNoTracking()
+            .Include(item => item.Subject)
+            .Include(item => item.Topic)
+            .Where(item =>
+                item.CollegeId == request.CollegeId &&
+                item.AssessmentStatus != AssessmentStatus.Soft_Deleted);
+
+        if (string.Equals(request.RequesterRole.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(item => item.CreatedBy.ToLower() == normalizedCreatedBy.ToLower());
+        }
+        else
+        {
+            query = query.Where(item =>
+                item.AssessmentStatus != AssessmentStatus.Draft ||
+                item.CreatedBy.ToLower() == normalizedCreatedBy.ToLower());
+        }
+
+        if (!string.IsNullOrWhiteSpace(normalizedSearchTerm))
+        {
+            query = query.Where(item =>
+                item.AssessmentName.ToLower().Contains(normalizedSearchTerm) ||
+                (item.Subject != null && item.Subject.SubjectName.ToLower().Contains(normalizedSearchTerm)) ||
+                (item.Topic != null && item.Topic.TopicName.ToLower().Contains(normalizedSearchTerm)));
+        }
+
+        if (request.DifficultyLevel.HasValue)
+        {
+            query = query.Where(item => item.DifficultyLevel == request.DifficultyLevel.Value);
+        }
+
+        if (requestedStatus.HasValue)
+        {
+            query = query.Where(item => item.AssessmentStatus == requestedStatus.Value);
+        }
+
+        var totalCount = await query.CountAsync();
+        var activeCount = await query.CountAsync(item =>
+            item.AssessmentStatus == AssessmentStatus.Scheduled ||
+            item.AssessmentStatus == AssessmentStatus.Live);
+        var completedCount = await query.CountAsync(item => item.AssessmentStatus == AssessmentStatus.Completed);
+
+        var items = await query
+            .OrderByDescending(item => item.StartDateTime ?? item.CreatedAt)
+            .ThenByDescending(item => item.CreatedAt)
+            .Skip((safePageNumber - 1) * safePageSize)
+            .Take(safePageSize)
+            .Select(item => new AssessmentManagementItemRecord(
+                item.AssessmentId,
+                item.AssessmentName,
+                item.Subject != null ? item.Subject.SubjectName : string.Empty,
+                item.Topic != null ? item.Topic.TopicName : null,
+                MapAssessmentManagementStatus(item.AssessmentStatus),
+                item.StartDateTime ?? item.CreatedAt,
+                item.TotalMarks,
+                item.DifficultyLevel))
+            .ToListAsync();
+
+        return new AssessmentManagementSearchResultRecord(
+            items,
+            totalCount,
+            activeCount,
+            completedCount,
+            safePageNumber,
+            safePageSize);
+    }
+
+    /// <inheritdoc />
     public async Task<PagedAssessmentQuestionListRecord> GetAssessmentQuestionList(
         Guid assessmentId,
         int pageNumber,
@@ -169,6 +614,7 @@ public class AssessmentManager : IAssessmentManager
             safePageSize);
     }
 
+    /// <inheritdoc />
     public async Task<List<StudentAssessmentListItemRecord>> GetStudentAssessments(
         Guid studentUserId,
         IReadOnlyCollection<string> assessmentStatuses)
@@ -199,6 +645,7 @@ public class AssessmentManager : IAssessmentManager
             : await GetActiveStudentAssessmentsAsync(student, student.BatchId.Value, normalizedStatuses);
     }
 
+    /// <inheritdoc />
     public async Task<StudentAssessmentDetailRecord> GetStudentAssessmentDetail(Guid assessmentId, Guid studentUserId)
     {
         if (assessmentId == Guid.Empty)
@@ -240,6 +687,7 @@ public class AssessmentManager : IAssessmentManager
         return assessment.ToStudentAssessmentDetailRecord(assessment.AssessmentQuestions.Count);
     }
 
+    /// <inheritdoc />
     public async Task<StudentAssessmentStartRecord> StartStudentAssessment(Guid assessmentId, Guid studentUserId)
     {
         ValidateStudentAttemptRequest(assessmentId, studentUserId);
@@ -292,6 +740,7 @@ public class AssessmentManager : IAssessmentManager
         return attempt.ToStudentAssessmentStartRecord();
     }
 
+    /// <inheritdoc />
     public async Task<StudentAttemptRecoveryRecord> GetStudentAttemptRecovery(Guid attemptId, Guid studentUserId)
     {
         if (attemptId == Guid.Empty)
@@ -315,6 +764,7 @@ public class AssessmentManager : IAssessmentManager
         return await BuildStudentAttemptRecoveryAsync(attempt, assessment);
     }
 
+    /// <inheritdoc />
     public async Task<StudentAttemptAnswerRecord> SaveStudentAttemptAnswer(
         Guid attemptId,
         Guid questionId,
@@ -381,6 +831,7 @@ public class AssessmentManager : IAssessmentManager
         return savedAnswer.ToStudentAttemptAnswerRecord();
     }
 
+    /// <inheritdoc />
     public async Task<StudentAttemptSubmitRecord> SubmitStudentAttempt(Guid attemptId, Guid studentUserId)
     {
         if (attemptId == Guid.Empty)
@@ -513,7 +964,10 @@ public class AssessmentManager : IAssessmentManager
     private static void EnsureQuestionsAreAvailableForCreate(IEnumerable<Question> questions)
     {
         var unavailableQuestionIds = questions
-            .Where(question => !question.IsActive || question.AssessmentId.HasValue)
+            // Question-bank questions can be linked to assessments through the
+            // assessment_questions join table. Do not treat the legacy direct
+            // AssessmentId field as a create-time availability blocker.
+            .Where(question => !question.IsActive)
             .Select(question => question.QuestionId)
             .ToList();
 
@@ -558,12 +1012,138 @@ public class AssessmentManager : IAssessmentManager
         }
     }
 
-    private static void PrepareAssessmentForCreation(Assessment assessment, IEnumerable<Question> questions)
+    private IQueryable<Batch> BuildAccessibleBatchQuery(AssessmentAccessibleBatchesRequest request)
     {
+        var normalizedRole = request.RequesterRole.Trim();
+
+        var query = _context.Batches
+            .AsNoTracking()
+            .Include(batch => batch.Class)
+            .Include(batch => batch.SubjectBatches)
+            .Where(batch => batch.CollegeId == request.CollegeId);
+
+        if (!string.Equals(normalizedRole, "Trainer", StringComparison.OrdinalIgnoreCase))
+        {
+            return query;
+        }
+
+        var trainerId = _context.Trainers
+            .AsNoTracking()
+            .Where(trainer =>
+                trainer.UserId == request.RequesterUserId &&
+                trainer.CollegeId == request.CollegeId)
+            .Select(trainer => trainer.TrainerId);
+
+        return query.Where(batch => batch.TrainerBatches.Any(link => trainerId.Contains(link.TrainerId)));
+    }
+
+    private static void ValidateAccessibleBatchesRequest(AssessmentAccessibleBatchesRequest request)
+    {
+        if (request is null)
+        {
+            throw new ArgumentException("Assessment bootstrap request is required.");
+        }
+
+        if (request.CollegeId == Guid.Empty)
+        {
+            throw new ArgumentException("CollegeId is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.RequesterRole))
+        {
+            throw new ArgumentException("Requester role is required.");
+        }
+
+        if (string.Equals(request.RequesterRole.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase) &&
+            (!request.RequesterUserId.HasValue || request.RequesterUserId.Value == Guid.Empty))
+        {
+            throw new ArgumentException("Requester user id is required for trainer assessment bootstrap requests.");
+        }
+    }
+
+    private static void ValidateAssessmentManagementSearchRequest(AssessmentManagementSearchRequest request)
+    {
+        if (request is null)
+        {
+            throw new ArgumentException("Assessment search request is required.");
+        }
+
+        if (request.CollegeId == Guid.Empty)
+        {
+            throw new ArgumentException("CollegeId is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.RequesterRole))
+        {
+            throw new ArgumentException("Requester role is required.");
+        }
+
+        if (!string.Equals(request.RequesterRole.Trim(), "CollegeAdmin", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(request.RequesterRole.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Only CollegeAdmin and Trainer can search assessments.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.CreatedBy))
+        {
+            throw new ArgumentException("CreatedBy is required.");
+        }
+    }
+
+    private static void ValidateTrainerAssignmentRequest(AssessmentAccessibleBatchesRequest request)
+    {
+        ValidateAccessibleBatchesRequest(request);
+
+        if (!string.Equals(request.RequesterRole.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Trainer role is required for trainer assignment requests.");
+        }
+    }
+
+    private static AssessmentStatus? NormalizeAssessmentManagementStatus(string? requestedStatus)
+    {
+        if (string.IsNullOrWhiteSpace(requestedStatus) ||
+            string.Equals(requestedStatus.Trim(), "ALL", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return requestedStatus.Trim().ToUpperInvariant() switch
+        {
+            "LIVE" => AssessmentStatus.Live,
+            "SCHEDULED" => AssessmentStatus.Scheduled,
+            "COMPLETED" => AssessmentStatus.Completed,
+            "DRAFT" => AssessmentStatus.Draft,
+            "CANCELLED" => AssessmentStatus.Cancelled,
+            _ => throw new ArgumentException($"Unsupported assessment status filter '{requestedStatus}'.")
+        };
+    }
+
+    private static string MapAssessmentManagementStatus(AssessmentStatus status)
+    {
+        return status switch
+        {
+            AssessmentStatus.Live => "LIVE",
+            AssessmentStatus.Scheduled => "SCHEDULED",
+            AssessmentStatus.Completed => "COMPLETED",
+            AssessmentStatus.Draft => "DRAFT",
+            AssessmentStatus.Cancelled => "CANCELLED",
+            _ => status.ToString().ToUpperInvariant()
+        };
+    }
+
+    private static void PrepareAssessmentForCreation(
+        Assessment assessment,
+        IEnumerable<Question> questions,
+        AssessmentStatus assessmentStatus)
+    {
+        var now = DateTime.UtcNow;
         assessment.AssessmentId = assessment.AssessmentId == Guid.Empty ? Guid.NewGuid() : assessment.AssessmentId;
         assessment.AssessmentType = ResolveAssessmentType(questions);
         assessment.DifficultyLevel = CalculateDifficultyLevel(questions);
-        assessment.CreatedAt = DateTime.UtcNow;
+        assessment.AssessmentStatus = assessmentStatus;
+        assessment.CreatedAt = now;
+        assessment.ModifiedAt = now;
     }
 
     private static void PrepareAssessmentForPublish(Assessment assessment, IEnumerable<Question> questions)
@@ -611,6 +1191,155 @@ public class AssessmentManager : IAssessmentManager
         }
     }
 
+    private static void ApplyAssessmentUpdates(
+        Assessment target,
+        Assessment source,
+        IEnumerable<Question> questions)
+    {
+        target.SubjectId = source.SubjectId;
+        target.Subject = source.Subject;
+        target.SubjectName = source.SubjectName;
+        target.TopicId = source.TopicId;
+        target.Topic = source.Topic;
+        target.TopicName = source.TopicName;
+        target.AssessmentName = source.AssessmentName;
+        target.AssessmentType = ResolveAssessmentType(questions);
+        target.AssessmentStatus = source.AssessmentStatus;
+        target.DurationMinutes = source.DurationMinutes;
+        target.TotalMarks = source.TotalMarks;
+        target.DifficultyLevel = CalculateDifficultyLevel(questions);
+        target.StartDateTime = source.StartDateTime;
+        target.EndDateTime = source.EndDateTime;
+        target.Instructions = source.Instructions;
+        target.AssignedBatchIds = source.AssignedBatchIds;
+        target.AllowLateEntry = source.AllowLateEntry;
+        target.ShowResultsImmediately = source.ShowResultsImmediately;
+        target.AllowQuestionReview = source.AllowQuestionReview;
+        target.NegativeMarking = source.NegativeMarking;
+        target.IsTotalMarksAutoCalculated = source.IsTotalMarksAutoCalculated;
+        target.ModifiedAt = source.ModifiedAt;
+    }
+
+    private static void ApplyPartialDraftUpdates(Assessment target, Assessment source)
+    {
+        target.SubjectId = source.SubjectId;
+        target.Subject = source.Subject;
+        target.SubjectName = source.SubjectName;
+        target.TopicId = source.TopicId;
+        target.Topic = source.Topic;
+        target.TopicName = source.TopicName;
+        target.AssessmentName = source.AssessmentName;
+        target.AssessmentType = AssessmentType.Objective;
+        target.AssessmentStatus = AssessmentStatus.Draft;
+        target.DurationMinutes = source.DurationMinutes;
+        target.TotalMarks = source.TotalMarks;
+        target.DifficultyLevel = 1;
+        target.StartDateTime = source.StartDateTime;
+        target.EndDateTime = source.EndDateTime;
+        target.Instructions = source.Instructions;
+        target.AssignedBatchIds = source.AssignedBatchIds;
+        target.AllowLateEntry = source.AllowLateEntry;
+        target.ShowResultsImmediately = source.ShowResultsImmediately;
+        target.AllowQuestionReview = source.AllowQuestionReview;
+        target.NegativeMarking = source.NegativeMarking;
+        target.IsTotalMarksAutoCalculated = source.IsTotalMarksAutoCalculated;
+        target.ModifiedAt = source.ModifiedAt;
+    }
+
+    private async Task SyncAssessmentQuestionsAsync(
+        Assessment assessment,
+        IReadOnlyCollection<Question> questions,
+        IReadOnlyList<Guid> orderedQuestionIds)
+    {
+        var existingAssessmentQuestions = assessment.AssessmentQuestions.ToList();
+
+        var previousQuestionIds = existingAssessmentQuestions
+            .Select(item => item.QuestionId)
+            .Distinct()
+            .ToArray();
+
+        var removedQuestionIds = previousQuestionIds
+            .Except(orderedQuestionIds)
+            .ToArray();
+
+        if (existingAssessmentQuestions.Count > 0)
+        {
+            foreach (var existingAssessmentQuestion in existingAssessmentQuestions)
+            {
+                _context.Entry(existingAssessmentQuestion).State = EntityState.Detached;
+            }
+
+            await _context.AssessmentQuestions
+                .Where(item => item.AssessmentId == assessment.AssessmentId)
+                .ExecuteDeleteAsync();
+        }
+
+        assessment.AssessmentQuestions.Clear();
+
+        var rebuiltAssessmentQuestions = BuildAssessmentQuestions(assessment.AssessmentId, questions, orderedQuestionIds);
+        _context.AssessmentQuestions.AddRange(rebuiltAssessmentQuestions);
+
+        foreach (var assessmentQuestion in rebuiltAssessmentQuestions)
+        {
+            assessment.AssessmentQuestions.Add(assessmentQuestion);
+        }
+
+        AssignQuestionsToAssessment(questions, assessment.AssessmentId);
+
+        if (removedQuestionIds.Length == 0)
+        {
+            return;
+        }
+
+        var detachedAt = DateTime.UtcNow;
+        var removedQuestions = await _context.Questions
+            .Where(question =>
+                removedQuestionIds.Contains(question.QuestionId) &&
+                question.AssessmentId == assessment.AssessmentId)
+            .ToListAsync();
+
+        foreach (var question in removedQuestions)
+        {
+            question.AssessmentId = null;
+            question.ModifiedAt = detachedAt;
+        }
+    }
+
+    private async Task EnsureAssessmentNotAlreadyCreatedForSelectedBatchesAsync(
+        Guid collegeId,
+        Guid[] assignedBatchIds)
+    {
+        if (assignedBatchIds.Length == 0)
+        {
+            return;
+        }
+
+        var candidateAssessments = await _context.Assessments
+            .AsNoTracking()
+            .Where(item =>
+                item.CollegeId == collegeId &&
+                item.AssessmentStatus != AssessmentStatus.Soft_Deleted &&
+                item.AssessmentStatus != AssessmentStatus.Cancelled)
+            .Select(item => new
+            {
+                item.AssessmentId,
+                item.AssessmentStatus,
+                item.AssignedBatchIds
+            })
+            .ToListAsync();
+
+        var requestedBatchSet = assignedBatchIds.ToHashSet();
+        var duplicateAssessment = candidateAssessments.FirstOrDefault(item =>
+            item.AssignedBatchIds is not null &&
+            item.AssignedBatchIds.Length == requestedBatchSet.Count &&
+            item.AssignedBatchIds.ToHashSet().SetEquals(requestedBatchSet));
+
+        if (duplicateAssessment is not null)
+        {
+            throw new InvalidOperationException("Assessment has already been created for the selected batches.");
+        }
+    }
+
     private async Task<Assessment> GetAssessmentByIdAsync(Guid assessmentId)
     {
         var assessment = await _context.Assessments
@@ -624,8 +1353,147 @@ public class AssessmentManager : IAssessmentManager
         return assessment;
     }
 
+    private async Task<Assessment> GetAssessmentForUpdateAsync(Guid assessmentId)
+    {
+        var assessment = await _context.Assessments
+            .Include(item => item.AssessmentQuestions)
+            .Include(item => item.Subject)
+            .Include(item => item.Topic)
+            .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId);
+
+        if (assessment is null)
+        {
+            throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found.");
+        }
+
+        return assessment;
+    }
+
+    private static void EnsureUpdateAuthorized(Assessment assessment, UpdateAssessmentRequest request)
+    {
+        if (IsTrainer(request.RequesterRole))
+        {
+            if (assessment.CollegeId != request.CollegeId)
+            {
+                throw new UnauthorizedAccessException("Trainer can update assessments only for its own college.");
+            }
+
+            if (!string.Equals(assessment.CreatedBy?.Trim(), request.UpdatedBy?.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException("Trainer can update only the assessments created by the same trainer.");
+            }
+
+            return;
+        }
+
+        if (IsCollegeAdmin(request.RequesterRole))
+        {
+            if (assessment.CollegeId != request.CollegeId)
+            {
+                throw new UnauthorizedAccessException("College admin can update assessments only for its own college.");
+            }
+
+            return;
+        }
+
+        throw new UnauthorizedAccessException("Only CollegeAdmin and Trainer can update assessments.");
+    }
+
+    private static void EnsureAssessmentReadAuthorized(
+        Assessment assessment,
+        Guid collegeId,
+        string requesterRole,
+        string requesterName)
+    {
+        if (IsTrainer(requesterRole))
+        {
+            if (assessment.CollegeId != collegeId)
+            {
+                throw new UnauthorizedAccessException("Trainer can access assessments only for its own college.");
+            }
+
+            if (!string.Equals(assessment.CreatedBy?.Trim(), requesterName?.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException("Trainer can access only the assessments created by the same trainer.");
+            }
+
+            return;
+        }
+
+        if (IsCollegeAdmin(requesterRole))
+        {
+            if (assessment.CollegeId != collegeId)
+            {
+                throw new UnauthorizedAccessException("College admin can access assessments only for its own college.");
+            }
+
+            return;
+        }
+
+        throw new UnauthorizedAccessException("Only CollegeAdmin and Trainer can access assessments.");
+    }
+
+    private static void EnsureAssessmentCanBeDeleted(Assessment assessment)
+    {
+        if (assessment.AssessmentStatus == AssessmentStatus.Live)
+        {
+            throw new InvalidOperationException("Live assessments cannot be deleted. Cancel the assessment first.");
+        }
+
+        if (assessment.AssessmentStatus == AssessmentStatus.Soft_Deleted || assessment.IsDeleted == true)
+        {
+            throw new InvalidOperationException("This assessment has already been soft deleted.");
+        }
+    }
+
+    private static void EnsureAssessmentCanBeUpdated(Assessment assessment)
+    {
+        if (assessment.AssessmentStatus is not AssessmentStatus.Draft and not AssessmentStatus.Scheduled)
+        {
+            throw new InvalidOperationException("Only draft or scheduled assessments can be edited.");
+        }
+
+        if (assessment.AssessmentStatus != AssessmentStatus.Scheduled)
+        {
+            return;
+        }
+
+        if (!assessment.StartDateTime.HasValue)
+        {
+            throw new InvalidOperationException(
+                "This scheduled assessment cannot be edited because its start time is unavailable.");
+        }
+
+        var editCutoffTime = assessment.StartDateTime.Value.AddMinutes(-15);
+        if (DateTime.UtcNow > editCutoffTime)
+        {
+            throw new InvalidOperationException(
+                "Scheduled assessments can only be edited until 15 minutes before the start time.");
+        }
+    }
+
     private static void EnsureDeleteAuthorized(Assessment assessment, DeleteAssessmentRequest request)
     {
+        if (IsTrainer(request.RequesterRole))
+        {
+            if (!request.CollegeId.HasValue || request.CollegeId.Value == Guid.Empty)
+            {
+                throw new ArgumentException("CollegeId is required for trainer delete operations.");
+            }
+
+            if (assessment.CollegeId != request.CollegeId.Value)
+            {
+                throw new UnauthorizedAccessException("Trainer can delete assessments only for its own college.");
+            }
+
+            if (!string.Equals(assessment.CreatedBy?.Trim(), request.DeletedBy?.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException("Trainer can delete only the assessments created by the same trainer.");
+            }
+
+            return;
+        }
+
         if (IsCollegeAdmin(request.RequesterRole))
         {
             if (!request.CollegeId.HasValue || request.CollegeId.Value == Guid.Empty)
@@ -643,7 +1511,7 @@ public class AssessmentManager : IAssessmentManager
 
         if (!IsSuperAdmin(request.RequesterRole))
         {
-            throw new UnauthorizedAccessException("Only SuperAdmin and CollegeAdmin can delete assessments.");
+            throw new UnauthorizedAccessException("Only SuperAdmin, CollegeAdmin, and Trainer can delete assessments.");
         }
     }
 
@@ -770,7 +1638,7 @@ public class AssessmentManager : IAssessmentManager
             .AsNoTracking()
             .Where(assessment =>
                 assessment.CollegeId == collegeId &&
-                assessment.AssessmentStatus != AssessmentStatus.Soft_Delete &&
+                assessment.AssessmentStatus != AssessmentStatus.Soft_Deleted &&
                 assessment.AssignedBatchIds.Contains(batchId));
     }
 
@@ -1136,6 +2004,50 @@ public class AssessmentManager : IAssessmentManager
         }
     }
 
+    private static void ValidatePartialDraft(Assessment assessment)
+    {
+        if (assessment.CollegeId == Guid.Empty)
+        {
+            throw new ArgumentException("CollegeId is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(assessment.CreatedBy))
+        {
+            throw new ArgumentException("CreatedBy is required.");
+        }
+
+        if (assessment.TotalMarks < 0)
+        {
+            throw new ArgumentException("Total marks cannot be negative.");
+        }
+
+        if (assessment.EndDateTime.HasValue &&
+            assessment.StartDateTime.HasValue &&
+            assessment.EndDateTime <= assessment.StartDateTime)
+        {
+            throw new ArgumentException("End datetime must be greater than start datetime.");
+        }
+    }
+
+    private static bool ShouldPersistAsPartialDraft(Assessment assessment, List<Guid> questionIds)
+    {
+        return string.IsNullOrWhiteSpace(assessment.AssessmentName) ||
+               !HasCompleteAssessmentClassification(assessment) ||
+               assessment.DurationMinutes <= 0 ||
+               NormalizeAssignedBatchIds(assessment.AssignedBatchIds).Length == 0 ||
+               questionIds.Count == 0;
+    }
+
+    private static bool HasCompleteAssessmentClassification(Assessment assessment)
+    {
+        var hasSubject = assessment.SubjectId.HasValue ||
+                         !string.IsNullOrWhiteSpace(assessment.SubjectName);
+        var hasTopic = assessment.TopicId.HasValue ||
+                       !string.IsNullOrWhiteSpace(assessment.TopicName);
+
+        return hasSubject && hasTopic;
+    }
+
     private static void ValidateDeleteAssessmentRequest(DeleteAssessmentRequest request)
     {
         if (request.AssessmentId == Guid.Empty)
@@ -1154,17 +2066,66 @@ public class AssessmentManager : IAssessmentManager
         }
     }
 
+    private static void ValidateUpdateAssessmentRequest(UpdateAssessmentRequest request)
+    {
+        if (request.AssessmentId == Guid.Empty)
+        {
+            throw new ArgumentException("AssessmentId is required.");
+        }
+
+        if (request.CollegeId == Guid.Empty)
+        {
+            throw new ArgumentException("CollegeId is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.UpdatedBy))
+        {
+            throw new ArgumentException("UpdatedBy is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.RequesterRole))
+        {
+            throw new ArgumentException("RequesterRole is required.");
+        }
+    }
+
+    private static void ApplyAutoCalculatedTotalMarksIfEnabled(Assessment assessment, IReadOnlyCollection<Question> questions)
+    {
+        if (assessment.IsTotalMarksAutoCalculated != true)
+        {
+            return;
+        }
+
+        assessment.TotalMarks = CalculatePersistedTotalMarks(questions);
+    }
+
+    private static int CalculatePersistedTotalMarks(IEnumerable<Question> questions)
+    {
+        var selectedMarks = questions.Sum(question => question.Marks);
+
+        if (selectedMarks < 0)
+        {
+            throw new InvalidDataException("Selected question marks cannot produce a negative total.");
+        }
+
+        if (decimal.Truncate(selectedMarks) != selectedMarks)
+        {
+            throw new InvalidDataException(
+                $"Selected question marks sum to {selectedMarks}, but assessment total marks currently support only whole numbers.");
+        }
+
+        if (selectedMarks > int.MaxValue)
+        {
+            throw new InvalidDataException("Selected question marks exceed the supported total marks range.");
+        }
+
+        return decimal.ToInt32(selectedMarks);
+    }
+
     private void ValidateQuestionBudget(Assessment assessment, List<Question> questions)
     {
         var selectedQuestionCount = questions.Count;
         var selectedMarks = questions.Sum(question => question.Marks);
-        var allowedByMarks = CalculateAllowedQuestionCountByMarks(assessment.TotalMarks);
-
-        if (allowedByMarks.HasValue && selectedQuestionCount > allowedByMarks.Value)
-        {
-            throw new AssessmentQuestionLimitException(
-                $"Selected question count ({selectedQuestionCount}) exceeds the limit allowed by total marks ({allowedByMarks.Value}).");
-        }
 
         if (selectedMarks > assessment.TotalMarks)
         {
@@ -1191,16 +2152,6 @@ public class AssessmentManager : IAssessmentManager
                 $"Selected questions require {requiredDurationMinutes} minutes, but assessment duration is {assessment.DurationMinutes} minutes. " +
                 $"Allowed by duration: {codingLimit} coding question(s) or {nonCodingLimit} non-coding question(s).");
         }
-    }
-
-    private int? CalculateAllowedQuestionCountByMarks(int totalMarks)
-    {
-        if (totalMarks <= 0 || _assessmentSettings.MarksPerQuestion <= 0)
-        {
-            return null;
-        }
-
-        return (int)Math.Floor(totalMarks / _assessmentSettings.MarksPerQuestion);
     }
 
     private static int CalculateAllowedQuestionCountByDuration(int durationMinutes, decimal timePerQuestionMinutes)
@@ -1238,6 +2189,9 @@ public class AssessmentManager : IAssessmentManager
 
     private static bool IsSuperAdmin(string requesterRole)
         => string.Equals(requesterRole?.Trim(), "SuperAdmin", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsTrainer(string requesterRole)
+        => string.Equals(requesterRole?.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase);
 
     private static int CalculateDifficultyLevel(IEnumerable<Question> questions)
     {

@@ -29,8 +29,7 @@ public class CreateQuestionRequest
     public string? Topic { get; set; }
 
     [Required]
-    [MaxLength(200)]
-    public string TopicTag { get; set; } = string.Empty;
+    public List<string> TopicTag { get; set; } = [];
 
     [Required]
     [MaxLength(50)]

@@ -29,16 +29,25 @@ export class HttpClientService {
       .pipe(catchError(this.formatErrors));
   }
 
-  post<T>(path: string, body: object = {}, params: HttpParams = new HttpParams()): Observable<T> {
+  post<T>(
+    path: string,
+    body: object = {},
+    params: HttpParams = new HttpParams(),
+    skipGlobalErrorRedirect = false
+  ): Observable<T> {
+    const options = this.buildOptions(params, skipGlobalErrorRedirect);
+
     return this.http
-      .post<T>(this.httpHelperService.api + path, JSON.stringify(body), this.httpHelperService.getOptions(params))
+      .post<T>(this.httpHelperService.api + path, JSON.stringify(body), options)
       .pipe(map((response: HttpResponse<T>) => response.body as T))
       .pipe(catchError(this.formatErrors));
   }
 
-  put<T>(path: string, body: object = {}): Observable<T> {
+  put<T>(path: string, body: object = {}, skipGlobalErrorRedirect = false): Observable<T> {
+    const options = this.buildOptions(new HttpParams(), skipGlobalErrorRedirect);
+
     return this.http
-      .put<T>(this.httpHelperService.api + path, JSON.stringify(body), this.httpHelperService.getOptions())
+      .put<T>(this.httpHelperService.api + path, JSON.stringify(body), options)
       .pipe(map((response: HttpResponse<T>) => response.body as T))
       .pipe(catchError(this.formatErrors));
   }

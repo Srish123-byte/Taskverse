@@ -14,7 +14,68 @@ public class CreateAssessmentRequest
     [JsonPropertyName("created_by")]
     public string CreatedBy { get; set; } = string.Empty;
 
-    [Required]
+    [JsonPropertyName("assessment_name")]
+    public string AssessmentName { get; set; } = string.Empty;
+
+    [JsonPropertyName("subject_id")]
+    public Guid? SubjectId { get; set; }
+
+    [MaxLength(100)]
+    [JsonPropertyName("subject_name")]
+    public string? SubjectName { get; set; }
+
+    [JsonPropertyName("topic_id")]
+    public Guid? TopicId { get; set; }
+
+    [MaxLength(200)]
+    [JsonPropertyName("topic_name")]
+    public string? TopicName { get; set; }
+
+    [MaxLength(2000)]
+    [JsonPropertyName("instructions")]
+    public string? Instructions { get; set; }
+
+    [JsonPropertyName("allow_late_entry")]
+    public bool AllowLateEntry { get; set; }
+
+    [JsonPropertyName("allow_question_review")]
+    public bool AllowQuestionReview { get; set; }
+
+    [JsonPropertyName("negative_marking")]
+    public bool NegativeMarking { get; set; }
+
+    [JsonPropertyName("assigned_batch_ids")]
+    public Guid[] AssignedBatchIds { get; set; } = [];
+
+    [JsonPropertyName("question_ids")]
+    public List<Guid> QuestionIds { get; set; } = [];
+
+    [JsonPropertyName("duration_minutes")]
+    public int DurationMinutes { get; set; }
+
+    [Range(0, int.MaxValue)]
+    [JsonPropertyName("total_marks")]
+    public int TotalMarks { get; set; }
+
+    [JsonPropertyName("start_datetime")]
+    public DateTime? StartDateTime { get; set; }
+
+    [JsonPropertyName("end_datetime")]
+    public DateTime? EndDateTime { get; set; }
+}
+
+public class PublishAssessmentRequest
+{
+    [JsonPropertyName("assessment_id")]
+    public Guid? AssessmentId { get; set; }
+
+    [JsonPropertyName("college_id")]
+    public Guid CollegeId { get; set; }
+
+    [MaxLength(200)]
+    [JsonPropertyName("created_by")]
+    public string CreatedBy { get; set; } = string.Empty;
+
     [MaxLength(120)]
     [JsonPropertyName("assessment_name")]
     public string AssessmentName { get; set; } = string.Empty;
@@ -33,10 +94,22 @@ public class CreateAssessmentRequest
     [JsonPropertyName("topic_name")]
     public string? TopicName { get; set; }
 
+    [MaxLength(2000)]
+    [JsonPropertyName("instructions")]
+    public string? Instructions { get; set; }
+
+    [JsonPropertyName("allow_late_entry")]
+    public bool AllowLateEntry { get; set; }
+
+    [JsonPropertyName("allow_question_review")]
+    public bool AllowQuestionReview { get; set; }
+
+    [JsonPropertyName("negative_marking")]
+    public bool NegativeMarking { get; set; }
+
     [JsonPropertyName("assigned_batch_ids")]
     public Guid[] AssignedBatchIds { get; set; } = [];
 
-    [Required]
     [JsonPropertyName("question_ids")]
     public List<Guid> QuestionIds { get; set; } = [];
 
@@ -55,11 +128,87 @@ public class CreateAssessmentRequest
     public DateTime? EndDateTime { get; set; }
 }
 
+public class UpdateAssessmentRequest
+{
+    [Required]
+    [JsonPropertyName("assessment_id")]
+    public Guid AssessmentId { get; set; }
+
+    [Required]
+    [JsonPropertyName("college_id")]
+    public Guid CollegeId { get; set; }
+
+    [Required]
+    [MaxLength(200)]
+    [JsonPropertyName("updated_by")]
+    public string UpdatedBy { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(50)]
+    [JsonPropertyName("requester_role")]
+    public string RequesterRole { get; set; } = string.Empty;
+
+    [JsonPropertyName("assessment_name")]
+    public string AssessmentName { get; set; } = string.Empty;
+
+    [JsonPropertyName("subject_id")]
+    public Guid? SubjectId { get; set; }
+
+    [MaxLength(100)]
+    [JsonPropertyName("subject_name")]
+    public string? SubjectName { get; set; }
+
+    [JsonPropertyName("topic_id")]
+    public Guid? TopicId { get; set; }
+
+    [MaxLength(200)]
+    [JsonPropertyName("topic_name")]
+    public string? TopicName { get; set; }
+
+    [MaxLength(2000)]
+    [JsonPropertyName("instructions")]
+    public string? Instructions { get; set; }
+
+    [JsonPropertyName("allow_late_entry")]
+    public bool AllowLateEntry { get; set; }
+
+    [JsonPropertyName("allow_question_review")]
+    public bool AllowQuestionReview { get; set; }
+
+    [JsonPropertyName("negative_marking")]
+    public bool NegativeMarking { get; set; }
+
+    [JsonPropertyName("assigned_batch_ids")]
+    public Guid[] AssignedBatchIds { get; set; } = [];
+
+    [JsonPropertyName("question_ids")]
+    public List<Guid> QuestionIds { get; set; } = [];
+
+    [JsonPropertyName("duration_minutes")]
+    public int DurationMinutes { get; set; }
+
+    [Range(0, int.MaxValue)]
+    [JsonPropertyName("total_marks")]
+    public int TotalMarks { get; set; }
+
+    [JsonPropertyName("start_datetime")]
+    public DateTime? StartDateTime { get; set; }
+
+    [JsonPropertyName("end_datetime")]
+    public DateTime? EndDateTime { get; set; }
+
+    [JsonPropertyName("is_draft_save")]
+    public bool IsDraftSave { get; set; }
+}
+
 public class DeleteAssessmentRequest
 {
     [Required]
     [JsonPropertyName("assessment_id")]
     public Guid AssessmentId { get; set; }
+
+    [JsonPropertyName("is_deleted")]
+    public bool? IsDeleted { get; set; }
 
     [Required]
     [MaxLength(200)]
@@ -116,10 +265,8 @@ public record AssessmentRecord(
     bool AllowQuestionReview,
     [property: JsonPropertyName("negative_marking")]
     bool NegativeMarking,
-    [property: JsonPropertyName("marks_per_question")]
-    decimal MarksPerQuestion,
     [property: JsonPropertyName("is_total_marks_auto_calculated")]
-    bool IsTotalMarksAutoCalculated,
+    bool? IsTotalMarksAutoCalculated,
     [property: JsonPropertyName("created_by")]
     string CreatedBy,
     [property: JsonPropertyName("created_at")]
@@ -165,6 +312,136 @@ public record PagedAssessmentQuestionListRecord(
     int PageNumber,
     [property: JsonPropertyName("page_size")]
     int PageSize);
+
+public class AssessmentManagementSearchRequest
+{
+    [Required]
+    [JsonPropertyName("college_id")]
+    public Guid CollegeId { get; set; }
+
+    [MaxLength(50)]
+    [JsonPropertyName("requester_role")]
+    public string RequesterRole { get; set; } = string.Empty;
+
+    [JsonPropertyName("requester_user_id")]
+    public Guid? RequesterUserId { get; set; }
+
+    [Required]
+    [MaxLength(200)]
+    [JsonPropertyName("created_by")]
+    public string CreatedBy { get; set; } = string.Empty;
+
+    [MaxLength(200)]
+    [JsonPropertyName("search_term")]
+    public string? SearchTerm { get; set; }
+
+    [MaxLength(50)]
+    [JsonPropertyName("assessment_status")]
+    public string? AssessmentStatus { get; set; }
+
+    [JsonPropertyName("difficulty_level")]
+    public int? DifficultyLevel { get; set; }
+
+    [JsonPropertyName("page_number")]
+    public int PageNumber { get; set; } = 1;
+
+    [JsonPropertyName("page_size")]
+    public int PageSize { get; set; } = 10;
+}
+
+public record AssessmentManagementItemRecord(
+    [property: JsonPropertyName("assessment_id")]
+    Guid AssessmentId,
+    [property: JsonPropertyName("assessment_name")]
+    string AssessmentName,
+    [property: JsonPropertyName("category")]
+    string Category,
+    [property: JsonPropertyName("topic_name")]
+    string? TopicName,
+    [property: JsonPropertyName("assessment_status")]
+    string AssessmentStatus,
+    [property: JsonPropertyName("assessment_date")]
+    DateTime AssessmentDate,
+    [property: JsonPropertyName("total_marks")]
+    int TotalMarks,
+    [property: JsonPropertyName("difficulty_level")]
+    int DifficultyLevel);
+
+public record AssessmentManagementSearchResultRecord(
+    [property: JsonPropertyName("items")]
+    List<AssessmentManagementItemRecord> Items,
+    [property: JsonPropertyName("total_count")]
+    int TotalCount,
+    [property: JsonPropertyName("active_count")]
+    int ActiveCount,
+    [property: JsonPropertyName("completed_count")]
+    int CompletedCount,
+    [property: JsonPropertyName("page_number")]
+    int PageNumber,
+    [property: JsonPropertyName("page_size")]
+    int PageSize);
+
+public class AssessmentAccessibleBatchesRequest
+{
+    [Required]
+    [JsonPropertyName("college_id")]
+    public Guid CollegeId { get; set; }
+
+    [MaxLength(50)]
+    [JsonPropertyName("requester_role")]
+    public string RequesterRole { get; set; } = string.Empty;
+
+    [JsonPropertyName("requester_user_id")]
+    public Guid? RequesterUserId { get; set; }
+}
+
+public record AssessmentTopicCatalogRecord(
+    [property: JsonPropertyName("topic_id")]
+    Guid TopicId,
+    [property: JsonPropertyName("topic_name")]
+    string TopicName,
+    [property: JsonPropertyName("batch_ids")]
+    Guid[] BatchIds);
+
+public record AssessmentSubjectCatalogRecord(
+    [property: JsonPropertyName("subject_id")]
+    Guid SubjectId,
+    [property: JsonPropertyName("subject_name")]
+    string SubjectName,
+    [property: JsonPropertyName("batch_ids")]
+    Guid[] BatchIds,
+    [property: JsonPropertyName("topics")]
+    List<AssessmentTopicCatalogRecord> Topics);
+
+public record AssessmentSubjectTopicCatalogRecord(
+    [property: JsonPropertyName("subjects")]
+    List<AssessmentSubjectCatalogRecord> Subjects);
+
+public record AssessmentAssignmentBatchRecord(
+    [property: JsonPropertyName("batch_id")]
+    Guid BatchId,
+    [property: JsonPropertyName("class_id")]
+    Guid ClassId,
+    [property: JsonPropertyName("college_id")]
+    Guid CollegeId,
+    [property: JsonPropertyName("name")]
+    string Name);
+
+public record AssessmentAssignmentClassRecord(
+    [property: JsonPropertyName("class_id")]
+    Guid ClassId,
+    [property: JsonPropertyName("college_id")]
+    Guid CollegeId,
+    [property: JsonPropertyName("name")]
+    string Name,
+    [property: JsonPropertyName("academic_year")]
+    string? AcademicYear,
+    [property: JsonPropertyName("batches")]
+    List<AssessmentAssignmentBatchRecord> Batches);
+
+public record AssessmentAssignmentCatalogRecord(
+    [property: JsonPropertyName("classes")]
+    List<AssessmentAssignmentClassRecord> Classes);
 
 public class StudentAssessmentListRequest
 {

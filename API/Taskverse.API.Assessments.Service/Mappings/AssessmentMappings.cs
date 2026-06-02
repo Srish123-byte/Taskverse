@@ -8,8 +8,13 @@ namespace Taskverse.API.Assessments.Service.Mappings;
 
 public static class AssessmentMappings
 {
-    public static Assessment ToEntity(this CreateAssessmentRequest request, AssessmentSettings settings)
+    public static Assessment ToEntity(
+        this CreateAssessmentRequest request,
+        AssessmentSettings settings,
+        AssessmentStatus assessmentStatus = AssessmentStatus.Draft)
     {
+        var isDraft = assessmentStatus == AssessmentStatus.Draft;
+
         return new Assessment
         {
             CollegeId = request.CollegeId,
@@ -17,24 +22,80 @@ public static class AssessmentMappings
             SubjectName = request.SubjectName?.Trim(),
             TopicId = request.TopicId,
             TopicName = request.TopicName?.Trim(),
-            AssessmentName = request.AssessmentName.Trim(),
-            AssessmentStatus = AssessmentStatus.Draft,
-            DurationMinutes = request.DurationMinutes,
-            TotalMarks = request.TotalMarks,
+            AssessmentName = NormalizeAssessmentName(request.AssessmentName, isDraft),
+            AssessmentStatus = assessmentStatus,
+            DurationMinutes = NormalizeDurationMinutes(request.DurationMinutes, isDraft),
+            TotalMarks = NormalizeTotalMarks(request.TotalMarks),
             StartDateTime = UtcDateTime.Normalize(request.StartDateTime),
             EndDateTime = UtcDateTime.Normalize(request.EndDateTime),
-            Instructions = settings.Instructions,
-            AssignedBatchIds = request.AssignedBatchIds
+            Instructions = string.IsNullOrWhiteSpace(request.Instructions) ? null : request.Instructions.Trim(),
+            AssignedBatchIds = (request.AssignedBatchIds ?? [])
                 .Where(batchId => batchId != Guid.Empty)
                 .Distinct()
                 .ToArray(),
-            AllowLateEntry = settings.IsLateEntryAllowed,
+            AllowLateEntry = request.AllowLateEntry,
             ShowResultsImmediately = settings.IsResultsAvailableImmediately,
-            AllowQuestionReview = settings.AllowQuestionReview,
-            NegativeMarking = settings.NegativeMarking,
-            MarksPerQuestion = settings.MarksPerQuestion,
+            AllowQuestionReview = request.AllowQuestionReview,
+            NegativeMarking = request.NegativeMarking,
             IsTotalMarksAutoCalculated = settings.IsTotalMarksAutoCalculated,
             CreatedBy = request.CreatedBy
+        };
+    }
+
+    public static CreateAssessmentRequest ToCreateAssessmentRequest(this PublishAssessmentRequest request)
+    {
+        return new CreateAssessmentRequest
+        {
+            CollegeId = request.CollegeId,
+            CreatedBy = request.CreatedBy,
+            AssessmentName = request.AssessmentName,
+            SubjectId = request.SubjectId,
+            SubjectName = request.SubjectName,
+            TopicId = request.TopicId,
+            TopicName = request.TopicName,
+            Instructions = request.Instructions,
+            AllowLateEntry = request.AllowLateEntry,
+            AllowQuestionReview = request.AllowQuestionReview,
+            NegativeMarking = request.NegativeMarking,
+            AssignedBatchIds = request.AssignedBatchIds,
+            QuestionIds = request.QuestionIds,
+            DurationMinutes = request.DurationMinutes,
+            TotalMarks = request.TotalMarks,
+            StartDateTime = request.StartDateTime,
+            EndDateTime = request.EndDateTime
+        };
+    }
+
+    public static Assessment ToEntity(
+        this UpdateAssessmentRequest request,
+        AssessmentSettings settings,
+        AssessmentStatus assessmentStatus)
+    {
+        return new Assessment
+        {
+            AssessmentId = request.AssessmentId,
+            CollegeId = request.CollegeId,
+            SubjectId = request.SubjectId,
+            SubjectName = request.SubjectName?.Trim(),
+            TopicId = request.TopicId,
+            TopicName = request.TopicName?.Trim(),
+            AssessmentName = NormalizeAssessmentName(request.AssessmentName, assessmentStatus == AssessmentStatus.Draft),
+            AssessmentStatus = assessmentStatus,
+            DurationMinutes = NormalizeDurationMinutes(request.DurationMinutes, assessmentStatus == AssessmentStatus.Draft),
+            TotalMarks = NormalizeTotalMarks(request.TotalMarks),
+            StartDateTime = UtcDateTime.Normalize(request.StartDateTime),
+            EndDateTime = UtcDateTime.Normalize(request.EndDateTime),
+            Instructions = string.IsNullOrWhiteSpace(request.Instructions) ? null : request.Instructions.Trim(),
+            AssignedBatchIds = (request.AssignedBatchIds ?? [])
+                .Where(batchId => batchId != Guid.Empty)
+                .Distinct()
+                .ToArray(),
+            AllowLateEntry = request.AllowLateEntry,
+            ShowResultsImmediately = settings.IsResultsAvailableImmediately,
+            AllowQuestionReview = request.AllowQuestionReview,
+            NegativeMarking = request.NegativeMarking,
+            IsTotalMarksAutoCalculated = settings.IsTotalMarksAutoCalculated,
+            CreatedBy = request.UpdatedBy
         };
     }
 
@@ -61,7 +122,6 @@ public static class AssessmentMappings
             assessment.ShowResultsImmediately,
             assessment.AllowQuestionReview,
             assessment.NegativeMarking,
-            assessment.MarksPerQuestion,
             assessment.IsTotalMarksAutoCalculated,
             assessment.CreatedBy,
             UtcDateTime.Normalize(assessment.CreatedAt),
@@ -71,6 +131,30 @@ public static class AssessmentMappings
                 .Select(question => question.QuestionId)
                 .ToList());
     }
+
+    private static string NormalizeAssessmentName(string? assessmentName, bool allowDraftDefault)
+    {
+        var normalizedName = assessmentName?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedName))
+        {
+            return normalizedName;
+        }
+
+        return allowDraftDefault ? "Untitled draft" : string.Empty;
+    }
+
+    private static int NormalizeDurationMinutes(int durationMinutes, bool allowDraftDefault)
+    {
+        if (durationMinutes > 0)
+        {
+            return durationMinutes;
+        }
+
+        return allowDraftDefault ? 1 : durationMinutes;
+    }
+
+    private static int NormalizeTotalMarks(int totalMarks)
+        => totalMarks < 0 ? 0 : totalMarks;
 
     private static string ToApiAssessmentType(AssessmentType assessmentType)
     {

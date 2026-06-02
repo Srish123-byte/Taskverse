@@ -8,11 +8,15 @@ using Taskverse.API.Assessments.Service.Models;
 
 namespace Taskverse.API.Assessments.Service.Controllers;
 
+/// <summary>
+/// Hosts assessment and student-attempt endpoints inside the assessments microservice.
+/// </summary>
 [ApiController]
 [Route("api/assessments")]
 [Produces("application/json")]
 public class AssessmentController : ControllerBase
 {
+    private const int MaxInstructionWordCount = 1000;
     private readonly IAssessmentManager _assessmentManager;
     private readonly AssessmentSettings _assessmentSettings;
     private readonly ILogger<AssessmentController> _logger;
@@ -27,6 +31,56 @@ public class AssessmentController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Retrieves a single assessment after applying the supplied requester context.
+    /// </summary>
+    /// <param name="id">The assessment identifier.</param>
+    /// <param name="collegeId">The college scope for the request.</param>
+    /// <param name="requesterRole">The role of the caller.</param>
+    /// <param name="requesterName">The display name of the caller.</param>
+    /// <returns>The requested assessment record.</returns>
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType(typeof(AssessmentRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<AssessmentRecord>> GetAssessment(
+        Guid id,
+        [FromQuery] Guid collegeId,
+        [FromQuery] string requesterRole,
+        [FromQuery] string requesterName)
+    {
+        try
+        {
+            var assessment = await _assessmentManager.GetAssessment(id, collegeId, requesterRole, requesterName);
+            return Ok(assessment.ToRecord());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while retrieving the assessment.");
+        }
+    }
+
+    /// <summary>
+    /// Creates a draft assessment in the microservice data store.
+    /// </summary>
+    /// <param name="request">The assessment create request.</param>
+    /// <returns>The created assessment record.</returns>
     [HttpPost]
     [ProducesResponseType(typeof(AssessmentRecord), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -41,20 +95,17 @@ public class AssessmentController : ControllerBase
             return BadRequest(new { message = "Assessment request is required." });
         }
 
-        if (_assessmentSettings.AssessmentMaxDurationInMinutes > 0 &&
-            request.DurationMinutes > _assessmentSettings.AssessmentMaxDurationInMinutes)
+        var instructionValidationError = ValidateInstructionWordLimit(request.Instructions);
+        if (instructionValidationError is not null)
         {
-            return BadRequest(new
-            {
-                message = $"Duration minutes cannot exceed {_assessmentSettings.AssessmentMaxDurationInMinutes}."
-            });
+            return BadRequest(new { message = instructionValidationError });
         }
 
         try
         {
             var assessment = await _assessmentManager.CreateAssessment(
                 request.ToEntity(_assessmentSettings),
-                request.QuestionIds);
+                request.QuestionIds ?? []);
 
             var response = assessment.ToRecord();
             return Created($"api/assessments/{assessment.AssessmentId}", response);
@@ -83,6 +134,79 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Updates an existing assessment in the microservice data store.
+    /// </summary>
+    /// <param name="id">The assessment identifier.</param>
+    /// <param name="request">The assessment update request.</param>
+    /// <returns>The updated assessment record.</returns>
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(AssessmentRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<AssessmentRecord>> UpdateAssessment(Guid id, [FromBody] UpdateAssessmentRequest request)
+    {
+        if (request is null)
+        {
+            return BadRequest(new { message = "Assessment update request is required." });
+        }
+
+        if (request.AssessmentId != Guid.Empty && request.AssessmentId != id)
+        {
+            return BadRequest(new { message = "Assessment id in route and body must match." });
+        }
+
+        request.AssessmentId = id;
+
+        var instructionValidationError = ValidateInstructionWordLimit(request.Instructions);
+        if (instructionValidationError is not null)
+        {
+            return BadRequest(new { message = instructionValidationError });
+        }
+
+        try
+        {
+            var assessment = await _assessmentManager.UpdateAssessment(id, request);
+            return Ok(assessment.ToRecord());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (AssessmentQuestionLimitException ex)
+        {
+            return UnprocessableEntity(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while updating the assessment.");
+        }
+    }
+
+    /// <summary>
+    /// Soft deletes an existing assessment in the microservice data store.
+    /// </summary>
+    /// <param name="id">The assessment identifier.</param>
+    /// <param name="request">The delete request context.</param>
+    /// <returns>A no-content response when deletion succeeds.</returns>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -132,6 +256,11 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Publishes an existing assessment by identifier.
+    /// </summary>
+    /// <param name="id">The assessment identifier.</param>
+    /// <returns>The published assessment record.</returns>
     [HttpPost("{id:guid}/publish")]
     [ProducesResponseType(typeof(AssessmentRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -165,6 +294,177 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Publishes an existing assessment or creates and publishes a scheduled assessment.
+    /// </summary>
+    /// <param name="request">The publish request payload.</param>
+    /// <returns>The published assessment record.</returns>
+    [HttpPost("publish")]
+    [ProducesResponseType(typeof(AssessmentRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<AssessmentRecord>> PublishAssessment([FromBody] PublishAssessmentRequest request)
+    {
+        if (request is null)
+        {
+            return BadRequest(new { message = "Assessment publish request is required." });
+        }
+
+        if (request.AssessmentId.HasValue)
+        {
+            return await PublishAssessment(request.AssessmentId.Value);
+        }
+
+        var instructionValidationError = ValidateInstructionWordLimit(request.Instructions);
+        if (instructionValidationError is not null)
+        {
+            return BadRequest(new { message = instructionValidationError });
+        }
+
+        try
+        {
+            var createRequest = request.ToCreateAssessmentRequest();
+            var assessment = await _assessmentManager.ScheduleAssessment(
+                createRequest.ToEntity(_assessmentSettings, Taskverse.Data.Enums.AssessmentStatus.Scheduled),
+                createRequest.QuestionIds);
+
+            return Ok(assessment.ToRecord());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (AssessmentQuestionLimitException ex)
+        {
+            return UnprocessableEntity(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while publishing the assessment.");
+        }
+    }
+
+    /// <summary>
+    /// Returns the subject and topic catalog available to the supplied requester context.
+    /// </summary>
+    /// <param name="request">The requester context used to scope accessible batches.</param>
+    /// <returns>The accessible subject-topic catalog.</returns>
+    [HttpPost("subjects-topics/catalog")]
+    [ProducesResponseType(typeof(AssessmentSubjectTopicCatalogRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<AssessmentSubjectTopicCatalogRecord>> GetSubjectTopicCatalog(
+        [FromBody] AssessmentAccessibleBatchesRequest request)
+    {
+        if (request is null)
+        {
+            return BadRequest(new { message = "Assessment bootstrap request is required." });
+        }
+
+        try
+        {
+            var result = await _assessmentManager.GetSubjectTopicCatalog(request);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while retrieving the subject-topic catalog.");
+        }
+    }
+
+    /// <summary>
+    /// Returns the classes and batches assigned to a trainer.
+    /// </summary>
+    /// <param name="request">The trainer requester context.</param>
+    /// <returns>The trainer assignment catalog.</returns>
+    [HttpPost("trainer/assigned-classes-batches")]
+    [ProducesResponseType(typeof(AssessmentAssignmentCatalogRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<AssessmentAssignmentCatalogRecord>> GetTrainerAssignedClassesAndBatches(
+        [FromBody] AssessmentAccessibleBatchesRequest request)
+    {
+        if (request is null)
+        {
+            return BadRequest(new { message = "Assessment bootstrap request is required." });
+        }
+
+        try
+        {
+            var result = await _assessmentManager.GetTrainerAssignedClassesAndBatches(request);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while retrieving trainer assignment options.");
+        }
+    }
+
+    /// <summary>
+    /// Searches assessments for management screens using the supplied filters and paging options.
+    /// </summary>
+    /// <param name="request">The assessment search request.</param>
+    /// <returns>The paged assessment search result.</returns>
+    [HttpPost("search")]
+    [ProducesResponseType(typeof(AssessmentManagementSearchResultRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<AssessmentManagementSearchResultRecord>> SearchAssessments(
+        [FromBody] AssessmentManagementSearchRequest request)
+    {
+        if (request is null)
+        {
+            return BadRequest(new { message = "Assessment search request is required." });
+        }
+
+        try
+        {
+            var result = await _assessmentManager.SearchAssessments(request);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while retrieving assessments.");
+        }
+    }
+
+    /// <summary>
+    /// Returns a paged list of questions assigned to an assessment.
+    /// </summary>
+    /// <param name="id">The assessment identifier.</param>
+    /// <param name="request">The paging request.</param>
+    /// <returns>The paged assessment question list.</returns>
     [HttpPost("{id:guid}/questions/list")]
     [ProducesResponseType(typeof(PagedAssessmentQuestionListRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -200,6 +500,12 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Returns assessments visible to the supplied student for the requested statuses.
+    /// </summary>
+    /// <param name="request">The student assessment request.</param>
+    /// <param name="assessmentStatuses">The statuses to include.</param>
+    /// <returns>The student assessment list.</returns>
     [HttpPost("/api/student/assessments")]
     [ProducesResponseType(typeof(List<StudentAssessmentListItemRecord>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -249,6 +555,12 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Returns the detail for a student's assigned assessment.
+    /// </summary>
+    /// <param name="assessmentId">The assessment identifier.</param>
+    /// <param name="studentUserId">The student user identifier.</param>
+    /// <returns>The student assessment detail.</returns>
     [HttpGet("/api/student/assessments/{assessmentId:guid}")]
     [ProducesResponseType(typeof(StudentAssessmentDetailRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -293,6 +605,12 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Starts an assessment attempt for the supplied student.
+    /// </summary>
+    /// <param name="assessmentId">The assessment identifier.</param>
+    /// <param name="studentUserId">The student user identifier.</param>
+    /// <returns>The started attempt state.</returns>
     [HttpPost("/api/student/assessments/{assessmentId:guid}/start")]
     [ProducesResponseType(typeof(StudentAssessmentStartRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -342,6 +660,12 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Recovers an in-progress assessment attempt for the supplied student.
+    /// </summary>
+    /// <param name="attemptId">The attempt identifier.</param>
+    /// <param name="studentUserId">The student user identifier.</param>
+    /// <returns>The recoverable attempt state.</returns>
     [HttpGet("/api/student/attempts/{attemptId:guid}")]
     [ProducesResponseType(typeof(StudentAttemptRecoveryRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -390,6 +714,12 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Submits an assessment attempt for the supplied student.
+    /// </summary>
+    /// <param name="attemptId">The attempt identifier.</param>
+    /// <param name="studentUserId">The student user identifier.</param>
+    /// <returns>The submitted attempt summary.</returns>
     [HttpPost("/api/student/attempts/{attemptId:guid}/submit")]
     [ProducesResponseType(typeof(StudentAttemptSubmitRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -439,6 +769,14 @@ public class AssessmentController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Saves an answer for a question within a student's assessment attempt.
+    /// </summary>
+    /// <param name="attemptId">The attempt identifier.</param>
+    /// <param name="questionId">The question identifier.</param>
+    /// <param name="studentUserId">The student user identifier.</param>
+    /// <param name="request">The answer payload to save.</param>
+    /// <returns>The saved answer state.</returns>
     [HttpPut("/api/student/attempts/{attemptId:guid}/{questionId:guid}/answers")]
     [ProducesResponseType(typeof(StudentAttemptAnswerRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -506,5 +844,20 @@ public class AssessmentController : ControllerBase
             message = detail,
             detail
         });
+    }
+
+    private static string? ValidateInstructionWordLimit(string? instructions)
+    {
+        return CountWords(instructions) > MaxInstructionWordCount
+            ? $"Instructions cannot exceed {MaxInstructionWordCount} words."
+            : null;
+    }
+
+    private static int CountWords(string? value)
+    {
+        var normalized = value?.Trim();
+        return string.IsNullOrWhiteSpace(normalized)
+            ? 0
+            : normalized.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
     }
 }

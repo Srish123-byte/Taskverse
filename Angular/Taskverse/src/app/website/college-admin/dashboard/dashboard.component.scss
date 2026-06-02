@@ -58,6 +58,12 @@
   box-shadow: 0 16px 24px rgba(39, 125, 178, 0.24);
 }
 
+.action-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
 .secondary-action-shell {
   border: 1px solid rgba(143, 176, 255, 0.18);
   background: rgba(18, 28, 52, 0.82);

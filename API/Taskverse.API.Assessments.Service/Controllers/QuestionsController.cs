@@ -5,6 +5,9 @@ using Taskverse.API.Assessments.Service.Models;
 
 namespace Taskverse.API.Assessments.Service.Controllers;
 
+/// <summary>
+/// Hosts question-bank endpoints inside the assessments microservice.
+/// </summary>
 [ApiController]
 [Route("api/questions")]
 [Produces("application/json")]
@@ -17,6 +20,11 @@ public class QuestionsController : ControllerBase
         _questionManager = questionManager;
     }
 
+    /// <summary>
+    /// Creates one or more question-bank entries in the microservice data store.
+    /// </summary>
+    /// <param name="requests">The question create requests.</param>
+    /// <returns>The created question records.</returns>
     [HttpPost]
     [ProducesResponseType(typeof(List<QuestionRecord>), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -59,6 +67,11 @@ public class QuestionsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Searches the question bank using the supplied filters and paging options.
+    /// </summary>
+    /// <param name="request">The question-bank search request.</param>
+    /// <returns>The paged question-bank result.</returns>
     [HttpPost("search")]
     [ProducesResponseType(typeof(PagedQuestionRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -102,6 +115,12 @@ public class QuestionsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Retrieves a question-bank entry by identifier.
+    /// </summary>
+    /// <param name="id">The question identifier.</param>
+    /// <param name="collegeId">The college scope for the request.</param>
+    /// <returns>The requested question record.</returns>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(QuestionRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -139,6 +158,12 @@ public class QuestionsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Updates a question-bank entry by identifier.
+    /// </summary>
+    /// <param name="id">The question identifier.</param>
+    /// <param name="request">The updated question payload.</param>
+    /// <returns>The updated question record.</returns>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(QuestionRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -181,6 +206,11 @@ public class QuestionsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Deletes one or more question-bank entries after applying authorization and status checks.
+    /// </summary>
+    /// <param name="request">The delete request context.</param>
+    /// <returns>The deleted question identifiers.</returns>
     [HttpDelete]
     [ProducesResponseType(typeof(List<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
