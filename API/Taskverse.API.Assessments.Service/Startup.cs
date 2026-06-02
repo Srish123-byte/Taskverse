@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Npgsql;
 using Taskverse.API.Assessments.Service.Managers;
 using Taskverse.API.Assessments.Service.Models;
+using Taskverse.API.Assessments.Service.Orchestrators;
 using Taskverse.API.Assessments.Service.Services;
 using Taskverse.Data.DataAccess;
 
@@ -70,6 +71,7 @@ public class Startup
     {
         services.AddScoped<IQuestionManager, QuestionManager>();
         services.AddScoped<IAssessmentManager, AssessmentManager>();
+        services.AddScoped<IAssessmentOrchestrator, AssessmentOrchestrator>();
         services.AddScoped<IStudentAttemptAnswerSaveStrategyFactory, StudentAttemptAnswerSaveStrategyFactory>();
         services.AddScoped<IStudentAttemptAnswerSaveStrategy, ObjectiveStudentAttemptAnswerSaveStrategy>();
         services.AddHttpClient<IReportsServiceClient, ReportsServiceClient>((serviceProvider, client) =>

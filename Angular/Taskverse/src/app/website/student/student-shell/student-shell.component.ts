@@ -1,6 +1,5 @@
 import { Component } from '@angular/core';
 import { RouteAddress } from '../../../common/constants/routes.constants';
-import { StudentAssessmentsService } from '../../../common/services/api/student-assessments.service';
 import { AuthSessionService } from '../../../common/services/session/auth-session.service';
 
 interface StudentNavItem {
@@ -24,16 +23,7 @@ export class StudentShellComponent {
   ];
   readonly routeAddress = RouteAddress;
 
-  constructor(
-    private readonly authSessionService: AuthSessionService,
-    private readonly studentAssessmentsService: StudentAssessmentsService
-  ) {}
-
-  handleNavigation(route: string): void {
-    if (route === `/${RouteAddress.Student.MyAssessments}`) {
-      this.studentAssessmentsService.clearAssessmentsCache();
-    }
-  }
+  constructor(private readonly authSessionService: AuthSessionService) {}
 
   logout(): void {
     this.authSessionService.confirmLogout();

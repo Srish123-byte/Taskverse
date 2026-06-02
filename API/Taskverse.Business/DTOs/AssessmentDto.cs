@@ -287,6 +287,8 @@ public class StudentAssessmentListItemDto
 {
     public Guid AssessmentId { get; set; }
     public string AssessmentName { get; set; } = default!;
+    public string? SubjectName { get; set; }
+    public string? TopicName { get; set; }
     public string AssessmentStatus { get; set; } = default!;
     public int DurationMinutes { get; set; }
     public int TotalMarks { get; set; }

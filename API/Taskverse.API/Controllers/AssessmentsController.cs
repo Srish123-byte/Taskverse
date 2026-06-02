@@ -924,6 +924,7 @@ public class AssessmentsController : TaskverseBaseController
     /// </summary>
     /// <param name="assessmentStatuses">The statuses to include in the response.</param>
     /// <returns>The student assessment list.</returns>
+    [HttpPost("/api/students/assessments")]
     [HttpPost("/api/student/assessments")]
     [SwaggerResponse(200, "Assigned assessments for the logged-in student", typeof(List<StudentAssessmentListResponseModel>))]
     [SwaggerResponse(400, "Invalid assessment status filter or student context")]
@@ -983,6 +984,7 @@ public class AssessmentsController : TaskverseBaseController
     /// </summary>
     /// <param name="studentId">The student identifier.</param>
     /// <returns>The student's result list.</returns>
+    [HttpGet("/api/students/{studentId:guid}/results")]
     [HttpGet("/api/student/{studentId:guid}/results")]
     [SwaggerResponse(200, "Available results for the specified student", typeof(List<StudentResultResponseModel>))]
     [SwaggerResponse(400, "Invalid student id")]
@@ -1031,6 +1033,7 @@ public class AssessmentsController : TaskverseBaseController
     /// </summary>
     /// <param name="assessmentId">The assessment identifier.</param>
     /// <returns>The student assessment detail.</returns>
+    [HttpGet("/api/students/assessments/{assessmentId:guid}")]
     [HttpGet("/api/student/assessments/{assessmentId:guid}")]
     [SwaggerResponse(200, "Assessment details for the logged-in student", typeof(StudentAssessmentDetailResponseModel))]
     [SwaggerResponse(400, "Invalid student context")]
@@ -1098,6 +1101,7 @@ public class AssessmentsController : TaskverseBaseController
     /// </summary>
     /// <param name="assessmentId">The assessment identifier.</param>
     /// <returns>The started attempt response.</returns>
+    [HttpPost("/api/students/assessments/{assessmentId:guid}/start")]
     [HttpPost("/api/student/assessments/{assessmentId:guid}/start")]
     [SwaggerResponse(200, "Assessment attempt started for the logged-in student", typeof(StudentAssessmentStartResponseModel))]
     [SwaggerResponse(400, "Invalid student context")]
@@ -1158,6 +1162,7 @@ public class AssessmentsController : TaskverseBaseController
     /// </summary>
     /// <param name="attemptId">The attempt identifier.</param>
     /// <returns>The recoverable attempt state.</returns>
+    [HttpGet("/api/students/attempts/{attemptId:guid}")]
     [HttpGet("/api/student/attempts/{attemptId:guid}")]
     [SwaggerResponse(200, "Recoverable assessment attempt state for the logged-in student", typeof(StudentAttemptRecoveryResponseModel))]
     [SwaggerResponse(400, "Invalid student context")]
@@ -1218,6 +1223,7 @@ public class AssessmentsController : TaskverseBaseController
     /// </summary>
     /// <param name="attemptId">The attempt identifier.</param>
     /// <returns>The submitted attempt response.</returns>
+    [HttpPost("/api/students/attempts/{attemptId:guid}/submit")]
     [HttpPost("/api/student/attempts/{attemptId:guid}/submit")]
     [SwaggerResponse(200, "Attempt submitted for the logged-in student", typeof(StudentAttemptSubmitResponseModel))]
     [SwaggerResponse(400, "Invalid student context or request")]
@@ -1280,6 +1286,7 @@ public class AssessmentsController : TaskverseBaseController
     /// <param name="questionId">The question identifier.</param>
     /// <param name="model">The answer payload to save.</param>
     /// <returns>The saved answer response.</returns>
+    [HttpPut("/api/students/attempts/{attemptId:guid}/{questionId:guid}/answers")]
     [HttpPut("/api/student/attempts/{attemptId:guid}/{questionId:guid}/answers")]
     [SwaggerResponse(200, "Attempt answer saved for the logged-in student", typeof(StudentAttemptAnswerResponseModel))]
     [SwaggerResponse(400, "Invalid student context or request")]

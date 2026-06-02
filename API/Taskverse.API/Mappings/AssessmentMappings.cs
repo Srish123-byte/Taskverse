@@ -383,6 +383,8 @@ public static class AssessmentMappings
         {
             AssessmentId = dto.AssessmentId,
             AssessmentName = dto.AssessmentName,
+            SubjectName = dto.SubjectName,
+            TopicName = dto.TopicName,
             AssessmentStatus = dto.AssessmentStatus,
             DurationMinutes = dto.DurationMinutes,
             TotalMarks = dto.TotalMarks,

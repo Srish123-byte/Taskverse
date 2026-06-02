@@ -1,34 +1,25 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Npgsql;
 using Taskverse.API.Assessments.Service.Managers;
-using Taskverse.API.Assessments.Service.Mappings;
 using Taskverse.API.Assessments.Service.Models;
+using Taskverse.API.Assessments.Service.Orchestrators;
 
 namespace Taskverse.API.Assessments.Service.Controllers;
 
 /// <summary>
-/// Hosts assessment and student-attempt endpoints inside the assessments microservice.
+/// Hosts assessment endpoints inside the assessments microservice.
 /// </summary>
 [ApiController]
-[Route("api/assessments")]
+[Route("api/[controller]")]
 [Produces("application/json")]
 public class AssessmentController : ControllerBase
 {
-    private const int MaxInstructionWordCount = 1000;
-    private readonly IAssessmentManager _assessmentManager;
-    private readonly AssessmentSettings _assessmentSettings;
-    private readonly ILogger<AssessmentController> _logger;
+    private readonly IAssessmentOrchestrator _assessmentOrchestrator;
 
-    public AssessmentController(
-        IAssessmentManager assessmentManager,
-        IOptions<AssessmentSettings> assessmentSettings,
-        ILogger<AssessmentController> logger)
+    public AssessmentController(IAssessmentOrchestrator assessmentOrchestrator)
     {
-        _assessmentManager = assessmentManager;
-        _assessmentSettings = assessmentSettings.Value;
-        _logger = logger;
+        _assessmentOrchestrator = assessmentOrchestrator;
     }
 
     /// <summary>
@@ -53,8 +44,8 @@ public class AssessmentController : ControllerBase
     {
         try
         {
-            var assessment = await _assessmentManager.GetAssessment(id, collegeId, requesterRole, requesterName);
-            return Ok(assessment.ToRecord());
+            var assessment = await _assessmentOrchestrator.GetAssessment(id, collegeId, requesterRole, requesterName);
+            return Ok(assessment);
         }
         catch (ArgumentException ex)
         {
@@ -70,7 +61,7 @@ public class AssessmentController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BuildUnexpectedError(
+            return _assessmentOrchestrator.BuildUnexpectedError(
                 ex,
                 "An unexpected error occurred while retrieving the assessment.");
         }
@@ -95,7 +86,7 @@ public class AssessmentController : ControllerBase
             return BadRequest(new { message = "Assessment request is required." });
         }
 
-        var instructionValidationError = ValidateInstructionWordLimit(request.Instructions);
+        var instructionValidationError = _assessmentOrchestrator.ValidateInstructionWordLimit(request.Instructions);
         if (instructionValidationError is not null)
         {
             return BadRequest(new { message = instructionValidationError });
@@ -103,12 +94,8 @@ public class AssessmentController : ControllerBase
 
         try
         {
-            var assessment = await _assessmentManager.CreateAssessment(
-                request.ToEntity(_assessmentSettings),
-                request.QuestionIds ?? []);
-
-            var response = assessment.ToRecord();
-            return Created($"api/assessments/{assessment.AssessmentId}", response);
+            var assessment = await _assessmentOrchestrator.CreateAssessment(request);
+            return Created($"{Request.Path}/{assessment.AssessmentId}", assessment);
         }
         catch (ArgumentException ex)
         {
@@ -128,7 +115,7 @@ public class AssessmentController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BuildUnexpectedError(
+            return _assessmentOrchestrator.BuildUnexpectedError(
                 ex,
                 "An unexpected error occurred while creating the assessment.");
         }
@@ -162,7 +149,7 @@ public class AssessmentController : ControllerBase
 
         request.AssessmentId = id;
 
-        var instructionValidationError = ValidateInstructionWordLimit(request.Instructions);
+        var instructionValidationError = _assessmentOrchestrator.ValidateInstructionWordLimit(request.Instructions);
         if (instructionValidationError is not null)
         {
             return BadRequest(new { message = instructionValidationError });
@@ -170,8 +157,8 @@ public class AssessmentController : ControllerBase
 
         try
         {
-            var assessment = await _assessmentManager.UpdateAssessment(id, request);
-            return Ok(assessment.ToRecord());
+            var assessment = await _assessmentOrchestrator.UpdateAssessment(id, request);
+            return Ok(assessment);
         }
         catch (ArgumentException ex)
         {
@@ -195,7 +182,7 @@ public class AssessmentController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BuildUnexpectedError(
+            return _assessmentOrchestrator.BuildUnexpectedError(
                 ex,
                 "An unexpected error occurred while updating the assessment.");
         }
@@ -229,7 +216,7 @@ public class AssessmentController : ControllerBase
 
         try
         {
-            await _assessmentManager.DeleteAssessment(id, request);
+            await _assessmentOrchestrator.DeleteAssessment(id, request);
             return NoContent();
         }
         catch (ArgumentException ex)
@@ -250,7 +237,7 @@ public class AssessmentController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BuildUnexpectedError(
+            return _assessmentOrchestrator.BuildUnexpectedError(
                 ex,
                 "An unexpected error occurred while deleting the assessment.");
         }
@@ -271,8 +258,8 @@ public class AssessmentController : ControllerBase
     {
         try
         {
-            var assessment = await _assessmentManager.PublishAssessment(id);
-            return Ok(assessment.ToRecord());
+            var assessment = await _assessmentOrchestrator.PublishAssessment(id);
+            return Ok(assessment);
         }
         catch (KeyNotFoundException ex)
         {
@@ -288,7 +275,7 @@ public class AssessmentController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BuildUnexpectedError(
+            return _assessmentOrchestrator.BuildUnexpectedError(
                 ex,
                 "An unexpected error occurred while publishing the assessment.");
         }
@@ -313,12 +300,7 @@ public class AssessmentController : ControllerBase
             return BadRequest(new { message = "Assessment publish request is required." });
         }
 
-        if (request.AssessmentId.HasValue)
-        {
-            return await PublishAssessment(request.AssessmentId.Value);
-        }
-
-        var instructionValidationError = ValidateInstructionWordLimit(request.Instructions);
+        var instructionValidationError = _assessmentOrchestrator.ValidateInstructionWordLimit(request.Instructions);
         if (instructionValidationError is not null)
         {
             return BadRequest(new { message = instructionValidationError });
@@ -326,12 +308,8 @@ public class AssessmentController : ControllerBase
 
         try
         {
-            var createRequest = request.ToCreateAssessmentRequest();
-            var assessment = await _assessmentManager.ScheduleAssessment(
-                createRequest.ToEntity(_assessmentSettings, Taskverse.Data.Enums.AssessmentStatus.Scheduled),
-                createRequest.QuestionIds);
-
-            return Ok(assessment.ToRecord());
+            var assessment = await _assessmentOrchestrator.PublishAssessment(request);
+            return Ok(assessment);
         }
         catch (ArgumentException ex)
         {
@@ -351,7 +329,7 @@ public class AssessmentController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BuildUnexpectedError(
+            return _assessmentOrchestrator.BuildUnexpectedError(
                 ex,
                 "An unexpected error occurred while publishing the assessment.");
         }
@@ -376,7 +354,7 @@ public class AssessmentController : ControllerBase
 
         try
         {
-            var result = await _assessmentManager.GetSubjectTopicCatalog(request);
+            var result = await _assessmentOrchestrator.GetSubjectTopicCatalog(request);
             return Ok(result);
         }
         catch (ArgumentException ex)
@@ -385,7 +363,7 @@ public class AssessmentController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BuildUnexpectedError(
+            return _assessmentOrchestrator.BuildUnexpectedError(
                 ex,
                 "An unexpected error occurred while retrieving the subject-topic catalog.");
         }
@@ -410,7 +388,7 @@ public class AssessmentController : ControllerBase
 
         try
         {
-            var result = await _assessmentManager.GetTrainerAssignedClassesAndBatches(request);
+            var result = await _assessmentOrchestrator.GetTrainerAssignedClassesAndBatches(request);
             return Ok(result);
         }
         catch (ArgumentException ex)
@@ -419,7 +397,7 @@ public class AssessmentController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BuildUnexpectedError(
+            return _assessmentOrchestrator.BuildUnexpectedError(
                 ex,
                 "An unexpected error occurred while retrieving trainer assignment options.");
         }
@@ -444,7 +422,7 @@ public class AssessmentController : ControllerBase
 
         try
         {
-            var result = await _assessmentManager.SearchAssessments(request);
+            var result = await _assessmentOrchestrator.SearchAssessments(request);
             return Ok(result);
         }
         catch (ArgumentException ex)
@@ -453,7 +431,7 @@ public class AssessmentController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BuildUnexpectedError(
+            return _assessmentOrchestrator.BuildUnexpectedError(
                 ex,
                 "An unexpected error occurred while retrieving assessments.");
         }
@@ -481,11 +459,7 @@ public class AssessmentController : ControllerBase
 
         try
         {
-            var result = await _assessmentManager.GetAssessmentQuestionList(
-                id,
-                request.PageNumber,
-                request.PageSize);
-
+            var result = await _assessmentOrchestrator.GetAssessmentQuestionList(id, request);
             return Ok(result);
         }
         catch (KeyNotFoundException ex)
@@ -494,370 +468,10 @@ public class AssessmentController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BuildUnexpectedError(
+            return _assessmentOrchestrator.BuildUnexpectedError(
                 ex,
                 "An unexpected error occurred while retrieving the assessment question list.");
         }
     }
 
-    /// <summary>
-    /// Returns assessments visible to the supplied student for the requested statuses.
-    /// </summary>
-    /// <param name="request">The student assessment request.</param>
-    /// <param name="assessmentStatuses">The statuses to include.</param>
-    /// <returns>The student assessment list.</returns>
-    [HttpPost("/api/student/assessments")]
-    [ProducesResponseType(typeof(List<StudentAssessmentListItemRecord>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<List<StudentAssessmentListItemRecord>>> GetStudentAssessments(
-        [FromBody] StudentAssessmentListRequest request,
-        [FromQuery(Name = "assessmentStatuses")] string[] assessmentStatuses)
-    {
-        if (request is null)
-        {
-            return BadRequest(new { message = "Student assessment request is required." });
-        }
-
-        try
-        {
-            var result = await _assessmentManager.GetStudentAssessments(request.StudentUserId, assessmentStatuses);
-            return Ok(result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (DbUpdateException ex)
-        {
-            return BuildUnexpectedError(
-                ex,
-                "A database error occurred while retrieving student assessments.",
-                "StudentAssessmentDatabaseError");
-        }
-        catch (PostgresException ex)
-        {
-            return BuildUnexpectedError(
-                ex,
-                "A PostgreSQL error occurred while retrieving student assessments.",
-                "StudentAssessmentPostgresError");
-        }
-        catch (Exception ex)
-        {
-            return BuildUnexpectedError(
-                ex,
-                "An unexpected error occurred while retrieving student assessments.");
-        }
-    }
-
-    /// <summary>
-    /// Returns the detail for a student's assigned assessment.
-    /// </summary>
-    /// <param name="assessmentId">The assessment identifier.</param>
-    /// <param name="studentUserId">The student user identifier.</param>
-    /// <returns>The student assessment detail.</returns>
-    [HttpGet("/api/student/assessments/{assessmentId:guid}")]
-    [ProducesResponseType(typeof(StudentAssessmentDetailRecord), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<StudentAssessmentDetailRecord>> GetStudentAssessmentDetail(
-        Guid assessmentId,
-        [FromQuery] Guid studentUserId)
-    {
-        try
-        {
-            var result = await _assessmentManager.GetStudentAssessmentDetail(assessmentId, studentUserId);
-            return Ok(result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (DbUpdateException ex)
-        {
-            return BuildUnexpectedError(
-                ex,
-                "A database error occurred while retrieving the student assessment detail.",
-                "StudentAssessmentDetailDatabaseError");
-        }
-        catch (PostgresException ex)
-        {
-            return BuildUnexpectedError(
-                ex,
-                "A PostgreSQL error occurred while retrieving the student assessment detail.",
-                "StudentAssessmentDetailPostgresError");
-        }
-        catch (Exception ex)
-        {
-            return BuildUnexpectedError(
-                ex,
-                "An unexpected error occurred while retrieving the student assessment detail.");
-        }
-    }
-
-    /// <summary>
-    /// Starts an assessment attempt for the supplied student.
-    /// </summary>
-    /// <param name="assessmentId">The assessment identifier.</param>
-    /// <param name="studentUserId">The student user identifier.</param>
-    /// <returns>The started attempt state.</returns>
-    [HttpPost("/api/student/assessments/{assessmentId:guid}/start")]
-    [ProducesResponseType(typeof(StudentAssessmentStartRecord), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<StudentAssessmentStartRecord>> StartStudentAssessment(
-        Guid assessmentId,
-        [FromQuery] Guid studentUserId)
-    {
-        try
-        {
-            var result = await _assessmentManager.StartStudentAssessment(assessmentId, studentUserId);
-            return Ok(result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
-        catch (DbUpdateException ex)
-        {
-            return BuildUnexpectedError(
-                ex,
-                "A database error occurred while starting the student assessment attempt.",
-                "StudentAssessmentStartDatabaseError");
-        }
-        catch (PostgresException ex)
-        {
-            return BuildUnexpectedError(
-                ex,
-                "A PostgreSQL error occurred while starting the student assessment attempt.",
-                "StudentAssessmentStartPostgresError");
-        }
-        catch (Exception ex)
-        {
-            return BuildUnexpectedError(
-                ex,
-                "An unexpected error occurred while starting the student assessment attempt.");
-        }
-    }
-
-    /// <summary>
-    /// Recovers an in-progress assessment attempt for the supplied student.
-    /// </summary>
-    /// <param name="attemptId">The attempt identifier.</param>
-    /// <param name="studentUserId">The student user identifier.</param>
-    /// <returns>The recoverable attempt state.</returns>
-    [HttpGet("/api/student/attempts/{attemptId:guid}")]
-    [ProducesResponseType(typeof(StudentAttemptRecoveryRecord), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<StudentAttemptRecoveryRecord>> GetStudentAttemptRecovery(
-        Guid attemptId,
-        [FromQuery] Guid studentUserId)
-    {
-        try
-        {
-            var result = await _assessmentManager.GetStudentAttemptRecovery(attemptId, studentUserId);
-            return Ok(result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
-        catch (DbUpdateException ex)
-        {
-            return BuildUnexpectedError(
-                ex,
-                "A database error occurred while recovering the student assessment attempt.",
-                "StudentAttemptRecoveryDatabaseError");
-        }
-        catch (PostgresException ex)
-        {
-            return BuildUnexpectedError(
-                ex,
-                "A PostgreSQL error occurred while recovering the student assessment attempt.",
-                "StudentAttemptRecoveryPostgresError");
-        }
-        catch (Exception ex)
-        {
-            return BuildUnexpectedError(
-                ex,
-                "An unexpected error occurred while recovering the student assessment attempt.");
-        }
-    }
-
-    /// <summary>
-    /// Submits an assessment attempt for the supplied student.
-    /// </summary>
-    /// <param name="attemptId">The attempt identifier.</param>
-    /// <param name="studentUserId">The student user identifier.</param>
-    /// <returns>The submitted attempt summary.</returns>
-    [HttpPost("/api/student/attempts/{attemptId:guid}/submit")]
-    [ProducesResponseType(typeof(StudentAttemptSubmitRecord), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<StudentAttemptSubmitRecord>> SubmitStudentAttempt(
-        Guid attemptId,
-        [FromQuery] Guid studentUserId)
-    {
-        try
-        {
-            var result = await _assessmentManager.SubmitStudentAttempt(attemptId, studentUserId);
-            return Ok(result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
-        catch (DbUpdateException ex)
-        {
-            return BuildUnexpectedError(
-                ex,
-                "A database error occurred while submitting the student assessment attempt.",
-                "StudentAttemptSubmitDatabaseError");
-        }
-        catch (PostgresException ex)
-        {
-            return BuildUnexpectedError(
-                ex,
-                "A PostgreSQL error occurred while submitting the student assessment attempt.",
-                "StudentAttemptSubmitPostgresError");
-        }
-        catch (Exception ex)
-        {
-            return BuildUnexpectedError(
-                ex,
-                "An unexpected error occurred while submitting the student assessment attempt.");
-        }
-    }
-
-    /// <summary>
-    /// Saves an answer for a question within a student's assessment attempt.
-    /// </summary>
-    /// <param name="attemptId">The attempt identifier.</param>
-    /// <param name="questionId">The question identifier.</param>
-    /// <param name="studentUserId">The student user identifier.</param>
-    /// <param name="request">The answer payload to save.</param>
-    /// <returns>The saved answer state.</returns>
-    [HttpPut("/api/student/attempts/{attemptId:guid}/{questionId:guid}/answers")]
-    [ProducesResponseType(typeof(StudentAttemptAnswerRecord), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<StudentAttemptAnswerRecord>> SaveStudentAttemptAnswer(
-        Guid attemptId,
-        Guid questionId,
-        [FromQuery] Guid studentUserId,
-        [FromBody] SaveStudentAttemptAnswerRequest request)
-    {
-        if (request is null)
-        {
-            return BadRequest(new { message = "Attempt answer request is required." });
-        }
-
-        try
-        {
-            var result = await _assessmentManager.SaveStudentAttemptAnswer(attemptId, questionId, studentUserId, request);
-            return Ok(result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
-        catch (DbUpdateException ex)
-        {
-            return BuildUnexpectedError(
-                ex,
-                "A database error occurred while saving the student assessment answer.",
-                "StudentAttemptAnswerDatabaseError");
-        }
-        catch (PostgresException ex)
-        {
-            return BuildUnexpectedError(
-                ex,
-                "A PostgreSQL error occurred while saving the student assessment answer.",
-                "StudentAttemptAnswerPostgresError");
-        }
-        catch (Exception ex)
-        {
-            return BuildUnexpectedError(
-                ex,
-                "An unexpected error occurred while saving the student assessment answer.");
-        }
-    }
-
-    private ObjectResult BuildUnexpectedError(Exception ex, string message, string name = "AssessmentServiceError")
-    {
-        var detail = ex.GetBaseException().Message;
-        _logger.LogError(ex, "{Message} Detail: {Detail}", message, detail);
-
-        return StatusCode(StatusCodes.Status500InternalServerError, new
-        {
-            name,
-            message = detail,
-            detail
-        });
-    }
-
-    private static string? ValidateInstructionWordLimit(string? instructions)
-    {
-        return CountWords(instructions) > MaxInstructionWordCount
-            ? $"Instructions cannot exceed {MaxInstructionWordCount} words."
-            : null;
-    }
-
-    private static int CountWords(string? value)
-    {
-        var normalized = value?.Trim();
-        return string.IsNullOrWhiteSpace(normalized)
-            ? 0
-            : normalized.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
-    }
 }

@@ -44,7 +44,9 @@ public class AssessmentManager : IAssessmentManager
 
     /// <inheritdoc />
     public async Task<Assessment> CreateAssessment(Assessment assessment, List<Guid> questionIds)
-        => await CreateAssessmentInternalAsync(assessment, questionIds, AssessmentStatus.Draft, allowPartialDraft: true);
+        => await ExecuteDbOperationAsync(
+            () => CreateAssessmentInternalAsync(assessment, questionIds, AssessmentStatus.Draft, allowPartialDraft: true),
+            "creating the assessment");
 
     /// <inheritdoc />
     public async Task<Assessment> GetAssessment(Guid assessmentId, Guid collegeId, string requesterRole, string requesterName)
@@ -64,9 +66,12 @@ public class AssessmentManager : IAssessmentManager
             throw new ArgumentException("RequesterName is required.");
         }
 
-        var assessment = await GetAssessmentForUpdateAsync(assessmentId);
-        EnsureAssessmentReadAuthorized(assessment, collegeId, requesterRole, requesterName);
-        return assessment;
+        return await ExecuteDbOperationAsync(async () =>
+        {
+            var assessment = await GetAssessmentForUpdateAsync(assessmentId);
+            EnsureAssessmentReadAuthorized(assessment, collegeId, requesterRole, requesterName);
+            return assessment;
+        }, "retrieving the assessment");
     }
 
     /// <inheritdoc />
@@ -74,49 +79,52 @@ public class AssessmentManager : IAssessmentManager
     {
         ValidateUpdateAssessmentRequest(request);
 
-        var assessment = await GetAssessmentForUpdateAsync(assessmentId);
-        EnsureAssessmentCanBeUpdated(assessment);
-        EnsureUpdateAuthorized(assessment, request);
-
-        if (request.IsDraftSave)
+        return await ExecuteDbOperationAsync(async () =>
         {
-            return await UpdateAssessmentDraftAsync(assessment, request);
-        }
+            var assessment = await GetAssessmentForUpdateAsync(assessmentId);
+            EnsureAssessmentCanBeUpdated(assessment);
+            EnsureUpdateAuthorized(assessment, request);
 
-        var updatedAssessment = request.ToEntity(_assessmentSettings, assessment.AssessmentStatus);
-        updatedAssessment.ShowResultsImmediately = assessment.ShowResultsImmediately;
-        updatedAssessment.IsTotalMarksAutoCalculated = assessment.IsTotalMarksAutoCalculated;
-        updatedAssessment.CreatedBy = assessment.CreatedBy;
-        updatedAssessment.CreatedAt = assessment.CreatedAt;
-        updatedAssessment.ModifiedAt = DateTime.UtcNow;
+            if (request.IsDraftSave)
+            {
+                return await UpdateAssessmentDraftAsync(assessment, request);
+            }
 
-        ValidateAssessment(updatedAssessment, request.QuestionIds);
+            var updatedAssessment = request.ToEntity(_assessmentSettings, assessment.AssessmentStatus);
+            updatedAssessment.ShowResultsImmediately = assessment.ShowResultsImmediately;
+            updatedAssessment.IsTotalMarksAutoCalculated = assessment.IsTotalMarksAutoCalculated;
+            updatedAssessment.CreatedBy = assessment.CreatedBy;
+            updatedAssessment.CreatedAt = assessment.CreatedAt;
+            updatedAssessment.ModifiedAt = DateTime.UtcNow;
 
-        var classification = await ResolveAssessmentClassificationAsync(updatedAssessment);
-        ApplyClassification(updatedAssessment, classification);
+            ValidateAssessment(updatedAssessment, request.QuestionIds);
 
-        var normalizedQuestionIds = request.QuestionIds.NormalizeQuestionIds();
-        var normalizedAssignedBatchIds = NormalizeAssignedBatchIds(updatedAssessment.AssignedBatchIds);
+            var classification = await ResolveAssessmentClassificationAsync(updatedAssessment);
+            ApplyClassification(updatedAssessment, classification);
 
-        await ValidateAssignedBatchesAsync(updatedAssessment.CollegeId, normalizedAssignedBatchIds);
+            var normalizedQuestionIds = request.QuestionIds.NormalizeQuestionIds();
+            var normalizedAssignedBatchIds = NormalizeAssignedBatchIds(updatedAssessment.AssignedBatchIds);
 
-        updatedAssessment.AssignedBatchIds = normalizedAssignedBatchIds;
+            await ValidateAssignedBatchesAsync(updatedAssessment.CollegeId, normalizedAssignedBatchIds);
 
-        var questions = await LoadAndValidateQuestionsForCreateAsync(
-            updatedAssessment,
-            normalizedQuestionIds,
-            classification.Subject.SubjectName,
-            classification.Topic.TopicName);
+            updatedAssessment.AssignedBatchIds = normalizedAssignedBatchIds;
 
-        ApplyAutoCalculatedTotalMarksIfEnabled(updatedAssessment, questions);
-        ValidateQuestionBudget(updatedAssessment, questions);
+            var questions = await LoadAndValidateQuestionsForCreateAsync(
+                updatedAssessment,
+                normalizedQuestionIds,
+                classification.Subject.SubjectName,
+                classification.Topic.TopicName);
 
-        ApplyAssessmentUpdates(assessment, updatedAssessment, questions);
-        await SyncAssessmentQuestionsAsync(assessment, questions, normalizedQuestionIds);
+            ApplyAutoCalculatedTotalMarksIfEnabled(updatedAssessment, questions);
+            ValidateQuestionBudget(updatedAssessment, questions);
 
-        await SaveChangesWithWrapAsync("Unable to update the assessment.");
+            ApplyAssessmentUpdates(assessment, updatedAssessment, questions);
+            await SyncAssessmentQuestionsAsync(assessment, questions, normalizedQuestionIds);
 
-        return assessment;
+            await SaveChangesWithWrapAsync("Unable to update the assessment.");
+
+            return assessment;
+        }, "updating the assessment");
     }
 
     private async Task<Assessment> UpdateAssessmentDraftAsync(Assessment assessment, UpdateAssessmentRequest request)
@@ -148,7 +156,9 @@ public class AssessmentManager : IAssessmentManager
 
     /// <inheritdoc />
     public async Task<Assessment> ScheduleAssessment(Assessment assessment, List<Guid> questionIds)
-        => await CreateAssessmentInternalAsync(assessment, questionIds, AssessmentStatus.Scheduled);
+        => await ExecuteDbOperationAsync(
+            () => CreateAssessmentInternalAsync(assessment, questionIds, AssessmentStatus.Scheduled),
+            "scheduling the assessment");
 
     private async Task<Assessment> CreateAssessmentInternalAsync(
         Assessment assessment,
@@ -291,57 +301,63 @@ public class AssessmentManager : IAssessmentManager
     {
         ValidateDeleteAssessmentRequest(request);
 
-        var assessment = await GetAssessmentByIdAsync(assessmentId);
-        EnsureAssessmentCanBeDeleted(assessment);
-        EnsureDeleteAuthorized(assessment, request);
+        await ExecuteDbOperationAsync(async () =>
+        {
+            var assessment = await GetAssessmentByIdAsync(assessmentId);
+            EnsureAssessmentCanBeDeleted(assessment);
+            EnsureDeleteAuthorized(assessment, request);
 
-        var deletedAt = DateTime.UtcNow;
+            var deletedAt = DateTime.UtcNow;
 
-        assessment.IsDeleted = request.IsDeleted ?? true;
-        assessment.AssessmentStatus = AssessmentStatus.Soft_Deleted;
-        assessment.SoftDeletedAt = deletedAt;
-        assessment.SoftDeletedBy = request.DeletedBy.Trim();
-        assessment.ModifiedAt = deletedAt;
+            assessment.IsDeleted = request.IsDeleted ?? true;
+            assessment.AssessmentStatus = AssessmentStatus.Soft_Deleted;
+            assessment.SoftDeletedAt = deletedAt;
+            assessment.SoftDeletedBy = request.DeletedBy.Trim();
+            assessment.ModifiedAt = deletedAt;
 
-        await SaveChangesWithWrapAsync("Unable to delete the assessment.");
+            await SaveChangesWithWrapAsync("Unable to delete the assessment.");
+        }, "deleting the assessment");
     }
 
     /// <inheritdoc />
     public async Task<Assessment> PublishAssessment(Guid assessmentId)
     {
-        var assessment = await _context.Assessments
-            .Include(item => item.AssessmentQuestions)
-            .Include(item => item.Subject)
-            .Include(item => item.Topic)
-            .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId);
-
-        if (assessment is null)
+        return await ExecuteDbOperationAsync(async () =>
         {
-            throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found.");
-        }
+            var assessment = await _context.Assessments
+                .Include(item => item.AssessmentQuestions)
+                .Include(item => item.Subject)
+                .Include(item => item.Topic)
+                .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId);
 
-        EnsureAssessmentCanBePublished(assessment);
+            if (assessment is null)
+            {
+                throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found.");
+            }
 
-        var questions = await LoadQuestionsForPublishAsync(assessment);
-        ValidateQuestionsForPublish(assessment, questions);
-        ApplyAutoCalculatedTotalMarksIfEnabled(assessment, questions);
-        ValidateQuestionBudget(assessment, questions);
+            EnsureAssessmentCanBePublished(assessment);
 
-        PrepareAssessmentForPublish(assessment, questions);
+            var questions = await LoadQuestionsForPublishAsync(assessment);
+            ValidateQuestionsForPublish(assessment, questions);
+            ApplyAutoCalculatedTotalMarksIfEnabled(assessment, questions);
+            ValidateQuestionBudget(assessment, questions);
 
-        if (assessment.AssessmentQuestions.Count == 0)
-        {
-            assessment.AssessmentQuestions = BuildAssessmentQuestions(
-                assessment.AssessmentId,
-                questions,
-                questions.Select(question => question.QuestionId).ToList());
-        }
+            PrepareAssessmentForPublish(assessment, questions);
 
-        AssignQuestionsToAssessment(questions, assessment.AssessmentId, updateOnlyWhenChanged: true);
+            if (assessment.AssessmentQuestions.Count == 0)
+            {
+                assessment.AssessmentQuestions = BuildAssessmentQuestions(
+                    assessment.AssessmentId,
+                    questions,
+                    questions.Select(question => question.QuestionId).ToList());
+            }
 
-        await SaveChangesWithWrapAsync("Unable to publish the assessment.");
+            AssignQuestionsToAssessment(questions, assessment.AssessmentId, updateOnlyWhenChanged: true);
 
-        return assessment;
+            await SaveChangesWithWrapAsync("Unable to publish the assessment.");
+
+            return assessment;
+        }, "publishing the assessment");
     }
 
     /// <inheritdoc />
@@ -349,56 +365,59 @@ public class AssessmentManager : IAssessmentManager
     {
         ValidateAccessibleBatchesRequest(request);
 
-        var accessibleBatchIds = await BuildAccessibleBatchQuery(request)
-            .Select(batch => batch.BatchId)
-            .ToListAsync();
-
-        if (accessibleBatchIds.Count == 0)
+        return await ExecuteDbOperationAsync(async () =>
         {
-            return new AssessmentSubjectTopicCatalogRecord([]);
-        }
+            var accessibleBatchIds = await BuildAccessibleBatchQuery(request)
+                .Select(batch => batch.BatchId)
+                .ToListAsync();
 
-        var subjectBatchLinks = await _context.SubjectBatches
-            .AsNoTracking()
-            .Where(link => accessibleBatchIds.Contains(link.BatchId))
-            .Include(link => link.Subject)
-                .ThenInclude(subject => subject.Topics.Where(topic => topic.IsActive))
-            .ToListAsync();
-
-        var subjects = subjectBatchLinks
-            .Where(link => link.Subject.IsActive)
-            .GroupBy(link => new { link.Subject.SubjectId, link.Subject.SubjectName })
-            .Select(subjectGroup =>
+            if (accessibleBatchIds.Count == 0)
             {
-                var batchIds = subjectGroup
-                    .Select(link => link.BatchId)
-                    .Distinct()
-                    .OrderBy(batchId => batchId)
-                    .ToArray();
+                return new AssessmentSubjectTopicCatalogRecord([]);
+            }
 
-                var topics = subjectGroup
-                    .SelectMany(link => link.Subject.Topics.Select(topic => new { link.BatchId, Topic = topic }))
-                    .GroupBy(item => new { item.Topic.TopicId, item.Topic.TopicName })
-                    .Select(topicGroup => new AssessmentTopicCatalogRecord(
-                        topicGroup.Key.TopicId,
-                        topicGroup.Key.TopicName,
-                        topicGroup.Select(item => item.BatchId)
-                            .Distinct()
-                            .OrderBy(batchId => batchId)
-                            .ToArray()))
-                    .OrderBy(item => item.TopicName)
-                    .ToList();
+            var subjectBatchLinks = await _context.SubjectBatches
+                .AsNoTracking()
+                .Where(link => accessibleBatchIds.Contains(link.BatchId))
+                .Include(link => link.Subject)
+                    .ThenInclude(subject => subject.Topics.Where(topic => topic.IsActive))
+                .ToListAsync();
 
-                return new AssessmentSubjectCatalogRecord(
-                    subjectGroup.Key.SubjectId,
-                    subjectGroup.Key.SubjectName,
-                    batchIds,
-                    topics);
-            })
-            .OrderBy(item => item.SubjectName)
-            .ToList();
+            var subjects = subjectBatchLinks
+                .Where(link => link.Subject.IsActive)
+                .GroupBy(link => new { link.Subject.SubjectId, link.Subject.SubjectName })
+                .Select(subjectGroup =>
+                {
+                    var batchIds = subjectGroup
+                        .Select(link => link.BatchId)
+                        .Distinct()
+                        .OrderBy(batchId => batchId)
+                        .ToArray();
 
-        return new AssessmentSubjectTopicCatalogRecord(subjects);
+                    var topics = subjectGroup
+                        .SelectMany(link => link.Subject.Topics.Select(topic => new { link.BatchId, Topic = topic }))
+                        .GroupBy(item => new { item.Topic.TopicId, item.Topic.TopicName })
+                        .Select(topicGroup => new AssessmentTopicCatalogRecord(
+                            topicGroup.Key.TopicId,
+                            topicGroup.Key.TopicName,
+                            topicGroup.Select(item => item.BatchId)
+                                .Distinct()
+                                .OrderBy(batchId => batchId)
+                                .ToArray()))
+                        .OrderBy(item => item.TopicName)
+                        .ToList();
+
+                    return new AssessmentSubjectCatalogRecord(
+                        subjectGroup.Key.SubjectId,
+                        subjectGroup.Key.SubjectName,
+                        batchIds,
+                        topics);
+                })
+                .OrderBy(item => item.SubjectName)
+                .ToList();
+
+            return new AssessmentSubjectTopicCatalogRecord(subjects);
+        }, "retrieving the subject-topic catalog");
     }
 
     /// <inheritdoc />
@@ -406,84 +425,87 @@ public class AssessmentManager : IAssessmentManager
     {
         ValidateTrainerAssignmentRequest(request);
 
-        var trainer = await _context.Trainers
-            .AsNoTracking()
-            .FirstOrDefaultAsync(item =>
-                item.UserId == request.RequesterUserId!.Value &&
-                item.CollegeId == request.CollegeId);
-
-        if (trainer is null)
+        return await ExecuteDbOperationAsync(async () =>
         {
-            return new AssessmentAssignmentCatalogRecord([]);
-        }
+            var trainer = await _context.Trainers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item =>
+                    item.UserId == request.RequesterUserId!.Value &&
+                    item.CollegeId == request.CollegeId);
 
-        var trainerClassIds = await _context.TrainerClasses
-            .AsNoTracking()
-            .Where(item => item.TrainerId == trainer.TrainerId)
-            .Select(item => item.ClassId)
-            .ToListAsync();
-
-        var assignedBatchRows = await _context.TrainerBatches
-            .AsNoTracking()
-            .Where(item => item.TrainerId == trainer.TrainerId)
-            .Select(item => new
+            if (trainer is null)
             {
-                item.Batch.BatchId,
-                item.Batch.ClassId,
-                item.Batch.CollegeId,
-                item.Batch.Name
-            })
-            .ToListAsync();
+                return new AssessmentAssignmentCatalogRecord([]);
+            }
 
-        var accessibleClassIds = trainerClassIds
-            .Concat(assignedBatchRows.Select(item => item.ClassId))
-            .Distinct()
-            .ToList();
+            var trainerClassIds = await _context.TrainerClasses
+                .AsNoTracking()
+                .Where(item => item.TrainerId == trainer.TrainerId)
+                .Select(item => item.ClassId)
+                .ToListAsync();
 
-        if (accessibleClassIds.Count == 0)
-        {
-            return new AssessmentAssignmentCatalogRecord([]);
-        }
+            var assignedBatchRows = await _context.TrainerBatches
+                .AsNoTracking()
+                .Where(item => item.TrainerId == trainer.TrainerId)
+                .Select(item => new
+                {
+                    item.Batch.BatchId,
+                    item.Batch.ClassId,
+                    item.Batch.CollegeId,
+                    item.Batch.Name
+                })
+                .ToListAsync();
 
-        var classes = await _context.Classes
-            .AsNoTracking()
-            .Where(item => item.CollegeId == request.CollegeId && accessibleClassIds.Contains(item.ClassId))
-            .OrderBy(item => item.Name)
-            .ThenBy(item => item.AcademicYear)
-            .Select(item => new
+            var accessibleClassIds = trainerClassIds
+                .Concat(assignedBatchRows.Select(item => item.ClassId))
+                .Distinct()
+                .ToList();
+
+            if (accessibleClassIds.Count == 0)
             {
-                item.ClassId,
-                item.CollegeId,
-                item.Name,
-                item.AcademicYear
-            })
-            .ToListAsync();
+                return new AssessmentAssignmentCatalogRecord([]);
+            }
 
-        var batchesByClass = assignedBatchRows
-            .GroupBy(item => item.ClassId)
-            .ToDictionary(
-                group => group.Key,
-                group => group
-                    .OrderBy(item => item.Name)
-                    .Select(item => new AssessmentAssignmentBatchRecord(
-                        item.BatchId,
-                        item.ClassId,
-                        item.CollegeId,
-                        item.Name))
-                    .ToList());
+            var classes = await _context.Classes
+                .AsNoTracking()
+                .Where(item => item.CollegeId == request.CollegeId && accessibleClassIds.Contains(item.ClassId))
+                .OrderBy(item => item.Name)
+                .ThenBy(item => item.AcademicYear)
+                .Select(item => new
+                {
+                    item.ClassId,
+                    item.CollegeId,
+                    item.Name,
+                    item.AcademicYear
+                })
+                .ToListAsync();
 
-        var classRecords = classes
-            .Select(item => new AssessmentAssignmentClassRecord(
-                item.ClassId,
-                item.CollegeId,
-                item.Name,
-                item.AcademicYear,
-                batchesByClass.TryGetValue(item.ClassId, out var batches)
-                    ? batches
-                    : []))
-            .ToList();
+            var batchesByClass = assignedBatchRows
+                .GroupBy(item => item.ClassId)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group
+                        .OrderBy(item => item.Name)
+                        .Select(item => new AssessmentAssignmentBatchRecord(
+                            item.BatchId,
+                            item.ClassId,
+                            item.CollegeId,
+                            item.Name))
+                        .ToList());
 
-        return new AssessmentAssignmentCatalogRecord(classRecords);
+            var classRecords = classes
+                .Select(item => new AssessmentAssignmentClassRecord(
+                    item.ClassId,
+                    item.CollegeId,
+                    item.Name,
+                    item.AcademicYear,
+                    batchesByClass.TryGetValue(item.ClassId, out var batches)
+                        ? batches
+                        : []))
+                .ToList();
+
+            return new AssessmentAssignmentCatalogRecord(classRecords);
+        }, "retrieving trainer assigned classes and batches");
     }
 
     /// <inheritdoc />
@@ -491,78 +513,81 @@ public class AssessmentManager : IAssessmentManager
     {
         ValidateAssessmentManagementSearchRequest(request);
 
-        var safePageNumber = request.PageNumber > 0 ? request.PageNumber : DefaultPageNumber;
-        var safePageSize = request.PageSize is > 0 and <= MaximumPageSize ? request.PageSize : DefaultPageSize;
-        var normalizedCreatedBy = request.CreatedBy.Trim();
-        var normalizedSearchTerm = request.SearchTerm?.Trim().ToLowerInvariant();
-        var requestedStatus = NormalizeAssessmentManagementStatus(request.AssessmentStatus);
-
-        var query = _context.Assessments
-            .AsNoTracking()
-            .Include(item => item.Subject)
-            .Include(item => item.Topic)
-            .Where(item =>
-                item.CollegeId == request.CollegeId &&
-                item.AssessmentStatus != AssessmentStatus.Soft_Deleted);
-
-        if (string.Equals(request.RequesterRole.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase))
+        return await ExecuteDbOperationAsync(async () =>
         {
-            query = query.Where(item => item.CreatedBy.ToLower() == normalizedCreatedBy.ToLower());
-        }
-        else
-        {
-            query = query.Where(item =>
-                item.AssessmentStatus != AssessmentStatus.Draft ||
-                item.CreatedBy.ToLower() == normalizedCreatedBy.ToLower());
-        }
+            var safePageNumber = request.PageNumber > 0 ? request.PageNumber : DefaultPageNumber;
+            var safePageSize = request.PageSize is > 0 and <= MaximumPageSize ? request.PageSize : DefaultPageSize;
+            var normalizedCreatedBy = request.CreatedBy.Trim();
+            var normalizedSearchTerm = request.SearchTerm?.Trim().ToLowerInvariant();
+            var requestedStatus = NormalizeAssessmentManagementStatus(request.AssessmentStatus);
 
-        if (!string.IsNullOrWhiteSpace(normalizedSearchTerm))
-        {
-            query = query.Where(item =>
-                item.AssessmentName.ToLower().Contains(normalizedSearchTerm) ||
-                (item.Subject != null && item.Subject.SubjectName.ToLower().Contains(normalizedSearchTerm)) ||
-                (item.Topic != null && item.Topic.TopicName.ToLower().Contains(normalizedSearchTerm)));
-        }
+            var query = _context.Assessments
+                .AsNoTracking()
+                .Include(item => item.Subject)
+                .Include(item => item.Topic)
+                .Where(item =>
+                    item.CollegeId == request.CollegeId &&
+                    item.AssessmentStatus != AssessmentStatus.Soft_Deleted);
 
-        if (request.DifficultyLevel.HasValue)
-        {
-            query = query.Where(item => item.DifficultyLevel == request.DifficultyLevel.Value);
-        }
+            if (string.Equals(request.RequesterRole.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(item => item.CreatedBy.ToLower() == normalizedCreatedBy.ToLower());
+            }
+            else
+            {
+                query = query.Where(item =>
+                    item.AssessmentStatus != AssessmentStatus.Draft ||
+                    item.CreatedBy.ToLower() == normalizedCreatedBy.ToLower());
+            }
 
-        if (requestedStatus.HasValue)
-        {
-            query = query.Where(item => item.AssessmentStatus == requestedStatus.Value);
-        }
+            if (!string.IsNullOrWhiteSpace(normalizedSearchTerm))
+            {
+                query = query.Where(item =>
+                    item.AssessmentName.ToLower().Contains(normalizedSearchTerm) ||
+                    (item.Subject != null && item.Subject.SubjectName.ToLower().Contains(normalizedSearchTerm)) ||
+                    (item.Topic != null && item.Topic.TopicName.ToLower().Contains(normalizedSearchTerm)));
+            }
 
-        var totalCount = await query.CountAsync();
-        var activeCount = await query.CountAsync(item =>
-            item.AssessmentStatus == AssessmentStatus.Scheduled ||
-            item.AssessmentStatus == AssessmentStatus.Live);
-        var completedCount = await query.CountAsync(item => item.AssessmentStatus == AssessmentStatus.Completed);
+            if (request.DifficultyLevel.HasValue)
+            {
+                query = query.Where(item => item.DifficultyLevel == request.DifficultyLevel.Value);
+            }
 
-        var items = await query
-            .OrderByDescending(item => item.StartDateTime ?? item.CreatedAt)
-            .ThenByDescending(item => item.CreatedAt)
-            .Skip((safePageNumber - 1) * safePageSize)
-            .Take(safePageSize)
-            .Select(item => new AssessmentManagementItemRecord(
-                item.AssessmentId,
-                item.AssessmentName,
-                item.Subject != null ? item.Subject.SubjectName : string.Empty,
-                item.Topic != null ? item.Topic.TopicName : null,
-                MapAssessmentManagementStatus(item.AssessmentStatus),
-                item.StartDateTime ?? item.CreatedAt,
-                item.TotalMarks,
-                item.DifficultyLevel))
-            .ToListAsync();
+            if (requestedStatus.HasValue)
+            {
+                query = query.Where(item => item.AssessmentStatus == requestedStatus.Value);
+            }
 
-        return new AssessmentManagementSearchResultRecord(
-            items,
-            totalCount,
-            activeCount,
-            completedCount,
-            safePageNumber,
-            safePageSize);
+            var totalCount = await query.CountAsync();
+            var activeCount = await query.CountAsync(item =>
+                item.AssessmentStatus == AssessmentStatus.Scheduled ||
+                item.AssessmentStatus == AssessmentStatus.Live);
+            var completedCount = await query.CountAsync(item => item.AssessmentStatus == AssessmentStatus.Completed);
+
+            var items = await query
+                .OrderByDescending(item => item.StartDateTime ?? item.CreatedAt)
+                .ThenByDescending(item => item.CreatedAt)
+                .Skip((safePageNumber - 1) * safePageSize)
+                .Take(safePageSize)
+                .Select(item => new AssessmentManagementItemRecord(
+                    item.AssessmentId,
+                    item.AssessmentName,
+                    item.Subject != null ? item.Subject.SubjectName : string.Empty,
+                    item.Topic != null ? item.Topic.TopicName : null,
+                    MapAssessmentManagementStatus(item.AssessmentStatus),
+                    item.StartDateTime ?? item.CreatedAt,
+                    item.TotalMarks,
+                    item.DifficultyLevel))
+                .ToListAsync();
+
+            return new AssessmentManagementSearchResultRecord(
+                items,
+                totalCount,
+                activeCount,
+                completedCount,
+                safePageNumber,
+                safePageSize);
+        }, "searching assessments");
     }
 
     /// <inheritdoc />
@@ -571,47 +596,50 @@ public class AssessmentManager : IAssessmentManager
         int pageNumber,
         int pageSize)
     {
-        var safePageNumber = pageNumber > 0 ? pageNumber : DefaultPageNumber;
-        var safePageSize = pageSize is > 0 and <= MaximumPageSize ? pageSize : DefaultPageSize;
-
-        var assessment = await _context.Assessments
-            .AsNoTracking()
-            .Include(item => item.AssessmentQuestions)
-            .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId);
-
-        if (assessment is null)
+        return await ExecuteDbOperationAsync(async () =>
         {
-            throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found.");
-        }
+            var safePageNumber = pageNumber > 0 ? pageNumber : DefaultPageNumber;
+            var safePageSize = pageSize is > 0 and <= MaximumPageSize ? pageSize : DefaultPageSize;
 
-        var orderedQuestionIds = assessment.AssessmentQuestions
-            .OrderBy(item => item.DisplayOrder)
-            .Select(item => item.QuestionId)
-            .ToList();
+            var assessment = await _context.Assessments
+                .AsNoTracking()
+                .Include(item => item.AssessmentQuestions)
+                .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId);
 
-        var pagedQuestionIds = orderedQuestionIds
-            .Skip((safePageNumber - 1) * safePageSize)
-            .Take(safePageSize)
-            .ToList();
+            if (assessment is null)
+            {
+                throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found.");
+            }
 
-        var questions = await _context.Questions
-            .AsNoTracking()
-            .Where(question => pagedQuestionIds.Contains(question.QuestionId))
-            .ToDictionaryAsync(question => question.QuestionId);
+            var orderedQuestionIds = assessment.AssessmentQuestions
+                .OrderBy(item => item.DisplayOrder)
+                .Select(item => item.QuestionId)
+                .ToList();
 
-        var displayOrderLookup = assessment.AssessmentQuestions
-            .ToDictionary(item => item.QuestionId, item => item.DisplayOrder);
+            var pagedQuestionIds = orderedQuestionIds
+                .Skip((safePageNumber - 1) * safePageSize)
+                .Take(safePageSize)
+                .ToList();
 
-        var items = pagedQuestionIds
-            .Where(questions.ContainsKey)
-            .Select(questionId => questions[questionId].ToQuestionListItemRecord(displayOrderLookup.GetValueOrDefault(questionId)))
-            .ToList();
+            var questions = await _context.Questions
+                .AsNoTracking()
+                .Where(question => pagedQuestionIds.Contains(question.QuestionId))
+                .ToDictionaryAsync(question => question.QuestionId);
 
-        return new PagedAssessmentQuestionListRecord(
-            items,
-            orderedQuestionIds.Count,
-            safePageNumber,
-            safePageSize);
+            var displayOrderLookup = assessment.AssessmentQuestions
+                .ToDictionary(item => item.QuestionId, item => item.DisplayOrder);
+
+            var items = pagedQuestionIds
+                .Where(questions.ContainsKey)
+                .Select(questionId => questions[questionId].ToQuestionListItemRecord(displayOrderLookup.GetValueOrDefault(questionId)))
+                .ToList();
+
+            return new PagedAssessmentQuestionListRecord(
+                items,
+                orderedQuestionIds.Count,
+                safePageNumber,
+                safePageSize);
+        }, "retrieving assessment question list");
     }
 
     /// <inheritdoc />
@@ -624,25 +652,28 @@ public class AssessmentManager : IAssessmentManager
             throw new ArgumentException("Student user id is required.");
         }
 
-        var normalizedStatuses = NormalizeStudentAssessmentStatuses(assessmentStatuses);
-
-        var student = await _context.Students
-            .AsNoTracking()
-            .FirstOrDefaultAsync(item => item.UserId == studentUserId);
-
-        if (student is null)
+        return await ExecuteDbOperationAsync(async () =>
         {
-            throw new KeyNotFoundException($"Student profile was not found for user '{studentUserId}'.");
-        }
+            var normalizedStatuses = NormalizeStudentAssessmentStatuses(assessmentStatuses);
 
-        if (!student.BatchId.HasValue || student.BatchId.Value == Guid.Empty)
-        {
-            return [];
-        }
+            var student = await _context.Students
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.UserId == studentUserId);
 
-        return normalizedStatuses.Contains(nameof(AssessmentStatus.Completed))
-            ? await GetCompletedStudentAssessmentsAsync(student, student.BatchId.Value)
-            : await GetActiveStudentAssessmentsAsync(student, student.BatchId.Value, normalizedStatuses);
+            if (student is null)
+            {
+                throw new KeyNotFoundException($"Student profile was not found for user '{studentUserId}'.");
+            }
+
+            if (!student.BatchId.HasValue || student.BatchId.Value == Guid.Empty)
+            {
+                return [];
+            }
+
+            return normalizedStatuses.Contains(nameof(AssessmentStatus.Completed))
+                ? await GetCompletedStudentAssessmentsAsync(student, student.BatchId.Value)
+                : await GetActiveStudentAssessmentsAsync(student, student.BatchId.Value, normalizedStatuses);
+        }, "retrieving student assessments");
     }
 
     /// <inheritdoc />
@@ -658,33 +689,36 @@ public class AssessmentManager : IAssessmentManager
             throw new ArgumentException("Student user id is required.");
         }
 
-        var student = await _context.Students
-            .AsNoTracking()
-            .FirstOrDefaultAsync(item => item.UserId == studentUserId);
-
-        if (student is null)
+        return await ExecuteDbOperationAsync(async () =>
         {
-            throw new KeyNotFoundException($"Student profile was not found for user '{studentUserId}'.");
-        }
+            var student = await _context.Students
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.UserId == studentUserId);
 
-        if (!student.BatchId.HasValue || student.BatchId.Value == Guid.Empty)
-        {
-            throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found for the current student.");
-        }
+            if (student is null)
+            {
+                throw new KeyNotFoundException($"Student profile was not found for user '{studentUserId}'.");
+            }
 
-        var assessment = await BuildStudentAssessmentQuery(student.CollegeId, student.BatchId.Value)
-            .Include(item => item.AssessmentQuestions)
-            .FirstOrDefaultAsync(item =>
-                item.AssessmentId == assessmentId &&
-                (item.AssessmentStatus == AssessmentStatus.Scheduled ||
-                 item.AssessmentStatus == AssessmentStatus.Live));
+            if (!student.BatchId.HasValue || student.BatchId.Value == Guid.Empty)
+            {
+                throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found for the current student.");
+            }
 
-        if (assessment is null)
-        {
-            throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found for the current student.");
-        }
+            var assessment = await BuildStudentAssessmentQuery(student.CollegeId, student.BatchId.Value)
+                .Include(item => item.AssessmentQuestions)
+                .FirstOrDefaultAsync(item =>
+                    item.AssessmentId == assessmentId &&
+                    (item.AssessmentStatus == AssessmentStatus.Scheduled ||
+                     item.AssessmentStatus == AssessmentStatus.Live));
 
-        return assessment.ToStudentAssessmentDetailRecord(assessment.AssessmentQuestions.Count);
+            if (assessment is null)
+            {
+                throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found for the current student.");
+            }
+
+            return assessment.ToStudentAssessmentDetailRecord(assessment.AssessmentQuestions.Count);
+        }, "retrieving student assessment detail");
     }
 
     /// <inheritdoc />
@@ -692,52 +726,55 @@ public class AssessmentManager : IAssessmentManager
     {
         ValidateStudentAttemptRequest(assessmentId, studentUserId);
 
-        var student = await GetStudentByUserIdAsync(studentUserId);
-        var assessment = await GetStudentAssessmentForAttemptAsync(assessmentId, student);
-
-        var latestAttempt = await GetLatestAttemptAsync(student.StudentId, assessmentId);
-        if (latestAttempt is not null)
+        return await ExecuteDbOperationAsync(async () =>
         {
-            if (latestAttempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
+            var student = await GetStudentByUserIdAsync(studentUserId);
+            var assessment = await GetStudentAssessmentForAttemptAsync(assessmentId, student);
+
+            var latestAttempt = await GetLatestAttemptAsync(student.StudentId, assessmentId);
+            if (latestAttempt is not null)
             {
-                throw new InvalidOperationException("This assessment has already been submitted by the current student.");
-            }
-
-            if (await EnsureAttemptClosedIfExpiredAsync(latestAttempt, assessment))
-            {
-                throw new InvalidOperationException("The previous attempt has already expired and was auto-submitted.");
-            }
-
-            throw new InvalidOperationException(
-                $"An active attempt already exists for this assessment. Recover it using attempt id '{latestAttempt.AttemptId}'.");
-        }
-
-        var attempt = CreateInProgressAttempt(student.StudentId, assessment);
-        _context.Attempts.Add(attempt);
-
-        try
-        {
-            await SaveChangesWithWrapAsync("Unable to start the assessment attempt.");
-        }
-        catch (InvalidOperationException ex) when (IsDuplicateStudentAttempt(ex))
-        {
-            var existingAttempt = await GetLatestAttemptAsync(student.StudentId, assessmentId);
-            if (existingAttempt is not null)
-            {
-                if (existingAttempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
+                if (latestAttempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
                 {
-                    throw new InvalidOperationException(
-                        "This assessment has already been submitted by the current student.");
+                    throw new InvalidOperationException("This assessment has already been submitted by the current student.");
+                }
+
+                if (await EnsureAttemptClosedIfExpiredAsync(latestAttempt, assessment))
+                {
+                    throw new InvalidOperationException("The previous attempt has already expired and was auto-submitted.");
                 }
 
                 throw new InvalidOperationException(
-                    $"An active attempt already exists for this assessment. Recover it using attempt id '{existingAttempt.AttemptId}'.");
+                    $"An active attempt already exists for this assessment. Recover it using attempt id '{latestAttempt.AttemptId}'.");
             }
 
-            throw;
-        }
+            var attempt = CreateInProgressAttempt(student.StudentId, assessment);
+            _context.Attempts.Add(attempt);
 
-        return attempt.ToStudentAssessmentStartRecord();
+            try
+            {
+                await SaveChangesWithWrapAsync("Unable to start the assessment attempt.");
+            }
+            catch (InvalidOperationException ex) when (IsDuplicateStudentAttempt(ex))
+            {
+                var existingAttempt = await GetLatestAttemptAsync(student.StudentId, assessmentId);
+                if (existingAttempt is not null)
+                {
+                    if (existingAttempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
+                    {
+                        throw new InvalidOperationException(
+                            "This assessment has already been submitted by the current student.");
+                    }
+
+                    throw new InvalidOperationException(
+                        $"An active attempt already exists for this assessment. Recover it using attempt id '{existingAttempt.AttemptId}'.");
+                }
+
+                throw;
+            }
+
+            return attempt.ToStudentAssessmentStartRecord();
+        }, "starting the student assessment attempt");
     }
 
     /// <inheritdoc />
@@ -750,18 +787,21 @@ public class AssessmentManager : IAssessmentManager
 
         ValidateStudentAttemptRequest(Guid.Empty, studentUserId, validateAssessmentId: false);
 
-        var student = await GetStudentByUserIdAsync(studentUserId);
-        var attempt = await GetAttemptForStudentAsync(attemptId, student.StudentId);
-        var assessment = await GetAssessmentForAttemptRecoveryAsync(attempt.AssessmentId, student);
-
-        await EnsureAttemptClosedIfExpiredAsync(attempt, assessment);
-
-        if (attempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
+        return await ExecuteDbOperationAsync(async () =>
         {
-            attempt = await GetAttemptForStudentAsync(attemptId, student.StudentId);
-        }
+            var student = await GetStudentByUserIdAsync(studentUserId);
+            var attempt = await GetAttemptForStudentAsync(attemptId, student.StudentId);
+            var assessment = await GetAssessmentForAttemptRecoveryAsync(attempt.AssessmentId, student);
 
-        return await BuildStudentAttemptRecoveryAsync(attempt, assessment);
+            await EnsureAttemptClosedIfExpiredAsync(attempt, assessment);
+
+            if (attempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
+            {
+                attempt = await GetAttemptForStudentAsync(attemptId, student.StudentId);
+            }
+
+            return await BuildStudentAttemptRecoveryAsync(attempt, assessment);
+        }, "recovering the student assessment attempt");
     }
 
     /// <inheritdoc />
@@ -788,47 +828,50 @@ public class AssessmentManager : IAssessmentManager
             throw new ArgumentException("Question id is required.");
         }
 
-        var student = await GetStudentByUserIdAsync(studentUserId);
-        var attempt = await GetAttemptForStudentAsync(attemptId, student.StudentId);
-        var assessment = await GetAssessmentForAttemptRecoveryAsync(attempt.AssessmentId, student);
-
-        if (await EnsureAttemptClosedIfExpiredAsync(attempt, assessment))
+        return await ExecuteDbOperationAsync(async () =>
         {
-            throw new InvalidOperationException("The assessment attempt has expired and was auto-submitted.");
-        }
+            var student = await GetStudentByUserIdAsync(studentUserId);
+            var attempt = await GetAttemptForStudentAsync(attemptId, student.StudentId);
+            var assessment = await GetAssessmentForAttemptRecoveryAsync(attempt.AssessmentId, student);
 
-        if (attempt.AttemptStatus is not AttemptStatus.In_Progress)
-        {
-            throw new InvalidOperationException("Answers can only be saved for an in-progress attempt.");
-        }
+            if (await EnsureAttemptClosedIfExpiredAsync(attempt, assessment))
+            {
+                throw new InvalidOperationException("The assessment attempt has expired and was auto-submitted.");
+            }
 
-        var assessmentQuestion = assessment.AssessmentQuestions
-            .FirstOrDefault(item => item.QuestionId == questionId);
+            if (attempt.AttemptStatus is not AttemptStatus.In_Progress)
+            {
+                throw new InvalidOperationException("Answers can only be saved for an in-progress attempt.");
+            }
 
-        if (assessmentQuestion is null)
-        {
-            throw new KeyNotFoundException($"Question '{questionId}' was not found in this assessment attempt.");
-        }
+            var assessmentQuestion = assessment.AssessmentQuestions
+                .FirstOrDefault(item => item.QuestionId == questionId);
 
-        var question = await _context.Questions
-            .FirstOrDefaultAsync(item => item.QuestionId == questionId);
+            if (assessmentQuestion is null)
+            {
+                throw new KeyNotFoundException($"Question '{questionId}' was not found in this assessment attempt.");
+            }
 
-        if (question is null)
-        {
-            throw new KeyNotFoundException($"Question '{questionId}' was not found.");
-        }
+            var question = await _context.Questions
+                .FirstOrDefaultAsync(item => item.QuestionId == questionId);
 
-        var answeredAt = DateTime.UtcNow;
-        var strategy = _studentAttemptAnswerSaveStrategyFactory.Resolve(question.QuestionType);
-        var savedAnswer = await strategy.SaveAsync(_context, attempt, question, request, answeredAt);
+            if (question is null)
+            {
+                throw new KeyNotFoundException($"Question '{questionId}' was not found.");
+            }
 
-        attempt.QuestionId = questionId;
-        attempt.LastActivityAt = answeredAt;
-        await RefreshAttemptProgressAsync(attempt);
+            var answeredAt = DateTime.UtcNow;
+            var strategy = _studentAttemptAnswerSaveStrategyFactory.Resolve(question.QuestionType);
+            var savedAnswer = await strategy.SaveAsync(_context, attempt, question, request, answeredAt);
 
-        await SaveChangesWithWrapAsync("Unable to save the assessment answer.");
+            attempt.QuestionId = questionId;
+            attempt.LastActivityAt = answeredAt;
+            await RefreshAttemptProgressAsync(attempt);
 
-        return savedAnswer.ToStudentAttemptAnswerRecord();
+            await SaveChangesWithWrapAsync("Unable to save the assessment answer.");
+
+            return savedAnswer.ToStudentAttemptAnswerRecord();
+        }, "saving the student assessment answer");
     }
 
     /// <inheritdoc />
@@ -841,28 +884,31 @@ public class AssessmentManager : IAssessmentManager
 
         ValidateStudentAttemptRequest(Guid.Empty, studentUserId, validateAssessmentId: false);
 
-        var student = await GetStudentByUserIdAsync(studentUserId);
-        var attempt = await GetAttemptForStudentAsync(attemptId, student.StudentId);
-        var assessment = await GetAssessmentForAttemptRecoveryAsync(attempt.AssessmentId, student);
-
-        if (attempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
+        return await ExecuteDbOperationAsync(async () =>
         {
-            throw new InvalidOperationException("This assessment attempt has already been submitted.");
-        }
+            var student = await GetStudentByUserIdAsync(studentUserId);
+            var attempt = await GetAttemptForStudentAsync(attemptId, student.StudentId);
+            var assessment = await GetAssessmentForAttemptRecoveryAsync(attempt.AssessmentId, student);
 
-        var submittedAt = DateTime.UtcNow;
-        var isExpired = IsAttemptExpired(attempt, assessment, out var expiresAt);
-        var finalStatus = isExpired ? AttemptStatus.Auto_Submitted : AttemptStatus.Submitted;
-        var effectiveSubmittedAt = isExpired ? expiresAt : submittedAt;
-        var effectiveExpiresAt = isExpired
-            ? expiresAt
-            : attempt.ExpiresAt
-              ?? assessment.EndDateTime
-              ?? attempt.StartedAt?.AddMinutes(assessment.DurationMinutes)
-              ?? submittedAt;
+            if (attempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
+            {
+                throw new InvalidOperationException("This assessment attempt has already been submitted.");
+            }
 
-        var finalizedAttempt = await FinalizeAttemptAsync(attempt, effectiveSubmittedAt, effectiveExpiresAt, finalStatus);
-        return finalizedAttempt.ToStudentAttemptSubmitRecord();
+            var submittedAt = DateTime.UtcNow;
+            var isExpired = IsAttemptExpired(attempt, assessment, out var expiresAt);
+            var finalStatus = isExpired ? AttemptStatus.Auto_Submitted : AttemptStatus.Submitted;
+            var effectiveSubmittedAt = isExpired ? expiresAt : submittedAt;
+            var effectiveExpiresAt = isExpired
+                ? expiresAt
+                : attempt.ExpiresAt
+                  ?? assessment.EndDateTime
+                  ?? attempt.StartedAt?.AddMinutes(assessment.DurationMinutes)
+                  ?? submittedAt;
+
+            var finalizedAttempt = await FinalizeAttemptAsync(attempt, effectiveSubmittedAt, effectiveExpiresAt, finalStatus);
+            return finalizedAttempt.ToStudentAttemptSubmitRecord();
+        }, "submitting the student assessment attempt");
     }
 
     private async Task<SubjectTopicResolver.Resolution> ResolveAssessmentClassificationAsync(Assessment assessment)
@@ -1636,6 +1682,8 @@ public class AssessmentManager : IAssessmentManager
     {
         return _context.Assessments
             .AsNoTracking()
+            .Include(assessment => assessment.Subject)
+            .Include(assessment => assessment.Topic)
             .Where(assessment =>
                 assessment.CollegeId == collegeId &&
                 assessment.AssessmentStatus != AssessmentStatus.Soft_Deleted &&
@@ -1647,6 +1695,8 @@ public class AssessmentManager : IAssessmentManager
         return new StudentAssessmentListItemRecord(
             assessment.AssessmentId,
             assessment.AssessmentName,
+            assessment.Subject?.SubjectName ?? assessment.SubjectName,
+            assessment.Topic?.TopicName ?? assessment.TopicName,
             assessmentStatus.ToUpperInvariant(),
             assessment.DurationMinutes,
             assessment.TotalMarks,
@@ -1872,7 +1922,44 @@ public class AssessmentManager : IAssessmentManager
         }
         catch (DbUpdateException ex)
         {
+            _logger.LogError(ex, "{ErrorMessage} SaveChanges failed in AssessmentManager.", errorMessage);
             throw new InvalidOperationException(errorMessage, ex);
+        }
+    }
+
+    private async Task<T> ExecuteDbOperationAsync<T>(Func<Task<T>> operation, string operationName)
+    {
+        try
+        {
+            return await operation();
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database update error while {OperationName} in AssessmentManager.", operationName);
+            throw;
+        }
+        catch (PostgresException ex)
+        {
+            _logger.LogError(ex, "PostgreSQL error while {OperationName} in AssessmentManager.", operationName);
+            throw;
+        }
+    }
+
+    private async Task ExecuteDbOperationAsync(Func<Task> operation, string operationName)
+    {
+        try
+        {
+            await operation();
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database update error while {OperationName} in AssessmentManager.", operationName);
+            throw;
+        }
+        catch (PostgresException ex)
+        {
+            _logger.LogError(ex, "PostgreSQL error while {OperationName} in AssessmentManager.", operationName);
+            throw;
         }
     }
 

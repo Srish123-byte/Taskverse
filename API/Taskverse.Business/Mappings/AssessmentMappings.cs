@@ -301,6 +301,8 @@ public static class AssessmentMappings
         {
             AssessmentId = model.AssessmentId,
             AssessmentName = model.AssessmentName,
+            SubjectName = model.SubjectName,
+            TopicName = model.TopicName,
             AssessmentStatus = model.AssessmentStatus,
             DurationMinutes = model.DurationMinutes,
             TotalMarks = model.TotalMarks,

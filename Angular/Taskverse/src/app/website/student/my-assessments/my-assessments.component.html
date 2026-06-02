@@ -26,6 +26,7 @@
       <span>Duration</span>
       <span>Total Marks</span>
       <span>Difficulty</span>
+      <span>Action</span>
     </div>
 
     <app-dashboard-loader
@@ -41,13 +42,89 @@
     </div>
 
     <div *ngFor="let assessment of assessments; trackBy: trackByAssessmentId" class="table-row">
-      <strong>{{ assessment.assessmentName }}</strong>
+      <div class="assessment-name-cell">
+        <strong>{{ assessment.assessmentName }}</strong>
+        <span *ngIf="getAssessmentContext(assessment)" class="assessment-context">
+          {{ getAssessmentContext(assessment) }}
+        </span>
+      </div>
       <span class="status-pill" [ngClass]="'status-pill-' + assessment.assessmentStatus.toLowerCase()">
         {{ getStatusLabel(assessment.assessmentStatus) }}
       </span>
       <span>{{ assessment.durationMinutes }} mins</span>
       <span>{{ assessment.totalMarks }} Marks</span>
       <span class="difficulty-pill">{{ getDifficultyLabel(assessment.difficultyLevel) }}</span>
+      <button
+        type="button"
+        class="assessment-action-button"
+        [class.assessment-action-button-primary]="isPrimaryAction(assessment.assessmentStatus)"
+        [disabled]="loadingAssessmentId === assessment.assessmentId"
+        [attr.aria-label]="getActionLabel(assessment.assessmentStatus) + ' for ' + assessment.assessmentName"
+        (click)="openAssessmentAction(assessment)">
+        <img
+          *ngIf="isPrimaryAction(assessment.assessmentStatus)"
+          src="assets/icons/student/start-assessment.svg"
+          alt=""
+          class="assessment-action-icon"
+          aria-hidden="true" />
+        {{ loadingAssessmentId === assessment.assessmentId ? 'Loading...' : getActionLabel(assessment.assessmentStatus) }}
+      </button>
     </div>
   </section>
+
+  <div *ngIf="isDetailModalOpen && selectedAssessmentDetail" class="assessment-detail-backdrop" (click)="closeAssessmentDetailModal()">
+    <section class="assessment-detail-modal" (click)="$event.stopPropagation()">
+      <button
+        type="button"
+        class="assessment-detail-close"
+        aria-label="Close assessment details"
+        (click)="closeAssessmentDetailModal()">
+        ×
+      </button>
+
+      <span class="assessment-detail-eyebrow">Student Assessment</span>
+      <h2>{{ selectedAssessmentDetail.assessmentName || selectedAssessmentName }}</h2>
+
+      <div class="assessment-detail-grid">
+        <div class="assessment-detail-card">
+          <span>Duration</span>
+          <strong>{{ selectedAssessmentDetail.durationMinutes }} mins</strong>
+        </div>
+        <div class="assessment-detail-card">
+          <span>Total Marks</span>
+          <strong>{{ selectedAssessmentDetail.totalMarks }}</strong>
+        </div>
+        <div class="assessment-detail-card">
+          <span>Total Questions</span>
+          <strong>{{ selectedAssessmentDetail.totalQuestions }}</strong>
+        </div>
+        <div class="assessment-detail-card">
+          <span>Start Time</span>
+          <strong>{{ selectedAssessmentDetail.startTime ? (selectedAssessmentDetail.startTime | date:'medium') : 'Not available' }}</strong>
+        </div>
+        <div class="assessment-detail-card">
+          <span>End Time</span>
+          <strong>{{ selectedAssessmentDetail.endTime ? (selectedAssessmentDetail.endTime | date:'medium') : 'Not available' }}</strong>
+        </div>
+      </div>
+
+      <div class="assessment-detail-instructions">
+        <span>Instructions</span>
+        <p>{{ selectedAssessmentDetail.instructions || 'No instructions were provided for this assessment.' }}</p>
+      </div>
+
+      <div class="assessment-detail-actions">
+        <button type="button" class="assessment-detail-button assessment-detail-button-muted" (click)="closeAssessmentDetailModal()">
+          Close
+        </button>
+        <button
+          *ngIf="selectedAssessmentActionLabel"
+          type="button"
+          class="assessment-detail-button assessment-detail-button-primary"
+          (click)="closeAssessmentDetailModal()">
+          {{ selectedAssessmentActionLabel }}
+        </button>
+      </div>
+    </section>
+  </div>
 </section>
