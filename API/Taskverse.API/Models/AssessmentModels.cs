@@ -11,6 +11,7 @@ public class CreateQuestionBankAssessmentRequestModel
     public bool AllowLateEntry { get; set; }
     public bool AllowQuestionReview { get; set; }
     public bool NegativeMarking { get; set; }
+    public int PassingPercentage { get; set; }
     public Guid[] AssignedBatchIds { get; set; } = [];
     public List<Guid> QuestionIds { get; set; } = [];
     public int DurationMinutes { get; set; }
@@ -31,6 +32,7 @@ public class PublishQuestionBankAssessmentRequestModel
     public bool AllowLateEntry { get; set; }
     public bool AllowQuestionReview { get; set; }
     public bool NegativeMarking { get; set; }
+    public int PassingPercentage { get; set; }
     public Guid[] AssignedBatchIds { get; set; } = [];
     public List<Guid> QuestionIds { get; set; } = [];
     public int DurationMinutes { get; set; }
@@ -50,6 +52,7 @@ public class UpdateQuestionBankAssessmentRequestModel
     public bool AllowLateEntry { get; set; }
     public bool AllowQuestionReview { get; set; }
     public bool NegativeMarking { get; set; }
+    public int PassingPercentage { get; set; }
     public Guid[] AssignedBatchIds { get; set; } = [];
     public List<Guid> QuestionIds { get; set; } = [];
     public int DurationMinutes { get; set; }
@@ -79,6 +82,7 @@ public class QuestionBankAssessmentResponseModel
     public Guid[] AssignedBatchIds { get; set; } = [];
     public bool AllowLateEntry { get; set; }
     public bool ShowResultsImmediately { get; set; }
+    public int PassingPercentage { get; set; }
     public bool AllowQuestionReview { get; set; }
     public bool NegativeMarking { get; set; }
     public bool? IsTotalMarksAutoCalculated { get; set; }

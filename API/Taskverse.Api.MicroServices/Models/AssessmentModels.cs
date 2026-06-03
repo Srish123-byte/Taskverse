@@ -25,6 +25,8 @@ public record CreateQuestionBankAssessmentModel(
     bool AllowQuestionReview,
     [property: JsonProperty("negative_marking")]
     bool NegativeMarking,
+    [property: JsonProperty("passing_percentage")]
+    int PassingPercentage,
     [property: JsonProperty("assigned_batch_ids")]
     Guid[] AssignedBatchIds,
     [property: JsonProperty("question_ids")]
@@ -63,6 +65,8 @@ public record PublishQuestionBankAssessmentModel(
     bool AllowQuestionReview,
     [property: JsonProperty("negative_marking")]
     bool NegativeMarking,
+    [property: JsonProperty("passing_percentage")]
+    int PassingPercentage,
     [property: JsonProperty("assigned_batch_ids")]
     Guid[] AssignedBatchIds,
     [property: JsonProperty("question_ids")]
@@ -103,6 +107,8 @@ public record UpdateQuestionBankAssessmentModel(
     bool AllowQuestionReview,
     [property: JsonProperty("negative_marking")]
     bool NegativeMarking,
+    [property: JsonProperty("passing_percentage")]
+    int PassingPercentage,
     [property: JsonProperty("assigned_batch_ids")]
     Guid[] AssignedBatchIds,
     [property: JsonProperty("question_ids")]
@@ -167,6 +173,8 @@ public record QuestionBankAssessmentModel(
     bool AllowLateEntry,
     [property: JsonProperty("show_results_immediately")]
     bool ShowResultsImmediately,
+    [property: JsonProperty("passing_percentage")]
+    int PassingPercentage,
     [property: JsonProperty("allow_question_review")]
     bool AllowQuestionReview,
     [property: JsonProperty("negative_marking")]

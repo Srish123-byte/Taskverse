@@ -716,6 +716,11 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       return null;
     }
 
+    const passingPercentage = this.resolvePassingPercentage();
+    if (passingPercentage === null) {
+      return null;
+    }
+
     const selectedSubject = this.subjectCatalog.subjects.find(subject => subject.subjectId === this.selectedSubjectId);
     const selectedTopic = selectedSubject?.topics.find(topic => topic.topicId === this.selectedTopicId);
 
@@ -729,6 +734,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       allowLateEntry: this.allowLateEntry,
       allowQuestionReview: this.allowQuestionReview,
       negativeMarking: this.negativeMarking,
+      passingPercentage,
       assignedBatchIds: Array.from(this.selectedBatchIds),
       questionIds: Array.from(this.selectedQuestionIds),
       durationMinutes: Number(this.durationMinutes),
@@ -753,6 +759,25 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     }
 
     return totalMarks;
+  }
+
+  private resolvePassingPercentage(): number | null {
+    if (this.passingPercentage == null || !Number.isFinite(this.passingPercentage)) {
+      this.submissionErrorMessage = 'Passing percentage is required.';
+      return null;
+    }
+
+    if (!Number.isInteger(this.passingPercentage)) {
+      this.submissionErrorMessage = 'Passing percentage must be a whole number.';
+      return null;
+    }
+
+    if (this.passingPercentage < 0 || this.passingPercentage > 100) {
+      this.submissionErrorMessage = 'Passing percentage must be between 0 and 100.';
+      return null;
+    }
+
+    return this.passingPercentage;
   }
 
   private loadAssessmentForEdit(assessmentId: string): void {
@@ -785,6 +810,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     this.selectedQuestionBankSubjectId = assessment.subjectId ?? '';
     this.selectedQuestionBankTopicId = assessment.topicId ?? '';
     this.durationMinutes = assessment.durationMinutes ?? 60;
+    this.passingPercentage = assessment.passingPercentage ?? 50;
     this.startDate = this.toDateTimeLocalInputValue(assessment.startDateTime);
     this.endDate = this.toDateTimeLocalInputValue(assessment.endDateTime);
     this.instructions = assessment.instructions ?? '';

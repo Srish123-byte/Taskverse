@@ -35,6 +35,7 @@ public static class AssessmentMappings
                 .ToArray(),
             AllowLateEntry = request.AllowLateEntry,
             ShowResultsImmediately = settings.IsResultsAvailableImmediately,
+            PassingPercentage = request.PassingPercentage,
             AllowQuestionReview = request.AllowQuestionReview,
             NegativeMarking = request.NegativeMarking,
             IsTotalMarksAutoCalculated = settings.IsTotalMarksAutoCalculated,
@@ -57,6 +58,7 @@ public static class AssessmentMappings
             AllowLateEntry = request.AllowLateEntry,
             AllowQuestionReview = request.AllowQuestionReview,
             NegativeMarking = request.NegativeMarking,
+            PassingPercentage = request.PassingPercentage,
             AssignedBatchIds = request.AssignedBatchIds,
             QuestionIds = request.QuestionIds,
             DurationMinutes = request.DurationMinutes,
@@ -92,6 +94,7 @@ public static class AssessmentMappings
                 .ToArray(),
             AllowLateEntry = request.AllowLateEntry,
             ShowResultsImmediately = settings.IsResultsAvailableImmediately,
+            PassingPercentage = request.PassingPercentage,
             AllowQuestionReview = request.AllowQuestionReview,
             NegativeMarking = request.NegativeMarking,
             IsTotalMarksAutoCalculated = settings.IsTotalMarksAutoCalculated,
@@ -120,6 +123,7 @@ public static class AssessmentMappings
             assessment.AssignedBatchIds,
             assessment.AllowLateEntry,
             assessment.ShowResultsImmediately,
+            assessment.PassingPercentage,
             assessment.AllowQuestionReview,
             assessment.NegativeMarking,
             assessment.IsTotalMarksAutoCalculated,
@@ -286,6 +290,13 @@ public static class AssessmentMappings
             return null;
         }
 
-        return JsonSerializer.Deserialize<List<string>>(options);
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(options);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 }

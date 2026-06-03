@@ -135,6 +135,7 @@ export interface CreateAssessmentRequest {
   allowLateEntry: boolean;
   allowQuestionReview: boolean;
   negativeMarking: boolean;
+  passingPercentage: number;
   assignedBatchIds: string[];
   questionIds: string[];
   durationMinutes: number;
@@ -167,6 +168,7 @@ export interface AssessmentRecord {
   assignedBatchIds: string[];
   allowLateEntry: boolean;
   showResultsImmediately: boolean;
+  passingPercentage: number;
   allowQuestionReview: boolean;
   negativeMarking: boolean;
   isTotalMarksAutoCalculated?: boolean | null;

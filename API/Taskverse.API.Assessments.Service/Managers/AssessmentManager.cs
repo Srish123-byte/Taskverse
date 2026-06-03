@@ -198,8 +198,6 @@ public class AssessmentManager : IAssessmentManager
         PrepareAssessmentForCreation(assessment, questions, targetStatus);
         assessment.AssessmentQuestions = BuildAssessmentQuestions(assessment.AssessmentId, questions, normalizedQuestionIds);
 
-        AssignQuestionsToAssessment(questions, assessment.AssessmentId);
-
         _context.Assessments.Add(assessment);
         await SaveChangesWithWrapAsync("Unable to save the assessment.");
 
@@ -352,8 +350,6 @@ public class AssessmentManager : IAssessmentManager
                     questions.Select(question => question.QuestionId).ToList());
             }
 
-            AssignQuestionsToAssessment(questions, assessment.AssessmentId, updateOnlyWhenChanged: true);
-
             await SaveChangesWithWrapAsync("Unable to publish the assessment.");
 
             return assessment;
@@ -376,34 +372,54 @@ public class AssessmentManager : IAssessmentManager
                 return new AssessmentSubjectTopicCatalogRecord([]);
             }
 
-            var subjectBatchLinks = await _context.SubjectBatches
-                .AsNoTracking()
-                .Where(link => accessibleBatchIds.Contains(link.BatchId))
-                .Include(link => link.Subject)
-                    .ThenInclude(subject => subject.Topics.Where(topic => topic.IsActive))
+            var subjectBatchRows = await (
+                from subjectBatch in _context.SubjectBatches.AsNoTracking()
+                join subject in _context.Subjects.AsNoTracking()
+                    on subjectBatch.SubjectId equals subject.SubjectId
+                where accessibleBatchIds.Contains(subjectBatch.BatchId) && subject.IsActive
+                select new
+                {
+                    subjectBatch.BatchId,
+                    subject.SubjectId,
+                    subject.SubjectName
+                })
                 .ToListAsync();
 
-            var subjects = subjectBatchLinks
-                .Where(link => link.Subject.IsActive)
-                .GroupBy(link => new { link.Subject.SubjectId, link.Subject.SubjectName })
+            if (subjectBatchRows.Count == 0)
+            {
+                return new AssessmentSubjectTopicCatalogRecord([]);
+            }
+
+            var subjectIds = subjectBatchRows
+                .Select(row => row.SubjectId)
+                .Distinct()
+                .ToList();
+
+            var activeTopics = await _context.Topics
+                .AsNoTracking()
+                .Where(topic => subjectIds.Contains(topic.SubjectId) && topic.IsActive)
+                .ToListAsync();
+
+            var topicsBySubjectId = activeTopics
+                .GroupBy(topic => topic.SubjectId)
+                .ToDictionary(group => group.Key, group => group.ToList());
+
+            var subjects = subjectBatchRows
+                .GroupBy(row => new { row.SubjectId, row.SubjectName })
                 .Select(subjectGroup =>
                 {
                     var batchIds = subjectGroup
-                        .Select(link => link.BatchId)
+                        .Select(row => row.BatchId)
                         .Distinct()
                         .OrderBy(batchId => batchId)
                         .ToArray();
 
-                    var topics = subjectGroup
-                        .SelectMany(link => link.Subject.Topics.Select(topic => new { link.BatchId, Topic = topic }))
-                        .GroupBy(item => new { item.Topic.TopicId, item.Topic.TopicName })
-                        .Select(topicGroup => new AssessmentTopicCatalogRecord(
-                            topicGroup.Key.TopicId,
-                            topicGroup.Key.TopicName,
-                            topicGroup.Select(item => item.BatchId)
-                                .Distinct()
-                                .OrderBy(batchId => batchId)
-                                .ToArray()))
+                    var topics = topicsBySubjectId
+                        .GetValueOrDefault(subjectGroup.Key.SubjectId, [])
+                        .Select(topic => new AssessmentTopicCatalogRecord(
+                            topic.TopicId,
+                            topic.TopicName,
+                            batchIds))
                         .OrderBy(item => item.TopicName)
                         .ToList();
 
@@ -864,7 +880,6 @@ public class AssessmentManager : IAssessmentManager
             var strategy = _studentAttemptAnswerSaveStrategyFactory.Resolve(question.QuestionType);
             var savedAnswer = await strategy.SaveAsync(_context, attempt, question, request, answeredAt);
 
-            attempt.QuestionId = questionId;
             attempt.LastActivityAt = answeredAt;
             await RefreshAttemptProgressAsync(attempt);
 
@@ -1010,9 +1025,6 @@ public class AssessmentManager : IAssessmentManager
     private static void EnsureQuestionsAreAvailableForCreate(IEnumerable<Question> questions)
     {
         var unavailableQuestionIds = questions
-            // Question-bank questions can be linked to assessments through the
-            // assessment_questions join table. Do not treat the legacy direct
-            // AssessmentId field as a create-time availability blocker.
             .Where(question => !question.IsActive)
             .Select(question => question.QuestionId)
             .ToList();
@@ -1218,25 +1230,6 @@ public class AssessmentManager : IAssessmentManager
             .ToList();
     }
 
-    private static void AssignQuestionsToAssessment(
-        IEnumerable<Question> questions,
-        Guid assessmentId,
-        bool updateOnlyWhenChanged = false)
-    {
-        var modifiedAt = DateTime.UtcNow;
-
-        foreach (var question in questions)
-        {
-            if (updateOnlyWhenChanged && question.AssessmentId == assessmentId)
-            {
-                continue;
-            }
-
-            question.AssessmentId = assessmentId;
-            question.ModifiedAt = modifiedAt;
-        }
-    }
-
     private static void ApplyAssessmentUpdates(
         Assessment target,
         Assessment source,
@@ -1260,6 +1253,7 @@ public class AssessmentManager : IAssessmentManager
         target.AssignedBatchIds = source.AssignedBatchIds;
         target.AllowLateEntry = source.AllowLateEntry;
         target.ShowResultsImmediately = source.ShowResultsImmediately;
+        target.PassingPercentage = source.PassingPercentage;
         target.AllowQuestionReview = source.AllowQuestionReview;
         target.NegativeMarking = source.NegativeMarking;
         target.IsTotalMarksAutoCalculated = source.IsTotalMarksAutoCalculated;
@@ -1286,6 +1280,7 @@ public class AssessmentManager : IAssessmentManager
         target.AssignedBatchIds = source.AssignedBatchIds;
         target.AllowLateEntry = source.AllowLateEntry;
         target.ShowResultsImmediately = source.ShowResultsImmediately;
+        target.PassingPercentage = source.PassingPercentage;
         target.AllowQuestionReview = source.AllowQuestionReview;
         target.NegativeMarking = source.NegativeMarking;
         target.IsTotalMarksAutoCalculated = source.IsTotalMarksAutoCalculated;
@@ -1298,15 +1293,6 @@ public class AssessmentManager : IAssessmentManager
         IReadOnlyList<Guid> orderedQuestionIds)
     {
         var existingAssessmentQuestions = assessment.AssessmentQuestions.ToList();
-
-        var previousQuestionIds = existingAssessmentQuestions
-            .Select(item => item.QuestionId)
-            .Distinct()
-            .ToArray();
-
-        var removedQuestionIds = previousQuestionIds
-            .Except(orderedQuestionIds)
-            .ToArray();
 
         if (existingAssessmentQuestions.Count > 0)
         {
@@ -1330,25 +1316,6 @@ public class AssessmentManager : IAssessmentManager
             assessment.AssessmentQuestions.Add(assessmentQuestion);
         }
 
-        AssignQuestionsToAssessment(questions, assessment.AssessmentId);
-
-        if (removedQuestionIds.Length == 0)
-        {
-            return;
-        }
-
-        var detachedAt = DateTime.UtcNow;
-        var removedQuestions = await _context.Questions
-            .Where(question =>
-                removedQuestionIds.Contains(question.QuestionId) &&
-                question.AssessmentId == assessment.AssessmentId)
-            .ToListAsync();
-
-        foreach (var question in removedQuestions)
-        {
-            question.AssessmentId = null;
-            question.ModifiedAt = detachedAt;
-        }
     }
 
     private async Task EnsureAssessmentNotAlreadyCreatedForSelectedBatchesAsync(
@@ -1594,26 +1561,43 @@ public class AssessmentManager : IAssessmentManager
     {
         if (assessment.AssessmentQuestions.Count > 0)
         {
-            var questionIds = assessment.AssessmentQuestions
+            var linkedQuestionIds = assessment.AssessmentQuestions
                 .OrderBy(item => item.DisplayOrder)
                 .Select(item => item.QuestionId)
                 .ToList();
 
-            var questions = await _context.Questions
-                .Where(question => questionIds.Contains(question.QuestionId))
+            var linkedQuestions = await _context.Questions
+                .Where(question => linkedQuestionIds.Contains(question.QuestionId))
                 .ToListAsync();
 
-            EnsureQuestionsExist(questionIds, questions);
+            EnsureQuestionsExist(linkedQuestionIds, linkedQuestions);
 
-            var questionLookup = questions.ToDictionary(question => question.QuestionId);
-            return questionIds.Select(questionId => questionLookup[questionId]).ToList();
+            var publishedQuestionLookup = linkedQuestions.ToDictionary(question => question.QuestionId);
+            return linkedQuestionIds.Select(questionId => publishedQuestionLookup[questionId]).ToList();
         }
 
-        return await _context.Questions
-            .Where(question => question.AssessmentId == assessment.AssessmentId)
-            .OrderBy(question => question.CreatedAt)
-            .ThenBy(question => question.QuestionId)
+        var persistedQuestionIds = await _context.AssessmentQuestions
+            .AsNoTracking()
+            .Where(item => item.AssessmentId == assessment.AssessmentId)
+            .OrderBy(item => item.DisplayOrder)
+            .Select(item => item.QuestionId)
             .ToListAsync();
+
+        if (persistedQuestionIds.Count == 0)
+        {
+            return [];
+        }
+
+        var persistedQuestions = await _context.Questions
+            .Where(question => persistedQuestionIds.Contains(question.QuestionId))
+            .ToListAsync();
+
+        EnsureQuestionsExist(persistedQuestionIds, persistedQuestions);
+
+        var persistedQuestionLookup = persistedQuestions.ToDictionary(question => question.QuestionId);
+        return persistedQuestionIds
+            .Select(questionId => persistedQuestionLookup[questionId])
+            .ToList();
     }
 
     private async Task<List<StudentAssessmentListItemRecord>> GetCompletedStudentAssessmentsAsync(Student student, Guid batchId)
@@ -2007,7 +1991,7 @@ public class AssessmentManager : IAssessmentManager
             }
 
             await _context.Entry(attempt).ReloadAsync();
-            await TryEvaluateAttemptResultAsync(attempt.AttemptId);
+            await TryEvaluateAttemptResultAsync(attempt.AttemptId, attempt.AssessmentId);
             return attempt;
         }
         catch (DbUpdateException ex)
@@ -2028,11 +2012,17 @@ public class AssessmentManager : IAssessmentManager
             .CountAsync();
     }
 
-    private async Task TryEvaluateAttemptResultAsync(Guid attemptId)
+    private async Task TryEvaluateAttemptResultAsync(Guid attemptId, Guid assessmentId)
     {
         try
         {
-            await _reportsServiceClient.EvaluateAttemptAsync(attemptId);
+            var passingPercentage = await _context.Assessments
+                .AsNoTracking()
+                .Where(item => item.AssessmentId == assessmentId)
+                .Select(item => item.PassingPercentage)
+                .FirstAsync();
+
+            await _reportsServiceClient.EvaluateAttemptAsync(attemptId, passingPercentage);
         }
         catch (Exception ex)
         {
@@ -2078,6 +2068,8 @@ public class AssessmentManager : IAssessmentManager
             throw new ArgumentException("Total marks cannot be negative.");
         }
 
+        ValidatePassingPercentage(assessment.PassingPercentage);
+
         if (assessment.EndDateTime.HasValue &&
             assessment.StartDateTime.HasValue &&
             assessment.EndDateTime <= assessment.StartDateTime)
@@ -2107,6 +2099,8 @@ public class AssessmentManager : IAssessmentManager
         {
             throw new ArgumentException("Total marks cannot be negative.");
         }
+
+        ValidatePassingPercentage(assessment.PassingPercentage);
 
         if (assessment.EndDateTime.HasValue &&
             assessment.StartDateTime.HasValue &&
@@ -2270,6 +2264,14 @@ public class AssessmentManager : IAssessmentManager
 
     private static bool IsCodingQuestion(Question question)
         => string.Equals(question.QuestionType?.Trim(), "coding", StringComparison.OrdinalIgnoreCase);
+
+    private static void ValidatePassingPercentage(int passingPercentage)
+    {
+        if (passingPercentage is < 0 or > 100)
+        {
+            throw new ArgumentException("Passing percentage must be between 0 and 100.");
+        }
+    }
 
     private static bool IsCollegeAdmin(string requesterRole)
         => string.Equals(requesterRole?.Trim(), "CollegeAdmin", StringComparison.OrdinalIgnoreCase);

@@ -60,6 +60,9 @@ public class Assessment
     [Column("show_results_immediately")]
     public bool ShowResultsImmediately { get; set; }
 
+    [Column("passing_percentage")]
+    public int PassingPercentage { get; set; } = 50;
+
     [Column("allow_question_review")]
     public bool AllowQuestionReview { get; set; }
 

@@ -1,189 +1,100 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
+using Npgsql;
 using Taskverse.API.Reports.Service.Models;
-using Taskverse.API.Reports.Service.Services;
-using Taskverse.Data.Enums;
 using Taskverse.Data.DataAccess;
+using Taskverse.Data.Enums;
 
 namespace Taskverse.API.Reports.Service.Managers;
 
 public class ResultManager : IResultManager
 {
-    private readonly TaskverseContext _context;
-    private readonly IResultEvaluationStrategyFactory _strategyFactory;
-    private readonly ResultEvaluationSettings _resultEvaluationSettings;
+    private static readonly AttemptStatus[] SubmittedAttemptStatuses =
+    [
+        AttemptStatus.Submitted,
+        AttemptStatus.Auto_Submitted
+    ];
 
-    public ResultManager(
-        TaskverseContext context,
-        IResultEvaluationStrategyFactory strategyFactory,
-        IOptions<ResultEvaluationSettings> resultEvaluationSettings)
+    private readonly TaskverseContext _context;
+
+    public ResultManager(TaskverseContext context)
     {
         _context = context;
-        _strategyFactory = strategyFactory;
-        _resultEvaluationSettings = resultEvaluationSettings.Value;
     }
 
-    public async Task<AttemptResultResponse> EvaluateAttemptAsync(
-        Guid attemptId,
+    public Task<bool> ResultExistsForAttemptAsync(Guid attemptId, CancellationToken cancellationToken = default)
+    {
+        return _context.Results.AnyAsync(item => item.AttemptId == attemptId, cancellationToken);
+    }
+
+    public Task<Attempt?> GetAttemptAsync(Guid attemptId, CancellationToken cancellationToken = default)
+    {
+        return _context.Attempts
+            .FirstOrDefaultAsync(item => item.AttemptId == attemptId, cancellationToken);
+    }
+
+    public Task<Assessment?> GetAssessmentAsync(Guid assessmentId, CancellationToken cancellationToken = default)
+    {
+        return _context.Assessments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId, cancellationToken);
+    }
+
+    public Task<List<AttemptAnswer>> GetAttemptAnswersAsync(Guid attemptId, CancellationToken cancellationToken = default)
+    {
+        return _context.AttemptAnswers
+            .Where(item => item.AttemptId == attemptId)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<SubmittedAttemptScoreSnapshot>> GetSubmittedAttemptScoreSnapshotsAsync(
+        Guid assessmentId,
         CancellationToken cancellationToken = default)
     {
-        if (attemptId == Guid.Empty)
-        {
-            throw new ArgumentException("Attempt id is required.");
-        }
+        return await (
+            from attempt in _context.Attempts.AsNoTracking()
+            where attempt.AssessmentId == assessmentId &&
+                  SubmittedAttemptStatuses.Contains(attempt.AttemptStatus)
+            join attemptAnswer in _context.AttemptAnswers.AsNoTracking()
+                on attempt.AttemptId equals attemptAnswer.AttemptId into attemptAnswerGroup
+            select new SubmittedAttemptScoreSnapshot(
+                attempt.AttemptId,
+                attemptAnswerGroup.Sum(item => (decimal?)item.MarksAwarded) ?? 0m))
+            .ToListAsync(cancellationToken);
+    }
 
+    public async Task PersistAttemptEvaluationAsync(
+        Attempt attempt,
+        Result result,
+        IReadOnlyDictionary<Guid, int> rankByAttemptId,
+        CancellationToken cancellationToken = default)
+    {
         await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
-        if (await _context.Results.AnyAsync(item => item.AttemptId == attemptId, cancellationToken))
+        try
         {
-            throw new InvalidOperationException($"A result already exists for attempt '{attemptId}'.");
+            _context.Results.Add(result);
+
+            var existingResults = await _context.Results
+                .Where(item => item.AssessmentId == result.AssessmentId)
+                .ToListAsync(cancellationToken);
+
+            foreach (var existingResult in existingResults)
+            {
+                if (rankByAttemptId.TryGetValue(existingResult.AttemptId, out var rank))
+                {
+                    existingResult.Rank = rank;
+                }
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
         }
-
-        var attempt = await _context.Attempts
-            .FirstOrDefaultAsync(item => item.AttemptId == attemptId, cancellationToken)
-            ?? throw new KeyNotFoundException($"Attempt '{attemptId}' was not found.");
-
-        if (attempt.AttemptStatus is not (AttemptStatus.Submitted or AttemptStatus.Auto_Submitted))
+        catch (DbUpdateException ex) when (IsDuplicateAttemptResult(ex))
         {
-            throw new InvalidOperationException("Only submitted attempts can be evaluated.");
+            throw new InvalidOperationException(
+                $"A result already exists for attempt '{result.AttemptId}'.",
+                ex);
         }
-
-        var assessment = await _context.Assessments
-            .AsNoTracking()
-            .FirstOrDefaultAsync(item => item.AssessmentId == attempt.AssessmentId, cancellationToken)
-            ?? throw new KeyNotFoundException($"Assessment '{attempt.AssessmentId}' was not found for the attempt.");
-
-        var questionContexts = await (
-            from assessmentQuestion in _context.AssessmentQuestions.AsNoTracking()
-            join question in _context.Questions.AsNoTracking()
-                on assessmentQuestion.QuestionId equals question.QuestionId
-            where assessmentQuestion.AssessmentId == attempt.AssessmentId
-            select new AssessmentQuestionEvaluationContext(
-                question.QuestionId,
-                question.QuestionType,
-                question.Answer,
-                question.Marks,
-                question.NegativeMarks))
-            .ToListAsync(cancellationToken);
-
-        if (questionContexts.Count == 0)
-        {
-            throw new InvalidOperationException("No questions were found for this assessment attempt.");
-        }
-
-        var attemptAnswers = await _context.AttemptAnswers
-            .Where(item => item.AttemptId == attempt.AttemptId)
-            .ToListAsync(cancellationToken);
-
-        var attemptAnswerByQuestionId = attemptAnswers.ToDictionary(item => item.QuestionId);
-
-        var totalMarks = questionContexts.Sum(item => item.Marks);
-        decimal obtainedMarks = 0;
-        var correctAnswers = 0;
-        var wrongAnswers = 0;
-        var attemptedQuestions = 0;
-        var hasCodingQuestions = false;
-
-        foreach (var question in questionContexts)
-        {
-            attemptAnswerByQuestionId.TryGetValue(question.QuestionId, out var attemptAnswer);
-
-            var strategy = _strategyFactory.Resolve(question.QuestionType);
-            var evaluation = strategy.Evaluate(question, attemptAnswer);
-
-            if (string.Equals(question.QuestionType, "coding", StringComparison.OrdinalIgnoreCase))
-            {
-                hasCodingQuestions = true;
-            }
-
-            if (evaluation.IsAnswered)
-            {
-                attemptedQuestions++;
-            }
-
-            if (evaluation.ShouldUpdateAttemptAnswer && attemptAnswer is not null)
-            {
-                attemptAnswer.IsCorrect = evaluation.IsCorrect;
-                attemptAnswer.MarksAwarded = evaluation.AwardedMarks;
-            }
-
-            if (evaluation.IsPending)
-            {
-                continue;
-            }
-
-            obtainedMarks += evaluation.AwardedMarks;
-
-            if (!evaluation.IsAnswered)
-            {
-                continue;
-            }
-
-            if (evaluation.IsCorrect)
-            {
-                correctAnswers++;
-            }
-            else
-            {
-                wrongAnswers++;
-            }
-        }
-
-        var unansweredQuestions = Math.Max(0, questionContexts.Count - attemptedQuestions);
-        var percentage = totalMarks <= 0
-            ? 0
-            : Math.Round((obtainedMarks / totalMarks) * 100m, 2, MidpointRounding.AwayFromZero);
-        var resultStatus = hasCodingQuestions
-            ? ResultStatus.Pending
-            : percentage >= GetPassingPercentage() ? ResultStatus.Pass : ResultStatus.Fail;
-
-        attempt.CorrectAnswers = correctAnswers;
-        attempt.WrongAnswers = wrongAnswers;
-        attempt.AttemptedQuestions = attemptedQuestions;
-        attempt.UnansweredQuestions = unansweredQuestions;
-        attempt.TotalScore = obtainedMarks;
-        attempt.Percentage = percentage;
-        attempt.IsPassed = resultStatus == ResultStatus.Pass;
-
-        var result = new Result
-        {
-            ResultId = Guid.NewGuid(),
-            AssessmentId = attempt.AssessmentId,
-            AttemptId = attempt.AttemptId,
-            StudentId = attempt.StudentId,
-            TotalMarks = totalMarks,
-            ObtainedMarks = obtainedMarks,
-            Percentage = percentage,
-            Rank = 0,
-            ResultStatus = resultStatus,
-            GeneratedAt = DateTime.UtcNow
-        };
-
-        _context.Results.Add(result);
-        await _context.SaveChangesAsync(cancellationToken);
-
-        await RecalculateRanksAsync(assessment.AssessmentId, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-
-        return result.ToAttemptResultResponse(hasCodingQuestions);
-    }
-
-    public async Task<AttemptResultResponse> GetAttemptResultAsync(
-        Guid attemptId,
-        CancellationToken cancellationToken = default)
-    {
-        if (attemptId == Guid.Empty)
-        {
-            throw new ArgumentException("Attempt id is required.");
-        }
-
-        var result = await _context.Results
-            .AsNoTracking()
-            .FirstOrDefaultAsync(item => item.AttemptId == attemptId, cancellationToken)
-            ?? throw new KeyNotFoundException($"Result was not found for attempt '{attemptId}'.");
-
-        return result.ToAttemptResultResponse(result.ResultStatus == ResultStatus.Pending);
     }
 
     public async Task<List<StudentResultResponse>> GetStudentResultsAsync(
@@ -215,31 +126,10 @@ public class ResultManager : IResultManager
             .ToList();
     }
 
-    private async Task RecalculateRanksAsync(Guid assessmentId, CancellationToken cancellationToken)
+    private static bool IsDuplicateAttemptResult(DbUpdateException exception)
     {
-        var rankedResults = await _context.Results
-            .Where(item => item.AssessmentId == assessmentId)
-            .OrderByDescending(item => item.ObtainedMarks)
-            .ThenByDescending(item => item.Percentage)
-            .ThenBy(item => item.GeneratedAt)
-            .ThenBy(item => item.ResultId)
-            .ToListAsync(cancellationToken);
-
-        for (var index = 0; index < rankedResults.Count; index++)
-        {
-            rankedResults[index].Rank = index + 1;
-        }
-    }
-
-    private decimal GetPassingPercentage()
-    {
-        var configuredValue = _resultEvaluationSettings.PassingPercentage;
-        if (configuredValue is < 0m or > 100m)
-        {
-            throw new InvalidOperationException(
-                $"Configured passing percentage '{configuredValue}' is invalid. It must be between 0 and 100.");
-        }
-
-        return configuredValue;
+        return exception.InnerException is PostgresException postgresException &&
+               postgresException.SqlState == PostgresErrorCodes.UniqueViolation &&
+               string.Equals(postgresException.ConstraintName, "IX_results_attempt_id", StringComparison.Ordinal);
     }
 }

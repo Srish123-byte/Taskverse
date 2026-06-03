@@ -345,13 +345,23 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         }
 
         var message = ExtractMessage(result.Value) ?? $"GetSubjectTopicCatalog failed with status {result.StatusCode}.";
+        var detail = ExtractDetail(result.Value);
 
-        throw result.StatusCode switch
+        Exception exception = result.StatusCode switch
         {
             StatusCodes.Status400BadRequest => new ArgumentException(message),
             StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
             _ => new Exception(message)
         };
+
+        if (!string.IsNullOrWhiteSpace(detail))
+        {
+            exception.Data["Detail"] = detail;
+        }
+
+        exception.Data["DownstreamStatusCode"] = result.StatusCode;
+
+        throw exception;
     }
 
     public async Task<AssessmentAssignmentCatalogDto> GetTrainerAssignedClassesAndBatches(AssessmentBootstrapDto dto)

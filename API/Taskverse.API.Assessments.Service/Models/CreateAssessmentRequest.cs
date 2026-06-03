@@ -44,6 +44,10 @@ public class CreateAssessmentRequest
     [JsonPropertyName("negative_marking")]
     public bool NegativeMarking { get; set; }
 
+    [Range(0, 100)]
+    [JsonPropertyName("passing_percentage")]
+    public int PassingPercentage { get; set; } = 50;
+
     [JsonPropertyName("assigned_batch_ids")]
     public Guid[] AssignedBatchIds { get; set; } = [];
 
@@ -106,6 +110,10 @@ public class PublishAssessmentRequest
 
     [JsonPropertyName("negative_marking")]
     public bool NegativeMarking { get; set; }
+
+    [Range(0, 100)]
+    [JsonPropertyName("passing_percentage")]
+    public int PassingPercentage { get; set; } = 50;
 
     [JsonPropertyName("assigned_batch_ids")]
     public Guid[] AssignedBatchIds { get; set; } = [];
@@ -177,6 +185,10 @@ public class UpdateAssessmentRequest
 
     [JsonPropertyName("negative_marking")]
     public bool NegativeMarking { get; set; }
+
+    [Range(0, 100)]
+    [JsonPropertyName("passing_percentage")]
+    public int PassingPercentage { get; set; } = 50;
 
     [JsonPropertyName("assigned_batch_ids")]
     public Guid[] AssignedBatchIds { get; set; } = [];
@@ -261,6 +273,8 @@ public record AssessmentRecord(
     bool AllowLateEntry,
     [property: JsonPropertyName("show_results_immediately")]
     bool ShowResultsImmediately,
+    [property: JsonPropertyName("passing_percentage")]
+    int PassingPercentage,
     [property: JsonPropertyName("allow_question_review")]
     bool AllowQuestionReview,
     [property: JsonPropertyName("negative_marking")]

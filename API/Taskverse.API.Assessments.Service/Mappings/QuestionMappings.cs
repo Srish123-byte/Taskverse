@@ -95,7 +95,14 @@ public static class QuestionMappings
             return null;
         }
 
-        return JsonSerializer.Deserialize<List<string>>(options);
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(options);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static string? NormalizeWhitespace(string? value)

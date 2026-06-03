@@ -1,6 +1,0 @@
-@Taskverse.API.Reports.Service_HostAddress = http://localhost:5219
-
-GET {{Taskverse.API.Reports.Service_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

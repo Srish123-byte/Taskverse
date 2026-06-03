@@ -142,7 +142,7 @@ public class QuestionManager : IQuestionManager
             throw new KeyNotFoundException($"Question with id '{questionId}' was not found.");
         }
 
-        await EnsureQuestionIsNotInLiveAssessmentAsync(question.QuestionId, question.AssessmentId);
+        await EnsureQuestionIsNotInLiveAssessmentAsync(question.QuestionId);
         await SubjectTopicResolver.PopulateQuestionSubjectTopicIdsAsync(_context, [question]);
 
         return question;
@@ -160,7 +160,7 @@ public class QuestionManager : IQuestionManager
             throw new KeyNotFoundException($"Question with id '{questionId}' was not found.");
         }
 
-        await EnsureQuestionIsNotInLiveAssessmentAsync(existingQuestion.QuestionId, existingQuestion.AssessmentId);
+        await EnsureQuestionIsNotInLiveAssessmentAsync(existingQuestion.QuestionId);
 
         if (IsTrainer(requesterRole) &&
             !string.Equals(existingQuestion.CreatedBy?.Trim(), updatedQuestion.CreatedBy?.Trim(), StringComparison.OrdinalIgnoreCase))
@@ -189,20 +189,8 @@ public class QuestionManager : IQuestionManager
         return string.Equals(requesterRole?.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase);
     }
 
-    private async Task EnsureQuestionIsNotInLiveAssessmentAsync(Guid questionId, Guid? assessmentId)
+    private async Task EnsureQuestionIsNotInLiveAssessmentAsync(Guid questionId)
     {
-        if (assessmentId.HasValue && assessmentId.Value != Guid.Empty)
-        {
-            var linkedAssessment = await _context.Assessments
-                .AsNoTracking()
-                .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId.Value);
-
-            if (linkedAssessment?.AssessmentStatus == AssessmentStatus.Live)
-            {
-                throw new InvalidOperationException("This question cannot be edited because it is included in a live assessment.");
-            }
-        }
-
         var liveAssessmentLinkExists = await _context.AssessmentQuestions
             .AsNoTracking()
             .Join(
@@ -311,26 +299,6 @@ public class QuestionManager : IQuestionManager
         var statusSet = new HashSet<AssessmentStatus>();
         var questionList = questions.ToList();
         var questionIds = questionList.Select(question => question.QuestionId).ToList();
-
-        var directAssessmentIds = questionList
-            .Where(question => question.AssessmentId.HasValue && question.AssessmentId.Value != Guid.Empty)
-            .Select(question => question.AssessmentId!.Value)
-            .Distinct()
-            .ToList();
-
-        if (directAssessmentIds.Count > 0)
-        {
-            var directStatuses = await _context.Assessments
-                .AsNoTracking()
-                .Where(item => directAssessmentIds.Contains(item.AssessmentId))
-                .Select(item => item.AssessmentStatus)
-                .ToListAsync();
-
-            foreach (var status in directStatuses)
-            {
-                statusSet.Add(status);
-            }
-        }
 
         var linkedStatuses = await _context.AssessmentQuestions
             .AsNoTracking()

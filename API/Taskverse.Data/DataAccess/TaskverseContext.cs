@@ -259,6 +259,7 @@ public class TaskverseContext : DbContext
             entity.Property(a => a.AssignedBatchIds).HasColumnName("assigned_batch_ids").HasColumnType("uuid[]");
             entity.Property(a => a.AllowLateEntry).HasColumnName("allow_late_entry");
             entity.Property(a => a.ShowResultsImmediately).HasColumnName("show_results_immediately");
+            entity.Property(a => a.PassingPercentage).HasColumnName("passing_percentage").HasDefaultValue(50);
             entity.Property(a => a.AllowQuestionReview).HasColumnName("allow_question_review");
             entity.Property(a => a.NegativeMarking).HasColumnName("negative_marking");
             entity.Property(a => a.IsTotalMarksAutoCalculated).HasColumnName("is_total_marks_auto_calculated");
@@ -336,7 +337,6 @@ public class TaskverseContext : DbContext
             entity.Property(a => a.AttemptId).HasColumnName("attempt_id").HasDefaultValueSql("gen_random_uuid()");
             entity.Property(a => a.AssessmentId).HasColumnName("assessment_id");
             entity.Property(a => a.StudentId).HasColumnName("student_id");
-            entity.Property(a => a.QuestionId).HasColumnName("question_id");
             entity.Property(a => a.StartedAt).HasColumnName("started_at");
             entity.Property(a => a.SubmittedAt).HasColumnName("submitted_at");
             entity.Property(a => a.LastActivityAt).HasColumnName("last_activity_at");
@@ -355,16 +355,9 @@ public class TaskverseContext : DbContext
 
             entity.HasIndex(a => a.AssessmentId);
             entity.HasIndex(a => a.StudentId);
-            entity.HasIndex(a => a.QuestionId);
             entity.HasIndex(a => new { a.AssessmentId, a.StudentId })
                 .IsUnique()
                 .HasDatabaseName("ux_attempts_assessment_student");
-
-            entity.HasOne(a => a.Question)
-                .WithMany(q => q.Attempts)
-                .HasForeignKey(a => a.QuestionId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("fk_attempts_question");
         });
 
         // Configure Question entity
@@ -374,7 +367,6 @@ public class TaskverseContext : DbContext
             entity.HasKey(q => q.QuestionId);
             entity.Property(q => q.QuestionId).HasColumnName("question_id").HasDefaultValueSql("gen_random_uuid()");
             entity.Property(q => q.CollegeId).HasColumnName("college_id");
-            entity.Property(q => q.AssessmentId).HasColumnName("assessment_id");
             entity.Property(q => q.Stream).HasColumnName("stream").HasMaxLength(100);
             entity.Property(q => q.Subject).HasColumnName("subject").HasMaxLength(100);
             entity.Property(q => q.Topic).HasColumnName("topic").HasMaxLength(200);
@@ -394,7 +386,6 @@ public class TaskverseContext : DbContext
             entity.Property(q => q.Version).HasColumnName("version").HasDefaultValue(1).ValueGeneratedOnAdd();
 
             entity.HasIndex(q => q.CollegeId);
-            entity.HasIndex(q => q.AssessmentId);
             entity.HasIndex(q => q.QuestionType);
             entity.HasIndex(q => q.IsActive);
         });
@@ -416,7 +407,7 @@ public class TaskverseContext : DbContext
             entity.Property(r => r.GeneratedAt).HasColumnName("generated_at").HasDefaultValueSql("now()");
 
             entity.HasIndex(r => r.AssessmentId);
-            entity.HasIndex(r => r.AttemptId);
+            entity.HasIndex(r => r.AttemptId).IsUnique();
             entity.HasIndex(r => r.StudentId);
         });
 

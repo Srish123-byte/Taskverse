@@ -3,7 +3,6 @@ import { ChangeDetectorRef, Component, HostBinding, Input, OnInit } from '@angul
 import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { forkJoin } from 'rxjs';
 import {
   AssessmentAdminService,
   AssessmentSubjectTopicCatalog,
@@ -66,6 +65,7 @@ export class QuestionEditorComponent implements OnInit {
   isEditMode = false;
   successMessage = '';
   errorMessage = '';
+  private pendingLoadCount = 0;
   private questionId = '';
   private fallbackReturnUrl = '';
 
@@ -370,61 +370,39 @@ export class QuestionEditorComponent implements OnInit {
   }
 
   private loadExistingValues(): void {
-    if (this.isLoading) {
-      return;
-    }
-
-    this.isLoading = true;
-
-    forkJoin({
-      questionBank: this.assessmentAdminService.searchQuestionBank({
-        pageNumber: 1,
-        pageSize: 100
-      }),
-      subjectCatalog: this.assessmentAdminService.getSubjectTopicCatalog()
-    }).subscribe({
-      next: ({ questionBank, subjectCatalog }) => {
-        this.applyExistingValues(questionBank, subjectCatalog);
-      },
-      error: () => {
-        this.subjectCatalog = { subjects: [] };
-        this.subjectOptions = [];
-        this.topicOptions = [];
-        this.streamOptions = [];
-        this.isLoading = false;
-        this.changeDetectorRef.detectChanges();
-      }
-    });
+    this.loadQuestionBankOptions();
+    this.loadSubjectTopicCatalog();
   }
 
   private loadQuestionForEdit(): void {
-    this.isLoading = true;
+    this.beginLoading();
     this.errorMessage = '';
 
     this.assessmentAdminService.getQuestion(this.questionId, true).subscribe({
       next: question => {
         this.patchFormFromQuestion(question);
-        this.isLoading = false;
+        this.endLoading();
         this.changeDetectorRef.detectChanges();
       },
       error: error => {
         this.errorMessage = this.getQuestionEditErrorMessage(error, 'load');
-        this.isLoading = false;
+        this.endLoading();
         this.changeDetectorRef.detectChanges();
       }
     });
   }
 
-  private applyExistingValues(
-    result: PagedQuestionBankResult,
-    subjectCatalog: AssessmentSubjectTopicCatalog
-  ): void {
+  private applyQuestionBankValues(result: PagedQuestionBankResult): void {
     this.streamOptions = this.toDistinctSortedValues(result.items.map(item => item.stream));
     this.questionBankSubjectOptions = this.toDistinctSortedValues(result.items.map(item => item.subject));
     this.questionBankTopicOptions = this.toDistinctSortedValues(result.items.map(item => item.topic));
+    this.syncClassificationSelections();
+    this.changeDetectorRef.detectChanges();
+  }
+
+  private applySubjectCatalog(subjectCatalog: AssessmentSubjectTopicCatalog): void {
     this.subjectCatalog = subjectCatalog ?? { subjects: [] };
     this.syncClassificationSelections();
-    this.isLoading = false;
     this.changeDetectorRef.detectChanges();
   }
 
@@ -658,5 +636,56 @@ export class QuestionEditorComponent implements OnInit {
 
   private usesOptionLabelAnswer(questionType: QuestionType): boolean {
     return questionType === 'mcq' || questionType === 'fill in the blanks';
+  }
+
+  private loadQuestionBankOptions(): void {
+    this.beginLoading();
+
+    this.assessmentAdminService.searchQuestionBank({
+      pageNumber: 1,
+      pageSize: 100
+    }).subscribe({
+      next: result => {
+        this.applyQuestionBankValues(result);
+        this.endLoading();
+      },
+      error: error => {
+        console.error('Failed to load question bank bootstrap data.', error);
+        this.streamOptions = [];
+        this.questionBankSubjectOptions = [];
+        this.questionBankTopicOptions = [];
+        this.syncClassificationSelections();
+        this.endLoading();
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
+  private loadSubjectTopicCatalog(): void {
+    this.beginLoading();
+
+    this.assessmentAdminService.getSubjectTopicCatalog().subscribe({
+      next: subjectCatalog => {
+        this.applySubjectCatalog(subjectCatalog);
+        this.endLoading();
+      },
+      error: error => {
+        console.error('Failed to load subject-topic catalog bootstrap data.', error);
+        this.subjectCatalog = { subjects: [] };
+        this.syncClassificationSelections();
+        this.endLoading();
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
+  private beginLoading(): void {
+    this.pendingLoadCount += 1;
+    this.isLoading = true;
+  }
+
+  private endLoading(): void {
+    this.pendingLoadCount = Math.max(0, this.pendingLoadCount - 1);
+    this.isLoading = this.pendingLoadCount > 0;
   }
 }

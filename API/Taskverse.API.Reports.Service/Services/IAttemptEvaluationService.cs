@@ -2,9 +2,10 @@ using Taskverse.API.Reports.Service.Models;
 
 namespace Taskverse.API.Reports.Service.Services;
 
-public interface IResultEvaluationService
+public interface IAttemptEvaluationService
 {
-    Task<AttemptResultResponse> EvaluateAttemptAsync(
+    Task<AttemptEvaluationExecutionResult> EvaluateAttemptAsync(
         Guid attemptId,
+        int passingPercentage,
         CancellationToken cancellationToken = default);
 }

@@ -27,6 +27,23 @@ public record AttemptResultResponse(
     [property: JsonPropertyName("has_pending_coding_evaluation")]
     bool HasPendingCodingEvaluation);
 
+public record EvaluateAttemptRequest(
+    [property: JsonPropertyName("attempt_id")]
+    Guid AttemptId,
+    [property: JsonPropertyName("passing_percentage")]
+    int PassingPercentage);
+
+public record AttemptEvaluationExecutionResult(
+    AttemptResultResponse? Result,
+    bool WasSkipped)
+{
+    public static AttemptEvaluationExecutionResult Completed(AttemptResultResponse result)
+        => new(result, false);
+
+    public static AttemptEvaluationExecutionResult Skipped()
+        => new(null, true);
+}
+
 public record StudentResultResponse(
     [property: JsonPropertyName("result_id")]
     Guid ResultId,
@@ -107,3 +124,12 @@ public record QuestionEvaluationResult(
     bool IsCorrect,
     decimal AwardedMarks,
     bool ShouldUpdateAttemptAnswer);
+
+public record AttemptEvaluationSummary(
+    decimal ObtainedMarks,
+    decimal Percentage,
+    ResultStatus ResultStatus);
+
+public record SubmittedAttemptScoreSnapshot(
+    Guid AttemptId,
+    decimal ObtainedMarks);

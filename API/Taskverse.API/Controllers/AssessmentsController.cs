@@ -22,18 +22,15 @@ public class AssessmentsController : TaskverseBaseController
     private const string TrainerRole = "Trainer";
 
     private readonly IAssessmentOrchestrator _assessmentOrchestrator;
-    private readonly IReportsOrchestrator _reportsOrchestrator;
     private readonly IDbContextFactory<TaskverseContext> _dbContextFactory;
     private readonly ILogger<AssessmentsController> _logger;
 
     public AssessmentsController(
         IAssessmentOrchestrator assessmentOrchestrator,
-        IReportsOrchestrator reportsOrchestrator,
         IDbContextFactory<TaskverseContext> dbContextFactory,
         ILogger<AssessmentsController> logger)
     {
         _assessmentOrchestrator = assessmentOrchestrator;
-        _reportsOrchestrator = reportsOrchestrator;
         _dbContextFactory = dbContextFactory;
         _logger = logger;
     }
@@ -110,8 +107,14 @@ public class AssessmentsController : TaskverseBaseController
         }
         catch (Exception ex)
         {
-            var detail = ex.GetBaseException().Message;
-            return Problem(detail: detail, title: detail);
+            var detail = ex.Data["Detail"]?.ToString() ?? ex.GetBaseException().Message;
+            var downstreamStatusCode = ex.Data["DownstreamStatusCode"] as int?;
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = ex.Message,
+                detail,
+                downstreamStatusCode
+            });
         }
     }
 
@@ -163,8 +166,12 @@ public class AssessmentsController : TaskverseBaseController
         }
         catch (Exception ex)
         {
-            var detail = ex.GetBaseException().Message;
-            return Problem(detail: detail, title: detail);
+            var detail = ex.Data["Detail"]?.ToString() ?? ex.GetBaseException().Message;
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = ex.Message,
+                detail
+            });
         }
     }
 
@@ -554,8 +561,12 @@ public class AssessmentsController : TaskverseBaseController
         }
         catch (Exception ex)
         {
-            var detail = ex.GetBaseException().Message;
-            return Problem(detail: detail, title: detail);
+            var detail = ex.Data["Detail"]?.ToString() ?? ex.GetBaseException().Message;
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = ex.Message,
+                detail
+            });
         }
     }
 
@@ -980,55 +991,6 @@ public class AssessmentsController : TaskverseBaseController
     }
 
     /// <summary>
-    /// Returns published assessment results for the specified student.
-    /// </summary>
-    /// <param name="studentId">The student identifier.</param>
-    /// <returns>The student's result list.</returns>
-    [HttpGet("/api/students/{studentId:guid}/results")]
-    [HttpGet("/api/student/{studentId:guid}/results")]
-    [SwaggerResponse(200, "Available results for the specified student", typeof(List<StudentResultResponseModel>))]
-    [SwaggerResponse(400, "Invalid student id")]
-    [SwaggerResponse(403, "Forbidden")]
-    [SwaggerResponse(503, "Reports microservice is unavailable")]
-    [SwaggerResponse(500, "Unexpected error")]
-    public async Task<IActionResult> GetStudentResults(Guid studentId)
-    {
-        var accessCheck = EnsureStudentResultsAccess(studentId);
-        if (accessCheck is not null) return accessCheck;
-
-        if (studentId == Guid.Empty)
-        {
-            return BadRequest(new { message = "Student id is required." });
-        }
-
-        try
-        {
-            var dtos = await _reportsOrchestrator.GetStudentResults(studentId);
-            return Ok(dtos.Select(dto => dto.ToResponseModel()).ToList());
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (HttpRequestException ex)
-        {
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            var detail = ex.GetBaseException().Message;
-            _logger.LogError(
-                ex,
-                "Unhandled student results retrieval error for studentId={StudentId}",
-                studentId);
-            return Problem(
-                detail: detail,
-                title: detail,
-                statusCode: StatusCodes.Status500InternalServerError);
-        }
-    }
-
-    /// <summary>
     /// Returns the assessment detail required by the logged-in student to begin or continue an attempt.
     /// </summary>
     /// <param name="assessmentId">The assessment identifier.</param>
@@ -1385,32 +1347,6 @@ public class AssessmentsController : TaskverseBaseController
         }
 
         return null;
-    }
-
-    private IActionResult? EnsureStudentResultsAccess(Guid studentId)
-    {
-        if (User?.Identity?.IsAuthenticated != true)
-        {
-            return Forbid();
-        }
-
-        if (User.IsInRole(SuperAdminRole) ||
-            User.IsInRole(CollegeAdminRole) ||
-            User.IsInRole(TrainerRole))
-        {
-            return null;
-        }
-
-        if (User.IsInRole("Student"))
-        {
-            var currentUserId = GetCurrentUserId();
-            if (currentUserId.HasValue && currentUserId.Value == studentId)
-            {
-                return null;
-            }
-        }
-
-        return Forbid();
     }
 
     private IActionResult? EnsureSuperAdminOrCollegeAdminOrTrainerAccess()
