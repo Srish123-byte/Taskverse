@@ -369,6 +369,10 @@ public record StudentAssessmentListItemModel(
     Guid AssessmentId,
     [property: JsonProperty("assessment_name")]
     string AssessmentName,
+    [property: JsonProperty("subject_name")]
+    string? SubjectName,
+    [property: JsonProperty("topic_name")]
+    string? TopicName,
     [property: JsonProperty("assessment_status")]
     string AssessmentStatus,
     [property: JsonProperty("duration_minutes")]

@@ -188,6 +188,8 @@ public static class AssessmentMappings
         return new StudentAssessmentListItemRecord(
             assessment.AssessmentId,
             assessment.AssessmentName,
+            assessment.Subject?.SubjectName ?? assessment.SubjectName,
+            assessment.Topic?.TopicName ?? assessment.TopicName,
             assessmentStatus,
             assessment.DurationMinutes,
             assessment.TotalMarks,

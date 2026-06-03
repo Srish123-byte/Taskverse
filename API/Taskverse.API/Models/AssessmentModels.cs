@@ -264,6 +264,8 @@ public class StudentAssessmentListResponseModel
 {
     public Guid AssessmentId { get; set; }
     public string AssessmentName { get; set; } = string.Empty;
+    public string? SubjectName { get; set; }
+    public string? TopicName { get; set; }
     public string AssessmentStatus { get; set; } = string.Empty;
     public int DurationMinutes { get; set; }
     public int TotalMarks { get; set; }

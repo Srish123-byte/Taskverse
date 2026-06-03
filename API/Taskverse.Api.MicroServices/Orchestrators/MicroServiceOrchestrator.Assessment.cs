@@ -109,7 +109,7 @@ public partial class MicroServiceOrchestrator
             .Select(status => $"assessmentStatuses={Uri.EscapeDataString(status)}");
 
         var query = string.Join("&", normalizedStatuses);
-        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/student/assessments";
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/students/assessments";
         if (!string.IsNullOrWhiteSpace(query))
         {
             url = $"{url}?{query}";
@@ -121,7 +121,7 @@ public partial class MicroServiceOrchestrator
     public async Task<ObjectResult> GetStudentAssessmentDetail(Guid assessmentId, Guid studentUserId)
     {
         var url =
-            $"{GetMicroServiceUrl(MicroService.Assessment)}api/student/assessments/{assessmentId}?studentUserId={studentUserId}";
+            $"{GetMicroServiceUrl(MicroService.Assessment)}api/students/assessments/{assessmentId}?studentUserId={studentUserId}";
 
         return await Get<StudentAssessmentDetailModel>(url);
     }
@@ -129,7 +129,7 @@ public partial class MicroServiceOrchestrator
     public async Task<ObjectResult> StartStudentAssessment(Guid assessmentId, Guid studentUserId)
     {
         var url =
-            $"{GetMicroServiceUrl(MicroService.Assessment)}api/student/assessments/{assessmentId}/start?studentUserId={studentUserId}";
+            $"{GetMicroServiceUrl(MicroService.Assessment)}api/students/assessments/{assessmentId}/start?studentUserId={studentUserId}";
 
         return await Post<StudentAssessmentStartModel>(url, new { });
     }
@@ -137,7 +137,7 @@ public partial class MicroServiceOrchestrator
     public async Task<ObjectResult> GetStudentAttemptRecovery(Guid attemptId, Guid studentUserId)
     {
         var url =
-            $"{GetMicroServiceUrl(MicroService.Assessment)}api/student/attempts/{attemptId}?studentUserId={studentUserId}";
+            $"{GetMicroServiceUrl(MicroService.Assessment)}api/students/attempts/{attemptId}?studentUserId={studentUserId}";
 
         return await Get<StudentAttemptRecoveryModel>(url);
     }
@@ -149,7 +149,7 @@ public partial class MicroServiceOrchestrator
         SaveStudentAttemptAnswerModel model)
     {
         var url =
-            $"{GetMicroServiceUrl(MicroService.Assessment)}api/student/attempts/{attemptId}/{questionId}/answers?studentUserId={studentUserId}";
+            $"{GetMicroServiceUrl(MicroService.Assessment)}api/students/attempts/{attemptId}/{questionId}/answers?studentUserId={studentUserId}";
 
         return await Put<StudentAttemptAnswerModel>(url, model);
     }
@@ -157,7 +157,7 @@ public partial class MicroServiceOrchestrator
     public async Task<ObjectResult> SubmitStudentAttempt(Guid attemptId, Guid studentUserId)
     {
         var url =
-            $"{GetMicroServiceUrl(MicroService.Assessment)}api/student/attempts/{attemptId}/submit?studentUserId={studentUserId}";
+            $"{GetMicroServiceUrl(MicroService.Assessment)}api/students/attempts/{attemptId}/submit?studentUserId={studentUserId}";
 
         return await Post<StudentAttemptSubmitModel>(url, new { });
     }

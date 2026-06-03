@@ -7,6 +7,8 @@ import { HttpClientService } from '../http/http-client.service';
 export interface StudentAssessmentItem {
   assessmentId: string;
   assessmentName: string;
+  subjectName?: string | null;
+  topicName?: string | null;
   assessmentStatus: string;
   durationMinutes: number;
   totalMarks: number;
@@ -15,9 +17,19 @@ export interface StudentAssessmentItem {
   endDateTime?: string | null;
 }
 
+export interface StudentAssessmentDetail {
+  assessmentName: string;
+  durationMinutes: number;
+  totalMarks: number;
+  totalQuestions: number;
+  startTime?: string | null;
+  endTime?: string | null;
+  instructions?: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class StudentAssessmentsService {
-  private readonly url = 'student/assessments';
+  private readonly url = 'students/assessments';
   private readonly assessmentsCache = new Map<string, StudentAssessmentItem[]>();
   private readonly inFlightRequests = new Map<string, Observable<StudentAssessmentItem[]>>();
   private readonly assessmentsCacheResetSubject = new Subject<void>();
@@ -64,6 +76,10 @@ export class StudentAssessmentsService {
     this.assessmentsCache.clear();
     this.inFlightRequests.clear();
     this.assessmentsCacheResetSubject.next();
+  }
+
+  getAssessmentDetail(assessmentId: string): Observable<StudentAssessmentDetail> {
+    return this.http.get<StudentAssessmentDetail>(`${this.url}/${assessmentId}`);
   }
 
   private getCacheKey(assessmentStatuses: string[]): string {
