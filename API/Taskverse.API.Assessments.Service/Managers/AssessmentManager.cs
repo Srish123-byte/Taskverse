@@ -1076,8 +1076,6 @@ public class AssessmentManager : IAssessmentManager
 
         var query = _context.Batches
             .AsNoTracking()
-            .Include(batch => batch.Class)
-            .Include(batch => batch.SubjectBatches)
             .Where(batch => batch.CollegeId == request.CollegeId);
 
         if (!string.Equals(normalizedRole, "Trainer", StringComparison.OrdinalIgnoreCase))
@@ -1085,14 +1083,17 @@ public class AssessmentManager : IAssessmentManager
             return query;
         }
 
-        var trainerId = _context.Trainers
+        // Build a subquery for batch IDs assigned to this trainer, avoiding the
+        // navigation-property filter (batch.TrainerBatches.Any(...)) which can cause
+        // EF Core translation errors when combined with .Include() on the same property.
+        var assignedBatchIds = _context.TrainerBatches
             .AsNoTracking()
-            .Where(trainer =>
-                trainer.UserId == request.RequesterUserId &&
-                trainer.CollegeId == request.CollegeId)
-            .Select(trainer => trainer.TrainerId);
+            .Where(link =>
+                link.Trainer.UserId == request.RequesterUserId &&
+                link.Trainer.CollegeId == request.CollegeId)
+            .Select(link => link.BatchId);
 
-        return query.Where(batch => batch.TrainerBatches.Any(link => trainerId.Contains(link.TrainerId)));
+        return query.Where(batch => assignedBatchIds.Contains(batch.BatchId));
     }
 
     private static void ValidateAccessibleBatchesRequest(AssessmentAccessibleBatchesRequest request)
