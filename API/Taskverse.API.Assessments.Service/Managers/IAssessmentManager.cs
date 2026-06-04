@@ -57,13 +57,6 @@ public interface IAssessmentManager
     Task<Assessment> PublishAssessment(Guid assessmentId);
 
     /// <summary>
-    /// Builds the subject and topic catalog available to the current requester.
-    /// </summary>
-    /// <param name="request">The requester context used to scope accessible batches.</param>
-    /// <returns>The accessible subject-topic catalog.</returns>
-    Task<AssessmentSubjectTopicCatalogRecord> GetSubjectTopicCatalog(AssessmentAccessibleBatchesRequest request);
-
-    /// <summary>
     /// Builds the class and batch catalog assigned to a trainer.
     /// </summary>
     /// <param name="request">The requester context used to scope trainer assignments.</param>
@@ -71,12 +64,13 @@ public interface IAssessmentManager
     Task<AssessmentAssignmentCatalogRecord> GetTrainerAssignedClassesAndBatches(AssessmentAccessibleBatchesRequest request);
 
     /// <summary>
-    /// Searches assessments for management screens using the supplied filters and paging settings.
+    /// Searches assessments visible to the requester, excluding soft-deleted rows.
     /// </summary>
-    /// <param name="request">The assessment search request.</param>
-    /// <returns>The paged assessment search result.</returns>
-    Task<AssessmentManagementSearchResultRecord> SearchAssessments(AssessmentManagementSearchRequest request);
+    /// <param name="request">The assessment search filters and requester context.</param>
+    /// <returns>The paged assessments result with summary counts.</returns>
+    Task<PagedAssessmentSearchRecord> SearchAssessments(AssessmentSearchRequest request);
 
+    /// <summary>
     /// <summary>
     /// Returns a paged list of questions linked to an assessment.
     /// </summary>

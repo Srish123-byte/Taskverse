@@ -14,10 +14,10 @@ public interface IAssessmentOrchestrator
     Task<AssessmentQuestionDto> GetQuestion(Guid questionId, Guid collegeId);
     Task<AssessmentQuestionDto> UpdateQuestion(Guid questionId, CreateQuestionDto dto);
     Task<List<Guid>> DeleteQuestions(DeleteQuestionsDto dto);
-    Task<AssessmentSubjectTopicCatalogDto> GetSubjectTopicCatalog(AssessmentBootstrapDto dto);
     Task<AssessmentAssignmentCatalogDto> GetTrainerAssignedClassesAndBatches(AssessmentBootstrapDto dto);
+    Task<QuestionClassificationCatalogDto> GetQuestionClassificationCatalog();
     Task<PagedQuestionBankDto> SearchQuestionBank(QuestionBankSearchDto dto);
-    Task<AssessmentManagementSearchResultDto> SearchAssessments(AssessmentManagementSearchDto dto);
+    Task<PagedAssessmentSearchDto> SearchAssessments(AssessmentSearchDto dto);
     Task<PagedAssessmentQuestionListDto> GetAssessmentQuestionList(Guid assessmentId, int pageNumber, int pageSize);
     Task<List<StudentAssessmentListItemDto>> GetStudentAssessments(Guid studentUserId, IReadOnlyCollection<string> assessmentStatuses);
     Task<StudentAssessmentDetailDto> GetStudentAssessmentDetail(Guid assessmentId, Guid studentUserId);

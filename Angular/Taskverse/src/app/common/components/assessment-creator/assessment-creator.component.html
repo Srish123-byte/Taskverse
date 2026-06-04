@@ -33,19 +33,7 @@
             <h3>Assessment Details</h3>
           </div>
 
-          <app-dashboard-loader
-            *ngIf="isCatalogLoading"
-            title="Loading subjects and topics"
-            copy="Preparing the subject and topic catalog for assessment setup."
-            tone="dark"
-            [diameter]="38">
-          </app-dashboard-loader>
-
-          <div *ngIf="!isCatalogLoading && catalogErrorMessage" class="inline-error-state">
-            {{ catalogErrorMessage }}
-          </div>
-
-          <div *ngIf="!isCatalogLoading && !catalogErrorMessage" class="form-grid">
+          <div class="form-grid">
             <label class="field field-full">
               <span>Assessment Name</span>
               <input type="text" [(ngModel)]="assessmentName" placeholder="Senior Backend Engineer - Module 2" />

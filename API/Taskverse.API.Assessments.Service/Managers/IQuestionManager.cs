@@ -1,3 +1,4 @@
+using Taskverse.API.Assessments.Service.Models;
 using Taskverse.Data.DataAccess;
 
 namespace Taskverse.API.Assessments.Service.Managers;
@@ -13,6 +14,12 @@ public interface IQuestionManager
     /// <param name="questions">The imported question rows to validate and save.</param>
     /// <returns>The saved questions.</returns>
     Task<List<Question>> CreateQuestions(List<QuestionImportItem> questions);
+
+    /// <summary>
+    /// Returns the active subject-topic classification catalog for question creation flows.
+    /// </summary>
+    /// <returns>The available subjects and their topics.</returns>
+    Task<QuestionClassificationCatalogRecord> GetQuestionClassificationCatalog();
 
     /// <summary>
     /// Retrieves a question by identifier within the specified college scope.

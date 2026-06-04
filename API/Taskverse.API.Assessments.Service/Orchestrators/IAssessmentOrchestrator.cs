@@ -17,11 +17,9 @@ public interface IAssessmentOrchestrator
 
     Task<AssessmentRecord> PublishAssessment(PublishAssessmentRequest request);
 
-    Task<AssessmentSubjectTopicCatalogRecord> GetSubjectTopicCatalog(AssessmentAccessibleBatchesRequest request);
-
     Task<AssessmentAssignmentCatalogRecord> GetTrainerAssignedClassesAndBatches(AssessmentAccessibleBatchesRequest request);
 
-    Task<AssessmentManagementSearchResultRecord> SearchAssessments(AssessmentManagementSearchRequest request);
+    Task<PagedAssessmentSearchRecord> SearchAssessments(AssessmentSearchRequest request);
 
     Task<PagedAssessmentQuestionListRecord> GetAssessmentQuestionList(Guid assessmentId, AssessmentQuestionListRequest request);
 

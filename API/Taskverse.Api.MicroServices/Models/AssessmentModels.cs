@@ -226,21 +226,31 @@ public record QuestionBankSearchModel(
     int PageNumber = 1,
     int PageSize = 10);
 
-public record PagedQuestionBankModel(
-    List<AssessmentQuestionModel> Items,
-    int TotalCount,
-    int PageNumber,
-    int PageSize);
+public record QuestionTopicCatalogModel(
+    [property: JsonProperty("topic_id")]
+    Guid TopicId,
+    [property: JsonProperty("topic_name")]
+    string TopicName);
 
-public record AssessmentManagementSearchModel(
+public record QuestionSubjectCatalogModel(
+    [property: JsonProperty("subject_id")]
+    Guid SubjectId,
+    [property: JsonProperty("subject_name")]
+    string SubjectName,
+    [property: JsonProperty("topics")]
+    List<QuestionTopicCatalogModel> Topics);
+
+public record QuestionClassificationCatalogModel(
+    [property: JsonProperty("subjects")]
+    List<QuestionSubjectCatalogModel> Subjects);
+
+public record AssessmentSearchModel(
     [property: JsonProperty("college_id")]
     Guid CollegeId,
     [property: JsonProperty("requester_role")]
     string RequesterRole,
-    [property: JsonProperty("requester_user_id")]
-    Guid? RequesterUserId,
-    [property: JsonProperty("created_by")]
-    string CreatedBy,
+    [property: JsonProperty("requester_name")]
+    string RequesterName,
     [property: JsonProperty("search_term")]
     string? SearchTerm,
     [property: JsonProperty("assessment_status")]
@@ -252,27 +262,27 @@ public record AssessmentManagementSearchModel(
     [property: JsonProperty("page_size")]
     int PageSize = 10);
 
-public record AssessmentManagementItemModel(
+public record AssessmentSearchItemModel(
     [property: JsonProperty("assessment_id")]
     Guid AssessmentId,
     [property: JsonProperty("assessment_name")]
     string AssessmentName,
-    [property: JsonProperty("category")]
-    string Category,
+    [property: JsonProperty("subject_name")]
+    string? SubjectName,
     [property: JsonProperty("topic_name")]
     string? TopicName,
     [property: JsonProperty("assessment_status")]
     string AssessmentStatus,
     [property: JsonProperty("assessment_date")]
-    DateTime AssessmentDate,
+    DateTime? AssessmentDate,
     [property: JsonProperty("total_marks")]
     int TotalMarks,
     [property: JsonProperty("difficulty_level")]
     int DifficultyLevel);
 
-public record AssessmentManagementSearchResultModel(
+public record PagedAssessmentSearchModel(
     [property: JsonProperty("items")]
-    List<AssessmentManagementItemModel> Items,
+    List<AssessmentSearchItemModel> Items,
     [property: JsonProperty("total_count")]
     int TotalCount,
     [property: JsonProperty("active_count")]
@@ -284,6 +294,12 @@ public record AssessmentManagementSearchResultModel(
     [property: JsonProperty("page_size")]
     int PageSize);
 
+public record PagedQuestionBankModel(
+    List<AssessmentQuestionModel> Items,
+    int TotalCount,
+    int PageNumber,
+    int PageSize);
+
 public record AssessmentBootstrapModel(
     [property: JsonProperty("college_id")]
     Guid CollegeId,
@@ -291,28 +307,6 @@ public record AssessmentBootstrapModel(
     string RequesterRole,
     [property: JsonProperty("requester_user_id")]
     Guid? RequesterUserId);
-
-public record AssessmentTopicCatalogModel(
-    [property: JsonProperty("topic_id")]
-    Guid TopicId,
-    [property: JsonProperty("topic_name")]
-    string TopicName,
-    [property: JsonProperty("batch_ids")]
-    Guid[] BatchIds);
-
-public record AssessmentSubjectCatalogModel(
-    [property: JsonProperty("subject_id")]
-    Guid SubjectId,
-    [property: JsonProperty("subject_name")]
-    string SubjectName,
-    [property: JsonProperty("batch_ids")]
-    Guid[] BatchIds,
-    [property: JsonProperty("topics")]
-    List<AssessmentTopicCatalogModel> Topics);
-
-public record AssessmentSubjectTopicCatalogModel(
-    [property: JsonProperty("subjects")]
-    List<AssessmentSubjectCatalogModel> Subjects);
 
 public record AssessmentAssignmentBatchModel(
     [property: JsonProperty("batch_id")]

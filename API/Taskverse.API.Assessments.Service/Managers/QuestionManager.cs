@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Taskverse.API.Assessments.Service.Mappings;
+using Taskverse.API.Assessments.Service.Models;
 using Taskverse.Data.DataAccess;
 using Taskverse.Data.Enums;
 
@@ -24,6 +25,40 @@ public class QuestionManager : IQuestionManager
     public QuestionManager(TaskverseContext context)
     {
         _context = context;
+    }
+
+    /// <inheritdoc />
+    public async Task<QuestionClassificationCatalogRecord> GetQuestionClassificationCatalog()
+    {
+        var subjects = await _context.Subjects
+            .AsNoTracking()
+            .Where(subject => subject.IsActive)
+            .OrderBy(subject => subject.SubjectName)
+            .ToListAsync();
+
+        var topics = await _context.Topics
+            .AsNoTracking()
+            .Where(topic => topic.IsActive)
+            .OrderBy(topic => topic.TopicName)
+            .ToListAsync();
+
+        var topicsBySubjectId = topics
+            .GroupBy(topic => topic.SubjectId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderBy(topic => topic.TopicName)
+                    .Select(topic => topic.ToCatalogRecord())
+                    .ToList());
+
+        var subjectRecords = subjects
+            .Select(subject => subject.ToCatalogRecord(
+                topicsBySubjectId.TryGetValue(subject.SubjectId, out var subjectTopics)
+                    ? subjectTopics
+                    : []))
+            .ToList();
+
+        return new QuestionClassificationCatalogRecord(subjectRecords);
     }
 
     /// <inheritdoc />

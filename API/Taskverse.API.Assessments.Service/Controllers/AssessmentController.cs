@@ -12,6 +12,7 @@ namespace Taskverse.API.Assessments.Service.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Route("api/assessments")]
 [Produces("application/json")]
 public class AssessmentController : ControllerBase
 {
@@ -336,40 +337,6 @@ public class AssessmentController : ControllerBase
     }
 
     /// <summary>
-    /// Returns the subject and topic catalog available to the supplied requester context.
-    /// </summary>
-    /// <param name="request">The requester context used to scope accessible batches.</param>
-    /// <returns>The accessible subject-topic catalog.</returns>
-    [HttpPost("subjects-topics/catalog")]
-    [ProducesResponseType(typeof(AssessmentSubjectTopicCatalogRecord), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<AssessmentSubjectTopicCatalogRecord>> GetSubjectTopicCatalog(
-        [FromBody] AssessmentAccessibleBatchesRequest request)
-    {
-        if (request is null)
-        {
-            return BadRequest(new { message = "Assessment bootstrap request is required." });
-        }
-
-        try
-        {
-            var result = await _assessmentOrchestrator.GetSubjectTopicCatalog(request);
-            return Ok(result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return _assessmentOrchestrator.BuildUnexpectedError(
-                ex,
-                "An unexpected error occurred while retrieving the subject-topic catalog.");
-        }
-    }
-
-    /// <summary>
     /// Returns the classes and batches assigned to a trainer.
     /// </summary>
     /// <param name="request">The trainer requester context.</param>
@@ -404,16 +371,16 @@ public class AssessmentController : ControllerBase
     }
 
     /// <summary>
-    /// Searches assessments for management screens using the supplied filters and paging options.
+    /// Searches assessments visible to the supplied requester context.
     /// </summary>
-    /// <param name="request">The assessment search request.</param>
-    /// <returns>The paged assessment search result.</returns>
+    /// <param name="request">The assessment search filters and requester context.</param>
+    /// <returns>The paged assessment result with summary counts.</returns>
     [HttpPost("search")]
-    [ProducesResponseType(typeof(AssessmentManagementSearchResultRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PagedAssessmentSearchRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<AssessmentManagementSearchResultRecord>> SearchAssessments(
-        [FromBody] AssessmentManagementSearchRequest request)
+    public async Task<ActionResult<PagedAssessmentSearchRecord>> SearchAssessments([FromBody] AssessmentSearchRequest request)
     {
         if (request is null)
         {
@@ -429,14 +396,19 @@ public class AssessmentController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
         catch (Exception ex)
         {
             return _assessmentOrchestrator.BuildUnexpectedError(
                 ex,
-                "An unexpected error occurred while retrieving assessments.");
+                "An unexpected error occurred while searching assessments.");
         }
     }
 
+    /// <summary>
     /// <summary>
     /// Returns a paged list of questions assigned to an assessment.
     /// </summary>

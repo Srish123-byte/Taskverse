@@ -136,6 +136,19 @@ public static class AssessmentMappings
                 .ToList());
     }
 
+    public static AssessmentSearchItemRecord ToSearchItemRecord(this Assessment assessment)
+    {
+        return new AssessmentSearchItemRecord(
+            assessment.AssessmentId,
+            assessment.AssessmentName,
+            assessment.Subject?.SubjectName ?? assessment.SubjectName,
+            assessment.Topic?.TopicName ?? assessment.TopicName,
+            assessment.AssessmentStatus.ToString().Replace('_', ' ').ToUpperInvariant(),
+            UtcDateTime.Normalize(assessment.StartDateTime ?? assessment.EndDateTime ?? assessment.CreatedAt),
+            assessment.TotalMarks,
+            assessment.DifficultyLevel);
+    }
+
     private static string NormalizeAssessmentName(string? assessmentName, bool allowDraftDefault)
     {
         var normalizedName = assessmentName?.Trim();

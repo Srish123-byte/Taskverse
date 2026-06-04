@@ -133,15 +133,25 @@ public class QuestionBankSearchRequestModel
     public int PageSize { get; set; } = 10;
 }
 
-public class PagedQuestionBankResponseModel
+public class QuestionTopicCatalogResponseModel
 {
-    public List<QuestionResponseModel> Items { get; set; } = [];
-    public int TotalCount { get; set; }
-    public int PageNumber { get; set; }
-    public int PageSize { get; set; }
+    public Guid TopicId { get; set; }
+    public string TopicName { get; set; } = string.Empty;
 }
 
-public class AssessmentManagementSearchRequestModel
+public class QuestionSubjectCatalogResponseModel
+{
+    public Guid SubjectId { get; set; }
+    public string SubjectName { get; set; } = string.Empty;
+    public List<QuestionTopicCatalogResponseModel> Topics { get; set; } = [];
+}
+
+public class QuestionClassificationCatalogResponseModel
+{
+    public List<QuestionSubjectCatalogResponseModel> Subjects { get; set; } = [];
+}
+
+public class AssessmentSearchRequestModel
 {
     public string? SearchTerm { get; set; }
     public string? AssessmentStatus { get; set; }
@@ -150,21 +160,21 @@ public class AssessmentManagementSearchRequestModel
     public int PageSize { get; set; } = 10;
 }
 
-public class AssessmentManagementItemResponseModel
+public class AssessmentSearchItemResponseModel
 {
     public Guid AssessmentId { get; set; }
     public string AssessmentName { get; set; } = string.Empty;
-    public string Category { get; set; } = string.Empty;
+    public string? SubjectName { get; set; }
     public string? TopicName { get; set; }
     public string AssessmentStatus { get; set; } = string.Empty;
-    public DateTime AssessmentDate { get; set; }
+    public DateTime? AssessmentDate { get; set; }
     public int TotalMarks { get; set; }
     public int DifficultyLevel { get; set; }
 }
 
-public class AssessmentManagementSearchResponseModel
+public class PagedAssessmentSearchResponseModel
 {
-    public List<AssessmentManagementItemResponseModel> Items { get; set; } = [];
+    public List<AssessmentSearchItemResponseModel> Items { get; set; } = [];
     public int TotalCount { get; set; }
     public int ActiveCount { get; set; }
     public int CompletedCount { get; set; }
@@ -172,24 +182,12 @@ public class AssessmentManagementSearchResponseModel
     public int PageSize { get; set; }
 }
 
-public class AssessmentTopicCatalogResponseModel
+public class PagedQuestionBankResponseModel
 {
-    public Guid TopicId { get; set; }
-    public string TopicName { get; set; } = string.Empty;
-    public Guid[] BatchIds { get; set; } = [];
-}
-
-public class AssessmentSubjectCatalogResponseModel
-{
-    public Guid SubjectId { get; set; }
-    public string SubjectName { get; set; } = string.Empty;
-    public Guid[] BatchIds { get; set; } = [];
-    public List<AssessmentTopicCatalogResponseModel> Topics { get; set; } = [];
-}
-
-public class AssessmentSubjectTopicCatalogResponseModel
-{
-    public List<AssessmentSubjectCatalogResponseModel> Subjects { get; set; } = [];
+    public List<QuestionResponseModel> Items { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
 }
 
 public class AssessmentAssignmentBatchResponseModel

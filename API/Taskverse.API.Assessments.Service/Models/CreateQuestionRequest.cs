@@ -99,3 +99,15 @@ public class QuestionBankSearchRequest
     [Range(1, 100)]
     public int PageSize { get; set; } = 10;
 }
+
+public record QuestionTopicCatalogRecord(
+    Guid TopicId,
+    string TopicName);
+
+public record QuestionSubjectCatalogRecord(
+    Guid SubjectId,
+    string SubjectName,
+    List<QuestionTopicCatalogRecord> Topics);
+
+public record QuestionClassificationCatalogRecord(
+    List<QuestionSubjectCatalogRecord> Subjects);

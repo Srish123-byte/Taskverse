@@ -357,85 +357,6 @@ public class AssessmentManager : IAssessmentManager
     }
 
     /// <inheritdoc />
-    public async Task<AssessmentSubjectTopicCatalogRecord> GetSubjectTopicCatalog(AssessmentAccessibleBatchesRequest request)
-    {
-        ValidateAccessibleBatchesRequest(request);
-
-        return await ExecuteDbOperationAsync(async () =>
-        {
-            var accessibleBatchIds = await BuildAccessibleBatchQuery(request)
-                .Select(batch => batch.BatchId)
-                .ToListAsync();
-
-            if (accessibleBatchIds.Count == 0)
-            {
-                return new AssessmentSubjectTopicCatalogRecord([]);
-            }
-
-            var subjectBatchRows = await (
-                from subjectBatch in _context.SubjectBatches.AsNoTracking()
-                join subject in _context.Subjects.AsNoTracking()
-                    on subjectBatch.SubjectId equals subject.SubjectId
-                where accessibleBatchIds.Contains(subjectBatch.BatchId) && subject.IsActive
-                select new
-                {
-                    subjectBatch.BatchId,
-                    subject.SubjectId,
-                    subject.SubjectName
-                })
-                .ToListAsync();
-
-            if (subjectBatchRows.Count == 0)
-            {
-                return new AssessmentSubjectTopicCatalogRecord([]);
-            }
-
-            var subjectIds = subjectBatchRows
-                .Select(row => row.SubjectId)
-                .Distinct()
-                .ToList();
-
-            var activeTopics = await _context.Topics
-                .AsNoTracking()
-                .Where(topic => subjectIds.Contains(topic.SubjectId) && topic.IsActive)
-                .ToListAsync();
-
-            var topicsBySubjectId = activeTopics
-                .GroupBy(topic => topic.SubjectId)
-                .ToDictionary(group => group.Key, group => group.ToList());
-
-            var subjects = subjectBatchRows
-                .GroupBy(row => new { row.SubjectId, row.SubjectName })
-                .Select(subjectGroup =>
-                {
-                    var batchIds = subjectGroup
-                        .Select(row => row.BatchId)
-                        .Distinct()
-                        .OrderBy(batchId => batchId)
-                        .ToArray();
-
-                    var topics = topicsBySubjectId
-                        .GetValueOrDefault(subjectGroup.Key.SubjectId, [])
-                        .Select(topic => new AssessmentTopicCatalogRecord(
-                            topic.TopicId,
-                            topic.TopicName,
-                            batchIds))
-                        .OrderBy(item => item.TopicName)
-                        .ToList();
-
-                    return new AssessmentSubjectCatalogRecord(
-                        subjectGroup.Key.SubjectId,
-                        subjectGroup.Key.SubjectName,
-                        batchIds,
-                        topics);
-                })
-                .OrderBy(item => item.SubjectName)
-                .ToList();
-
-            return new AssessmentSubjectTopicCatalogRecord(subjects);
-        }, "retrieving the subject-topic catalog");
-    }
-
     /// <inheritdoc />
     public async Task<AssessmentAssignmentCatalogRecord> GetTrainerAssignedClassesAndBatches(AssessmentAccessibleBatchesRequest request)
     {
@@ -525,43 +446,49 @@ public class AssessmentManager : IAssessmentManager
     }
 
     /// <inheritdoc />
-    public async Task<AssessmentManagementSearchResultRecord> SearchAssessments(AssessmentManagementSearchRequest request)
+    public async Task<PagedAssessmentSearchRecord> SearchAssessments(AssessmentSearchRequest request)
     {
-        ValidateAssessmentManagementSearchRequest(request);
+        ValidateAssessmentSearchRequest(request);
 
         return await ExecuteDbOperationAsync(async () =>
         {
             var safePageNumber = request.PageNumber > 0 ? request.PageNumber : DefaultPageNumber;
             var safePageSize = request.PageSize is > 0 and <= MaximumPageSize ? request.PageSize : DefaultPageSize;
-            var normalizedCreatedBy = request.CreatedBy.Trim();
-            var normalizedSearchTerm = request.SearchTerm?.Trim().ToLowerInvariant();
-            var requestedStatus = NormalizeAssessmentManagementStatus(request.AssessmentStatus);
+            var normalizedSearchTerm = request.SearchTerm?.Trim();
+            var normalizedRequesterName = request.RequesterName.Trim();
+            var statusFilter = NormalizeAssessmentStatusFilter(request.AssessmentStatus);
 
             var query = _context.Assessments
                 .AsNoTracking()
                 .Include(item => item.Subject)
                 .Include(item => item.Topic)
-                .Where(item =>
-                    item.CollegeId == request.CollegeId &&
-                    item.AssessmentStatus != AssessmentStatus.Soft_Deleted);
+                .Where(item => item.CollegeId == request.CollegeId)
+                .Where(item => item.IsDeleted != true && item.AssessmentStatus != AssessmentStatus.Soft_Deleted);
 
-            if (string.Equals(request.RequesterRole.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase))
+            if (IsTrainer(request.RequesterRole))
             {
-                query = query.Where(item => item.CreatedBy.ToLower() == normalizedCreatedBy.ToLower());
-            }
-            else
-            {
+                var normalizedRequesterNameLower = normalizedRequesterName.ToLower();
                 query = query.Where(item =>
-                    item.AssessmentStatus != AssessmentStatus.Draft ||
-                    item.CreatedBy.ToLower() == normalizedCreatedBy.ToLower());
+                    item.CreatedBy != null &&
+                    item.CreatedBy.Trim().ToLower() == normalizedRequesterNameLower);
+            }
+            else if (!IsCollegeAdmin(request.RequesterRole))
+            {
+                throw new UnauthorizedAccessException("Only CollegeAdmin and Trainer can access assessments.");
             }
 
             if (!string.IsNullOrWhiteSpace(normalizedSearchTerm))
             {
+                var searchPattern = $"%{normalizedSearchTerm}%";
                 query = query.Where(item =>
-                    item.AssessmentName.ToLower().Contains(normalizedSearchTerm) ||
-                    (item.Subject != null && item.Subject.SubjectName.ToLower().Contains(normalizedSearchTerm)) ||
-                    (item.Topic != null && item.Topic.TopicName.ToLower().Contains(normalizedSearchTerm)));
+                    EF.Functions.ILike(item.AssessmentName, searchPattern) ||
+                    (item.Subject != null && EF.Functions.ILike(item.Subject.SubjectName, searchPattern)) ||
+                    (item.Topic != null && EF.Functions.ILike(item.Topic.TopicName, searchPattern)));
+            }
+
+            if (statusFilter.HasValue)
+            {
+                query = query.Where(item => item.AssessmentStatus == statusFilter.Value);
             }
 
             if (request.DifficultyLevel.HasValue)
@@ -569,35 +496,21 @@ public class AssessmentManager : IAssessmentManager
                 query = query.Where(item => item.DifficultyLevel == request.DifficultyLevel.Value);
             }
 
-            if (requestedStatus.HasValue)
-            {
-                query = query.Where(item => item.AssessmentStatus == requestedStatus.Value);
-            }
-
             var totalCount = await query.CountAsync();
             var activeCount = await query.CountAsync(item =>
-                item.AssessmentStatus == AssessmentStatus.Scheduled ||
-                item.AssessmentStatus == AssessmentStatus.Live);
+                item.AssessmentStatus == AssessmentStatus.Live ||
+                item.AssessmentStatus == AssessmentStatus.Scheduled);
             var completedCount = await query.CountAsync(item => item.AssessmentStatus == AssessmentStatus.Completed);
 
-            var items = await query
+            var assessments = await query
                 .OrderByDescending(item => item.StartDateTime ?? item.CreatedAt)
                 .ThenByDescending(item => item.CreatedAt)
                 .Skip((safePageNumber - 1) * safePageSize)
                 .Take(safePageSize)
-                .Select(item => new AssessmentManagementItemRecord(
-                    item.AssessmentId,
-                    item.AssessmentName,
-                    item.Subject != null ? item.Subject.SubjectName : string.Empty,
-                    item.Topic != null ? item.Topic.TopicName : null,
-                    MapAssessmentManagementStatus(item.AssessmentStatus),
-                    item.StartDateTime ?? item.CreatedAt,
-                    item.TotalMarks,
-                    item.DifficultyLevel))
                 .ToListAsync();
 
-            return new AssessmentManagementSearchResultRecord(
-                items,
+            return new PagedAssessmentSearchRecord(
+                assessments.Select(item => item.ToSearchItemRecord()).ToList(),
                 totalCount,
                 activeCount,
                 completedCount,
@@ -1120,7 +1033,17 @@ public class AssessmentManager : IAssessmentManager
         }
     }
 
-    private static void ValidateAssessmentManagementSearchRequest(AssessmentManagementSearchRequest request)
+    private static void ValidateTrainerAssignmentRequest(AssessmentAccessibleBatchesRequest request)
+    {
+        ValidateAccessibleBatchesRequest(request);
+
+        if (!string.Equals(request.RequesterRole.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Trainer role is required for trainer assignment requests.");
+        }
+    }
+
+    private static void ValidateAssessmentSearchRequest(AssessmentSearchRequest request)
     {
         if (request is null)
         {
@@ -1134,61 +1057,18 @@ public class AssessmentManager : IAssessmentManager
 
         if (string.IsNullOrWhiteSpace(request.RequesterRole))
         {
-            throw new ArgumentException("Requester role is required.");
+            throw new ArgumentException("RequesterRole is required.");
         }
 
-        if (!string.Equals(request.RequesterRole.Trim(), "CollegeAdmin", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(request.RequesterRole.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(request.RequesterName))
         {
-            throw new ArgumentException("Only CollegeAdmin and Trainer can search assessments.");
+            throw new ArgumentException("RequesterName is required.");
         }
 
-        if (string.IsNullOrWhiteSpace(request.CreatedBy))
+        if (request.DifficultyLevel.HasValue && request.DifficultyLevel.Value is < 1 or > 3)
         {
-            throw new ArgumentException("CreatedBy is required.");
+            throw new ArgumentException("DifficultyLevel must be between 1 and 3.");
         }
-    }
-
-    private static void ValidateTrainerAssignmentRequest(AssessmentAccessibleBatchesRequest request)
-    {
-        ValidateAccessibleBatchesRequest(request);
-
-        if (!string.Equals(request.RequesterRole.Trim(), "Trainer", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ArgumentException("Trainer role is required for trainer assignment requests.");
-        }
-    }
-
-    private static AssessmentStatus? NormalizeAssessmentManagementStatus(string? requestedStatus)
-    {
-        if (string.IsNullOrWhiteSpace(requestedStatus) ||
-            string.Equals(requestedStatus.Trim(), "ALL", StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        return requestedStatus.Trim().ToUpperInvariant() switch
-        {
-            "LIVE" => AssessmentStatus.Live,
-            "SCHEDULED" => AssessmentStatus.Scheduled,
-            "COMPLETED" => AssessmentStatus.Completed,
-            "DRAFT" => AssessmentStatus.Draft,
-            "CANCELLED" => AssessmentStatus.Cancelled,
-            _ => throw new ArgumentException($"Unsupported assessment status filter '{requestedStatus}'.")
-        };
-    }
-
-    private static string MapAssessmentManagementStatus(AssessmentStatus status)
-    {
-        return status switch
-        {
-            AssessmentStatus.Live => "LIVE",
-            AssessmentStatus.Scheduled => "SCHEDULED",
-            AssessmentStatus.Completed => "COMPLETED",
-            AssessmentStatus.Draft => "DRAFT",
-            AssessmentStatus.Cancelled => "CANCELLED",
-            _ => status.ToString().ToUpperInvariant()
-        };
     }
 
     private static void PrepareAssessmentForCreation(
@@ -2327,5 +2207,28 @@ public class AssessmentManager : IAssessmentManager
         }
 
         return normalizedStatuses;
+    }
+
+    private static AssessmentStatus? NormalizeAssessmentStatusFilter(string? assessmentStatus)
+    {
+        if (string.IsNullOrWhiteSpace(assessmentStatus))
+        {
+            return null;
+        }
+
+        var normalizedStatus = assessmentStatus
+            .Trim()
+            .Replace(" ", "_")
+            .ToUpperInvariant();
+
+        return normalizedStatus switch
+        {
+            "DRAFT" => AssessmentStatus.Draft,
+            "SCHEDULED" => AssessmentStatus.Scheduled,
+            "LIVE" => AssessmentStatus.Live,
+            "COMPLETED" => AssessmentStatus.Completed,
+            "CANCELLED" => AssessmentStatus.Cancelled,
+            _ => throw new ArgumentException($"Unsupported assessment status filter '{assessmentStatus}'.")
+        };
     }
 }

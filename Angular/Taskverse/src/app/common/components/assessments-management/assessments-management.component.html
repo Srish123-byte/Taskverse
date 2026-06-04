@@ -57,23 +57,23 @@
   </section>
 
   <section class="management-table-shell">
-    <div class="table-header-row" *ngIf="!isLoading && assessments.length > 0">
+    <div *ngIf="isLoading" class="empty-state">
+      <div class="empty-state-title">Loading assessments...</div>
+      <div class="empty-state-copy">Fetching the latest assessments for your current scope.</div>
+    </div>
+
+    <div *ngIf="!isLoading && errorMessage" class="empty-state">
+      <div class="empty-state-title">Unable to load assessments</div>
+      <div class="empty-state-copy">{{ errorMessage }}</div>
+    </div>
+
+    <div class="table-header-row" *ngIf="!isLoading && !errorMessage && assessments.length > 0">
       <span>Assessment Name</span>
       <span>Category</span>
       <span>Status</span>
       <span>Date</span>
       <span>Total Marks</span>
       <span>Actions</span>
-    </div>
-
-    <div *ngIf="isLoading" class="empty-state">
-      <div class="empty-state-title">Loading assessments...</div>
-      <div class="empty-state-copy">Pulling the latest assessment list for this workspace.</div>
-    </div>
-
-    <div *ngIf="!isLoading && errorMessage" class="empty-state">
-      <div class="empty-state-title">Assessment list unavailable</div>
-      <div class="empty-state-copy">{{ errorMessage }}</div>
     </div>
 
     <div *ngIf="!isLoading && !errorMessage && assessments.length === 0" class="empty-state">
@@ -83,18 +83,19 @@
 
     <article
       *ngFor="let assessment of assessments; trackBy: trackByAssessmentId"
+      [hidden]="isLoading || !!errorMessage"
       class="table-row">
       <div class="assessment-name-cell">
         <div class="assessment-name">{{ assessment.assessmentName }}</div>
       </div>
 
       <div class="category-cell">
-        <span class="category-pill">{{ assessment.category || 'Uncategorized' }}</span>
+        <span class="category-pill">{{ getCategoryLabel(assessment) }}</span>
       </div>
 
       <div class="status-cell">
         <span class="status-dot" [ngClass]="getStatusClass(assessment.assessmentStatus)"></span>
-        <span class="status-label">{{ assessment.assessmentStatus }}</span>
+        <span class="status-label">{{ getStatusLabel(assessment.assessmentStatus) }}</span>
       </div>
 
       <div class="date-cell">{{ formatAssessmentDate(assessment.assessmentDate) }}</div>
@@ -115,15 +116,14 @@
         <button
           type="button"
           class="icon-button icon-button-danger"
-          [disabled]="!!deletingAssessmentId"
-          (click)="deleteAssessment(assessment)"
+          (click)="deleteAssessment()"
           aria-label="Delete assessment">
           <img src="assets/icons/nav/trash.svg" alt="" class="row-action-icon" aria-hidden="true" />
         </button>
       </div>
     </article>
 
-    <div class="table-footer" *ngIf="!isLoading && totalCount > 0">
+    <div class="table-footer" *ngIf="!isLoading && !errorMessage && totalCount > 0">
       <span class="footer-copy">
         Showing {{ pageStart }}-{{ pageEnd }} of {{ totalCount }} assessments
       </span>
@@ -137,23 +137,6 @@
           <mat-icon class="pagination-angle-icon" aria-hidden="true">&#8250;</mat-icon>
         </button>
       </div>
-    </div>
-  </section>
-
-</div>
-
-<div *ngIf="pendingDeleteAssessment" class="delete-dialog-backdrop" (click)="closeDeleteDialog()">
-  <section class="delete-dialog" (click)="$event.stopPropagation()" aria-modal="true" role="dialog" aria-labelledby="deleteAssessmentTitle">
-    <h3 id="deleteAssessmentTitle">Assessments deleted can only be recovered by Super Admin, are you sure you want to proceed?</h3>
-    <p>
-      <strong>{{ pendingDeleteAssessment.assessmentName }}</strong> will be deleted from the assessment list.
-    </p>
-
-    <div class="delete-dialog-actions">
-      <button type="button" class="secondary-action" [disabled]="!!deletingAssessmentId" (click)="closeDeleteDialog()">No</button>
-      <button type="button" class="primary-action danger-confirm" [disabled]="!!deletingAssessmentId" (click)="confirmDeleteAssessment()">
-        {{ deletingAssessmentId === pendingDeleteAssessment.assessmentId ? 'Deleting...' : 'Yes' }}
-      </button>
     </div>
   </section>
 </div>

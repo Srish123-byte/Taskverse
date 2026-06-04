@@ -7,9 +7,7 @@ import {
   AssessmentAssignmentBatch,
   AssessmentAssignmentCatalog,
   AssessmentAssignmentClass,
-  AssessmentSubjectCatalogItem,
   CreateAssessmentRequest,
-  AssessmentSubjectTopicCatalog,
   QuestionBankItem
 } from '../../services/api/assessment-admin.service';
 import { RouteAddress } from '../../constants/routes.constants';
@@ -19,6 +17,17 @@ import { Subject, takeUntil } from 'rxjs';
 interface DifficultyOption {
   value: string;
   label: string;
+}
+
+interface AssessmentCreatorTopicOption {
+  topicId: string;
+  topicName: string;
+}
+
+interface AssessmentCreatorSubjectOption {
+  subjectId: string;
+  subjectName: string;
+  topics: AssessmentCreatorTopicOption[];
 }
 
 type AssessmentBuilderMode = 'create' | 'edit';
@@ -41,18 +50,15 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     { value: '3', label: 'Hard' }
   ];
 
-  isCatalogLoading = true;
   isQuestionBankLoading = true;
   isAssignmentLoading = true;
   isAssessmentLoading = false;
-  catalogErrorMessage = '';
   questionBankErrorMessage = '';
   assignmentErrorMessage = '';
   assessmentLoadErrorMessage = '';
   private hasStartedAssignmentLoad = false;
   private readonly destroy$ = new Subject<void>();
 
-  subjectCatalog: AssessmentSubjectTopicCatalog = { subjects: [] };
   questions: QuestionBankItem[] = [];
   assignmentCatalog: AssessmentAssignmentCatalog = { classes: [] };
 
@@ -145,7 +151,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   }
 
   get isInitialPageLoading(): boolean {
-    return this.isCatalogLoading || this.isQuestionBankLoading || (this.isEditMode && this.isAssessmentLoading);
+    return this.isQuestionBankLoading || (this.isEditMode && this.isAssessmentLoading);
   }
 
   get hasBlockingLoadError(): boolean {
@@ -240,8 +246,8 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     });
   }
 
-  get visibleSubjects(): AssessmentSubjectCatalogItem[] {
-    return this.subjectCatalog.subjects;
+  get visibleSubjects(): AssessmentCreatorSubjectOption[] {
+    return this.buildSubjectOptions(this.questions);
   }
 
   get visibleTopics() {
@@ -253,8 +259,8 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     return subject.topics;
   }
 
-  get questionBankSubjects(): AssessmentSubjectCatalogItem[] {
-    return this.subjectCatalog.subjects;
+  get questionBankSubjects(): AssessmentCreatorSubjectOption[] {
+    return this.visibleSubjects;
   }
 
   get questionBankTopics() {
@@ -272,7 +278,6 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.loadSubjectTopicCatalog();
     this.loadQuestionBank();
 
     this.activatedRoute.paramMap
@@ -378,7 +383,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     return question.questionId;
   }
 
-  trackBySubjectId(_: number, subject: AssessmentSubjectCatalogItem): string {
+  trackBySubjectId(_: number, subject: AssessmentCreatorSubjectOption): string {
     return subject.subjectId;
   }
 
@@ -458,36 +463,13 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     });
   }
 
-  private loadSubjectTopicCatalog(): void {
-    this.isCatalogLoading = true;
-    this.catalogErrorMessage = '';
-
-    this.assessmentAdminService.getSubjectTopicCatalog().subscribe({
-      next: catalog => {
-        this.subjectCatalog = catalog ?? { subjects: [] };
-        this.isCatalogLoading = false;
-        this.maybeStartAssignmentLoad();
-        this.changeDetectorRef.detectChanges();
-      },
-      error: error => {
-        this.catalogErrorMessage =
-          error?.error?.detail ||
-          error?.error?.message ||
-          'Unable to load the subject and topic catalog right now.';
-        this.isCatalogLoading = false;
-        this.maybeStartAssignmentLoad();
-        this.changeDetectorRef.detectChanges();
-      }
-    });
-  }
-
   private loadQuestionBank(): void {
     this.isQuestionBankLoading = true;
     this.questionBankErrorMessage = '';
 
     this.assessmentAdminService.searchQuestionBank({
       pageNumber: 1,
-      pageSize: 50
+      pageSize: 100
     }).subscribe({
       next: result => {
         this.questions = result?.items ?? [];
@@ -508,7 +490,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   }
 
   private maybeStartAssignmentLoad(): void {
-    if (this.hasStartedAssignmentLoad || this.isCatalogLoading || this.isQuestionBankLoading) {
+    if (this.hasStartedAssignmentLoad || this.isQuestionBankLoading) {
       return;
     }
 
@@ -721,7 +703,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       return null;
     }
 
-    const selectedSubject = this.subjectCatalog.subjects.find(subject => subject.subjectId === this.selectedSubjectId);
+    const selectedSubject = this.visibleSubjects.find(subject => subject.subjectId === this.selectedSubjectId);
     const selectedTopic = selectedSubject?.topics.find(topic => topic.topicId === this.selectedTopicId);
 
     return {
@@ -907,6 +889,42 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     }
 
     return this.formatDateTimeLocalValue(parsed);
+  }
+
+  private buildSubjectOptions(questions: QuestionBankItem[]): AssessmentCreatorSubjectOption[] {
+    const subjectMap = new Map<string, AssessmentCreatorSubjectOption>();
+
+    for (const question of questions) {
+      const subjectId = question.subjectId?.trim();
+      const subjectName = question.subject?.trim();
+      const topicId = question.topicId?.trim();
+      const topicName = question.topic?.trim();
+
+      if (!subjectId || !subjectName) {
+        continue;
+      }
+
+      const subject = subjectMap.get(subjectId) ?? {
+        subjectId,
+        subjectName,
+        topics: []
+      };
+
+      if (!subjectMap.has(subjectId)) {
+        subjectMap.set(subjectId, subject);
+      }
+
+      if (topicId && topicName && !subject.topics.some(topic => topic.topicId === topicId)) {
+        subject.topics.push({ topicId, topicName });
+      }
+    }
+
+    return Array.from(subjectMap.values())
+      .map(subject => ({
+        ...subject,
+        topics: subject.topics.sort((left, right) => left.topicName.localeCompare(right.topicName))
+      }))
+      .sort((left, right) => left.subjectName.localeCompare(right.subjectName));
   }
 
   private mapCollegeClassToAssignmentClass(classItem: CollegeClassSummary): AssessmentAssignmentClass {

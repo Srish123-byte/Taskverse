@@ -5,9 +5,9 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   AssessmentAdminService,
-  AssessmentSubjectTopicCatalog,
   CreateQuestionRequest,
   PagedQuestionBankResult,
+  QuestionClassificationCatalog,
   QuestionBankItem
 } from '../../services/api/assessment-admin.service';
 
@@ -53,9 +53,8 @@ export class QuestionEditorComponent implements OnInit {
   subjectOptions: string[] = [];
   topicOptions: string[] = [];
   streamOptions: string[] = [];
-  subjectCatalog: AssessmentSubjectTopicCatalog = { subjects: [] };
-  private questionBankSubjectOptions: string[] = [];
-  private questionBankTopicOptions: string[] = [];
+  private catalogSubjectOptions: string[] = [];
+  private questionBankTopicsBySubject = new Map<string, string[]>();
   streamSelection = '';
   subjectSelection = '';
   topicSelection = '';
@@ -370,8 +369,8 @@ export class QuestionEditorComponent implements OnInit {
   }
 
   private loadExistingValues(): void {
+    this.loadQuestionClassificationCatalog();
     this.loadQuestionBankOptions();
-    this.loadSubjectTopicCatalog();
   }
 
   private loadQuestionForEdit(): void {
@@ -394,14 +393,28 @@ export class QuestionEditorComponent implements OnInit {
 
   private applyQuestionBankValues(result: PagedQuestionBankResult): void {
     this.streamOptions = this.toDistinctSortedValues(result.items.map(item => item.stream));
-    this.questionBankSubjectOptions = this.toDistinctSortedValues(result.items.map(item => item.subject));
-    this.questionBankTopicOptions = this.toDistinctSortedValues(result.items.map(item => item.topic));
     this.syncClassificationSelections();
     this.changeDetectorRef.detectChanges();
   }
 
-  private applySubjectCatalog(subjectCatalog: AssessmentSubjectTopicCatalog): void {
-    this.subjectCatalog = subjectCatalog ?? { subjects: [] };
+  private applyQuestionClassificationCatalog(catalog: QuestionClassificationCatalog): void {
+    const subjects = catalog.subjects ?? [];
+
+    this.catalogSubjectOptions = subjects
+      .map(item => item.subjectName?.trim() ?? '')
+      .filter(item => item.length > 0)
+      .sort((left, right) => left.localeCompare(right));
+
+    this.questionBankTopicsBySubject = new Map<string, string[]>(
+      subjects
+        .map(item => {
+          const subjectName = item.subjectName?.trim() ?? '';
+          const topics = this.toDistinctSortedValues((item.topics ?? []).map(topic => topic.topicName));
+          return [subjectName, topics] as const;
+        })
+        .filter(([subjectName]) => subjectName.length > 0)
+    );
+
     this.syncClassificationSelections();
     this.changeDetectorRef.detectChanges();
   }
@@ -547,13 +560,7 @@ export class QuestionEditorComponent implements OnInit {
   }
 
   private syncClassificationSelections(): void {
-    const catalogSubjectOptions = this.subjectCatalog.subjects
-      .map(subject => subject.subjectName?.trim())
-      .filter((subjectName): subjectName is string => Boolean(subjectName));
-
-    this.subjectOptions = this.theme === 'college-admin'
-      ? this.toDistinctSortedValues([...catalogSubjectOptions, ...this.questionBankSubjectOptions])
-      : catalogSubjectOptions.sort((left, right) => left.localeCompare(right));
+    this.subjectOptions = [...this.catalogSubjectOptions];
 
     this.topicOptions = this.resolveTopicOptions();
     this.streamSelection = this.resolveSelectionValue(this.streamControl.value, this.streamOptions);
@@ -567,23 +574,7 @@ export class QuestionEditorComponent implements OnInit {
       return [];
     }
 
-    const subject = this.subjectCatalog.subjects.find(item => item.subjectName === selectedSubject);
-    if (!subject) {
-      return this.theme === 'college-admin'
-        ? this.questionBankTopicOptions
-        : [];
-    }
-
-    const catalogTopicOptions = subject.topics
-      .map(topic => topic.topicName?.trim())
-      .filter((topicName): topicName is string => Boolean(topicName))
-      .sort((left, right) => left.localeCompare(right));
-
-    if (this.theme !== 'college-admin') {
-      return catalogTopicOptions;
-    }
-
-    return this.toDistinctSortedValues([...catalogTopicOptions, ...this.questionBankTopicOptions]);
+    return this.questionBankTopicsBySubject.get(selectedSubject) ?? [];
   }
 
   private resolveSelectionValue(value: string | null, options: string[]): string {
@@ -652,8 +643,6 @@ export class QuestionEditorComponent implements OnInit {
       error: error => {
         console.error('Failed to load question bank bootstrap data.', error);
         this.streamOptions = [];
-        this.questionBankSubjectOptions = [];
-        this.questionBankTopicOptions = [];
         this.syncClassificationSelections();
         this.endLoading();
         this.changeDetectorRef.detectChanges();
@@ -661,17 +650,18 @@ export class QuestionEditorComponent implements OnInit {
     });
   }
 
-  private loadSubjectTopicCatalog(): void {
+  private loadQuestionClassificationCatalog(): void {
     this.beginLoading();
 
-    this.assessmentAdminService.getSubjectTopicCatalog().subscribe({
-      next: subjectCatalog => {
-        this.applySubjectCatalog(subjectCatalog);
+    this.assessmentAdminService.getQuestionClassificationCatalog().subscribe({
+      next: catalog => {
+        this.applyQuestionClassificationCatalog(catalog);
         this.endLoading();
       },
       error: error => {
-        console.error('Failed to load subject-topic catalog bootstrap data.', error);
-        this.subjectCatalog = { subjects: [] };
+        console.error('Failed to load question classification catalog.', error);
+        this.catalogSubjectOptions = [];
+        this.questionBankTopicsBySubject = new Map<string, string[]>();
         this.syncClassificationSelections();
         this.endLoading();
         this.changeDetectorRef.detectChanges();

@@ -252,6 +252,29 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         };
     }
 
+    public async Task<QuestionClassificationCatalogDto> GetQuestionClassificationCatalog()
+    {
+        _log.Debug("AssessmentOrchestrator.GetQuestionClassificationCatalog");
+
+        var result = await _microServiceOrchestrator.GetQuestionClassificationCatalog();
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<QuestionClassificationCatalogModel>()
+                ?? throw new InvalidOperationException("GetQuestionClassificationCatalog returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"GetQuestionClassificationCatalog failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new Exception(message)
+        };
+    }
+
     public async Task<AssessmentQuestionDto> GetQuestion(Guid questionId, Guid collegeId)
     {
         _log.Debug($"AssessmentOrchestrator.GetQuestion: questionId={questionId}, collegeId={collegeId}");
@@ -329,41 +352,6 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         };
     }
 
-    public async Task<AssessmentSubjectTopicCatalogDto> GetSubjectTopicCatalog(AssessmentBootstrapDto dto)
-    {
-        _log.Debug(
-            $"AssessmentOrchestrator.GetSubjectTopicCatalog: collegeId={dto.CollegeId}, requesterRole={dto.RequesterRole}, requesterUserId={dto.RequesterUserId}");
-
-        var result = await _microServiceOrchestrator.GetSubjectTopicCatalog(dto.ToMicroServiceModel());
-
-        if (result.IsSuccess())
-        {
-            var model = result.DeserializeValue<AssessmentSubjectTopicCatalogModel>()
-                ?? throw new InvalidOperationException("GetSubjectTopicCatalog returned an empty response.");
-
-            return model.ToDto();
-        }
-
-        var message = ExtractMessage(result.Value) ?? $"GetSubjectTopicCatalog failed with status {result.StatusCode}.";
-        var detail = ExtractDetail(result.Value);
-
-        Exception exception = result.StatusCode switch
-        {
-            StatusCodes.Status400BadRequest => new ArgumentException(message),
-            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
-            _ => new Exception(message)
-        };
-
-        if (!string.IsNullOrWhiteSpace(detail))
-        {
-            exception.Data["Detail"] = detail;
-        }
-
-        exception.Data["DownstreamStatusCode"] = result.StatusCode;
-
-        throw exception;
-    }
-
     public async Task<AssessmentAssignmentCatalogDto> GetTrainerAssignedClassesAndBatches(AssessmentBootstrapDto dto)
     {
         _log.Debug(
@@ -413,16 +401,16 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         };
     }
 
-    public async Task<AssessmentManagementSearchResultDto> SearchAssessments(AssessmentManagementSearchDto dto)
+    public async Task<PagedAssessmentSearchDto> SearchAssessments(AssessmentSearchDto dto)
     {
         _log.Debug(
-            $"AssessmentOrchestrator.SearchAssessments: collegeId={dto.CollegeId}, requesterRole={dto.RequesterRole}, search={dto.SearchTerm}, status={dto.AssessmentStatus}, difficultyLevel={dto.DifficultyLevel}, page={dto.PageNumber}, pageSize={dto.PageSize}");
+            $"AssessmentOrchestrator.SearchAssessments: collegeId={dto.CollegeId}, requesterRole={dto.RequesterRole}, searchTerm={dto.SearchTerm}, status={dto.AssessmentStatus}, difficultyLevel={dto.DifficultyLevel}, page={dto.PageNumber}, pageSize={dto.PageSize}");
 
         var result = await _microServiceOrchestrator.SearchAssessments(dto.ToMicroServiceModel());
 
         if (result.IsSuccess())
         {
-            var model = result.DeserializeValue<AssessmentManagementSearchResultModel>()
+            var model = result.DeserializeValue<PagedAssessmentSearchModel>()
                 ?? throw new InvalidOperationException("SearchAssessments returned an empty response.");
 
             return model.ToDto();
@@ -433,6 +421,7 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         throw result.StatusCode switch
         {
             StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status403Forbidden => new UnauthorizedAccessException(message),
             StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
             _ => new Exception(message)
         };
