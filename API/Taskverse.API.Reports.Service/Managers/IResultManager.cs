@@ -16,7 +16,7 @@ public interface IResultManager
     Task<List<SubmittedAttemptScoreSnapshot>> GetSubmittedAttemptScoreSnapshotsAsync(
         Guid assessmentId,
         CancellationToken cancellationToken = default);
-
+        
     Task PersistAttemptEvaluationAsync(
         Attempt attempt,
         Result result,

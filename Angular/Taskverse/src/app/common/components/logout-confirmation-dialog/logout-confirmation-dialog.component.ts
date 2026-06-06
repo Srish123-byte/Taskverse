@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, EventEmitter, Output } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 
 @Component({
@@ -8,13 +8,24 @@ import { MatDialogRef } from '@angular/material/dialog';
   styleUrl: './logout-confirmation-dialog.component.scss'
 })
 export class LogoutConfirmationDialogComponent {
+  @Output() readonly confirmed = new EventEmitter<void>();
+  isProcessing = false;
+
   constructor(private readonly dialogRef: MatDialogRef<LogoutConfirmationDialogComponent, boolean>) {}
 
   confirm(): void {
-    this.dialogRef.close(true);
+    if (this.isProcessing) {
+      return;
+    }
+
+    this.confirmed.emit();
   }
 
   cancel(): void {
+    if (this.isProcessing) {
+      return;
+    }
+
     this.dialogRef.close(false);
   }
 }

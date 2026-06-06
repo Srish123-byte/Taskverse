@@ -791,7 +791,7 @@ public class AssessmentManager : IAssessmentManager
 
             var answeredAt = DateTime.UtcNow;
             var strategy = _studentAttemptAnswerSaveStrategyFactory.Resolve(question.QuestionType);
-            var savedAnswer = await strategy.SaveAsync(_context, attempt, question, request, answeredAt);
+            var savedAnswer = await strategy.SaveAsync(_context, attempt, assessment, question, request, answeredAt);
 
             attempt.LastActivityAt = answeredAt;
             await RefreshAttemptProgressAsync(attempt);
@@ -829,10 +829,7 @@ public class AssessmentManager : IAssessmentManager
             var effectiveSubmittedAt = isExpired ? expiresAt : submittedAt;
             var effectiveExpiresAt = isExpired
                 ? expiresAt
-                : attempt.ExpiresAt
-                  ?? assessment.EndDateTime
-                  ?? attempt.StartedAt?.AddMinutes(assessment.DurationMinutes)
-                  ?? submittedAt;
+                : ResolveAttemptExpiresAt(attempt, assessment, submittedAt);
 
             var finalizedAttempt = await FinalizeAttemptAsync(attempt, effectiveSubmittedAt, effectiveExpiresAt, finalStatus);
             return finalizedAttempt.ToStudentAttemptSubmitRecord();
@@ -1665,7 +1662,7 @@ public class AssessmentManager : IAssessmentManager
     {
         var startedAt = DateTime.UtcNow;
         var totalQuestions = assessment.AssessmentQuestions.Count;
-        var expiresAt = assessment.EndDateTime ?? startedAt.AddMinutes(assessment.DurationMinutes);
+        var expiresAt = CalculateAttemptExpiresAt(startedAt, assessment);
 
         return new Attempt
         {
@@ -1707,10 +1704,7 @@ public class AssessmentManager : IAssessmentManager
 
     private static bool IsAttemptExpired(Attempt attempt, Assessment assessment, out DateTime expiresAt)
     {
-        expiresAt = attempt.ExpiresAt
-            ?? assessment.EndDateTime
-            ?? attempt.StartedAt?.AddMinutes(assessment.DurationMinutes)
-            ?? DateTime.UtcNow;
+        expiresAt = ResolveAttemptExpiresAt(attempt, assessment, DateTime.UtcNow);
 
         return DateTime.UtcNow >= expiresAt;
     }
@@ -1755,10 +1749,7 @@ public class AssessmentManager : IAssessmentManager
                 attemptAnswers.GetValueOrDefault(item.QuestionId)))
             .ToList();
 
-        var expiresAt = attempt.ExpiresAt
-            ?? assessment.EndDateTime
-            ?? attempt.StartedAt?.AddMinutes(assessment.DurationMinutes)
-            ?? DateTime.UtcNow;
+        var expiresAt = ResolveAttemptExpiresAt(attempt, assessment, DateTime.UtcNow);
 
         attempt.ExpiresAt = expiresAt;
 
@@ -1767,6 +1758,35 @@ public class AssessmentManager : IAssessmentManager
             : 0;
 
         return attempt.ToStudentAttemptRecoveryRecord(assessment, remainingSeconds, questionRecords);
+    }
+
+    private static DateTime CalculateAttemptExpiresAt(DateTime startedAt, Assessment assessment)
+    {
+        var durationExpiry = startedAt.AddMinutes(assessment.DurationMinutes);
+
+        if (assessment.EndDateTime.HasValue)
+        {
+            return assessment.EndDateTime.Value < durationExpiry
+                ? assessment.EndDateTime.Value
+                : durationExpiry;
+        }
+
+        return durationExpiry;
+    }
+
+    private static DateTime ResolveAttemptExpiresAt(Attempt attempt, Assessment assessment, DateTime fallbackStartedAt)
+    {
+        if (attempt.StartedAt.HasValue)
+        {
+            return CalculateAttemptExpiresAt(attempt.StartedAt.Value, assessment);
+        }
+
+        if (attempt.ExpiresAt.HasValue)
+        {
+            return attempt.ExpiresAt.Value;
+        }
+
+        return CalculateAttemptExpiresAt(fallbackStartedAt, assessment);
     }
 
     private static int CalculateTimeTakenSeconds(DateTime? startedAt, DateTime endedAt)

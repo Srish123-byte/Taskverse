@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
@@ -921,7 +922,6 @@ public class AssessmentsController : TaskverseBaseController
     /// <param name="assessmentStatuses">The statuses to include in the response.</param>
     /// <returns>The student assessment list.</returns>
     [HttpPost("/api/students/assessments")]
-    [HttpPost("/api/student/assessments")]
     [SwaggerResponse(200, "Assigned assessments for the logged-in student", typeof(List<StudentAssessmentListResponseModel>))]
     [SwaggerResponse(400, "Invalid assessment status filter or student context")]
     [SwaggerResponse(403, "Forbidden")]
@@ -981,7 +981,6 @@ public class AssessmentsController : TaskverseBaseController
     /// <param name="assessmentId">The assessment identifier.</param>
     /// <returns>The student assessment detail.</returns>
     [HttpGet("/api/students/assessments/{assessmentId:guid}")]
-    [HttpGet("/api/student/assessments/{assessmentId:guid}")]
     [SwaggerResponse(200, "Assessment details for the logged-in student", typeof(StudentAssessmentDetailResponseModel))]
     [SwaggerResponse(400, "Invalid student context")]
     [SwaggerResponse(403, "Forbidden")]
@@ -1047,10 +1046,9 @@ public class AssessmentsController : TaskverseBaseController
     /// Starts an assessment attempt for the logged-in student.
     /// </summary>
     /// <param name="assessmentId">The assessment identifier.</param>
-    /// <returns>The started attempt response.</returns>
+    /// <returns>The recoverable attempt state for the started attempt response.</returns>
     [HttpPost("/api/students/assessments/{assessmentId:guid}/start")]
-    [HttpPost("/api/student/assessments/{assessmentId:guid}/start")]
-    [SwaggerResponse(200, "Assessment attempt started for the logged-in student", typeof(StudentAssessmentStartResponseModel))]
+    [SwaggerResponse(200, "Assessment attempt started and recovered for the logged-in student", typeof(StudentAttemptRecoveryResponseModel))]
     [SwaggerResponse(400, "Invalid student context")]
     [SwaggerResponse(403, "Forbidden")]
     [SwaggerResponse(404, "Assigned assessment not found")]
@@ -1070,8 +1068,9 @@ public class AssessmentsController : TaskverseBaseController
 
         try
         {
-            var dto = await _assessmentOrchestrator.StartStudentAssessment(assessmentId, currentUserId.Value);
-            return Ok(dto.ToResponseModel());
+            var startDto = await _assessmentOrchestrator.StartStudentAssessment(assessmentId, currentUserId.Value);
+            var recoveryDto = await _assessmentOrchestrator.GetStudentAttemptRecovery(startDto.AttemptId, currentUserId.Value);
+            return Ok(recoveryDto.ToResponseModel());
         }
         catch (ArgumentException ex)
         {
@@ -1083,6 +1082,25 @@ public class AssessmentsController : TaskverseBaseController
         }
         catch (InvalidOperationException ex)
         {
+            var existingAttemptId = ExtractAttemptId(ex.Message);
+            if (existingAttemptId.HasValue)
+            {
+                try
+                {
+                    var recoveryDto = await _assessmentOrchestrator.GetStudentAttemptRecovery(existingAttemptId.Value, currentUserId.Value);
+                    return Ok(recoveryDto.ToResponseModel());
+                }
+                catch (Exception recoveryEx) when (recoveryEx is InvalidOperationException or KeyNotFoundException or HttpRequestException)
+                {
+                    _logger.LogWarning(
+                        recoveryEx,
+                        "Student assessment recovery after start conflict failed for assessmentId={AssessmentId}, userId={UserId}, attemptId={AttemptId}",
+                        assessmentId,
+                        currentUserId.Value,
+                        existingAttemptId.Value);
+                }
+            }
+
             return Conflict(new { message = ex.Message });
         }
         catch (HttpRequestException ex)
@@ -1110,7 +1128,6 @@ public class AssessmentsController : TaskverseBaseController
     /// <param name="attemptId">The attempt identifier.</param>
     /// <returns>The recoverable attempt state.</returns>
     [HttpGet("/api/students/attempts/{attemptId:guid}")]
-    [HttpGet("/api/student/attempts/{attemptId:guid}")]
     [SwaggerResponse(200, "Recoverable assessment attempt state for the logged-in student", typeof(StudentAttemptRecoveryResponseModel))]
     [SwaggerResponse(400, "Invalid student context")]
     [SwaggerResponse(403, "Forbidden")]
@@ -1165,13 +1182,23 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    private static Guid? ExtractAttemptId(string? message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return null;
+        }
+
+        var match = Regex.Match(message, "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}");
+        return Guid.TryParse(match.Value, out var attemptId) ? attemptId : null;
+    }
+
     /// <summary>
     /// Submits the specified assessment attempt for the logged-in student.
     /// </summary>
     /// <param name="attemptId">The attempt identifier.</param>
     /// <returns>The submitted attempt response.</returns>
     [HttpPost("/api/students/attempts/{attemptId:guid}/submit")]
-    [HttpPost("/api/student/attempts/{attemptId:guid}/submit")]
     [SwaggerResponse(200, "Attempt submitted for the logged-in student", typeof(StudentAttemptSubmitResponseModel))]
     [SwaggerResponse(400, "Invalid student context or request")]
     [SwaggerResponse(403, "Forbidden")]
@@ -1234,7 +1261,6 @@ public class AssessmentsController : TaskverseBaseController
     /// <param name="model">The answer payload to save.</param>
     /// <returns>The saved answer response.</returns>
     [HttpPut("/api/students/attempts/{attemptId:guid}/{questionId:guid}/answers")]
-    [HttpPut("/api/student/attempts/{attemptId:guid}/{questionId:guid}/answers")]
     [SwaggerResponse(200, "Attempt answer saved for the logged-in student", typeof(StudentAttemptAnswerResponseModel))]
     [SwaggerResponse(400, "Invalid student context or request")]
     [SwaggerResponse(403, "Forbidden")]

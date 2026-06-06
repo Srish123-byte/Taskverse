@@ -1,5 +1,6 @@
 <section class="logout-confirmation-dialog">
   <button
+    *ngIf="!isProcessing"
     type="button"
     class="dialog-close-button"
     aria-label="Close logout confirmation"
@@ -7,20 +8,32 @@
     <mat-icon>close</mat-icon>
   </button>
 
-  <div class="logout-confirmation-icon">
-    <img src="assets/icons/nav/logout.svg" alt="" aria-hidden="true" />
-  </div>
+  <ng-container *ngIf="!isProcessing; else logoutLoaderState">
+    <div class="logout-confirmation-icon">
+      <img src="assets/icons/nav/logout.svg" alt="" aria-hidden="true" />
+    </div>
 
-  <span class="logout-confirmation-kicker">Current Session</span>
-  <h3>Log out now?</h3>
-  <p>You&apos;ll be signed out of your current session and will need to log in again to continue.</p>
+    <span class="logout-confirmation-kicker">Current Session</span>
+    <h3>Log out now?</h3>
+    <p>You&apos;ll be signed out of your current session and will need to log in again to continue.</p>
 
-  <div class="logout-confirmation-actions">
-    <button type="button" class="logout-confirmation-button logout-confirmation-button-muted" (click)="cancel()">
-      Stay Signed In
-    </button>
-    <button type="button" class="logout-confirmation-button logout-confirmation-button-primary" (click)="confirm()">
-      Confirm Logout
-    </button>
-  </div>
+    <div class="logout-confirmation-actions">
+      <button type="button" class="logout-confirmation-button logout-confirmation-button-muted" (click)="cancel()">
+        Stay Signed In
+      </button>
+      <button type="button" class="logout-confirmation-button logout-confirmation-button-primary" (click)="confirm()">
+        Confirm Logout
+      </button>
+    </div>
+  </ng-container>
+
+  <ng-template #logoutLoaderState>
+    <div class="logout-confirmation-loader">
+      <app-dashboard-loader
+        tone="dark"
+        title="Signing you out"
+        copy="Ending your current session and redirecting you to the login screen.">
+      </app-dashboard-loader>
+    </div>
+  </ng-template>
 </section>

@@ -8,11 +8,12 @@ import {
   AssessmentAssignmentCatalog,
   AssessmentAssignmentClass,
   CreateAssessmentRequest,
+  PublishAssessmentRequest,
   QuestionBankItem
 } from '../../services/api/assessment-admin.service';
 import { RouteAddress } from '../../constants/routes.constants';
 import { CollegeAdminService, CollegeBatchSummary, CollegeClassSummary } from '../../services/api/college-admin.service';
-import { Subject, takeUntil } from 'rxjs';
+import { forkJoin, Subject, takeUntil } from 'rxjs';
 
 interface DifficultyOption {
   value: string;
@@ -57,6 +58,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   assignmentErrorMessage = '';
   assessmentLoadErrorMessage = '';
   private hasStartedAssignmentLoad = false;
+  private loadedAssessmentRecord: AssessmentRecord | null = null;
   private readonly destroy$ = new Subject<void>();
 
   questions: QuestionBankItem[] = [];
@@ -84,6 +86,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   submissionErrorMessage = '';
   builderMode: AssessmentBuilderMode = 'create';
   editingAssessmentId: string | null = null;
+  minimumScheduleDateTime = '';
   private pendingSubmitAction: 'draft' | 'schedule' | null = null;
 
   questionSearchTerm = '';
@@ -144,10 +147,10 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     }
 
     if (this.isSubmitting) {
-      return 'Updating...';
+      return this.isDraftAssessment ? 'Publishing...' : 'Updating...';
     }
 
-    return 'Update Assessment';
+    return this.isDraftAssessment ? 'Publish Assessment' : 'Update Assessment';
   }
 
   get isInitialPageLoading(): boolean {
@@ -186,8 +189,8 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     return this.countWords(this.instructions);
   }
 
-  get minimumScheduleDateTime(): string {
-    return this.formatDateTimeLocalValue(new Date());
+  get scheduleInputMin(): string | null {
+    return this.isEditMode ? null : this.minimumScheduleDateTime;
   }
 
   get saveDraftButtonLabel(): string {
@@ -196,6 +199,10 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     }
 
     return 'Save as Draft';
+  }
+
+  get isDraftAssessment(): boolean {
+    return (this.loadedAssessmentRecord?.assessmentStatus ?? '').trim().toLowerCase() === 'draft';
   }
 
   get scheduleButtonLabel(): string {
@@ -247,7 +254,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   }
 
   get visibleSubjects(): AssessmentCreatorSubjectOption[] {
-    return this.buildSubjectOptions(this.questions);
+    return this.buildSubjectOptions(this.questions, this.loadedAssessmentRecord);
   }
 
   get visibleTopics() {
@@ -278,6 +285,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.refreshMinimumScheduleDateTime();
     this.loadQuestionBank();
 
     this.activatedRoute.paramMap
@@ -301,6 +309,11 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
 
   scheduleAssessment(): void {
     if (this.isEditMode) {
+      if (this.isDraftAssessment) {
+        this.publishDraftAssessment();
+        return;
+      }
+
       this.updateAssessment('update');
       return;
     }
@@ -510,9 +523,11 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
 
     this.builderMode = 'create';
     this.editingAssessmentId = null;
+    this.loadedAssessmentRecord = null;
     this.isAssessmentLoading = false;
     this.assessmentLoadErrorMessage = '';
     this.resetBuilderForm();
+    this.refreshMinimumScheduleDateTime();
     this.changeDetectorRef.detectChanges();
   }
 
@@ -599,6 +614,47 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
           error?.error?.detail ||
           error?.error?.message ||
           'Unable to update the assessment right now.');
+      }
+    });
+  }
+
+  private publishDraftAssessment(): void {
+    if (this.isSubmitting || !this.editingAssessmentId) {
+      return;
+    }
+
+    const validationError = this.validateAssessmentSubmission('schedule');
+    if (validationError) {
+      this.submissionErrorMessage = validationError;
+      this.changeDetectorRef.detectChanges();
+      return;
+    }
+
+    const payload = this.buildPublishAssessmentPayload(this.editingAssessmentId);
+    if (!payload) {
+      this.changeDetectorRef.detectChanges();
+      return;
+    }
+
+    this.isSubmitting = true;
+    this.pendingSubmitAction = null;
+    this.submissionErrorMessage = '';
+
+    this.assessmentAdminService.publishAssessment(payload, true).subscribe({
+      next: assessment => {
+        this.isSubmitting = false;
+        this.submissionErrorMessage = '';
+        this.applyAssessmentRecord(assessment);
+        this.snackBar.open('Assessment published successfully.', 'Close', {
+          duration: 3500,
+          horizontalPosition: 'center',
+          verticalPosition: 'top',
+          panelClass: ['question-editor-success-snackbar']
+        });
+        this.changeDetectorRef.detectChanges();
+      },
+      error: error => {
+        this.handleSubmissionError(this.getAssessmentSubmissionErrorMessage(error, 'schedule'));
       }
     });
   }
@@ -721,8 +777,20 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       questionIds: Array.from(this.selectedQuestionIds),
       durationMinutes: Number(this.durationMinutes),
       totalMarks: persistedTotalMarks,
-      startDateTime: this.startDate || null,
-      endDateTime: this.endDate || null
+      startDateTime: this.toUtcApiDateTimeValue(this.startDate),
+      endDateTime: this.toUtcApiDateTimeValue(this.endDate)
+    };
+  }
+
+  private buildPublishAssessmentPayload(assessmentId?: string | null): PublishAssessmentRequest | null {
+    const payload = this.buildCreateAssessmentPayload();
+    if (!payload) {
+      return null;
+    }
+
+    return {
+      ...payload,
+      assessmentId: assessmentId ?? null
     };
   }
 
@@ -785,6 +853,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   }
 
   private applyAssessmentRecord(assessment: AssessmentRecord): void {
+    this.loadedAssessmentRecord = assessment;
     this.assessmentName = assessment.assessmentName ?? '';
     this.selectedSubjectId = assessment.subjectId ?? '';
     this.selectedTopicId = assessment.topicId ?? '';
@@ -803,6 +872,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     this.selectedBatchIds = new Set(assessment.assignedBatchIds ?? []);
     this.selectedQuestionIds = new Set(assessment.questionIds ?? []);
     this.questionSearchTerm = '';
+    this.ensureSelectedQuestionsLoaded(assessment.questionIds ?? []);
     this.onSubjectChange();
     this.onQuestionBankSubjectChange();
   }
@@ -821,6 +891,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   }
 
   private resetBuilderForm(): void {
+    this.loadedAssessmentRecord = null;
     this.assessmentName = '';
     this.selectedSubjectId = '';
     this.selectedTopicId = '';
@@ -878,6 +949,15 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
+  private refreshMinimumScheduleDateTime(): void {
+    this.minimumScheduleDateTime = this.formatDateTimeLocalValue(new Date());
+  }
+
+  private toUtcApiDateTimeValue(value: string): string | null {
+    const parsed = this.parseDateTimeLocalValue(value);
+    return parsed ? parsed.toISOString() : null;
+  }
+
   private toDateTimeLocalInputValue(value?: string | null): string {
     if (!value) {
       return '';
@@ -891,7 +971,9 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     return this.formatDateTimeLocalValue(parsed);
   }
 
-  private buildSubjectOptions(questions: QuestionBankItem[]): AssessmentCreatorSubjectOption[] {
+  private buildSubjectOptions(
+    questions: QuestionBankItem[],
+    assessment?: AssessmentRecord | null): AssessmentCreatorSubjectOption[] {
     const subjectMap = new Map<string, AssessmentCreatorSubjectOption>();
 
     for (const question of questions) {
@@ -919,12 +1001,72 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       }
     }
 
+    const subjectId = assessment?.subjectId?.trim();
+    const subjectName = assessment?.subjectName?.trim();
+    const topicId = assessment?.topicId?.trim();
+    const topicName = assessment?.topicName?.trim();
+
+    if (subjectId && subjectName) {
+      const subject = subjectMap.get(subjectId) ?? {
+        subjectId,
+        subjectName,
+        topics: []
+      };
+
+      if (!subjectMap.has(subjectId)) {
+        subjectMap.set(subjectId, subject);
+      }
+
+      if (topicId && topicName && !subject.topics.some(topic => topic.topicId === topicId)) {
+        subject.topics.push({ topicId, topicName });
+      }
+    }
+
     return Array.from(subjectMap.values())
       .map(subject => ({
         ...subject,
         topics: subject.topics.sort((left, right) => left.topicName.localeCompare(right.topicName))
       }))
       .sort((left, right) => left.subjectName.localeCompare(right.subjectName));
+  }
+
+  private ensureSelectedQuestionsLoaded(questionIds: string[]): void {
+    const missingQuestionIds = questionIds.filter(questionId =>
+      !!questionId && !this.questions.some(question => question.questionId === questionId));
+
+    if (missingQuestionIds.length === 0) {
+      return;
+    }
+
+    forkJoin(
+      missingQuestionIds.map(questionId => this.assessmentAdminService.getQuestion(questionId, true))
+    )
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: questions => {
+          this.mergeQuestions(questions.filter((question): question is QuestionBankItem => !!question));
+          this.onSubjectChange();
+          this.onQuestionBankSubjectChange();
+          this.changeDetectorRef.detectChanges();
+        },
+        error: () => {
+          this.changeDetectorRef.detectChanges();
+        }
+      });
+  }
+
+  private mergeQuestions(questions: QuestionBankItem[]): void {
+    if (questions.length === 0) {
+      return;
+    }
+
+    const questionMap = new Map(this.questions.map(question => [question.questionId, question] as const));
+
+    for (const question of questions) {
+      questionMap.set(question.questionId, question);
+    }
+
+    this.questions = Array.from(questionMap.values());
   }
 
   private mapCollegeClassToAssignmentClass(classItem: CollegeClassSummary): AssessmentAssignmentClass {
