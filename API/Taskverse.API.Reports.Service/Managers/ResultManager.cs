@@ -126,6 +126,46 @@ public class ResultManager : IResultManager
             .ToList();
     }
 
+    public async Task<StudentResultResponse> GetStudentAttemptResultAsync(
+        Guid studentId,
+        Guid attemptId,
+        CancellationToken cancellationToken = default)
+    {
+        if (studentId == Guid.Empty)
+        {
+            throw new ArgumentException("Student id is required.");
+        }
+
+        if (attemptId == Guid.Empty)
+        {
+            throw new ArgumentException("Attempt id is required.");
+        }
+
+        var studentAttemptResult = await (
+            from result in _context.Results.AsNoTracking()
+            join assessment in _context.Assessments.AsNoTracking()
+                on result.AssessmentId equals assessment.AssessmentId
+            where result.StudentId == studentId &&
+                  result.AttemptId == attemptId &&
+                  assessment.ShowResultsImmediately
+            select new
+            {
+                Result = result,
+                assessment.AssessmentName
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (studentAttemptResult is null)
+        {
+            throw new KeyNotFoundException(
+                $"Result was not found for student '{studentId}' and attempt '{attemptId}'.");
+        }
+
+        return studentAttemptResult.Result.ToStudentResultResponse(
+            studentAttemptResult.AssessmentName,
+            studentAttemptResult.Result.ResultStatus == ResultStatus.Pending);
+    }
+
     private static bool IsDuplicateAttemptResult(DbUpdateException exception)
     {
         return exception.InnerException is PostgresException postgresException &&

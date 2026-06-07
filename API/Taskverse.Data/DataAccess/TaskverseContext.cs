@@ -25,6 +25,8 @@ public class TaskverseContext : DbContext
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<AuthSession> AuthSessions { get; set; }
     public DbSet<Question> Questions { get; set; }
+    public DbSet<ProctoringSession> ProctoringSessions { get; set; }
+    public DbSet<ProctoringEvent> ProctoringEvents { get; set; }
     public DbSet<Result> Results { get; set; }
     public DbSet<Student> Students { get; set; }
     public DbSet<Trainer> Trainers { get; set; }
@@ -409,6 +411,106 @@ public class TaskverseContext : DbContext
             entity.HasIndex(r => r.AssessmentId);
             entity.HasIndex(r => r.AttemptId).IsUnique();
             entity.HasIndex(r => r.StudentId);
+        });
+
+        // Configure ProctoringSession entity
+        modelBuilder.Entity<ProctoringSession>(entity =>
+        {
+            entity.ToTable("proctoring_sessions");
+            entity.HasKey(ps => ps.ProctoringSessionId);
+            entity.Property(ps => ps.ProctoringSessionId).HasColumnName("proctoring_session_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(ps => ps.AttemptId).HasColumnName("attempt_id");
+            entity.Property(ps => ps.AssessmentId).HasColumnName("assessment_id");
+            entity.Property(ps => ps.StudentId).HasColumnName("student_id");
+            entity.Property(ps => ps.ProctoringStatus).HasColumnName("proctoring_status");
+            entity.Property(ps => ps.StartedAt).HasColumnName("started_at");
+            entity.Property(ps => ps.EndedAt).HasColumnName("ended_at");
+            entity.Property(ps => ps.BrowserName).HasColumnName("browser_name").HasMaxLength(100);
+            entity.Property(ps => ps.BrowserVersion).HasColumnName("browser_version").HasMaxLength(100);
+            entity.Property(ps => ps.OperatingSystem).HasColumnName("operating_system").HasMaxLength(100);
+            entity.Property(ps => ps.DeviceType).HasColumnName("device_type").HasMaxLength(50);
+            entity.Property(ps => ps.UserAgent).HasColumnName("user_agent").HasMaxLength(100);
+            entity.Property(ps => ps.IpAddress).HasColumnName("ip_address").HasMaxLength(100);
+            entity.Property(ps => ps.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(ps => ps.ModifiedAt).HasColumnName("modified_at");
+
+            entity.HasIndex(ps => ps.AttemptId);
+            entity.HasIndex(ps => ps.AssessmentId);
+            entity.HasIndex(ps => ps.StudentId);
+
+            entity.HasOne(ps => ps.Attempt)
+                .WithMany()
+                .HasForeignKey(ps => ps.AttemptId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("proctoring_sessions_attempt_id_fkey");
+
+            entity.HasOne(ps => ps.Assessment)
+                .WithMany()
+                .HasForeignKey(ps => ps.AssessmentId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("proctoring_sessions_assessment_id_fkey");
+
+            entity.HasOne(ps => ps.Student)
+                .WithMany()
+                .HasForeignKey(ps => ps.StudentId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("proctoring_sessions_student_id_fkey");
+        });
+
+        // Configure ProctoringEvent entity
+        modelBuilder.Entity<ProctoringEvent>(entity =>
+        {
+            entity.ToTable("proctoring_events");
+            entity.HasKey(pe => pe.ProctoringEventId);
+            entity.Property(pe => pe.ProctoringEventId).HasColumnName("proctoring_event_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(pe => pe.ProctoringSessionId).HasColumnName("proctoring_session_id");
+            entity.Property(pe => pe.AttemptId).HasColumnName("attempt_id");
+            entity.Property(pe => pe.AssessmentId).HasColumnName("assessment_id");
+            entity.Property(pe => pe.StudentId).HasColumnName("student_id");
+            entity.Property(pe => pe.EventType).HasColumnName("event_type").HasConversion<int>();
+            entity.Property(pe => pe.Severity).HasColumnName("severity").HasMaxLength(50);
+            entity.Property(pe => pe.ClientTimestamp).HasColumnName("client_timestamp");
+            entity.Property(pe => pe.ServerReceivedAt).HasColumnName("server_received_at").HasDefaultValueSql("now()");
+            entity.Property(pe => pe.QuestionId).HasColumnName("question_id");
+            entity.Property(pe => pe.MetadataJson).HasColumnName("metadata_json").HasColumnType("jsonb");
+            entity.Property(pe => pe.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(pe => pe.ModifiedAt).HasColumnName("modified_at");
+
+            entity.HasIndex(pe => pe.EventType).HasDatabaseName("idx_proctoring_events_event_type");
+            entity.HasIndex(pe => pe.AttemptId).HasDatabaseName("idx_proctoring_events_attempt_id");
+            entity.HasIndex(pe => pe.ProctoringSessionId);
+            entity.HasIndex(pe => pe.StudentId);
+            entity.HasIndex(pe => pe.QuestionId);
+
+            entity.HasOne(pe => pe.ProctoringSession)
+                .WithMany()
+                .HasForeignKey(pe => pe.ProctoringSessionId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("proctoring_events_proctoring_session_id_fkey");
+
+            entity.HasOne(pe => pe.Attempt)
+                .WithMany()
+                .HasForeignKey(pe => pe.AttemptId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("proctoring_events_attempt_id_fkey");
+
+            entity.HasOne(pe => pe.Assessment)
+                .WithMany()
+                .HasForeignKey(pe => pe.AssessmentId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("proctoring_events_assessment_id_fkey");
+
+            entity.HasOne(pe => pe.Student)
+                .WithMany()
+                .HasForeignKey(pe => pe.StudentId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("proctoring_events_student_id_fkey");
+
+            entity.HasOne(pe => pe.Question)
+                .WithMany()
+                .HasForeignKey(pe => pe.QuestionId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("proctoring_events_question_id_fkey");
         });
 
         // Configure AuditLog entity

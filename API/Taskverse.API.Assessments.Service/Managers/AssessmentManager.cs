@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Npgsql;
+using Taskverse.API.Assessments.Service.Clients;
 using Taskverse.API.Assessments.Service.Mappings;
 using Taskverse.API.Assessments.Service.Models;
 using Taskverse.API.Assessments.Service.Services;
@@ -27,6 +28,8 @@ public class AssessmentManager : IAssessmentManager
     private readonly IStudentAttemptAnswerSaveStrategyFactory _studentAttemptAnswerSaveStrategyFactory;
     private readonly IReportsServiceClient _reportsServiceClient;
     private readonly ILogger<AssessmentManager> _logger;
+
+    private sealed record ResultProcessingContext(int PassingPercentage, bool ShowResultsImmediately);
 
     public AssessmentManager(
         TaskverseContext context,
@@ -1892,7 +1895,9 @@ public class AssessmentManager : IAssessmentManager
             }
 
             await _context.Entry(attempt).ReloadAsync();
-            await TryEvaluateAttemptResultAsync(attempt.AttemptId, attempt.AssessmentId);
+
+            var resultProcessingContext = await GetResultProcessingContextAsync(attempt.AssessmentId);
+            QueueAttemptResultProcessing(attempt.AttemptId, attempt.StudentId, resultProcessingContext);
             return attempt;
         }
         catch (DbUpdateException ex)
@@ -1913,23 +1918,46 @@ public class AssessmentManager : IAssessmentManager
             .CountAsync();
     }
 
-    private async Task TryEvaluateAttemptResultAsync(Guid attemptId, Guid assessmentId)
+    private async Task<ResultProcessingContext> GetResultProcessingContextAsync(Guid assessmentId)
+    {
+        return await _context.Assessments
+            .AsNoTracking()
+            .Where(item => item.AssessmentId == assessmentId)
+            .Select(item => new ResultProcessingContext(
+                item.PassingPercentage,
+                item.ShowResultsImmediately))
+            .FirstAsync();
+    }
+
+    private void QueueAttemptResultProcessing(
+        Guid attemptId,
+        Guid studentId,
+        ResultProcessingContext resultProcessingContext)
+    {
+        _ = ProcessAttemptResultAsync(attemptId, studentId, resultProcessingContext);
+    }
+
+    private async Task ProcessAttemptResultAsync(
+        Guid attemptId,
+        Guid studentId,
+        ResultProcessingContext resultProcessingContext)
     {
         try
         {
-            var passingPercentage = await _context.Assessments
-                .AsNoTracking()
-                .Where(item => item.AssessmentId == assessmentId)
-                .Select(item => item.PassingPercentage)
-                .FirstAsync();
+            await _reportsServiceClient.EvaluateAttemptAsync(attemptId, resultProcessingContext.PassingPercentage);
 
-            await _reportsServiceClient.EvaluateAttemptAsync(attemptId, passingPercentage);
+            if (!resultProcessingContext.ShowResultsImmediately)
+            {
+                return;
+            }
+
+            await _reportsServiceClient.GetStudentAttemptResultAsync(studentId, attemptId);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(
                 ex,
-                "Attempt {AttemptId} was finalized but result evaluation in Reports service did not complete.",
+                "Attempt {AttemptId} was finalized but async Reports processing did not complete.",
                 attemptId);
         }
     }

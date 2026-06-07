@@ -12,4 +12,9 @@ public interface IResultOrchestrator
     Task<List<StudentResultResponse>> GetStudentResultsAsync(
         Guid studentId,
         CancellationToken cancellationToken = default);
+
+    Task<StudentResultResponse> GetStudentAttemptResultAsync(
+        Guid studentId,
+        Guid attemptId,
+        CancellationToken cancellationToken = default);
 }

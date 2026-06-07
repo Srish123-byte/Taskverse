@@ -31,4 +31,12 @@ public class ResultOrchestrator : IResultOrchestrator
     {
         return _resultManager.GetStudentResultsAsync(studentId, cancellationToken);
     }
+
+    public Task<StudentResultResponse> GetStudentAttemptResultAsync(
+        Guid studentId,
+        Guid attemptId,
+        CancellationToken cancellationToken = default)
+    {
+        return _resultManager.GetStudentAttemptResultAsync(studentId, attemptId, cancellationToken);
+    }
 }
