@@ -175,17 +175,18 @@
       </div>
 
       <h3>{{ question.questionText }}</h3>
+      <p *ngIf="isMultipleAnswerQuestion(question)" class="assessment-question-helper">Select all that apply.</p>
 
       <div class="assessment-question-options">
         <label
           *ngFor="let option of question.options ?? []; trackBy: trackByQuestionOption"
           class="assessment-option-button"
-          [class.assessment-option-button-selected]="question.selectedAnswer === option">
+          [class.assessment-option-button-selected]="isQuestionOptionSelected(question, option)">
           <input
-            type="radio"
+            [type]="isMultipleAnswerQuestion(question) ? 'checkbox' : 'radio'"
             class="assessment-option-radio"
             [name]="'question-' + question.questionId"
-            [checked]="question.selectedAnswer === option"
+            [checked]="isQuestionOptionSelected(question, option)"
             (change)="selectQuestionOption(question, option)" />
           <span>{{ option }}</span>
         </label>

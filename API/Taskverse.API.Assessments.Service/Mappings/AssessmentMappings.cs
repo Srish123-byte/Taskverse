@@ -240,9 +240,12 @@ public static class AssessmentMappings
 
     public static StudentAttemptAnswerRecord ToStudentAttemptAnswerRecord(this AttemptAnswer attemptAnswer)
     {
+        var selectedAnswers = QuestionAnswerJsonHelper.ParseStoredAnswers(attemptAnswer.SelectedAnswer);
+
         return new StudentAttemptAnswerRecord(
             attemptAnswer.QuestionId,
             attemptAnswer.SelectedAnswer,
+            selectedAnswers.Count == 0 ? null : selectedAnswers,
             UtcDateTime.Normalize(attemptAnswer.AnsweredAt));
     }
 
@@ -283,6 +286,9 @@ public static class AssessmentMappings
         int displayOrder,
         AttemptAnswer? attemptAnswer)
     {
+        var correctAnswers = QuestionAnswerJsonHelper.ParseStoredAnswers(question.Answer);
+        var selectedAnswers = QuestionAnswerJsonHelper.ParseStoredAnswers(attemptAnswer?.SelectedAnswer);
+
         return new StudentAttemptRecoveryQuestionRecord(
             question.QuestionId,
             displayOrder,
@@ -292,7 +298,9 @@ public static class AssessmentMappings
             question.Marks,
             question.NegativeMarks,
             question.DifficultyLevel,
+            correctAnswers.Count > 1,
             attemptAnswer?.SelectedAnswer,
+            selectedAnswers.Count == 0 ? null : selectedAnswers,
             UtcDateTime.Normalize(attemptAnswer?.AnsweredAt));
     }
 

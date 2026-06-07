@@ -123,7 +123,8 @@ public class CreateQuestionDto
     public string QuestionType { get; set; } = default!;
     public string QuestionText { get; set; } = default!;
     public List<string>? Options { get; set; }
-    public string Answer { get; set; } = default!;
+    public string? Answer { get; set; }
+    public List<string>? CorrectAnswers { get; set; }
     public string? Explanation { get; set; }
     public decimal Marks { get; set; }
     public decimal NegativeMarks { get; set; }
@@ -320,12 +321,14 @@ public class StudentAssessmentStartDto
 public class SaveStudentAttemptAnswerDto
 {
     public string? SelectedAnswer { get; set; }
+    public List<string>? SelectedAnswers { get; set; }
 }
 
 public class StudentAttemptAnswerDto
 {
     public Guid QuestionId { get; set; }
     public string? SelectedAnswer { get; set; }
+    public List<string>? SelectedAnswers { get; set; }
     public DateTime? AnsweredAt { get; set; }
 }
 
@@ -346,7 +349,9 @@ public class StudentAttemptRecoveryQuestionDto
     public decimal Marks { get; set; }
     public decimal NegativeMarks { get; set; }
     public int DifficultyLevel { get; set; }
+    public bool AllowsMultipleAnswers { get; set; }
     public string? SelectedAnswer { get; set; }
+    public List<string>? SelectedAnswers { get; set; }
     public DateTime? AnsweredAt { get; set; }
 }
 

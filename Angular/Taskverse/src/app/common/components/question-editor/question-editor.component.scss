@@ -128,6 +128,29 @@
   min-height: 132px;
 }
 
+.selection-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #dbe7f3;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.selection-mode-toggle input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #38bdf8;
+}
+
+.selection-mode-hint {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
 .options-list {
   display: grid;
   gap: 12px;
@@ -141,6 +164,13 @@
 }
 
 .option-row input[type='radio'] {
+  accent-color: #38bdf8;
+}
+
+.option-row input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
   accent-color: #38bdf8;
 }
 
@@ -325,6 +355,16 @@
 }
 
 :host(.theme-trainer) .option-row input[type='radio'] {
+  accent-color: #5fc49a;
+}
+
+:host(.theme-trainer) .selection-mode-toggle,
+:host(.theme-trainer) .selection-mode-hint {
+  color: #4e6f63;
+}
+
+:host(.theme-trainer) .selection-mode-toggle input[type='checkbox'],
+:host(.theme-trainer) .option-row input[type='checkbox'] {
   accent-color: #5fc49a;
 }
 

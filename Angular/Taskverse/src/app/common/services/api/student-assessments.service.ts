@@ -35,17 +35,21 @@ export interface StudentAttemptRecoveryQuestion {
   marks: number;
   negativeMarks: number;
   difficultyLevel: number;
+  allowsMultipleAnswers: boolean;
   selectedAnswer?: string | null;
+  selectedAnswers?: string[] | null;
   answeredAt?: string | null;
 }
 
 export interface SaveStudentAttemptAnswerRequest {
   selectedAnswer?: string | null;
+  selectedAnswers?: string[] | null;
 }
 
 export interface StudentAttemptAnswer {
   questionId: string;
   selectedAnswer?: string | null;
+  selectedAnswers?: string[] | null;
   answeredAt?: string | null;
 }
 

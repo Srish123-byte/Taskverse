@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Taskverse.API.Assessments.Service.Models;
 using Taskverse.Data.DataAccess;
+using Taskverse.Data.Utilities;
 
 namespace Taskverse.API.Assessments.Service.Services;
 
@@ -35,35 +36,51 @@ public class ObjectiveStudentAttemptAnswerSaveStrategy : IStudentAttemptAnswerSa
             context.AttemptAnswers.Add(existingAnswer);
         }
 
-        var normalizedSelectedAnswer = NormalizeValue(request.SelectedAnswer);
-        var normalizedCorrectAnswer = NormalizeValue(question.Answer);
-        var isCorrect = !string.IsNullOrEmpty(normalizedSelectedAnswer) &&
+        var normalizedSelectedAnswers = request.SelectedAnswers?.Count > 0
+            ? QuestionAnswerJsonHelper.NormalizeAnswerValues(request.SelectedAnswers)
+            : QuestionAnswerJsonHelper.ParseStoredAnswers(request.SelectedAnswer);
+        var normalizedCorrectAnswers = QuestionAnswerJsonHelper.ParseStoredAnswers(question.Answer);
+        var hasAnswered = normalizedSelectedAnswers.Count > 0;
+        var isMultiCorrectMcq = string.Equals(question.QuestionType?.Trim(), "mcq", StringComparison.OrdinalIgnoreCase) &&
+                                normalizedCorrectAnswers.Count > 1;
+        var isCorrect = false;
+        decimal marksAwarded;
+
+        if (isMultiCorrectMcq)
+        {
+            var correctAnswerLookup = new HashSet<string>(normalizedCorrectAnswers, StringComparer.OrdinalIgnoreCase);
+            var hasWrongSelection = normalizedSelectedAnswers.Any(answer => !correctAnswerLookup.Contains(answer));
+            var selectedCorrectCount = normalizedSelectedAnswers.Count(answer => correctAnswerLookup.Contains(answer));
+            var perChoiceMarks = normalizedCorrectAnswers.Count == 0
+                ? 0
+                : question.Marks / normalizedCorrectAnswers.Count;
+
+            isCorrect = hasAnswered &&
+                        !hasWrongSelection &&
+                        selectedCorrectCount == normalizedCorrectAnswers.Count;
+            marksAwarded = !hasAnswered || hasWrongSelection
+                ? 0
+                : perChoiceMarks * selectedCorrectCount;
+        }
+        else
+        {
+            var normalizedSelectedAnswer = normalizedSelectedAnswers.FirstOrDefault();
+            var normalizedCorrectAnswer = normalizedCorrectAnswers.FirstOrDefault();
+            isCorrect = !string.IsNullOrEmpty(normalizedSelectedAnswer) &&
                         !string.IsNullOrEmpty(normalizedCorrectAnswer) &&
                         string.Equals(normalizedSelectedAnswer, normalizedCorrectAnswer, StringComparison.OrdinalIgnoreCase);
-        var hasAnswered = !string.IsNullOrEmpty(normalizedSelectedAnswer);
-        var marksAwarded = isCorrect
-            ? question.Marks
-            : assessment.NegativeMarking && hasAnswered
-                ? -Math.Abs(question.NegativeMarks)
-                : 0;
+            marksAwarded = isCorrect
+                ? question.Marks
+                : assessment.NegativeMarking && hasAnswered
+                    ? -Math.Abs(question.NegativeMarks)
+                    : 0;
+        }
 
-        existingAnswer.SelectedAnswer = normalizedSelectedAnswer;
+        existingAnswer.SelectedAnswer = QuestionAnswerJsonHelper.SerializeAnswers(normalizedSelectedAnswers);
         existingAnswer.AnsweredAt = answeredAtUtc;
         existingAnswer.IsCorrect = isCorrect;
         existingAnswer.MarksAwarded = marksAwarded;
 
         return existingAnswer;
-    }
-
-    private static string? NormalizeValue(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return string.Join(
-            " ",
-            value.Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 }

@@ -10,25 +10,28 @@ public static class QuestionMappings
     public static Question ToEntity(this CreateQuestionRequest request)
     {
         var normalizedOptions = request.Options?
-            .Select(NormalizeWhitespace)
+            .Select(QuestionAnswerJsonHelper.NormalizeSingleValue)
             .Where(option => !string.IsNullOrWhiteSpace(option))
             .ToList();
         var normalizedTopicTags = NormalizeTopicTags(request.TopicTag);
+        var normalizedCorrectAnswers = request.CorrectAnswers?.Count > 0
+            ? QuestionAnswerJsonHelper.NormalizeAnswerValues(request.CorrectAnswers)
+            : QuestionAnswerJsonHelper.ParseStoredAnswers(request.Answer);
 
         return new Question
         {
             CollegeId = request.CollegeId,
             SubjectId = request.SubjectId,
-            Stream = NormalizeWhitespace(request.Stream),
-            Subject = NormalizeWhitespace(request.Subject),
+            Stream = QuestionAnswerJsonHelper.NormalizeSingleValue(request.Stream),
+            Subject = QuestionAnswerJsonHelper.NormalizeSingleValue(request.Subject),
             TopicId = request.TopicId,
-            Topic = NormalizeWhitespace(request.Topic),
+            Topic = QuestionAnswerJsonHelper.NormalizeSingleValue(request.Topic),
             TopicTag = normalizedTopicTags,
-            QuestionType = NormalizeWhitespace(request.QuestionType) ?? string.Empty,
-            QuestionText = NormalizeWhitespace(request.QuestionText) ?? string.Empty,
+            QuestionType = QuestionAnswerJsonHelper.NormalizeSingleValue(request.QuestionType) ?? string.Empty,
+            QuestionText = QuestionAnswerJsonHelper.NormalizeSingleValue(request.QuestionText) ?? string.Empty,
             Options = normalizedOptions is null ? null : JsonSerializer.Serialize(normalizedOptions),
-            Answer = NormalizeWhitespace(request.Answer),
-            Explanation = NormalizeWhitespace(request.Explanation),
+            Answer = QuestionAnswerJsonHelper.SerializeAnswers(normalizedCorrectAnswers),
+            Explanation = QuestionAnswerJsonHelper.NormalizeSingleValue(request.Explanation),
             Marks = request.Marks,
             NegativeMarks = request.NegativeMarks,
             DifficultyLevel = request.DifficultyLevel,
@@ -38,6 +41,8 @@ public static class QuestionMappings
 
     public static QuestionRecord ToRecord(this Question question)
     {
+        var correctAnswers = QuestionAnswerJsonHelper.ParseStoredAnswers(question.Answer);
+
         return new QuestionRecord(
             question.QuestionId,
             question.CollegeId,
@@ -120,20 +125,10 @@ public static class QuestionMappings
         }
     }
 
-    private static string? NormalizeWhitespace(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return string.Join(" ", value.Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-    }
-
     private static string[] NormalizeTopicTags(IEnumerable<string>? values)
     {
         return (values ?? [])
-            .Select(NormalizeWhitespace)
+            .Select(QuestionAnswerJsonHelper.NormalizeSingleValue)
             .OfType<string>()
             .Where(value => !string.IsNullOrWhiteSpace(value))
             .Distinct(StringComparer.OrdinalIgnoreCase)

@@ -54,6 +54,7 @@ public static class AssessmentMappings
             QuestionText = model.QuestionText,
             Options = model.Options,
             Answer = model.Answer,
+            CorrectAnswers = model.CorrectAnswers,
             Explanation = model.Explanation,
             Marks = model.Marks,
             NegativeMarks = model.NegativeMarks,
@@ -427,7 +428,8 @@ public static class AssessmentMappings
     {
         return new SaveStudentAttemptAnswerDto
         {
-            SelectedAnswer = model.SelectedAnswer
+            SelectedAnswer = model.SelectedAnswer,
+            SelectedAnswers = model.SelectedAnswers
         };
     }
 
@@ -438,6 +440,7 @@ public static class AssessmentMappings
         {
             QuestionId = dto.QuestionId,
             SelectedAnswer = dto.SelectedAnswer,
+            SelectedAnswers = dto.SelectedAnswers,
             AnsweredAt = UtcDateTime.Normalize(dto.AnsweredAt)
         };
     }
@@ -466,7 +469,9 @@ public static class AssessmentMappings
             Marks = dto.Marks,
             NegativeMarks = dto.NegativeMarks,
             DifficultyLevel = dto.DifficultyLevel,
+            AllowsMultipleAnswers = dto.AllowsMultipleAnswers,
             SelectedAnswer = dto.SelectedAnswer,
+            SelectedAnswers = dto.SelectedAnswers,
             AnsweredAt = UtcDateTime.Normalize(dto.AnsweredAt)
         };
     }

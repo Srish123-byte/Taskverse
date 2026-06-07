@@ -81,6 +81,10 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
     return option;
   }
 
+  isMultipleAnswerQuestion(question: StudentAttemptRecoveryQuestion): boolean {
+    return question.allowsMultipleAnswers;
+  }
+
   getDifficultyLabel(level: number): string {
     if (level >= 4) {
       return 'Hard';
@@ -273,6 +277,7 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
       const currentQuestion = this.currentQuestion;
       if (currentQuestion) {
         currentQuestion.selectedAnswer = savedAnswer.selectedAnswer ?? null;
+        currentQuestion.selectedAnswers = savedAnswer.selectedAnswers ?? null;
         currentQuestion.answeredAt = savedAnswer.answeredAt ?? null;
       }
 
@@ -295,6 +300,7 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
 
       if (currentQuestion) {
         currentQuestion.selectedAnswer = savedAnswer.selectedAnswer ?? null;
+        currentQuestion.selectedAnswers = savedAnswer.selectedAnswers ?? null;
         currentQuestion.answeredAt = savedAnswer.answeredAt ?? null;
       }
 
@@ -325,7 +331,30 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
   }
 
   selectQuestionOption(question: StudentAttemptRecoveryQuestion, option: string): void {
+    if (question.allowsMultipleAnswers) {
+      const selectedAnswers = question.selectedAnswers?.length
+        ? question.selectedAnswers
+        : (question.selectedAnswer ? [question.selectedAnswer] : []);
+      const isSelected = selectedAnswers.includes(option);
+      const nextSelections = isSelected
+        ? selectedAnswers.filter(value => value !== option)
+        : [...selectedAnswers, option];
+
+      question.selectedAnswers = nextSelections;
+      question.selectedAnswer = nextSelections[0] ?? null;
+      return;
+    }
+
     question.selectedAnswer = option;
+    question.selectedAnswers = [option];
+  }
+
+  isQuestionOptionSelected(question: StudentAttemptRecoveryQuestion, option: string): boolean {
+    return question.allowsMultipleAnswers
+      ? ((question.selectedAnswers?.length
+          ? question.selectedAnswers
+          : (question.selectedAnswer ? [question.selectedAnswer] : [])).includes(option))
+      : question.selectedAnswer === option;
   }
 
   exitAttemptMode(): void {
@@ -355,7 +384,12 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
 
     this.answerSaveSubscription = this.studentAssessmentsService
       .saveAttemptAnswer(this.activeAttempt.attemptId, currentQuestion.questionId, {
-        selectedAnswer: currentQuestion.selectedAnswer ?? null
+        selectedAnswer: currentQuestion.allowsMultipleAnswers
+          ? (currentQuestion.selectedAnswers?.[0] ?? null)
+          : (currentQuestion.selectedAnswer ?? null),
+        selectedAnswers: currentQuestion.allowsMultipleAnswers
+          ? (currentQuestion.selectedAnswers ?? [])
+          : (currentQuestion.selectedAnswer ? [currentQuestion.selectedAnswer] : [])
       })
       .pipe(finalize(() => {
         this.isSavingAnswer = false;

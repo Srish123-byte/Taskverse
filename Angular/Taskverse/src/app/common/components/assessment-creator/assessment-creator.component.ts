@@ -51,13 +51,12 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     { value: '3', label: 'Hard' }
   ];
 
-  isQuestionBankLoading = true;
-  isAssignmentLoading = true;
+  isQuestionBankLoading = false;
+  isAssignmentLoading = false;
   isAssessmentLoading = false;
   questionBankErrorMessage = '';
   assignmentErrorMessage = '';
   assessmentLoadErrorMessage = '';
-  private hasStartedAssignmentLoad = false;
   private loadedAssessmentRecord: AssessmentRecord | null = null;
   private readonly destroy$ = new Subject<void>();
 
@@ -286,7 +285,6 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.refreshMinimumScheduleDateTime();
-    this.loadQuestionBank();
 
     this.activatedRoute.paramMap
       .pipe(takeUntil(this.destroy$))
@@ -476,18 +474,21 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     });
   }
 
-  private loadQuestionBank(): void {
+  private loadQuestionBank(subjectId?: string | null, topicId?: string | null): void {
     this.isQuestionBankLoading = true;
     this.questionBankErrorMessage = '';
 
     this.assessmentAdminService.searchQuestionBank({
+      subjectId: subjectId?.trim() || undefined,
+      topicId: topicId?.trim() || undefined,
       pageNumber: 1,
       pageSize: 100
-    }).subscribe({
+    })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
       next: result => {
         this.questions = result?.items ?? [];
         this.isQuestionBankLoading = false;
-        this.maybeStartAssignmentLoad();
         this.changeDetectorRef.detectChanges();
       },
       error: error => {
@@ -496,19 +497,9 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
           error?.error?.message ||
           'Unable to load the question bank right now.';
         this.isQuestionBankLoading = false;
-        this.maybeStartAssignmentLoad();
         this.changeDetectorRef.detectChanges();
       }
     });
-  }
-
-  private maybeStartAssignmentLoad(): void {
-    if (this.hasStartedAssignmentLoad || this.isQuestionBankLoading) {
-      return;
-    }
-
-    this.hasStartedAssignmentLoad = true;
-    this.loadAssignmentCatalog();
   }
 
   private applyRouteContext(paramMap: ParamMap): void {
@@ -517,6 +508,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     if (assessmentId) {
       this.builderMode = 'edit';
       this.editingAssessmentId = assessmentId;
+      this.loadAssignmentCatalog();
       this.loadAssessmentForEdit(assessmentId);
       return;
     }
@@ -528,6 +520,8 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     this.assessmentLoadErrorMessage = '';
     this.resetBuilderForm();
     this.refreshMinimumScheduleDateTime();
+    this.loadQuestionBank();
+    this.loadAssignmentCatalog();
     this.changeDetectorRef.detectChanges();
   }
 
@@ -838,6 +832,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     this.assessmentAdminService.getAssessment(assessmentId).subscribe({
       next: assessment => {
         this.applyAssessmentRecord(assessment);
+        this.loadQuestionBank(assessment.subjectId, assessment.topicId);
         this.isAssessmentLoading = false;
         this.changeDetectorRef.detectChanges();
       },

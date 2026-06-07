@@ -23,7 +23,8 @@ export interface CreateQuestionRequest {
   questionType: string;
   questionText: string;
   options?: string[];
-  answer: string;
+  answer?: string;
+  correctAnswers?: string[];
   explanation?: string;
   marks: number;
   negativeMarks: number;
@@ -44,6 +45,8 @@ export interface QuestionBankItem {
   questionText: string;
   options?: string[] | null;
   answer?: string | null;
+  correctAnswers?: string[] | null;
+  allowsMultipleAnswers?: boolean;
   explanation?: string | null;
   marks: number;
   negativeMarks: number;

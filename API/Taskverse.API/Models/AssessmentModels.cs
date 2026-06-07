@@ -104,7 +104,8 @@ public class CreateQuestionRequestModel
     public string QuestionType { get; set; } = string.Empty;
     public string QuestionText { get; set; } = string.Empty;
     public List<string>? Options { get; set; }
-    public string Answer { get; set; } = string.Empty;
+    public string? Answer { get; set; }
+    public List<string>? CorrectAnswers { get; set; }
     public string? Explanation { get; set; }
     public decimal Marks { get; set; }
     public decimal NegativeMarks { get; set; }
@@ -298,12 +299,14 @@ public class StudentAssessmentStartResponseModel
 public class SaveStudentAttemptAnswerRequestModel
 {
     public string? SelectedAnswer { get; set; }
+    public List<string>? SelectedAnswers { get; set; }
 }
 
 public class StudentAttemptAnswerResponseModel
 {
     public Guid QuestionId { get; set; }
     public string? SelectedAnswer { get; set; }
+    public List<string>? SelectedAnswers { get; set; }
     public DateTime? AnsweredAt { get; set; }
 }
 
@@ -324,7 +327,9 @@ public class StudentAttemptRecoveryQuestionResponseModel
     public decimal Marks { get; set; }
     public decimal NegativeMarks { get; set; }
     public int DifficultyLevel { get; set; }
+    public bool AllowsMultipleAnswers { get; set; }
     public string? SelectedAnswer { get; set; }
+    public List<string>? SelectedAnswers { get; set; }
     public DateTime? AnsweredAt { get; set; }
 }
 

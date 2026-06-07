@@ -492,6 +492,9 @@ public class SaveStudentAttemptAnswerRequest
 {
     [JsonPropertyName("selected_answer")]
     public string? SelectedAnswer { get; set; }
+
+    [JsonPropertyName("selected_answers")]
+    public List<string>? SelectedAnswers { get; set; }
 }
 
 public record StudentAttemptAnswerRecord(
@@ -499,6 +502,8 @@ public record StudentAttemptAnswerRecord(
     Guid QuestionId,
     [property: JsonPropertyName("selected_answer")]
     string? SelectedAnswer,
+    [property: JsonPropertyName("selected_answers")]
+    List<string>? SelectedAnswers,
     [property: JsonPropertyName("answered_at")]
     DateTime? AnsweredAt);
 
@@ -527,8 +532,12 @@ public record StudentAttemptRecoveryQuestionRecord(
     decimal NegativeMarks,
     [property: JsonPropertyName("difficulty_level")]
     int DifficultyLevel,
+    [property: JsonPropertyName("allows_multiple_answers")]
+    bool AllowsMultipleAnswers,
     [property: JsonPropertyName("selected_answer")]
     string? SelectedAnswer,
+    [property: JsonPropertyName("selected_answers")]
+    List<string>? SelectedAnswers,
     [property: JsonPropertyName("answered_at")]
     DateTime? AnsweredAt);
 

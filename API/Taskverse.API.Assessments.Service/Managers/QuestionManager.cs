@@ -5,6 +5,7 @@ using Taskverse.API.Assessments.Service.Mappings;
 using Taskverse.API.Assessments.Service.Models;
 using Taskverse.Data.DataAccess;
 using Taskverse.Data.Enums;
+using Taskverse.Data.Utilities;
 
 namespace Taskverse.API.Assessments.Service.Managers;
 
@@ -538,6 +539,29 @@ public class QuestionManager : IQuestionManager
             throw new ArgumentException("Answer is required.");
         }
 
+        var normalizedOptions = DeserializeOptions(question.Options);
+        var normalizedAnswers = QuestionAnswerJsonHelper.ParseStoredAnswers(question.Answer);
+        if (normalizedAnswers.Count == 0)
+        {
+            throw new ArgumentException("Answer is required.");
+        }
+
+        question.Answer = QuestionAnswerJsonHelper.SerializeAnswers(normalizedAnswers);
+
+        if (normalizedQuestionType == "mcq")
+        {
+            var optionLookup = new HashSet<string>(normalizedOptions ?? [], StringComparer.OrdinalIgnoreCase);
+            if (normalizedAnswers.Any(answer => !optionLookup.Contains(answer)))
+            {
+                throw new ArgumentException("All answers must match one of the configured options.");
+            }
+        }
+
+        if (normalizedQuestionType == "fill in the blanks" && normalizedAnswers.Count != 1)
+        {
+            throw new ArgumentException("Fill in the blanks questions support exactly one answer.");
+        }
+
         if (question.Marks < 0)
         {
             throw new ArgumentException("Marks cannot be negative.");
@@ -551,22 +575,10 @@ public class QuestionManager : IQuestionManager
 
     private static bool HasMinimumValidOptions(string? options, int minimumCount)
     {
-        if (string.IsNullOrWhiteSpace(options))
-        {
-            return false;
-        }
-
-        try
-        {
-            var parsedOptions = JsonSerializer.Deserialize<List<string>>(options);
-            return parsedOptions is not null &&
-                   parsedOptions.Count >= minimumCount &&
-                   parsedOptions.All(option => !string.IsNullOrWhiteSpace(option));
-        }
-        catch
-        {
-            return false;
-        }
+        var parsedOptions = DeserializeOptions(options);
+        return parsedOptions is not null &&
+               parsedOptions.Count >= minimumCount &&
+               parsedOptions.All(option => !string.IsNullOrWhiteSpace(option));
     }
 
     private static string BuildDuplicateFingerprint(Question question)
@@ -592,19 +604,24 @@ public class QuestionManager : IQuestionManager
 
     private static string NormalizeOptions(string? options)
     {
+        var parsedOptions = DeserializeOptions(options) ?? [];
+        return string.Join("~", parsedOptions.Select(NormalizeForLookup));
+    }
+
+    private static List<string>? DeserializeOptions(string? options)
+    {
         if (string.IsNullOrWhiteSpace(options))
         {
-            return string.Empty;
+            return null;
         }
 
         try
         {
-            var parsedOptions = JsonSerializer.Deserialize<List<string>>(options) ?? [];
-            return string.Join("~", parsedOptions.Select(NormalizeForLookup));
+            return JsonSerializer.Deserialize<List<string>>(options);
         }
         catch
         {
-            return NormalizeForLookup(options);
+            return null;
         }
     }
 

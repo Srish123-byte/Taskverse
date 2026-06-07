@@ -203,7 +203,9 @@ public record CreateQuestionModel(
     string QuestionType,
     string QuestionText,
     List<string>? Options,
-    string Answer,
+    string? Answer,
+    [property: JsonProperty("correct_answers")]
+    List<string>? CorrectAnswers,
     string? Explanation,
     decimal Marks,
     decimal NegativeMarks,
@@ -416,13 +418,17 @@ public record StudentAssessmentStartModel(
 
 public record SaveStudentAttemptAnswerModel(
     [property: JsonProperty("selected_answer")]
-    string? SelectedAnswer);
+    string? SelectedAnswer,
+    [property: JsonProperty("selected_answers")]
+    List<string>? SelectedAnswers);
 
 public record StudentAttemptAnswerModel(
     [property: JsonProperty("question_id")]
     Guid QuestionId,
     [property: JsonProperty("selected_answer")]
     string? SelectedAnswer,
+    [property: JsonProperty("selected_answers")]
+    List<string>? SelectedAnswers,
     [property: JsonProperty("answered_at")]
     DateTime? AnsweredAt);
 
@@ -451,8 +457,12 @@ public record StudentAttemptRecoveryQuestionModel(
     decimal NegativeMarks,
     [property: JsonProperty("difficulty_level")]
     int DifficultyLevel,
+    [property: JsonProperty("allows_multiple_answers")]
+    bool AllowsMultipleAnswers,
     [property: JsonProperty("selected_answer")]
     string? SelectedAnswer,
+    [property: JsonProperty("selected_answers")]
+    List<string>? SelectedAnswers,
     [property: JsonProperty("answered_at")]
     DateTime? AnsweredAt);
 
