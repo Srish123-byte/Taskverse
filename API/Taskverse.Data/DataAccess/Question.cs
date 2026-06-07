@@ -14,9 +14,6 @@ public class Question
     [Column("college_id")]
     public Guid CollegeId { get; set; }
 
-    [Column("assessment_id")]
-    public Guid? AssessmentId { get; set; }
-
     [MaxLength(100)]
     [Column("stream")]
     public string? Stream { get; set; }
@@ -82,6 +79,4 @@ public class Question
 
     [NotMapped]
     public Guid? TopicId { get; set; }
-
-    public ICollection<Attempt> Attempts { get; set; } = [];
 }

@@ -31,6 +31,27 @@ public static class AssessmentMappings
             ModifiedAt = UtcDateTime.Normalize(model.ModifiedAt)
         };
 
+    public static QuestionTopicCatalogDto ToDto(this QuestionTopicCatalogModel model)
+        => new()
+        {
+            TopicId = model.TopicId,
+            TopicName = model.TopicName
+        };
+
+    public static QuestionSubjectCatalogDto ToDto(this QuestionSubjectCatalogModel model)
+        => new()
+        {
+            SubjectId = model.SubjectId,
+            SubjectName = model.SubjectName,
+            Topics = model.Topics.Select(item => item.ToDto()).ToList()
+        };
+
+    public static QuestionClassificationCatalogDto ToDto(this QuestionClassificationCatalogModel model)
+        => new()
+        {
+            Subjects = model.Subjects.Select(item => item.ToDto()).ToList()
+        };
+
     public static QuestionBankAssessmentDto ToDto(this QuestionBankAssessmentModel model)
         => new()
         {
@@ -52,6 +73,7 @@ public static class AssessmentMappings
             AssignedBatchIds = model.AssignedBatchIds,
             AllowLateEntry = model.AllowLateEntry,
             ShowResultsImmediately = model.ShowResultsImmediately,
+            PassingPercentage = model.PassingPercentage,
             AllowQuestionReview = model.AllowQuestionReview,
             NegativeMarking = model.NegativeMarking,
             IsTotalMarksAutoCalculated = model.IsTotalMarksAutoCalculated,
@@ -70,27 +92,28 @@ public static class AssessmentMappings
             PageSize = model.PageSize
         };
 
-    public static AssessmentTopicCatalogDto ToDto(this AssessmentTopicCatalogModel model)
+    public static AssessmentSearchItemDto ToDto(this AssessmentSearchItemModel model)
         => new()
         {
-            TopicId = model.TopicId,
-            TopicName = model.TopicName,
-            BatchIds = model.BatchIds
-        };
-
-    public static AssessmentSubjectCatalogDto ToDto(this AssessmentSubjectCatalogModel model)
-        => new()
-        {
-            SubjectId = model.SubjectId,
+            AssessmentId = model.AssessmentId,
+            AssessmentName = model.AssessmentName,
             SubjectName = model.SubjectName,
-            BatchIds = model.BatchIds,
-            Topics = model.Topics.Select(item => item.ToDto()).ToList()
+            TopicName = model.TopicName,
+            AssessmentStatus = model.AssessmentStatus,
+            AssessmentDate = UtcDateTime.Normalize(model.AssessmentDate),
+            TotalMarks = model.TotalMarks,
+            DifficultyLevel = model.DifficultyLevel
         };
 
-    public static AssessmentSubjectTopicCatalogDto ToDto(this AssessmentSubjectTopicCatalogModel model)
+    public static PagedAssessmentSearchDto ToDto(this PagedAssessmentSearchModel model)
         => new()
         {
-            Subjects = model.Subjects.Select(item => item.ToDto()).ToList()
+            Items = model.Items.Select(item => item.ToDto()).ToList(),
+            TotalCount = model.TotalCount,
+            ActiveCount = model.ActiveCount,
+            CompletedCount = model.CompletedCount,
+            PageNumber = model.PageNumber,
+            PageSize = model.PageSize
         };
 
     public static AssessmentAssignmentBatchDto ToDto(this AssessmentAssignmentBatchModel model)
@@ -131,6 +154,7 @@ public static class AssessmentMappings
             dto.AllowLateEntry,
             dto.AllowQuestionReview,
             dto.NegativeMarking,
+            dto.PassingPercentage,
             dto.AssignedBatchIds,
             dto.QuestionIds,
             dto.DurationMinutes,
@@ -152,6 +176,7 @@ public static class AssessmentMappings
             dto.AllowLateEntry,
             dto.AllowQuestionReview,
             dto.NegativeMarking,
+            dto.PassingPercentage,
             dto.AssignedBatchIds,
             dto.QuestionIds,
             dto.DurationMinutes,
@@ -174,6 +199,7 @@ public static class AssessmentMappings
             dto.AllowLateEntry,
             dto.AllowQuestionReview,
             dto.NegativeMarking,
+            dto.PassingPercentage,
             dto.AssignedBatchIds,
             dto.QuestionIds,
             dto.DurationMinutes,
@@ -238,41 +264,16 @@ public static class AssessmentMappings
             dto.PageNumber,
             dto.PageSize);
 
-    public static AssessmentManagementSearchModel ToMicroServiceModel(this AssessmentManagementSearchDto dto)
+    public static AssessmentSearchModel ToMicroServiceModel(this AssessmentSearchDto dto)
         => new(
             dto.CollegeId,
             dto.RequesterRole,
-            dto.RequesterUserId,
-            dto.CreatedBy,
+            dto.RequesterName,
             dto.SearchTerm,
             dto.AssessmentStatus,
             dto.DifficultyLevel,
             dto.PageNumber,
             dto.PageSize);
-
-    public static AssessmentManagementItemDto ToDto(this AssessmentManagementItemModel model)
-        => new()
-        {
-            AssessmentId = model.AssessmentId,
-            AssessmentName = model.AssessmentName,
-            Category = model.Category,
-            TopicName = model.TopicName,
-            AssessmentStatus = model.AssessmentStatus,
-            AssessmentDate = UtcDateTime.Normalize(model.AssessmentDate),
-            TotalMarks = model.TotalMarks,
-            DifficultyLevel = model.DifficultyLevel
-        };
-
-    public static AssessmentManagementSearchResultDto ToDto(this AssessmentManagementSearchResultModel model)
-        => new()
-        {
-            Items = model.Items.Select(item => item.ToDto()).ToList(),
-            TotalCount = model.TotalCount,
-            ActiveCount = model.ActiveCount,
-            CompletedCount = model.CompletedCount,
-            PageNumber = model.PageNumber,
-            PageSize = model.PageSize
-        };
 
     public static AssessmentQuestionListItemDto ToDto(this AssessmentQuestionListItemModel model)
         => new()

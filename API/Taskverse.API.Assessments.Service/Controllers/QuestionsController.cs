@@ -21,6 +21,30 @@ public class QuestionsController : ControllerBase
     }
 
     /// <summary>
+    /// Returns the subject-topic catalog used by shared question creation flows.
+    /// </summary>
+    /// <returns>The available subjects and topics.</returns>
+    [HttpGet("catalog")]
+    [ProducesResponseType(typeof(QuestionClassificationCatalogRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<QuestionClassificationCatalogRecord>> GetQuestionClassificationCatalog()
+    {
+        try
+        {
+            var result = await _questionManager.GetQuestionClassificationCatalog();
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = "An unexpected error occurred while loading the question classification catalog.",
+                detail = ex.Message
+            });
+        }
+    }
+
+    /// <summary>
     /// Creates one or more question-bank entries in the microservice data store.
     /// </summary>
     /// <param name="requests">The question create requests.</param>

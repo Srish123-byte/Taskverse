@@ -4,6 +4,9 @@ import { finalize } from 'rxjs/operators';
 import {
   StudentAssessmentDetail,
   StudentAssessmentItem,
+  StudentAttemptAnswer,
+  StudentAttemptRecovery,
+  StudentAttemptRecoveryQuestion,
   StudentAssessmentsService
 } from '../../../common/services/api/student-assessments.service';
 
@@ -28,11 +31,24 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
   selectedAssessmentDetail: StudentAssessmentDetail | null = null;
   selectedAssessmentActionLabel = '';
   selectedAssessmentName = '';
+  selectedAssessmentId: string | null = null;
+  selectedAssessmentStatus = '';
   isDetailModalOpen = false;
+  isStartingAssessment = false;
+  isSavingAnswer = false;
+  isSubmittingAttempt = false;
+  activeAttempt: StudentAttemptRecovery | null = null;
+  currentQuestionIndex = 0;
+  countdownSeconds = 0;
+  attemptErrorMessage = '';
   loadingAssessmentId: string | null = null;
   private readonly subscriptions = new Subscription();
   private assessmentsLoadSubscription?: Subscription;
   private assessmentDetailSubscription?: Subscription;
+  private attemptStartSubscription?: Subscription;
+  private answerSaveSubscription?: Subscription;
+  private attemptSubmitSubscription?: Subscription;
+  private countdownTimerId: number | null = null;
 
   constructor(
     private readonly studentAssessmentsService: StudentAssessmentsService,
@@ -44,6 +60,7 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.stopCountdown();
     this.subscriptions.unsubscribe();
   }
 
@@ -58,6 +75,10 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
 
   trackByAssessmentId(_: number, assessment: StudentAssessmentItem): string {
     return assessment.assessmentId;
+  }
+
+  trackByQuestionOption(_: number, option: string): string {
+    return option;
   }
 
   getDifficultyLabel(level: number): string {
@@ -96,21 +117,60 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
       .map(value => value?.trim())
       .filter((value): value is string => !!value);
 
-    return parts.join(' • ');
+    return parts.join(' - ');
   }
 
   getActionLabel(status: string): string {
-    return status?.toUpperCase() === 'LIVE' ? 'Start Assessment' : 'View Details';
+    return this.isLiveStatus(status) ? 'Start Assessment' : 'View Details';
+  }
+
+  get currentQuestion(): StudentAttemptRecoveryQuestion | null {
+    if (!this.activeAttempt?.questions?.length) {
+      return null;
+    }
+
+    return this.activeAttempt.questions[this.currentQuestionIndex] ?? null;
+  }
+
+  get isAttemptMode(): boolean {
+    return !!this.activeAttempt;
+  }
+
+  get formattedCountdown(): string {
+    const hours = Math.floor(this.countdownSeconds / 3600);
+    const minutes = Math.floor((this.countdownSeconds % 3600) / 60);
+    const seconds = this.countdownSeconds % 60;
+
+    return [hours, minutes, seconds]
+      .map(value => value.toString().padStart(2, '0'))
+      .join(':');
+  }
+
+  get isLastQuestion(): boolean {
+    return !!this.activeAttempt?.questions?.length && this.currentQuestionIndex === this.activeAttempt.questions.length - 1;
+  }
+
+  getQuestionPositionLabel(): string {
+    if (!this.activeAttempt?.questions?.length) {
+      return 'Question';
+    }
+
+    return `Question ${this.currentQuestionIndex + 1} of ${this.activeAttempt.questions.length}`;
   }
 
   isPrimaryAction(status: string): boolean {
-    return status?.toUpperCase() === 'LIVE';
+    return this.isLiveStatus(status);
+  }
+
+  canStartSelectedAssessment(): boolean {
+    return !!this.selectedAssessmentId;
   }
 
   openAssessmentAction(assessment: StudentAssessmentItem): void {
     this.assessmentDetailSubscription?.unsubscribe();
     this.loadingAssessmentId = assessment.assessmentId;
     this.errorMessage = '';
+    this.attemptErrorMessage = '';
 
     this.assessmentDetailSubscription = this.studentAssessmentsService
       .getAssessmentDetail(assessment.assessmentId)
@@ -123,6 +183,10 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
           this.selectedAssessmentDetail = detail;
           this.selectedAssessmentActionLabel = this.getActionLabel(assessment.assessmentStatus);
           this.selectedAssessmentName = assessment.assessmentName;
+          this.selectedAssessmentId = assessment.assessmentId;
+          this.selectedAssessmentStatus = assessment.assessmentStatus;
+          this.activeAttempt = null;
+          this.currentQuestionIndex = 0;
           this.isDetailModalOpen = true;
           this.changeDetectorRef.detectChanges();
         },
@@ -141,6 +205,233 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
     this.selectedAssessmentDetail = null;
     this.selectedAssessmentActionLabel = '';
     this.selectedAssessmentName = '';
+    this.selectedAssessmentId = null;
+    this.selectedAssessmentStatus = '';
+    this.activeAttempt = null;
+    this.currentQuestionIndex = 0;
+    this.countdownSeconds = 0;
+    this.isStartingAssessment = false;
+    this.isSavingAnswer = false;
+    this.isSubmittingAttempt = false;
+    this.attemptErrorMessage = '';
+    this.stopCountdown();
+  }
+
+  startSelectedAssessment(): void {
+    if (!this.canStartSelectedAssessment() || this.isStartingAssessment) {
+      return;
+    }
+
+    const assessmentId = this.selectedAssessmentId;
+    if (!assessmentId) {
+      return;
+    }
+
+    this.attemptStartSubscription?.unsubscribe();
+    this.isStartingAssessment = true;
+    this.attemptErrorMessage = '';
+
+    this.attemptStartSubscription = this.studentAssessmentsService
+      .startAssessment(assessmentId)
+      .pipe(finalize(() => {
+        this.isStartingAssessment = false;
+        this.changeDetectorRef.detectChanges();
+      }))
+      .subscribe({
+        next: attempt => {
+          this.activateAttempt(attempt);
+        },
+        error: error => {
+          console.error('Failed to start student assessment.', error);
+          this.attemptErrorMessage = error?.error?.message || 'Unable to start this assessment right now.';
+          this.changeDetectorRef.detectChanges();
+        }
+      });
+
+    this.subscriptions.add(this.attemptStartSubscription);
+  }
+
+  showPreviousQuestion(): void {
+    if (this.currentQuestionIndex <= 0 || this.isSavingAnswer || this.isSubmittingAttempt) {
+      return;
+    }
+
+    this.currentQuestionIndex -= 1;
+  }
+
+  showNextQuestion(): void {
+    if (
+      !this.activeAttempt ||
+      this.isSavingAnswer ||
+      this.isSubmittingAttempt ||
+      this.currentQuestionIndex >= this.activeAttempt.questions.length - 1
+    ) {
+      return;
+    }
+
+    this.persistCurrentAnswer(savedAnswer => {
+      const currentQuestion = this.currentQuestion;
+      if (currentQuestion) {
+        currentQuestion.selectedAnswer = savedAnswer.selectedAnswer ?? null;
+        currentQuestion.answeredAt = savedAnswer.answeredAt ?? null;
+      }
+
+      this.currentQuestionIndex += 1;
+      this.changeDetectorRef.detectChanges();
+    });
+  }
+
+  submitCurrentAttempt(): void {
+    if (!this.activeAttempt || this.isSavingAnswer || this.isSubmittingAttempt) {
+      return;
+    }
+
+    this.persistCurrentAnswer(savedAnswer => {
+      const attempt = this.activeAttempt;
+      const currentQuestion = this.currentQuestion;
+      if (!attempt) {
+        return;
+      }
+
+      if (currentQuestion) {
+        currentQuestion.selectedAnswer = savedAnswer.selectedAnswer ?? null;
+        currentQuestion.answeredAt = savedAnswer.answeredAt ?? null;
+      }
+
+      this.attemptSubmitSubscription?.unsubscribe();
+      this.isSubmittingAttempt = true;
+      this.attemptErrorMessage = '';
+
+      this.attemptSubmitSubscription = this.studentAssessmentsService
+        .submitAttempt(attempt.attemptId)
+        .pipe(finalize(() => {
+          this.isSubmittingAttempt = false;
+          this.changeDetectorRef.detectChanges();
+        }))
+        .subscribe({
+          next: () => {
+            this.exitAttemptMode();
+            this.loadAssessments();
+          },
+          error: error => {
+            console.error('Failed to submit student assessment attempt.', error);
+            this.attemptErrorMessage = error?.error?.message || 'Unable to submit this assessment right now.';
+            this.changeDetectorRef.detectChanges();
+          }
+        });
+
+      this.subscriptions.add(this.attemptSubmitSubscription);
+    });
+  }
+
+  selectQuestionOption(question: StudentAttemptRecoveryQuestion, option: string): void {
+    question.selectedAnswer = option;
+  }
+
+  exitAttemptMode(): void {
+    this.activeAttempt = null;
+    this.currentQuestionIndex = 0;
+    this.countdownSeconds = 0;
+    this.isSavingAnswer = false;
+    this.isSubmittingAttempt = false;
+    this.attemptErrorMessage = '';
+    this.stopCountdown();
+    this.changeDetectorRef.detectChanges();
+  }
+
+  private persistCurrentAnswer(onSuccess: (savedAnswer: StudentAttemptAnswer) => void): void {
+    if (!this.activeAttempt) {
+      return;
+    }
+
+    const currentQuestion = this.currentQuestion;
+    if (!currentQuestion) {
+      return;
+    }
+
+    this.answerSaveSubscription?.unsubscribe();
+    this.isSavingAnswer = true;
+    this.attemptErrorMessage = '';
+
+    this.answerSaveSubscription = this.studentAssessmentsService
+      .saveAttemptAnswer(this.activeAttempt.attemptId, currentQuestion.questionId, {
+        selectedAnswer: currentQuestion.selectedAnswer ?? null
+      })
+      .pipe(finalize(() => {
+        this.isSavingAnswer = false;
+        this.changeDetectorRef.detectChanges();
+      }))
+      .subscribe({
+        next: savedAnswer => {
+          onSuccess(savedAnswer);
+        },
+        error: error => {
+          console.error('Failed to save student assessment answer.', error);
+          this.attemptErrorMessage = error?.error?.message || 'Unable to save this answer right now.';
+          this.changeDetectorRef.detectChanges();
+        }
+      });
+
+    this.subscriptions.add(this.answerSaveSubscription);
+  }
+
+  private isLiveStatus(status: string | null | undefined): boolean {
+    return status?.trim().toUpperCase() === 'LIVE';
+  }
+
+  private activateAttempt(attempt: StudentAttemptRecovery): void {
+    this.activeAttempt = attempt;
+    this.currentQuestionIndex = 0;
+    this.attemptErrorMessage = '';
+    this.selectedAssessmentName = attempt.assessmentName;
+    this.selectedAssessmentDetail = null;
+    this.isDetailModalOpen = false;
+    this.countdownSeconds = this.resolveInitialCountdown(attempt);
+    this.startCountdown();
+    this.changeDetectorRef.detectChanges();
+  }
+
+  private resolveInitialCountdown(attempt: StudentAttemptRecovery): number {
+    const maxDurationSeconds = Math.max(0, attempt.durationMinutes * 60);
+    const normalizedStatus = attempt.attemptStatus?.trim().toUpperCase();
+
+    if (normalizedStatus === 'IN_PROGRESS' && attempt.remainingSeconds >= 0) {
+      return maxDurationSeconds > 0
+        ? Math.min(attempt.remainingSeconds, maxDurationSeconds)
+        : attempt.remainingSeconds;
+    }
+
+    if (attempt.remainingSeconds > 0) {
+      return attempt.remainingSeconds;
+    }
+
+    return maxDurationSeconds;
+  }
+
+  private startCountdown(): void {
+    this.stopCountdown();
+
+    if (this.countdownSeconds <= 0) {
+      return;
+    }
+
+    this.countdownTimerId = window.setInterval(() => {
+      if (this.countdownSeconds <= 1) {
+        this.countdownSeconds = 0;
+        this.stopCountdown();
+      } else {
+        this.countdownSeconds -= 1;
+      }
+
+      this.changeDetectorRef.detectChanges();
+    }, 1000);
+  }
+
+  private stopCountdown(): void {
+    if (this.countdownTimerId !== null) {
+      window.clearInterval(this.countdownTimerId);
+      this.countdownTimerId = null;
+    }
   }
 
   private loadAssessments(): void {

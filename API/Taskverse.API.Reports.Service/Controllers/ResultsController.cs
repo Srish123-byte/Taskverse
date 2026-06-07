@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Taskverse.API.Reports.Service.Managers;
 using Taskverse.API.Reports.Service.Models;
+using Taskverse.API.Reports.Service.Orchestrators;
 
 namespace Taskverse.API.Reports.Service.Controllers;
 
@@ -8,53 +8,42 @@ namespace Taskverse.API.Reports.Service.Controllers;
 [Route("api/results")]
 public class ResultsController : ControllerBase
 {
-    private readonly IResultManager _resultManager;
+    private readonly IResultOrchestrator _resultOrchestrator;
 
-    public ResultsController(IResultManager resultManager)
+    public ResultsController(IResultOrchestrator resultOrchestrator)
     {
-        _resultManager = resultManager;
+        _resultOrchestrator = resultOrchestrator;
     }
 
-    [HttpPost("evaluate/{attemptId:guid}")]
+    [HttpPost("evaluate")]
     [ProducesResponseType(typeof(AttemptResultResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<AttemptResultResponse>> EvaluateAttempt(
-        Guid attemptId,
+        [FromBody] EvaluateAttemptRequest request,
         CancellationToken cancellationToken)
     {
-        try
+        if (request is null)
         {
-            var result = await _resultManager.EvaluateAttemptAsync(attemptId, cancellationToken);
-            return Ok(result);
+            return BadRequest(new { message = "Result evaluation request is required." });
         }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
-    }
 
-    [HttpGet("attempts/{attemptId:guid}")]
-    [ProducesResponseType(typeof(AttemptResultResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<AttemptResultResponse>> GetAttemptResult(
-        Guid attemptId,
-        CancellationToken cancellationToken)
-    {
         try
         {
-            var result = await _resultManager.GetAttemptResultAsync(attemptId, cancellationToken);
-            return Ok(result);
+            var evaluation = await _resultOrchestrator.EvaluateAttemptAsync(
+                request.AttemptId,
+                request.PassingPercentage,
+                cancellationToken);
+
+            if (evaluation.WasSkipped)
+            {
+                return NoContent();
+            }
+
+            return Ok(evaluation.Result);
         }
         catch (ArgumentException ex)
         {
@@ -67,24 +56,65 @@ public class ResultsController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return Conflict(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
         }
     }
 
     [HttpGet("students/{studentId:guid}")]
     [ProducesResponseType(typeof(List<StudentResultResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<List<StudentResultResponse>>> GetStudentResults(
         Guid studentId,
         CancellationToken cancellationToken)
     {
         try
         {
-            var result = await _resultManager.GetStudentResultsAsync(studentId, cancellationToken);
+            var result = await _resultOrchestrator.GetStudentResultsAsync(studentId, cancellationToken);
             return Ok(result);
         }
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("students/{studentId:guid}/attempts/{attemptId:guid}")]
+    [ProducesResponseType(typeof(StudentResultResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<StudentResultResponse>> GetStudentAttemptResult(
+        Guid studentId,
+        Guid attemptId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _resultOrchestrator.GetStudentAttemptResultAsync(
+                studentId,
+                attemptId,
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
         }
     }
 }

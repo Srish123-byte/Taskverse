@@ -29,19 +29,20 @@ export class AuthSessionService {
       backdropClass: 'logout-confirmation-backdrop'
     });
 
-    dialogRef.afterClosed().pipe(take(1)).subscribe(confirmed => {
-      if (confirmed) {
-        this.logout('manual');
-        return;
-      }
+    dialogRef.componentInstance.confirmed.pipe(take(1)).subscribe(() => {
+      dialogRef.disableClose = true;
+      dialogRef.componentInstance.isProcessing = true;
+      this.logout('manual', () => dialogRef.close(true));
+    });
 
-      if (onCancel) {
+    dialogRef.afterClosed().pipe(take(1)).subscribe(confirmed => {
+      if (!confirmed && onCancel) {
         onCancel();
       }
     });
   }
 
-  logout(reason: 'manual' | 'timeout' | 'unauthorized' = 'manual'): void {
+  logout(reason: 'manual' | 'timeout' | 'unauthorized' = 'manual', onCompleted?: () => void): void {
     if (this.isLoggingOut) {
       return;
     }
@@ -52,7 +53,7 @@ export class AuthSessionService {
     const jwtToken = this.session.jwtToken;
 
     if (!jwtToken || !userId || !refreshToken) {
-      this.finishLogout(reason);
+      this.finishLogout(reason, onCompleted);
       return;
     }
 
@@ -61,7 +62,7 @@ export class AuthSessionService {
       .pipe(
         take(1),
         catchError(() => EMPTY),
-        finalize(() => this.finishLogout(reason))
+        finalize(() => this.finishLogout(reason, onCompleted))
       )
       .subscribe();
   }
@@ -128,9 +129,10 @@ export class AuthSessionService {
     return expiryTime - Date.now() <= 3 * 60 * 1000;
   }
 
-  private finishLogout(reason: 'manual' | 'timeout' | 'unauthorized'): void {
+  private finishLogout(reason: 'manual' | 'timeout' | 'unauthorized', onCompleted?: () => void): void {
     this.isLoggingOut = false;
     this.refreshRequest$ = null;
+    onCompleted?.();
     this.session.clear();
     const targetRoute = reason === 'manual'
       ? `/${RouteAddress.Login}`

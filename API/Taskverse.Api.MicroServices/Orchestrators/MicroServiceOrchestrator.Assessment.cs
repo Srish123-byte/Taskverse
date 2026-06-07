@@ -70,10 +70,10 @@ public partial class MicroServiceOrchestrator
         return await Delete<List<Guid>>(url, model);
     }
 
-    public async Task<ObjectResult> GetSubjectTopicCatalog(AssessmentBootstrapModel model)
+    public async Task<ObjectResult> GetQuestionClassificationCatalog()
     {
-        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/subjects-topics/catalog";
-        return await Post<AssessmentSubjectTopicCatalogModel>(url, model);
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/questions/catalog";
+        return await Get<QuestionClassificationCatalogModel>(url);
     }
 
     public async Task<ObjectResult> GetTrainerAssignedClassesAndBatches(AssessmentBootstrapModel model)
@@ -88,10 +88,10 @@ public partial class MicroServiceOrchestrator
         return await Post<PagedQuestionBankModel>(url, model);
     }
 
-    public async Task<ObjectResult> SearchAssessments(AssessmentManagementSearchModel model)
+    public async Task<ObjectResult> SearchAssessments(AssessmentSearchModel model)
     {
         var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/search";
-        return await Post<AssessmentManagementSearchResultModel>(url, model);
+        return await Post<PagedAssessmentSearchModel>(url, model);
     }
 
     public async Task<ObjectResult> GetAssessmentQuestionList(Guid assessmentId, AssessmentQuestionListSearchModel model)

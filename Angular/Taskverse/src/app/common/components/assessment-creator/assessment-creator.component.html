@@ -33,19 +33,7 @@
             <h3>Assessment Details</h3>
           </div>
 
-          <app-dashboard-loader
-            *ngIf="isCatalogLoading"
-            title="Loading subjects and topics"
-            copy="Preparing the subject and topic catalog for assessment setup."
-            tone="dark"
-            [diameter]="38">
-          </app-dashboard-loader>
-
-          <div *ngIf="!isCatalogLoading && catalogErrorMessage" class="inline-error-state">
-            {{ catalogErrorMessage }}
-          </div>
-
-          <div *ngIf="!isCatalogLoading && !catalogErrorMessage" class="form-grid">
+          <div class="form-grid">
             <label class="field field-full">
               <span>Assessment Name</span>
               <input type="text" [(ngModel)]="assessmentName" placeholder="Senior Backend Engineer - Module 2" />
@@ -219,12 +207,12 @@
 
           <label class="field field-full">
             <span>Start Time</span>
-            <input type="datetime-local" [(ngModel)]="startDate" [min]="minimumScheduleDateTime" />
+            <input type="datetime-local" [(ngModel)]="startDate" [attr.min]="scheduleInputMin" />
           </label>
 
           <label class="field field-full">
             <span>End Time</span>
-            <input type="datetime-local" [(ngModel)]="endDate" [min]="minimumScheduleDateTime" />
+            <input type="datetime-local" [(ngModel)]="endDate" [attr.min]="scheduleInputMin" />
           </label>
         </article>
 
@@ -415,10 +403,7 @@
     <a class="builder-footer-cancel" [routerLink]="['/', ...backRouteSegments]">Cancel</a>
 
     <div class="footer-actions">
-      <button *ngIf="isEditMode" type="button" class="secondary-action" [disabled]="isSubmitting" (click)="saveDraft()">
-        {{ saveDraftButtonLabel }}
-      </button>
-      <button *ngIf="!isEditMode" type="button" class="secondary-action" [disabled]="isSubmitting" (click)="saveDraft()">
+      <button *ngIf="!isEditMode || isDraftAssessment" type="button" class="secondary-action" [disabled]="isSubmitting" (click)="saveDraft()">
         {{ saveDraftButtonLabel }}
       </button>
       <button type="button" class="primary-action" [disabled]="isSubmitting" (click)="scheduleAssessment()">

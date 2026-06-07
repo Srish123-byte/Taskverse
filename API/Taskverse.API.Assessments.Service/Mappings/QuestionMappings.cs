@@ -61,6 +61,21 @@ public static class QuestionMappings
             UtcDateTime.Normalize(question.ModifiedAt));
     }
 
+    public static QuestionTopicCatalogRecord ToCatalogRecord(this Topic topic)
+    {
+        return new QuestionTopicCatalogRecord(
+            topic.TopicId,
+            topic.TopicName);
+    }
+
+    public static QuestionSubjectCatalogRecord ToCatalogRecord(this Subject subject, List<QuestionTopicCatalogRecord> topics)
+    {
+        return new QuestionSubjectCatalogRecord(
+            subject.SubjectId,
+            subject.SubjectName,
+            topics);
+    }
+
     public static void ApplyUpdates(this Question target, Question source)
     {
         target.CollegeId = source.CollegeId;
@@ -95,7 +110,14 @@ public static class QuestionMappings
             return null;
         }
 
-        return JsonSerializer.Deserialize<List<string>>(options);
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(options);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static string? NormalizeWhitespace(string? value)

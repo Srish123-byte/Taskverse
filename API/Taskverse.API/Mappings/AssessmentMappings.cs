@@ -24,6 +24,7 @@ public static class AssessmentMappings
             AllowLateEntry = model.AllowLateEntry,
             AllowQuestionReview = model.AllowQuestionReview,
             NegativeMarking = model.NegativeMarking,
+            PassingPercentage = model.PassingPercentage,
             AssignedBatchIds = model.AssignedBatchIds,
             QuestionIds = model.QuestionIds,
             DurationMinutes = model.DurationMinutes,
@@ -101,21 +102,21 @@ public static class AssessmentMappings
         };
     }
 
-    public static AssessmentManagementSearchDto ToDto(
-        this AssessmentManagementSearchRequestModel model,
+    public static AssessmentSearchDto ToDto(
+        this AssessmentSearchRequestModel model,
         Guid collegeId,
         string requesterRole,
-        Guid? requesterUserId,
-        string createdBy)
+        string requesterName)
     {
-        return new AssessmentManagementSearchDto
+        return new AssessmentSearchDto
         {
             CollegeId = collegeId,
             RequesterRole = requesterRole,
-            RequesterUserId = requesterUserId,
-            CreatedBy = createdBy,
+            RequesterName = requesterName,
             SearchTerm = model.SearchTerm?.Trim(),
-            AssessmentStatus = model.AssessmentStatus?.Trim(),
+            AssessmentStatus = string.Equals(model.AssessmentStatus, "all", StringComparison.OrdinalIgnoreCase)
+                ? null
+                : model.AssessmentStatus?.Trim(),
             DifficultyLevel = model.DifficultyLevel,
             PageNumber = model.PageNumber > 0 ? model.PageNumber : 1,
             PageSize = model.PageSize > 0 ? model.PageSize : 10
@@ -149,6 +150,33 @@ public static class AssessmentMappings
         };
     }
 
+    public static QuestionTopicCatalogResponseModel ToResponseModel(this QuestionTopicCatalogDto dto)
+    {
+        return new QuestionTopicCatalogResponseModel
+        {
+            TopicId = dto.TopicId,
+            TopicName = dto.TopicName
+        };
+    }
+
+    public static QuestionSubjectCatalogResponseModel ToResponseModel(this QuestionSubjectCatalogDto dto)
+    {
+        return new QuestionSubjectCatalogResponseModel
+        {
+            SubjectId = dto.SubjectId,
+            SubjectName = dto.SubjectName,
+            Topics = dto.Topics.Select(item => item.ToResponseModel()).ToList()
+        };
+    }
+
+    public static QuestionClassificationCatalogResponseModel ToResponseModel(this QuestionClassificationCatalogDto dto)
+    {
+        return new QuestionClassificationCatalogResponseModel
+        {
+            Subjects = dto.Subjects.Select(item => item.ToResponseModel()).ToList()
+        };
+    }
+
     public static PagedQuestionBankResponseModel ToResponseModel(this PagedQuestionBankDto dto)
     {
         return new PagedQuestionBankResponseModel
@@ -160,13 +188,13 @@ public static class AssessmentMappings
         };
     }
 
-    public static AssessmentManagementItemResponseModel ToResponseModel(this AssessmentManagementItemDto dto)
+    public static AssessmentSearchItemResponseModel ToResponseModel(this AssessmentSearchItemDto dto)
     {
-        return new AssessmentManagementItemResponseModel
+        return new AssessmentSearchItemResponseModel
         {
             AssessmentId = dto.AssessmentId,
             AssessmentName = dto.AssessmentName,
-            Category = dto.Category,
+            SubjectName = dto.SubjectName,
             TopicName = dto.TopicName,
             AssessmentStatus = dto.AssessmentStatus,
             AssessmentDate = UtcDateTime.Normalize(dto.AssessmentDate),
@@ -175,9 +203,9 @@ public static class AssessmentMappings
         };
     }
 
-    public static AssessmentManagementSearchResponseModel ToResponseModel(this AssessmentManagementSearchResultDto dto)
+    public static PagedAssessmentSearchResponseModel ToResponseModel(this PagedAssessmentSearchDto dto)
     {
-        return new AssessmentManagementSearchResponseModel
+        return new PagedAssessmentSearchResponseModel
         {
             Items = dto.Items.Select(item => item.ToResponseModel()).ToList(),
             TotalCount = dto.TotalCount,
@@ -207,6 +235,7 @@ public static class AssessmentMappings
             AllowLateEntry = model.AllowLateEntry,
             AllowQuestionReview = model.AllowQuestionReview,
             NegativeMarking = model.NegativeMarking,
+            PassingPercentage = model.PassingPercentage,
             AssignedBatchIds = model.AssignedBatchIds,
             QuestionIds = model.QuestionIds,
             DurationMinutes = model.DurationMinutes,
@@ -239,41 +268,13 @@ public static class AssessmentMappings
             AllowLateEntry = model.AllowLateEntry,
             AllowQuestionReview = model.AllowQuestionReview,
             NegativeMarking = model.NegativeMarking,
+            PassingPercentage = model.PassingPercentage,
             AssignedBatchIds = model.AssignedBatchIds,
             QuestionIds = model.QuestionIds,
             DurationMinutes = model.DurationMinutes,
             TotalMarks = model.TotalMarks,
             StartDateTime = UtcDateTime.Normalize(model.StartDateTime),
             EndDateTime = UtcDateTime.Normalize(model.EndDateTime)
-        };
-    }
-
-    public static AssessmentTopicCatalogResponseModel ToResponseModel(this AssessmentTopicCatalogDto dto)
-    {
-        return new AssessmentTopicCatalogResponseModel
-        {
-            TopicId = dto.TopicId,
-            TopicName = dto.TopicName,
-            BatchIds = dto.BatchIds
-        };
-    }
-
-    public static AssessmentSubjectCatalogResponseModel ToResponseModel(this AssessmentSubjectCatalogDto dto)
-    {
-        return new AssessmentSubjectCatalogResponseModel
-        {
-            SubjectId = dto.SubjectId,
-            SubjectName = dto.SubjectName,
-            BatchIds = dto.BatchIds,
-            Topics = dto.Topics.Select(item => item.ToResponseModel()).ToList()
-        };
-    }
-
-    public static AssessmentSubjectTopicCatalogResponseModel ToResponseModel(this AssessmentSubjectTopicCatalogDto dto)
-    {
-        return new AssessmentSubjectTopicCatalogResponseModel
-        {
-            Subjects = dto.Subjects.Select(item => item.ToResponseModel()).ToList()
         };
     }
 
@@ -330,6 +331,7 @@ public static class AssessmentMappings
             AssignedBatchIds = dto.AssignedBatchIds,
             AllowLateEntry = dto.AllowLateEntry,
             ShowResultsImmediately = dto.ShowResultsImmediately,
+            PassingPercentage = dto.PassingPercentage,
             AllowQuestionReview = dto.AllowQuestionReview,
             NegativeMarking = dto.NegativeMarking,
             IsTotalMarksAutoCalculated = dto.IsTotalMarksAutoCalculated,

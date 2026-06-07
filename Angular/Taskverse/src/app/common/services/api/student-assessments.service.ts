@@ -1,7 +1,6 @@
 import { HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, Subject, of } from 'rxjs';
-import { finalize, shareReplay, tap } from 'rxjs/operators';
+import { Observable } from 'rxjs';
 import { HttpClientService } from '../http/http-client.service';
 
 export interface StudentAssessmentItem {
@@ -27,62 +26,90 @@ export interface StudentAssessmentDetail {
   instructions?: string | null;
 }
 
+export interface StudentAttemptRecoveryQuestion {
+  questionId: string;
+  displayOrder: number;
+  questionType: string;
+  questionText: string;
+  options?: string[] | null;
+  marks: number;
+  negativeMarks: number;
+  difficultyLevel: number;
+  selectedAnswer?: string | null;
+  answeredAt?: string | null;
+}
+
+export interface SaveStudentAttemptAnswerRequest {
+  selectedAnswer?: string | null;
+}
+
+export interface StudentAttemptAnswer {
+  questionId: string;
+  selectedAnswer?: string | null;
+  answeredAt?: string | null;
+}
+
+export interface StudentAttemptSubmitResult {
+  attemptId: string;
+  attemptStatus: string;
+  submittedAt?: string | null;
+}
+
+export interface StudentAttemptRecovery {
+  attemptId: string;
+  assessmentId: string;
+  assessmentName: string;
+  attemptStatus: string;
+  startedAt?: string | null;
+  submittedAt?: string | null;
+  expiresAt?: string | null;
+  remainingSeconds: number;
+  durationMinutes: number;
+  totalMarks: number;
+  totalQuestions: number;
+  attemptedQuestions: number;
+  unansweredQuestions: number;
+  instructions?: string | null;
+  questions: StudentAttemptRecoveryQuestion[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class StudentAssessmentsService {
   private readonly url = 'students/assessments';
-  private readonly assessmentsCache = new Map<string, StudentAssessmentItem[]>();
-  private readonly inFlightRequests = new Map<string, Observable<StudentAssessmentItem[]>>();
-  private readonly assessmentsCacheResetSubject = new Subject<void>();
-
-  readonly assessmentsCacheReset$ = this.assessmentsCacheResetSubject.asObservable();
 
   constructor(private readonly http: HttpClientService) {}
 
   getAssessments(assessmentStatuses: string[]): Observable<StudentAssessmentItem[]> {
-    const cacheKey = this.getCacheKey(assessmentStatuses);
-    const cachedAssessments = this.assessmentsCache.get(cacheKey);
-
-    if (cachedAssessments) {
-      return of(cachedAssessments);
-    }
-
-    const inFlightRequest = this.inFlightRequests.get(cacheKey);
-    if (inFlightRequest) {
-      return inFlightRequest;
-    }
-
     let params = new HttpParams();
 
     for (const assessmentStatus of assessmentStatuses) {
       params = params.append('assessmentStatuses', assessmentStatus);
     }
 
-    const request = this.http.post<StudentAssessmentItem[]>(this.url, {}, params).pipe(
-      tap(assessments => {
-        this.assessmentsCache.set(cacheKey, assessments ?? []);
-      }),
-      finalize(() => {
-        this.inFlightRequests.delete(cacheKey);
-      }),
-      shareReplay(1)
-    );
-
-    this.inFlightRequests.set(cacheKey, request);
-
-    return request;
-  }
-
-  clearAssessmentsCache(): void {
-    this.assessmentsCache.clear();
-    this.inFlightRequests.clear();
-    this.assessmentsCacheResetSubject.next();
+    return this.http.post<StudentAssessmentItem[]>(this.url, {}, params);
   }
 
   getAssessmentDetail(assessmentId: string): Observable<StudentAssessmentDetail> {
     return this.http.get<StudentAssessmentDetail>(`${this.url}/${assessmentId}`);
   }
 
-  private getCacheKey(assessmentStatuses: string[]): string {
-    return assessmentStatuses.map(status => status.trim().toUpperCase()).sort().join('|');
+  startAssessment(assessmentId: string): Observable<StudentAttemptRecovery> {
+    return this.http.post<StudentAttemptRecovery>(`${this.url}/${assessmentId}/start`);
+  }
+
+  getAttemptRecovery(attemptId: string): Observable<StudentAttemptRecovery> {
+    return this.http.get<StudentAttemptRecovery>(`students/attempts/${attemptId}`);
+  }
+
+  saveAttemptAnswer(
+    attemptId: string,
+    questionId: string,
+    request: SaveStudentAttemptAnswerRequest
+  ): Observable<StudentAttemptAnswer> {
+    return this.http.put<StudentAttemptAnswer>(`students/attempts/${attemptId}/${questionId}/answers`, request);
+  }
+
+  submitAttempt(attemptId: string): Observable<StudentAttemptSubmitResult> {
+    return this.http.post<StudentAttemptSubmitResult>(`students/attempts/${attemptId}/submit`);
   }
 }

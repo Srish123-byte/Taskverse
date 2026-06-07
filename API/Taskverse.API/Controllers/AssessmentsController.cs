@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
@@ -22,18 +23,15 @@ public class AssessmentsController : TaskverseBaseController
     private const string TrainerRole = "Trainer";
 
     private readonly IAssessmentOrchestrator _assessmentOrchestrator;
-    private readonly IReportsOrchestrator _reportsOrchestrator;
     private readonly IDbContextFactory<TaskverseContext> _dbContextFactory;
     private readonly ILogger<AssessmentsController> _logger;
 
     public AssessmentsController(
         IAssessmentOrchestrator assessmentOrchestrator,
-        IReportsOrchestrator reportsOrchestrator,
         IDbContextFactory<TaskverseContext> dbContextFactory,
         ILogger<AssessmentsController> logger)
     {
         _assessmentOrchestrator = assessmentOrchestrator;
-        _reportsOrchestrator = reportsOrchestrator;
         _dbContextFactory = dbContextFactory;
         _logger = logger;
     }
@@ -110,8 +108,14 @@ public class AssessmentsController : TaskverseBaseController
         }
         catch (Exception ex)
         {
-            var detail = ex.GetBaseException().Message;
-            return Problem(detail: detail, title: detail);
+            var detail = ex.Data["Detail"]?.ToString() ?? ex.GetBaseException().Message;
+            var downstreamStatusCode = ex.Data["DownstreamStatusCode"] as int?;
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = ex.Message,
+                detail,
+                downstreamStatusCode
+            });
         }
     }
 
@@ -163,8 +167,12 @@ public class AssessmentsController : TaskverseBaseController
         }
         catch (Exception ex)
         {
-            var detail = ex.GetBaseException().Message;
-            return Problem(detail: detail, title: detail);
+            var detail = ex.Data["Detail"]?.ToString() ?? ex.GetBaseException().Message;
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = ex.Message,
+                detail
+            });
         }
     }
 
@@ -425,6 +433,36 @@ public class AssessmentsController : TaskverseBaseController
     }
 
     /// <summary>
+    /// Returns the shared subject-topic classification catalog for question creation flows.
+    /// </summary>
+    /// <returns>The available subjects and topics.</returns>
+    [HttpGet("questions/catalog")]
+    [SwaggerResponse(200, "Question classification catalog", typeof(QuestionClassificationCatalogResponseModel))]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> GetQuestionClassificationCatalog()
+    {
+        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        try
+        {
+            var dto = await _assessmentOrchestrator.GetQuestionClassificationCatalog();
+            return Ok(dto.ToResponseModel());
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
+        }
+    }
+
+    /// <summary>
     /// Searches the question bank for the current college scope.
     /// </summary>
     /// <param name="model">The search filters and paging options.</param>
@@ -469,17 +507,17 @@ public class AssessmentsController : TaskverseBaseController
     }
 
     /// <summary>
-    /// Searches assessments for the management screens available to the current caller.
+    /// Searches assessments for the current college-admin or trainer context.
     /// </summary>
     /// <param name="model">The search filters and paging options.</param>
-    /// <returns>The paged assessment management result.</returns>
+    /// <returns>The paged assessments result with summary counts.</returns>
     [HttpPost("search")]
-    [SwaggerResponse(200, "Paged assessment management result", typeof(AssessmentManagementSearchResponseModel))]
+    [SwaggerResponse(200, "Paged assessment search result", typeof(PagedAssessmentSearchResponseModel))]
     [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]
     [SwaggerResponse(403, "Forbidden")]
     [SwaggerResponse(503, "Assessments microservice is unavailable")]
     [SwaggerResponse(500, "Unexpected error")]
-    public async Task<IActionResult> SearchAssessments([FromBody] AssessmentManagementSearchRequestModel model)
+    public async Task<IActionResult> SearchAssessments([FromBody] AssessmentSearchRequestModel model)
     {
         var accessCheck = EnsureCollegeAdminOrTrainerAccess();
         if (accessCheck is not null) return accessCheck;
@@ -495,7 +533,7 @@ public class AssessmentsController : TaskverseBaseController
         try
         {
             var dto = await _assessmentOrchestrator.SearchAssessments(
-                model.ToDto(collegeId, GetRequesterRole(), GetCurrentUserId(), GetCreatedByName()));
+                model.ToDto(collegeId, GetRequesterRole(), GetCreatedByName()));
 
             return Ok(dto.ToResponseModel());
         }
@@ -503,50 +541,9 @@ public class AssessmentsController : TaskverseBaseController
         {
             return BadRequest(new { message = ex.Message });
         }
-        catch (HttpRequestException ex)
+        catch (UnauthorizedAccessException ex)
         {
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            var detail = ex.GetBaseException().Message;
-            return Problem(detail: detail, title: detail);
-        }
-    }
-
-    /// <summary>
-    /// Returns the subject and topic catalog visible to the current caller.
-    /// </summary>
-    /// <returns>The accessible subject-topic catalog.</returns>
-    [HttpGet("subjects-topics/catalog")]
-    [SwaggerResponse(200, "Accessible subject-topic catalog for the assessment builder", typeof(AssessmentSubjectTopicCatalogResponseModel))]
-    [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]
-    [SwaggerResponse(403, "Forbidden")]
-    [SwaggerResponse(503, "Assessments microservice is unavailable")]
-    [SwaggerResponse(500, "Unexpected error")]
-    public async Task<IActionResult> GetSubjectTopicCatalog()
-    {
-        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
-        if (accessCheck is not null) return accessCheck;
-
-        var tenantCheck = TryGetCollegeId(out var collegeId);
-        if (tenantCheck is not null) return tenantCheck;
-
-        try
-        {
-            var dto = new Taskverse.Business.DTOs.AssessmentBootstrapDto
-            {
-                CollegeId = collegeId,
-                RequesterRole = GetRequesterRole(),
-                RequesterUserId = GetCurrentUserId()
-            };
-
-            var result = await _assessmentOrchestrator.GetSubjectTopicCatalog(dto);
-            return Ok(result.ToResponseModel());
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
         }
         catch (HttpRequestException ex)
         {
@@ -925,7 +922,6 @@ public class AssessmentsController : TaskverseBaseController
     /// <param name="assessmentStatuses">The statuses to include in the response.</param>
     /// <returns>The student assessment list.</returns>
     [HttpPost("/api/students/assessments")]
-    [HttpPost("/api/student/assessments")]
     [SwaggerResponse(200, "Assigned assessments for the logged-in student", typeof(List<StudentAssessmentListResponseModel>))]
     [SwaggerResponse(400, "Invalid assessment status filter or student context")]
     [SwaggerResponse(403, "Forbidden")]
@@ -980,61 +976,11 @@ public class AssessmentsController : TaskverseBaseController
     }
 
     /// <summary>
-    /// Returns published assessment results for the specified student.
-    /// </summary>
-    /// <param name="studentId">The student identifier.</param>
-    /// <returns>The student's result list.</returns>
-    [HttpGet("/api/students/{studentId:guid}/results")]
-    [HttpGet("/api/student/{studentId:guid}/results")]
-    [SwaggerResponse(200, "Available results for the specified student", typeof(List<StudentResultResponseModel>))]
-    [SwaggerResponse(400, "Invalid student id")]
-    [SwaggerResponse(403, "Forbidden")]
-    [SwaggerResponse(503, "Reports microservice is unavailable")]
-    [SwaggerResponse(500, "Unexpected error")]
-    public async Task<IActionResult> GetStudentResults(Guid studentId)
-    {
-        var accessCheck = EnsureStudentResultsAccess(studentId);
-        if (accessCheck is not null) return accessCheck;
-
-        if (studentId == Guid.Empty)
-        {
-            return BadRequest(new { message = "Student id is required." });
-        }
-
-        try
-        {
-            var dtos = await _reportsOrchestrator.GetStudentResults(studentId);
-            return Ok(dtos.Select(dto => dto.ToResponseModel()).ToList());
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (HttpRequestException ex)
-        {
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            var detail = ex.GetBaseException().Message;
-            _logger.LogError(
-                ex,
-                "Unhandled student results retrieval error for studentId={StudentId}",
-                studentId);
-            return Problem(
-                detail: detail,
-                title: detail,
-                statusCode: StatusCodes.Status500InternalServerError);
-        }
-    }
-
-    /// <summary>
     /// Returns the assessment detail required by the logged-in student to begin or continue an attempt.
     /// </summary>
     /// <param name="assessmentId">The assessment identifier.</param>
     /// <returns>The student assessment detail.</returns>
     [HttpGet("/api/students/assessments/{assessmentId:guid}")]
-    [HttpGet("/api/student/assessments/{assessmentId:guid}")]
     [SwaggerResponse(200, "Assessment details for the logged-in student", typeof(StudentAssessmentDetailResponseModel))]
     [SwaggerResponse(400, "Invalid student context")]
     [SwaggerResponse(403, "Forbidden")]
@@ -1100,10 +1046,9 @@ public class AssessmentsController : TaskverseBaseController
     /// Starts an assessment attempt for the logged-in student.
     /// </summary>
     /// <param name="assessmentId">The assessment identifier.</param>
-    /// <returns>The started attempt response.</returns>
+    /// <returns>The recoverable attempt state for the started attempt response.</returns>
     [HttpPost("/api/students/assessments/{assessmentId:guid}/start")]
-    [HttpPost("/api/student/assessments/{assessmentId:guid}/start")]
-    [SwaggerResponse(200, "Assessment attempt started for the logged-in student", typeof(StudentAssessmentStartResponseModel))]
+    [SwaggerResponse(200, "Assessment attempt started and recovered for the logged-in student", typeof(StudentAttemptRecoveryResponseModel))]
     [SwaggerResponse(400, "Invalid student context")]
     [SwaggerResponse(403, "Forbidden")]
     [SwaggerResponse(404, "Assigned assessment not found")]
@@ -1123,8 +1068,9 @@ public class AssessmentsController : TaskverseBaseController
 
         try
         {
-            var dto = await _assessmentOrchestrator.StartStudentAssessment(assessmentId, currentUserId.Value);
-            return Ok(dto.ToResponseModel());
+            var startDto = await _assessmentOrchestrator.StartStudentAssessment(assessmentId, currentUserId.Value);
+            var recoveryDto = await _assessmentOrchestrator.GetStudentAttemptRecovery(startDto.AttemptId, currentUserId.Value);
+            return Ok(recoveryDto.ToResponseModel());
         }
         catch (ArgumentException ex)
         {
@@ -1136,6 +1082,25 @@ public class AssessmentsController : TaskverseBaseController
         }
         catch (InvalidOperationException ex)
         {
+            var existingAttemptId = ExtractAttemptId(ex.Message);
+            if (existingAttemptId.HasValue)
+            {
+                try
+                {
+                    var recoveryDto = await _assessmentOrchestrator.GetStudentAttemptRecovery(existingAttemptId.Value, currentUserId.Value);
+                    return Ok(recoveryDto.ToResponseModel());
+                }
+                catch (Exception recoveryEx) when (recoveryEx is InvalidOperationException or KeyNotFoundException or HttpRequestException)
+                {
+                    _logger.LogWarning(
+                        recoveryEx,
+                        "Student assessment recovery after start conflict failed for assessmentId={AssessmentId}, userId={UserId}, attemptId={AttemptId}",
+                        assessmentId,
+                        currentUserId.Value,
+                        existingAttemptId.Value);
+                }
+            }
+
             return Conflict(new { message = ex.Message });
         }
         catch (HttpRequestException ex)
@@ -1163,7 +1128,6 @@ public class AssessmentsController : TaskverseBaseController
     /// <param name="attemptId">The attempt identifier.</param>
     /// <returns>The recoverable attempt state.</returns>
     [HttpGet("/api/students/attempts/{attemptId:guid}")]
-    [HttpGet("/api/student/attempts/{attemptId:guid}")]
     [SwaggerResponse(200, "Recoverable assessment attempt state for the logged-in student", typeof(StudentAttemptRecoveryResponseModel))]
     [SwaggerResponse(400, "Invalid student context")]
     [SwaggerResponse(403, "Forbidden")]
@@ -1218,13 +1182,23 @@ public class AssessmentsController : TaskverseBaseController
         }
     }
 
+    private static Guid? ExtractAttemptId(string? message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return null;
+        }
+
+        var match = Regex.Match(message, "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}");
+        return Guid.TryParse(match.Value, out var attemptId) ? attemptId : null;
+    }
+
     /// <summary>
     /// Submits the specified assessment attempt for the logged-in student.
     /// </summary>
     /// <param name="attemptId">The attempt identifier.</param>
     /// <returns>The submitted attempt response.</returns>
     [HttpPost("/api/students/attempts/{attemptId:guid}/submit")]
-    [HttpPost("/api/student/attempts/{attemptId:guid}/submit")]
     [SwaggerResponse(200, "Attempt submitted for the logged-in student", typeof(StudentAttemptSubmitResponseModel))]
     [SwaggerResponse(400, "Invalid student context or request")]
     [SwaggerResponse(403, "Forbidden")]
@@ -1287,7 +1261,6 @@ public class AssessmentsController : TaskverseBaseController
     /// <param name="model">The answer payload to save.</param>
     /// <returns>The saved answer response.</returns>
     [HttpPut("/api/students/attempts/{attemptId:guid}/{questionId:guid}/answers")]
-    [HttpPut("/api/student/attempts/{attemptId:guid}/{questionId:guid}/answers")]
     [SwaggerResponse(200, "Attempt answer saved for the logged-in student", typeof(StudentAttemptAnswerResponseModel))]
     [SwaggerResponse(400, "Invalid student context or request")]
     [SwaggerResponse(403, "Forbidden")]
@@ -1385,32 +1358,6 @@ public class AssessmentsController : TaskverseBaseController
         }
 
         return null;
-    }
-
-    private IActionResult? EnsureStudentResultsAccess(Guid studentId)
-    {
-        if (User?.Identity?.IsAuthenticated != true)
-        {
-            return Forbid();
-        }
-
-        if (User.IsInRole(SuperAdminRole) ||
-            User.IsInRole(CollegeAdminRole) ||
-            User.IsInRole(TrainerRole))
-        {
-            return null;
-        }
-
-        if (User.IsInRole("Student"))
-        {
-            var currentUserId = GetCurrentUserId();
-            if (currentUserId.HasValue && currentUserId.Value == studentId)
-            {
-                return null;
-            }
-        }
-
-        return Forbid();
     }
 
     private IActionResult? EnsureSuperAdminOrCollegeAdminOrTrainerAccess()

@@ -9,6 +9,7 @@
     radial-gradient(circle at top right, rgba(56, 189, 248, 0.14), transparent 34%);
   box-shadow: 0 30px 64px rgba(2, 8, 23, 0.4);
   text-align: center;
+  overflow: hidden;
 }
 
 .dialog-close-button {
@@ -75,6 +76,15 @@
   justify-content: center;
   gap: 12px;
   margin-top: 28px;
+}
+
+.logout-confirmation-loader {
+  padding-block: 18px 8px;
+}
+
+.logout-confirmation-loader .dashboard-loader {
+  justify-items: center;
+  min-height: 220px;
 }
 
 .logout-confirmation-button {

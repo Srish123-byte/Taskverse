@@ -12,6 +12,7 @@ public class ObjectiveStudentAttemptAnswerSaveStrategy : IStudentAttemptAnswerSa
     public async Task<AttemptAnswer> SaveAsync(
         TaskverseContext context,
         Attempt attempt,
+        Assessment assessment,
         Question question,
         SaveStudentAttemptAnswerRequest request,
         DateTime answeredAtUtc,
@@ -34,21 +35,35 @@ public class ObjectiveStudentAttemptAnswerSaveStrategy : IStudentAttemptAnswerSa
             context.AttemptAnswers.Add(existingAnswer);
         }
 
-        existingAnswer.SelectedAnswer = NormalizeSelectedAnswer(request.SelectedAnswer);
+        var normalizedSelectedAnswer = NormalizeValue(request.SelectedAnswer);
+        var normalizedCorrectAnswer = NormalizeValue(question.Answer);
+        var isCorrect = !string.IsNullOrEmpty(normalizedSelectedAnswer) &&
+                        !string.IsNullOrEmpty(normalizedCorrectAnswer) &&
+                        string.Equals(normalizedSelectedAnswer, normalizedCorrectAnswer, StringComparison.OrdinalIgnoreCase);
+        var hasAnswered = !string.IsNullOrEmpty(normalizedSelectedAnswer);
+        var marksAwarded = isCorrect
+            ? question.Marks
+            : assessment.NegativeMarking && hasAnswered
+                ? -Math.Abs(question.NegativeMarks)
+                : 0;
+
+        existingAnswer.SelectedAnswer = normalizedSelectedAnswer;
         existingAnswer.AnsweredAt = answeredAtUtc;
-        existingAnswer.IsCorrect = false;
-        existingAnswer.MarksAwarded = 0;
+        existingAnswer.IsCorrect = isCorrect;
+        existingAnswer.MarksAwarded = marksAwarded;
 
         return existingAnswer;
     }
 
-    private static string? NormalizeSelectedAnswer(string? selectedAnswer)
+    private static string? NormalizeValue(string? value)
     {
-        if (string.IsNullOrWhiteSpace(selectedAnswer))
+        if (string.IsNullOrWhiteSpace(value))
         {
             return null;
         }
 
-        return selectedAnswer.Trim();
+        return string.Join(
+            " ",
+            value.Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 }

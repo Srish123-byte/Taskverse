@@ -75,13 +75,10 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         return assessment.ToRecord();
     }
 
-    public async Task<AssessmentSubjectTopicCatalogRecord> GetSubjectTopicCatalog(AssessmentAccessibleBatchesRequest request)
-        => await _assessmentManager.GetSubjectTopicCatalog(request);
-
     public async Task<AssessmentAssignmentCatalogRecord> GetTrainerAssignedClassesAndBatches(AssessmentAccessibleBatchesRequest request)
         => await _assessmentManager.GetTrainerAssignedClassesAndBatches(request);
 
-    public async Task<AssessmentManagementSearchResultRecord> SearchAssessments(AssessmentManagementSearchRequest request)
+    public async Task<PagedAssessmentSearchRecord> SearchAssessments(AssessmentSearchRequest request)
         => await _assessmentManager.SearchAssessments(request);
 
     public async Task<PagedAssessmentQuestionListRecord> GetAssessmentQuestionList(

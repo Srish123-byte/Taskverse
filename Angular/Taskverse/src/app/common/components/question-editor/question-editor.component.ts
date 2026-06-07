@@ -3,12 +3,11 @@ import { ChangeDetectorRef, Component, HostBinding, Input, OnInit } from '@angul
 import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { forkJoin } from 'rxjs';
 import {
   AssessmentAdminService,
-  AssessmentSubjectTopicCatalog,
   CreateQuestionRequest,
   PagedQuestionBankResult,
+  QuestionClassificationCatalog,
   QuestionBankItem
 } from '../../services/api/assessment-admin.service';
 
@@ -54,9 +53,8 @@ export class QuestionEditorComponent implements OnInit {
   subjectOptions: string[] = [];
   topicOptions: string[] = [];
   streamOptions: string[] = [];
-  subjectCatalog: AssessmentSubjectTopicCatalog = { subjects: [] };
-  private questionBankSubjectOptions: string[] = [];
-  private questionBankTopicOptions: string[] = [];
+  private catalogSubjectOptions: string[] = [];
+  private questionBankTopicsBySubject = new Map<string, string[]>();
   streamSelection = '';
   subjectSelection = '';
   topicSelection = '';
@@ -66,6 +64,7 @@ export class QuestionEditorComponent implements OnInit {
   isEditMode = false;
   successMessage = '';
   errorMessage = '';
+  private pendingLoadCount = 0;
   private questionId = '';
   private fallbackReturnUrl = '';
 
@@ -370,61 +369,53 @@ export class QuestionEditorComponent implements OnInit {
   }
 
   private loadExistingValues(): void {
-    if (this.isLoading) {
-      return;
-    }
-
-    this.isLoading = true;
-
-    forkJoin({
-      questionBank: this.assessmentAdminService.searchQuestionBank({
-        pageNumber: 1,
-        pageSize: 100
-      }),
-      subjectCatalog: this.assessmentAdminService.getSubjectTopicCatalog()
-    }).subscribe({
-      next: ({ questionBank, subjectCatalog }) => {
-        this.applyExistingValues(questionBank, subjectCatalog);
-      },
-      error: () => {
-        this.subjectCatalog = { subjects: [] };
-        this.subjectOptions = [];
-        this.topicOptions = [];
-        this.streamOptions = [];
-        this.isLoading = false;
-        this.changeDetectorRef.detectChanges();
-      }
-    });
+    this.loadQuestionClassificationCatalog();
+    this.loadQuestionBankOptions();
   }
 
   private loadQuestionForEdit(): void {
-    this.isLoading = true;
+    this.beginLoading();
     this.errorMessage = '';
 
     this.assessmentAdminService.getQuestion(this.questionId, true).subscribe({
       next: question => {
         this.patchFormFromQuestion(question);
-        this.isLoading = false;
+        this.endLoading();
         this.changeDetectorRef.detectChanges();
       },
       error: error => {
         this.errorMessage = this.getQuestionEditErrorMessage(error, 'load');
-        this.isLoading = false;
+        this.endLoading();
         this.changeDetectorRef.detectChanges();
       }
     });
   }
 
-  private applyExistingValues(
-    result: PagedQuestionBankResult,
-    subjectCatalog: AssessmentSubjectTopicCatalog
-  ): void {
+  private applyQuestionBankValues(result: PagedQuestionBankResult): void {
     this.streamOptions = this.toDistinctSortedValues(result.items.map(item => item.stream));
-    this.questionBankSubjectOptions = this.toDistinctSortedValues(result.items.map(item => item.subject));
-    this.questionBankTopicOptions = this.toDistinctSortedValues(result.items.map(item => item.topic));
-    this.subjectCatalog = subjectCatalog ?? { subjects: [] };
     this.syncClassificationSelections();
-    this.isLoading = false;
+    this.changeDetectorRef.detectChanges();
+  }
+
+  private applyQuestionClassificationCatalog(catalog: QuestionClassificationCatalog): void {
+    const subjects = catalog.subjects ?? [];
+
+    this.catalogSubjectOptions = subjects
+      .map(item => item.subjectName?.trim() ?? '')
+      .filter(item => item.length > 0)
+      .sort((left, right) => left.localeCompare(right));
+
+    this.questionBankTopicsBySubject = new Map<string, string[]>(
+      subjects
+        .map(item => {
+          const subjectName = item.subjectName?.trim() ?? '';
+          const topics = this.toDistinctSortedValues((item.topics ?? []).map(topic => topic.topicName));
+          return [subjectName, topics] as const;
+        })
+        .filter(([subjectName]) => subjectName.length > 0)
+    );
+
+    this.syncClassificationSelections();
     this.changeDetectorRef.detectChanges();
   }
 
@@ -569,13 +560,7 @@ export class QuestionEditorComponent implements OnInit {
   }
 
   private syncClassificationSelections(): void {
-    const catalogSubjectOptions = this.subjectCatalog.subjects
-      .map(subject => subject.subjectName?.trim())
-      .filter((subjectName): subjectName is string => Boolean(subjectName));
-
-    this.subjectOptions = this.theme === 'college-admin'
-      ? this.toDistinctSortedValues([...catalogSubjectOptions, ...this.questionBankSubjectOptions])
-      : catalogSubjectOptions.sort((left, right) => left.localeCompare(right));
+    this.subjectOptions = [...this.catalogSubjectOptions];
 
     this.topicOptions = this.resolveTopicOptions();
     this.streamSelection = this.resolveSelectionValue(this.streamControl.value, this.streamOptions);
@@ -589,23 +574,7 @@ export class QuestionEditorComponent implements OnInit {
       return [];
     }
 
-    const subject = this.subjectCatalog.subjects.find(item => item.subjectName === selectedSubject);
-    if (!subject) {
-      return this.theme === 'college-admin'
-        ? this.questionBankTopicOptions
-        : [];
-    }
-
-    const catalogTopicOptions = subject.topics
-      .map(topic => topic.topicName?.trim())
-      .filter((topicName): topicName is string => Boolean(topicName))
-      .sort((left, right) => left.localeCompare(right));
-
-    if (this.theme !== 'college-admin') {
-      return catalogTopicOptions;
-    }
-
-    return this.toDistinctSortedValues([...catalogTopicOptions, ...this.questionBankTopicOptions]);
+    return this.questionBankTopicsBySubject.get(selectedSubject) ?? [];
   }
 
   private resolveSelectionValue(value: string | null, options: string[]): string {
@@ -658,5 +627,55 @@ export class QuestionEditorComponent implements OnInit {
 
   private usesOptionLabelAnswer(questionType: QuestionType): boolean {
     return questionType === 'mcq' || questionType === 'fill in the blanks';
+  }
+
+  private loadQuestionBankOptions(): void {
+    this.beginLoading();
+
+    this.assessmentAdminService.searchQuestionBank({
+      pageNumber: 1,
+      pageSize: 100
+    }).subscribe({
+      next: result => {
+        this.applyQuestionBankValues(result);
+        this.endLoading();
+      },
+      error: error => {
+        console.error('Failed to load question bank bootstrap data.', error);
+        this.streamOptions = [];
+        this.syncClassificationSelections();
+        this.endLoading();
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
+  private loadQuestionClassificationCatalog(): void {
+    this.beginLoading();
+
+    this.assessmentAdminService.getQuestionClassificationCatalog().subscribe({
+      next: catalog => {
+        this.applyQuestionClassificationCatalog(catalog);
+        this.endLoading();
+      },
+      error: error => {
+        console.error('Failed to load question classification catalog.', error);
+        this.catalogSubjectOptions = [];
+        this.questionBankTopicsBySubject = new Map<string, string[]>();
+        this.syncClassificationSelections();
+        this.endLoading();
+        this.changeDetectorRef.detectChanges();
+      }
+    });
+  }
+
+  private beginLoading(): void {
+    this.pendingLoadCount += 1;
+    this.isLoading = true;
+  }
+
+  private endLoading(): void {
+    this.pendingLoadCount = Math.max(0, this.pendingLoadCount - 1);
+    this.isLoading = this.pendingLoadCount > 0;
   }
 }

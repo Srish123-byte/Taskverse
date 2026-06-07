@@ -13,6 +13,7 @@ public class CreateQuestionBankAssessmentDto
     public bool AllowLateEntry { get; set; }
     public bool AllowQuestionReview { get; set; }
     public bool NegativeMarking { get; set; }
+    public int PassingPercentage { get; set; }
     public Guid[] AssignedBatchIds { get; set; } = [];
     public List<Guid> QuestionIds { get; set; } = [];
     public int DurationMinutes { get; set; }
@@ -35,6 +36,7 @@ public class PublishQuestionBankAssessmentDto
     public bool AllowLateEntry { get; set; }
     public bool AllowQuestionReview { get; set; }
     public bool NegativeMarking { get; set; }
+    public int PassingPercentage { get; set; }
     public Guid[] AssignedBatchIds { get; set; } = [];
     public List<Guid> QuestionIds { get; set; } = [];
     public int DurationMinutes { get; set; }
@@ -58,6 +60,7 @@ public class UpdateQuestionBankAssessmentDto
     public bool AllowLateEntry { get; set; }
     public bool AllowQuestionReview { get; set; }
     public bool NegativeMarking { get; set; }
+    public int PassingPercentage { get; set; }
     public Guid[] AssignedBatchIds { get; set; } = [];
     public List<Guid> QuestionIds { get; set; } = [];
     public int DurationMinutes { get; set; }
@@ -96,6 +99,7 @@ public class QuestionBankAssessmentDto
     public Guid[] AssignedBatchIds { get; set; } = [];
     public bool AllowLateEntry { get; set; }
     public bool ShowResultsImmediately { get; set; }
+    public int PassingPercentage { get; set; }
     public bool AllowQuestionReview { get; set; }
     public bool NegativeMarking { get; set; }
     public bool? IsTotalMarksAutoCalculated { get; set; }
@@ -147,20 +151,29 @@ public class QuestionBankSearchDto
     public int PageSize { get; set; } = 10;
 }
 
-public class PagedQuestionBankDto
+public class QuestionTopicCatalogDto
 {
-    public List<AssessmentQuestionDto> Items { get; set; } = [];
-    public int TotalCount { get; set; }
-    public int PageNumber { get; set; }
-    public int PageSize { get; set; }
+    public Guid TopicId { get; set; }
+    public string TopicName { get; set; } = default!;
 }
 
-public class AssessmentManagementSearchDto
+public class QuestionSubjectCatalogDto
+{
+    public Guid SubjectId { get; set; }
+    public string SubjectName { get; set; } = default!;
+    public List<QuestionTopicCatalogDto> Topics { get; set; } = [];
+}
+
+public class QuestionClassificationCatalogDto
+{
+    public List<QuestionSubjectCatalogDto> Subjects { get; set; } = [];
+}
+
+public class AssessmentSearchDto
 {
     public Guid CollegeId { get; set; }
     public string RequesterRole { get; set; } = default!;
-    public Guid? RequesterUserId { get; set; }
-    public string CreatedBy { get; set; } = default!;
+    public string RequesterName { get; set; } = default!;
     public string? SearchTerm { get; set; }
     public string? AssessmentStatus { get; set; }
     public int? DifficultyLevel { get; set; }
@@ -168,24 +181,32 @@ public class AssessmentManagementSearchDto
     public int PageSize { get; set; } = 10;
 }
 
-public class AssessmentManagementItemDto
+public class AssessmentSearchItemDto
 {
     public Guid AssessmentId { get; set; }
     public string AssessmentName { get; set; } = default!;
-    public string Category { get; set; } = default!;
+    public string? SubjectName { get; set; }
     public string? TopicName { get; set; }
     public string AssessmentStatus { get; set; } = default!;
-    public DateTime AssessmentDate { get; set; }
+    public DateTime? AssessmentDate { get; set; }
     public int TotalMarks { get; set; }
     public int DifficultyLevel { get; set; }
 }
 
-public class AssessmentManagementSearchResultDto
+public class PagedAssessmentSearchDto
 {
-    public List<AssessmentManagementItemDto> Items { get; set; } = [];
+    public List<AssessmentSearchItemDto> Items { get; set; } = [];
     public int TotalCount { get; set; }
     public int ActiveCount { get; set; }
     public int CompletedCount { get; set; }
+    public int PageNumber { get; set; }
+    public int PageSize { get; set; }
+}
+
+public class PagedQuestionBankDto
+{
+    public List<AssessmentQuestionDto> Items { get; set; } = [];
+    public int TotalCount { get; set; }
     public int PageNumber { get; set; }
     public int PageSize { get; set; }
 }
@@ -195,26 +216,6 @@ public class AssessmentBootstrapDto
     public Guid CollegeId { get; set; }
     public string RequesterRole { get; set; } = default!;
     public Guid? RequesterUserId { get; set; }
-}
-
-public class AssessmentTopicCatalogDto
-{
-    public Guid TopicId { get; set; }
-    public string TopicName { get; set; } = default!;
-    public Guid[] BatchIds { get; set; } = [];
-}
-
-public class AssessmentSubjectCatalogDto
-{
-    public Guid SubjectId { get; set; }
-    public string SubjectName { get; set; } = default!;
-    public Guid[] BatchIds { get; set; } = [];
-    public List<AssessmentTopicCatalogDto> Topics { get; set; } = [];
-}
-
-public class AssessmentSubjectTopicCatalogDto
-{
-    public List<AssessmentSubjectCatalogDto> Subjects { get; set; } = [];
 }
 
 public class AssessmentAssignmentBatchDto

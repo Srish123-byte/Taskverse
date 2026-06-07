@@ -9,6 +9,7 @@ public interface IStudentAttemptAnswerSaveStrategy
     Task<AttemptAnswer> SaveAsync(
         TaskverseContext context,
         Attempt attempt,
+        Assessment assessment,
         Question question,
         SaveStudentAttemptAnswerRequest request,
         DateTime answeredAtUtc,
