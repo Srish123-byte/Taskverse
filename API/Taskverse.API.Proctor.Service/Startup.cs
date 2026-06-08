@@ -1,3 +1,5 @@
+using Taskverse.API.Proctor.Service.Models;
+
 namespace Taskverse.API.Proctor.Service;
 
 public class Startup
@@ -19,6 +21,7 @@ public class Startup
 
     public void ConfigureServices(IServiceCollection services)
     {
+        services.Configure<ProctoringSettings>(Configuration.GetSection("Proctoring"));
         services.AddControllers();
         services.AddHealthChecks();
     }

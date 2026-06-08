@@ -1,8 +1,7 @@
 namespace Taskverse.Data.Enums;
 
 /// <summary>
-/// Mirrors the PostgreSQL user_status enum.
-/// Must be registered with NpgsqlDataSourceBuilder.MapEnum in Startup.cs.
+/// Mirrors the PostgreSQL lookup_difficulty_level table.
 /// </summary>
 public enum DifficultyLevel
 {
