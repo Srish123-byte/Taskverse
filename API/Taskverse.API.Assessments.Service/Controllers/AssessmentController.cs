@@ -69,6 +69,56 @@ public class AssessmentController : ControllerBase
     }
 
     /// <summary>
+    /// Retrieves the proctoring session for an attempt after validating college and trainer ownership rules.
+    /// </summary>
+    /// <param name="attemptId">The attempt identifier.</param>
+    /// <param name="collegeId">The college scope for the request.</param>
+    /// <param name="requesterRole">The role of the caller.</param>
+    /// <param name="requesterName">The display name of the caller.</param>
+    /// <returns>The proctoring session state for the attempt.</returns>
+    [HttpGet("attempts/{attemptId:guid}/proctor-session")]
+    [ProducesResponseType(typeof(ProctorSessionStateRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<ProctorSessionStateRecord>> GetAttemptProctorSession(
+        Guid attemptId,
+        [FromQuery] Guid collegeId,
+        [FromQuery] string requesterRole,
+        [FromQuery] string requesterName)
+    {
+        try
+        {
+            var session = await _assessmentOrchestrator.GetAttemptProctorSession(attemptId, collegeId, requesterRole, requesterName);
+            return Ok(session);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return _assessmentOrchestrator.BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while retrieving the attempt proctoring session.");
+        }
+    }
+
+    /// <summary>
     /// Creates a draft assessment in the microservice data store.
     /// </summary>
     /// <param name="request">The assessment create request.</param>

@@ -1,7 +1,8 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
-import { finalize } from 'rxjs/operators';
+import { finalize, map, switchMap } from 'rxjs/operators';
 import {
+  ProctorSessionResponse,
   StudentAssessmentDetail,
   StudentAssessmentItem,
   StudentAttemptAnswer,
@@ -9,6 +10,7 @@ import {
   StudentAttemptRecoveryQuestion,
   StudentAssessmentsService
 } from '../../../common/services/api/student-assessments.service';
+import { DeviceInformationService } from '../../../common/services/utilities/device-information.service';
 
 type AssessmentTab = 'active' | 'past';
 
@@ -49,9 +51,13 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
   private answerSaveSubscription?: Subscription;
   private attemptSubmitSubscription?: Subscription;
   private countdownTimerId: number | null = null;
+  private heartbeatTimerId: number | null = null;
+  private proctorSessionId: string | null = null;
+  private readonly heartbeatIntervalMs = 25000;
 
   constructor(
     private readonly studentAssessmentsService: StudentAssessmentsService,
+    private readonly deviceInformationService: DeviceInformationService,
     private readonly changeDetectorRef: ChangeDetectorRef
   ) {}
 
@@ -61,6 +67,7 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopCountdown();
+    this.stopHeartbeat();
     this.subscriptions.unsubscribe();
   }
 
@@ -219,6 +226,8 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
     this.isSubmittingAttempt = false;
     this.attemptErrorMessage = '';
     this.stopCountdown();
+    this.stopHeartbeat();
+    this.proctorSessionId = null;
   }
 
   startSelectedAssessment(): void {
@@ -235,19 +244,40 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
     this.isStartingAssessment = true;
     this.attemptErrorMessage = '';
 
-    this.attemptStartSubscription = this.studentAssessmentsService
-      .startAssessment(assessmentId)
+    this.attemptStartSubscription = this.deviceInformationService
+      .getProctoringDeviceDetails()
+      .pipe(
+        switchMap(deviceDetails =>
+          this.studentAssessmentsService.startAssessment(assessmentId, deviceDetails).pipe(
+            switchMap(attempt =>
+              this.studentAssessmentsService
+                .startProctorSession(attempt.attemptId, {
+                  attemptId: attempt.attemptId,
+                  assessmentId: attempt.assessmentId,
+                  startedAt: attempt.startedAt ?? new Date().toISOString(),
+                  browserName: deviceDetails.browserName,
+                  browserVersion: deviceDetails.browserVersion,
+                  operatingSystem: deviceDetails.operatingSystem,
+                  deviceType: deviceDetails.deviceType,
+                  userAgent: deviceDetails.userAgent,
+                  ipAddress: deviceDetails.ipAddress
+                })
+                .pipe(map(session => ({ attempt, session })))
+            )
+          )
+        ),
+      )
       .pipe(finalize(() => {
         this.isStartingAssessment = false;
         this.changeDetectorRef.detectChanges();
       }))
       .subscribe({
-        next: attempt => {
-          this.activateAttempt(attempt);
+        next: ({ attempt, session }) => {
+          this.activateAttempt(attempt, session);
         },
         error: error => {
           console.error('Failed to start student assessment.', error);
-          this.attemptErrorMessage = error?.error?.message || 'Unable to start this assessment right now.';
+          this.attemptErrorMessage = error?.error?.message || 'Unable to start this assessment and proctoring session right now.';
           this.changeDetectorRef.detectChanges();
         }
       });
@@ -365,6 +395,8 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
     this.isSubmittingAttempt = false;
     this.attemptErrorMessage = '';
     this.stopCountdown();
+    this.stopHeartbeat();
+    this.proctorSessionId = null;
     this.changeDetectorRef.detectChanges();
   }
 
@@ -413,14 +445,17 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
     return status?.trim().toUpperCase() === 'LIVE';
   }
 
-  private activateAttempt(attempt: StudentAttemptRecovery): void {
+  private activateAttempt(attempt: StudentAttemptRecovery, session: ProctorSessionResponse): void {
     this.activeAttempt = attempt;
+    this.proctorSessionId = session.sessionId;
     this.currentQuestionIndex = 0;
     this.attemptErrorMessage = '';
     this.selectedAssessmentName = attempt.assessmentName;
     this.selectedAssessmentDetail = null;
     this.isDetailModalOpen = false;
     this.countdownSeconds = this.resolveInitialCountdown(attempt);
+    this.sendHeartbeat();
+    this.startHeartbeat();
     this.startCountdown();
     this.changeDetectorRef.detectChanges();
   }
@@ -466,6 +501,50 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
       window.clearInterval(this.countdownTimerId);
       this.countdownTimerId = null;
     }
+  }
+
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+
+    if (!this.activeAttempt || !this.proctorSessionId) {
+      return;
+    }
+
+    this.heartbeatTimerId = window.setInterval(() => {
+      this.sendHeartbeat();
+    }, this.heartbeatIntervalMs);
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimerId !== null) {
+      window.clearInterval(this.heartbeatTimerId);
+      this.heartbeatTimerId = null;
+    }
+  }
+
+  private sendHeartbeat(): void {
+    if (!this.activeAttempt || !this.proctorSessionId) {
+      return;
+    }
+
+    const currentQuestionId = this.currentQuestion?.questionId ?? null;
+
+    const heartbeatSubscription = this.studentAssessmentsService
+      .sendSessionHeartbeat(this.proctorSessionId, {
+        attemptId: this.activeAttempt.attemptId,
+        clientTimestamp: new Date().toISOString(),
+        visibilityState: this.deviceInformationService.getVisibilityState(),
+        isFullscreen: this.deviceInformationService.isFullscreenActive(),
+        networkStatus: this.deviceInformationService.getNetworkStatus(),
+        questionId: currentQuestionId
+      })
+      .subscribe({
+        error: error => {
+          console.warn('Failed to send proctoring heartbeat.', error);
+        }
+      });
+
+    this.subscriptions.add(heartbeatSubscription);
   }
 
   private loadAssessments(): void {

@@ -1,0 +1,59 @@
+using System.Text.Json.Serialization;
+
+namespace Taskverse.API.Assessments.Service.Models;
+
+public record ProctorSessionSummaryRecord(
+    [property: JsonPropertyName("tab_switch_count")]
+    int TabSwitchCount,
+    [property: JsonPropertyName("full_screen_exit_count")]
+    int FullScreenExitCount,
+    [property: JsonPropertyName("copy_attempt_count")]
+    int CopyAttemptCount,
+    [property: JsonPropertyName("paste_attempt_count")]
+    int PasteAttemptCount,
+    [property: JsonPropertyName("cut_attempt_count")]
+    int CutAttemptCount,
+    [property: JsonPropertyName("context_menu_attempt_count")]
+    int ContextMenuAttemptCount,
+    [property: JsonPropertyName("blocked_shortcut_count")]
+    int BlockedShortcutCount,
+    [property: JsonPropertyName("possible_devtools_count")]
+    int PossibleDevtoolsCount,
+    [property: JsonPropertyName("network_disconnect_count")]
+    int NetworkDisconnectCount,
+    [property: JsonPropertyName("risk_score")]
+    int RiskScore,
+    [property: JsonPropertyName("risk_level")]
+    string RiskLevel,
+    [property: JsonPropertyName("last_event_at")]
+    DateTime? LastEventAt);
+
+public record ProctorSessionStateRecord(
+    [property: JsonPropertyName("session_id")]
+    Guid SessionId,
+    [property: JsonPropertyName("attempt_id")]
+    Guid AttemptId,
+    [property: JsonPropertyName("assessment_id")]
+    Guid AssessmentId,
+    [property: JsonPropertyName("student_id")]
+    Guid StudentId,
+    [property: JsonPropertyName("status")]
+    string Status,
+    [property: JsonPropertyName("started_at")]
+    DateTime? StartedAt,
+    [property: JsonPropertyName("ended_at")]
+    DateTime? EndedAt,
+    [property: JsonPropertyName("browser_name")]
+    string? BrowserName,
+    [property: JsonPropertyName("browser_version")]
+    string? BrowserVersion,
+    [property: JsonPropertyName("operating_system")]
+    string? OperatingSystem,
+    [property: JsonPropertyName("device_type")]
+    string? DeviceType,
+    [property: JsonPropertyName("user_agent")]
+    string? UserAgent,
+    [property: JsonPropertyName("ip_address")]
+    string? IpAddress,
+    [property: JsonPropertyName("summary")]
+    ProctorSessionSummaryRecord Summary);

@@ -27,6 +27,7 @@ public class AssessmentManager : IAssessmentManager
     private readonly AssessmentSettings _assessmentSettings;
     private readonly IStudentAttemptAnswerSaveStrategyFactory _studentAttemptAnswerSaveStrategyFactory;
     private readonly IReportsServiceClient _reportsServiceClient;
+    private readonly IProctorServiceClient _proctorServiceClient;
     private readonly ILogger<AssessmentManager> _logger;
 
     private sealed record ResultProcessingContext(int PassingPercentage, bool ShowResultsImmediately);
@@ -36,12 +37,14 @@ public class AssessmentManager : IAssessmentManager
         IOptions<AssessmentSettings> assessmentSettings,
         IStudentAttemptAnswerSaveStrategyFactory studentAttemptAnswerSaveStrategyFactory,
         IReportsServiceClient reportsServiceClient,
+        IProctorServiceClient proctorServiceClient,
         ILogger<AssessmentManager> logger)
     {
         _context = context;
         _assessmentSettings = assessmentSettings.Value;
         _studentAttemptAnswerSaveStrategyFactory = studentAttemptAnswerSaveStrategyFactory;
         _reportsServiceClient = reportsServiceClient;
+        _proctorServiceClient = proctorServiceClient;
         _logger = logger;
     }
 
@@ -734,6 +737,55 @@ public class AssessmentManager : IAssessmentManager
 
             return await BuildStudentAttemptRecoveryAsync(attempt, assessment);
         }, "recovering the student assessment attempt");
+    }
+
+    public async Task<ProctorSessionStateRecord> GetAttemptProctorSession(Guid attemptId, Guid collegeId, string requesterRole, string requesterName)
+    {
+        if (attemptId == Guid.Empty)
+        {
+            throw new ArgumentException("AttemptId is required.");
+        }
+
+        if (collegeId == Guid.Empty)
+        {
+            throw new ArgumentException("CollegeId is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(requesterRole))
+        {
+            throw new ArgumentException("RequesterRole is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(requesterName))
+        {
+            throw new ArgumentException("RequesterName is required.");
+        }
+
+        return await ExecuteDbOperationAsync(async () =>
+        {
+            var attempt = await _context.Attempts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.AttemptId == attemptId);
+
+            if (attempt is null)
+            {
+                throw new KeyNotFoundException($"Attempt '{attemptId}' was not found.");
+            }
+
+            var assessment = await _context.Assessments
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.AssessmentId == attempt.AssessmentId);
+
+            if (assessment is null)
+            {
+                throw new KeyNotFoundException($"Assessment '{attempt.AssessmentId}' was not found.");
+            }
+
+            EnsureAssessmentReadAuthorized(assessment, collegeId, requesterRole, requesterName);
+
+            var session = await _proctorServiceClient.GetSessionByAttemptAsync(attemptId);
+            return session ?? throw new KeyNotFoundException($"Proctoring session for attempt '{attemptId}' was not found.");
+        }, "retrieving the attempt proctoring session");
     }
 
     /// <inheritdoc />

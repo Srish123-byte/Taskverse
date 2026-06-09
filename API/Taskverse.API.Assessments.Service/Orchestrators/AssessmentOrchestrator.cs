@@ -103,6 +103,9 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
     public async Task<StudentAttemptRecoveryRecord> GetStudentAttemptRecovery(Guid attemptId, Guid studentUserId)
         => await _assessmentManager.GetStudentAttemptRecovery(attemptId, studentUserId);
 
+    public async Task<ProctorSessionStateRecord> GetAttemptProctorSession(Guid attemptId, Guid collegeId, string requesterRole, string requesterName)
+        => await _assessmentManager.GetAttemptProctorSession(attemptId, collegeId, requesterRole, requesterName);
+
     public async Task<StudentAttemptSubmitRecord> SubmitStudentAttempt(Guid attemptId, Guid studentUserId)
         => await _assessmentManager.SubmitStudentAttempt(attemptId, studentUserId);
 

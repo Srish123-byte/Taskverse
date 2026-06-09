@@ -6,16 +6,42 @@ namespace Taskverse.Api.MicroServices.Orchestrators;
 
 public partial class MicroServiceOrchestrator
 {
-    public async Task<ObjectResult> StartProctorSession(StartProctorSessionModel model)
+    public async Task<ObjectResult> StartProctorSession(Guid attemptId, Guid studentUserId, StartProctorSessionModel model)
     {
-        var url = $"{GetMicroServiceUrl(MicroService.Proctor)}proctor/sessions";
+        var url =
+            $"{GetMicroServiceUrl(MicroService.Proctor)}api/v1/proctor/attempts/{attemptId}/session?studentUserId={studentUserId}";
         return await Post<ProctorSessionModel>(url, model);
     }
 
-    public async Task<ObjectResult> GetProctorSession(string sessionId)
+    public async Task<ObjectResult> HeartbeatProctorSession(Guid sessionId, Guid studentUserId, SessionHeartbeatModel model)
     {
-        var url = $"{GetMicroServiceUrl(MicroService.Proctor)}proctor/sessions/{sessionId}";
-        return await Get<ProctorSessionModel>(url);
+        var url =
+            $"{GetMicroServiceUrl(MicroService.Proctor)}api/v1/sessionhealth/sessions/{sessionId}/heartbeat?studentUserId={studentUserId}";
+        return await Post<SessionHeartbeatResponseModel>(url, model);
+    }
+
+    public async Task<ObjectResult> RecordProctorEvents(Guid sessionId, Guid studentUserId, ProctorEventBatchModel model)
+    {
+        var url =
+            $"{GetMicroServiceUrl(MicroService.Proctor)}api/v1/proctor/session/{sessionId}/event?studentUserId={studentUserId}";
+        return await Post<ProctorEventBatchResultModel>(url, model);
+    }
+
+    public async Task<ObjectResult> GetProctorSession(Guid sessionId, Guid studentUserId)
+    {
+        var url =
+            $"{GetMicroServiceUrl(MicroService.Proctor)}api/v1/proctor/sessions/{sessionId}?studentUserId={studentUserId}";
+        return await Get<ProctorSessionStateModel>(url);
+    }
+
+    public async Task<ObjectResult> GetAttemptProctorSession(Guid attemptId, Guid collegeId, string requesterRole, string requesterName)
+    {
+        var encodedRequesterRole = Uri.EscapeDataString(requesterRole ?? string.Empty);
+        var encodedRequesterName = Uri.EscapeDataString(requesterName ?? string.Empty);
+        var url =
+            $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/attempts/{attemptId}/proctor-session" +
+            $"?collegeId={collegeId}&requesterRole={encodedRequesterRole}&requesterName={encodedRequesterName}";
+        return await Get<ProctorSessionStateModel>(url);
     }
 
     public async Task<ObjectResult> RecordProctorEvent(ProctorEventModel model)
@@ -24,10 +50,11 @@ public partial class MicroServiceOrchestrator
         return await Post<object>(url, model);
     }
 
-    public async Task<ObjectResult> EndProctorSession(string sessionId)
+    public async Task<ObjectResult> EndProctorSession(Guid sessionId, Guid studentUserId, EndProctorSessionModel model)
     {
-        var url = $"{GetMicroServiceUrl(MicroService.Proctor)}proctor/sessions/{sessionId}/end";
-        return await Put<ProctorSessionModel>(url, new { });
+        var url =
+            $"{GetMicroServiceUrl(MicroService.Proctor)}api/v1/proctor/session/{sessionId}/end?studentUserId={studentUserId}";
+        return await Post<ProctorSessionModel>(url, model);
     }
 
     public async Task<ObjectResult> GetProctorSummary(string sessionId)

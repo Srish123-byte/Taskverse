@@ -46,6 +46,46 @@ export interface SaveStudentAttemptAnswerRequest {
   selectedAnswers?: string[] | null;
 }
 
+export interface StartStudentAssessmentRequest {
+  browserName?: string | null;
+  browserVersion?: string | null;
+  operatingSystem?: string | null;
+  deviceType?: string | null;
+  userAgent?: string | null;
+  ipAddress?: string | null;
+}
+
+export interface StartProctorSessionRequest extends StartStudentAssessmentRequest {
+  attemptId: string;
+  assessmentId: string;
+  studentId?: string | null;
+  startedAt?: string | null;
+}
+
+export interface ProctorSessionResponse {
+  sessionId: string;
+  attemptId: string;
+  assessmentId: string;
+  studentId: string;
+  status: string;
+  startedAt?: string | null;
+  endedAt?: string | null;
+}
+
+export interface SessionHeartbeatRequest {
+  attemptId: string;
+  clientTimestamp?: string | null;
+  visibilityState: 'Visible' | 'Hidden' | 'Unknown';
+  isFullscreen: boolean;
+  networkStatus: 'Online' | 'Offline' | 'Unstable' | 'Unknown';
+  questionId?: string | null;
+}
+
+export interface SessionHeartbeatResponse {
+  sessionId: string;
+  lastHeartbeatAt: string;
+}
+
 export interface StudentAttemptAnswer {
   questionId: string;
   selectedAnswer?: string | null;
@@ -97,8 +137,19 @@ export class StudentAssessmentsService {
     return this.http.get<StudentAssessmentDetail>(`${this.url}/${assessmentId}`);
   }
 
-  startAssessment(assessmentId: string): Observable<StudentAttemptRecovery> {
-    return this.http.post<StudentAttemptRecovery>(`${this.url}/${assessmentId}/start`);
+  startAssessment(
+    assessmentId: string,
+    request: StartStudentAssessmentRequest = {}
+  ): Observable<StudentAttemptRecovery> {
+    return this.http.post<StudentAttemptRecovery>(`${this.url}/${assessmentId}/start`, request);
+  }
+
+  startProctorSession(attemptId: string, request: StartProctorSessionRequest): Observable<ProctorSessionResponse> {
+    return this.http.post<ProctorSessionResponse>(`proctor/attempts/${attemptId}/session`, request);
+  }
+
+  sendSessionHeartbeat(sessionId: string, request: SessionHeartbeatRequest): Observable<SessionHeartbeatResponse> {
+    return this.http.post<SessionHeartbeatResponse>(`sessionhealth/sessions/${sessionId}/heartbeat`, request);
   }
 
   getAttemptRecovery(attemptId: string): Observable<StudentAttemptRecovery> {

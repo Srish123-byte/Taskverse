@@ -87,6 +87,18 @@ public class Startup
             client.BaseAddress = new Uri(settings.BaseUrl, UriKind.Absolute);
             client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds > 0 ? settings.TimeoutSeconds : 30);
         });
+        services.AddHttpClient<IProctorServiceClient, ProctorServiceClient>((serviceProvider, client) =>
+        {
+            var settings = serviceProvider.GetRequiredService<IOptions<ProctorServiceSettings>>().Value;
+
+            if (string.IsNullOrWhiteSpace(settings.BaseUrl))
+            {
+                throw new InvalidOperationException("ProctorService:BaseUrl is missing.");
+            }
+
+            client.BaseAddress = new Uri(settings.BaseUrl, UriKind.Absolute);
+            client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds > 0 ? settings.TimeoutSeconds : 30);
+        });
         services.AddScoped<IWhatsAppNotificationService, WhatsAppNotificationService>();
         services.AddHostedService<AssessmentStatusTransitionService>();
     }
@@ -96,6 +108,7 @@ public class Startup
         services.Configure<AssessmentSettings>(Configuration.GetSection("AssessmentSettings"));
         services.Configure<AssessmentStatusTransitionSettings>(Configuration.GetSection("AssessmentStatusTransition"));
         services.Configure<ReportsServiceSettings>(Configuration.GetSection("ReportsService"));
+        services.Configure<ProctorServiceSettings>(Configuration.GetSection("ProctorService"));
     }
 
     private static void ConfigureSwagger(IServiceCollection services)

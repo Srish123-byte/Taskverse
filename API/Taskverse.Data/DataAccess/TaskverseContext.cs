@@ -426,6 +426,11 @@ public class TaskverseContext : DbContext
             entity.Property(ps => ps.ProctoringStatus).HasColumnName("proctoring_status");
             entity.Property(ps => ps.StartedAt).HasColumnName("started_at");
             entity.Property(ps => ps.EndedAt).HasColumnName("ended_at");
+            entity.Property(ps => ps.LastHeartbeatAt).HasColumnName("last_heartbeat_at");
+            entity.Property(ps => ps.LastKnownQuestionId).HasColumnName("last_known_question_id");
+            entity.Property(ps => ps.LastKnownIsFullscreen).HasColumnName("last_known_is_fullscreen");
+            entity.Property(ps => ps.LastKnownVisibilityState).HasColumnName("last_known_visibility_state").HasConversion<int>();
+            entity.Property(ps => ps.LastKnownNetworkStatus).HasColumnName("last_known_network_status").HasConversion<int>();
             entity.Property(ps => ps.BrowserName).HasColumnName("browser_name").HasMaxLength(100);
             entity.Property(ps => ps.BrowserVersion).HasColumnName("browser_version").HasMaxLength(100);
             entity.Property(ps => ps.OperatingSystem).HasColumnName("operating_system").HasMaxLength(100);

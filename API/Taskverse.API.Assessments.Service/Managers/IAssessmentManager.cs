@@ -112,6 +112,8 @@ public interface IAssessmentManager
     /// <returns>The recoverable attempt state.</returns>
     Task<StudentAttemptRecoveryRecord> GetStudentAttemptRecovery(Guid attemptId, Guid studentUserId);
 
+    Task<ProctorSessionStateRecord> GetAttemptProctorSession(Guid attemptId, Guid collegeId, string requesterRole, string requesterName);
+
     /// <summary>
     /// Saves an answer for a single question inside a student's attempt.
     /// </summary>

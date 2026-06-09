@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Taskverse.Data.Enums;
 
 namespace Taskverse.Data.DataAccess;
 
@@ -29,6 +30,21 @@ public class ProctoringSession
 
     [Column("ended_at")]
     public DateTime? EndedAt { get; set; }
+
+    [Column("last_heartbeat_at")]
+    public DateTime? LastHeartbeatAt { get; set; }
+
+    [Column("last_known_question_id")]
+    public Guid? LastKnownQuestionId { get; set; }
+
+    [Column("last_known_visibility_state")]
+    public ProctoringVisibilityStatus? LastKnownVisibilityState { get; set; }
+
+    [Column("last_known_is_fullscreen")]
+    public bool? LastKnownIsFullscreen { get; set; }
+
+    [Column("last_known_network_status")]
+    public ProctoringNetworkStatus? LastKnownNetworkStatus { get; set; }
 
     [MaxLength(100)]
     [Column("browser_name")]
