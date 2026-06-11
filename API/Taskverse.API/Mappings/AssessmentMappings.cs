@@ -199,6 +199,7 @@ public static class AssessmentMappings
             TopicName = dto.TopicName,
             AssessmentStatus = dto.AssessmentStatus,
             AssessmentDate = UtcDateTime.Normalize(dto.AssessmentDate),
+            StartDateTime = UtcDateTime.Normalize(dto.StartDateTime),
             TotalMarks = dto.TotalMarks,
             DifficultyLevel = dto.DifficultyLevel
         };

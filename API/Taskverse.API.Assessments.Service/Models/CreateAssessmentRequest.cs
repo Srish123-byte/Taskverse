@@ -346,6 +346,8 @@ public record AssessmentSearchItemRecord(
     string AssessmentStatus,
     [property: JsonPropertyName("assessment_date")]
     DateTime? AssessmentDate,
+    [property: JsonPropertyName("start_datetime")]
+    DateTime? StartDateTime,
     [property: JsonPropertyName("total_marks")]
     int TotalMarks,
     [property: JsonPropertyName("difficulty_level")]

@@ -172,7 +172,7 @@ public class AssessmentManager : IAssessmentManager
         AssessmentStatus targetStatus,
         bool allowPartialDraft = false)
     {
-        if (allowPartialDraft && ShouldPersistAsPartialDraft(assessment, questionIds))
+        if (allowPartialDraft)
         {
             return await CreatePartialDraftAsync(assessment);
         }
@@ -186,9 +186,6 @@ public class AssessmentManager : IAssessmentManager
         var normalizedAssignedBatchIds = NormalizeAssignedBatchIds(assessment.AssignedBatchIds);
 
         await ValidateAssignedBatchesAsync(assessment.CollegeId, normalizedAssignedBatchIds);
-        await EnsureAssessmentNotAlreadyCreatedForSelectedBatchesAsync(
-            assessment.CollegeId,
-            normalizedAssignedBatchIds);
 
         assessment.AssignedBatchIds = normalizedAssignedBatchIds;
 
@@ -248,6 +245,15 @@ public class AssessmentManager : IAssessmentManager
             assessment.TotalMarks = 0;
         }
 
+        if (assessment.PassingPercentage < 0)
+        {
+            assessment.PassingPercentage = 0;
+        }
+        else if (assessment.PassingPercentage > 100)
+        {
+            assessment.PassingPercentage = 100;
+        }
+
         assessment.AssignedBatchIds = NormalizeAssignedBatchIds(assessment.AssignedBatchIds);
 
         var safeStartDateTime = assessment.StartDateTime ?? utcNow.Add(PartialDraftStartOffset);
@@ -267,6 +273,39 @@ public class AssessmentManager : IAssessmentManager
 
     private async Task EnsurePartialDraftClassificationAsync(Assessment assessment)
     {
+        ApplyPartialDraftClassificationFallback(assessment);
+
+        SubjectTopicResolver.Resolution classification;
+        try
+        {
+            classification = await ResolveAssessmentClassificationAsync(assessment);
+        }
+        catch (KeyNotFoundException)
+        {
+            classification = await ResolveDraftPlaceholderClassificationAsync(assessment);
+        }
+        catch (InvalidOperationException)
+        {
+            classification = await ResolveDraftPlaceholderClassificationAsync(assessment);
+        }
+
+        ApplyClassification(assessment, classification);
+    }
+
+    private async Task<SubjectTopicResolver.Resolution> ResolveDraftPlaceholderClassificationAsync(Assessment assessment)
+    {
+        assessment.SubjectId = null;
+        assessment.Subject = null;
+        assessment.SubjectName = PartialDraftSubjectName;
+        assessment.TopicId = null;
+        assessment.Topic = null;
+        assessment.TopicName = PartialDraftTopicName;
+
+        return await ResolveAssessmentClassificationAsync(assessment);
+    }
+
+    private static void ApplyPartialDraftClassificationFallback(Assessment assessment)
+    {
         if (!assessment.SubjectId.HasValue &&
             string.IsNullOrWhiteSpace(assessment.SubjectName) &&
             !assessment.TopicId.HasValue)
@@ -278,9 +317,6 @@ public class AssessmentManager : IAssessmentManager
         {
             assessment.TopicName = PartialDraftTopicName;
         }
-
-        var classification = await ResolveAssessmentClassificationAsync(assessment);
-        ApplyClassification(assessment, classification);
     }
 
     private async Task<List<Question>> LoadQuestionsForDraftUpdateAsync(Guid collegeId, IReadOnlyList<Guid> questionIds)
@@ -645,7 +681,8 @@ public class AssessmentManager : IAssessmentManager
                 .FirstOrDefaultAsync(item =>
                     item.AssessmentId == assessmentId &&
                     (item.AssessmentStatus == AssessmentStatus.Scheduled ||
-                     item.AssessmentStatus == AssessmentStatus.Live));
+                     item.AssessmentStatus == AssessmentStatus.Live ||
+                     item.AssessmentStatus == AssessmentStatus.Completed));
 
             if (assessment is null)
             {
@@ -1251,41 +1288,6 @@ public class AssessmentManager : IAssessmentManager
 
     }
 
-    private async Task EnsureAssessmentNotAlreadyCreatedForSelectedBatchesAsync(
-        Guid collegeId,
-        Guid[] assignedBatchIds)
-    {
-        if (assignedBatchIds.Length == 0)
-        {
-            return;
-        }
-
-        var candidateAssessments = await _context.Assessments
-            .AsNoTracking()
-            .Where(item =>
-                item.CollegeId == collegeId &&
-                item.AssessmentStatus != AssessmentStatus.Soft_Deleted &&
-                item.AssessmentStatus != AssessmentStatus.Cancelled)
-            .Select(item => new
-            {
-                item.AssessmentId,
-                item.AssessmentStatus,
-                item.AssignedBatchIds
-            })
-            .ToListAsync();
-
-        var requestedBatchSet = assignedBatchIds.ToHashSet();
-        var duplicateAssessment = candidateAssessments.FirstOrDefault(item =>
-            item.AssignedBatchIds is not null &&
-            item.AssignedBatchIds.Length == requestedBatchSet.Count &&
-            item.AssignedBatchIds.ToHashSet().SetEquals(requestedBatchSet));
-
-        if (duplicateAssessment is not null)
-        {
-            throw new InvalidOperationException("Assessment has already been created for the selected batches.");
-        }
-    }
-
     private async Task<Assessment> GetAssessmentByIdAsync(Guid assessmentId)
     {
         var assessment = await _context.Assessments
@@ -1381,14 +1383,32 @@ public class AssessmentManager : IAssessmentManager
 
     private static void EnsureAssessmentCanBeDeleted(Assessment assessment)
     {
-        if (assessment.AssessmentStatus == AssessmentStatus.Live)
-        {
-            throw new InvalidOperationException("Live assessments cannot be deleted. Cancel the assessment first.");
-        }
-
         if (assessment.AssessmentStatus == AssessmentStatus.Soft_Deleted || assessment.IsDeleted == true)
         {
             throw new InvalidOperationException("This assessment has already been soft deleted.");
+        }
+
+        if (assessment.AssessmentStatus is not AssessmentStatus.Draft and not AssessmentStatus.Scheduled)
+        {
+            throw new InvalidOperationException("Only draft or scheduled assessments can be deleted.");
+        }
+
+        if (assessment.AssessmentStatus != AssessmentStatus.Scheduled)
+        {
+            return;
+        }
+
+        if (!assessment.StartDateTime.HasValue)
+        {
+            throw new InvalidOperationException(
+                "This scheduled assessment cannot be deleted because its start time is unavailable.");
+        }
+
+        var deleteCutoffTime = assessment.StartDateTime.Value.AddMinutes(-15);
+        if (DateTime.UtcNow > deleteCutoffTime)
+        {
+            throw new InvalidOperationException(
+                "Scheduled assessments can only be deleted until 15 minutes before the start time.");
         }
     }
 
@@ -2075,39 +2095,6 @@ public class AssessmentManager : IAssessmentManager
         {
             throw new ArgumentException("CreatedBy is required.");
         }
-
-        if (assessment.TotalMarks < 0)
-        {
-            throw new ArgumentException("Total marks cannot be negative.");
-        }
-
-        ValidatePassingPercentage(assessment.PassingPercentage);
-
-        if (assessment.EndDateTime.HasValue &&
-            assessment.StartDateTime.HasValue &&
-            assessment.EndDateTime <= assessment.StartDateTime)
-        {
-            throw new ArgumentException("End datetime must be greater than start datetime.");
-        }
-    }
-
-    private static bool ShouldPersistAsPartialDraft(Assessment assessment, List<Guid> questionIds)
-    {
-        return string.IsNullOrWhiteSpace(assessment.AssessmentName) ||
-               !HasCompleteAssessmentClassification(assessment) ||
-               assessment.DurationMinutes <= 0 ||
-               NormalizeAssignedBatchIds(assessment.AssignedBatchIds).Length == 0 ||
-               questionIds.Count == 0;
-    }
-
-    private static bool HasCompleteAssessmentClassification(Assessment assessment)
-    {
-        var hasSubject = assessment.SubjectId.HasValue ||
-                         !string.IsNullOrWhiteSpace(assessment.SubjectName);
-        var hasTopic = assessment.TopicId.HasValue ||
-                       !string.IsNullOrWhiteSpace(assessment.TopicName);
-
-        return hasSubject && hasTopic;
     }
 
     private static void ValidateDeleteAssessmentRequest(DeleteAssessmentRequest request)

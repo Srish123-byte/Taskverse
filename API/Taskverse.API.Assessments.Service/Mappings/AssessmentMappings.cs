@@ -145,6 +145,7 @@ public static class AssessmentMappings
             assessment.Topic?.TopicName ?? assessment.TopicName,
             assessment.AssessmentStatus.ToString().Replace('_', ' ').ToUpperInvariant(),
             UtcDateTime.Normalize(assessment.StartDateTime ?? assessment.EndDateTime ?? assessment.CreatedAt),
+            UtcDateTime.Normalize(assessment.StartDateTime),
             assessment.TotalMarks,
             assessment.DifficultyLevel);
     }

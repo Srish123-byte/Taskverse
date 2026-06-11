@@ -537,7 +537,7 @@ public class TaskverseContext : DbContext
             entity.Property(pvs => pvs.PossibleDevtoolsCount).HasColumnName("possible_devtools_count").HasDefaultValue(0);
             entity.Property(pvs => pvs.NetworkDisconnectCount).HasColumnName("network_disconnect_count").HasDefaultValue(0);
             entity.Property(pvs => pvs.RiskScore).HasColumnName("risk_score").HasDefaultValue(0);
-            entity.Property(pvs => pvs.RiskLevel).HasColumnName("risk_level").HasConversion<int>().HasDefaultValue((int)RiskLevel.Low);
+            entity.Property(pvs => pvs.RiskLevel).HasColumnName("risk_level").HasConversion<int>().HasDefaultValue(RiskLevel.Low);
             entity.Property(pvs => pvs.LastEventAt).HasColumnName("last_event_at");
             entity.Property(pvs => pvs.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(pvs => pvs.ModifiedAt).HasColumnName("modified_at");

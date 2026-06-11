@@ -166,6 +166,7 @@ export interface AssessmentManagementItem {
   topicName?: string | null;
   assessmentStatus: string;
   assessmentDate?: string | null;
+  startDateTime?: string | null;
   totalMarks: number;
   difficultyLevel: number;
 }
@@ -224,19 +225,27 @@ export class AssessmentAdminService {
   }
 
   createAssessment(request: CreateAssessmentRequest, skipGlobalErrorRedirect = false): Observable<AssessmentRecord> {
-    return this.http.post<AssessmentRecord>(this.url, request, undefined, skipGlobalErrorRedirect);
+    return this.http
+      .post<any>(this.url, request, undefined, skipGlobalErrorRedirect)
+      .pipe(map((assessment: any) => this.mapAssessmentRecord(assessment)));
   }
 
   getAssessment(assessmentId: string): Observable<AssessmentRecord> {
-    return this.http.get<AssessmentRecord>(`${this.url}/${assessmentId}`);
+    return this.http
+      .get<any>(`${this.url}/${assessmentId}`)
+      .pipe(map((assessment: any) => this.mapAssessmentRecord(assessment)));
   }
 
   updateAssessment(assessmentId: string, request: CreateAssessmentRequest, skipGlobalErrorRedirect = false): Observable<AssessmentRecord> {
-    return this.http.put<AssessmentRecord>(`${this.url}/${assessmentId}`, request, skipGlobalErrorRedirect);
+    return this.http
+      .put<any>(`${this.url}/${assessmentId}`, request, skipGlobalErrorRedirect)
+      .pipe(map((assessment: any) => this.mapAssessmentRecord(assessment)));
   }
 
   publishAssessment(request: PublishAssessmentRequest, skipGlobalErrorRedirect = false): Observable<AssessmentRecord> {
-    return this.http.post<AssessmentRecord>(`${this.url}/publish`, request, undefined, skipGlobalErrorRedirect);
+    return this.http
+      .post<any>(`${this.url}/publish`, request, undefined, skipGlobalErrorRedirect)
+      .pipe(map((assessment: any) => this.mapAssessmentRecord(assessment)));
   }
 
   deleteQuestions(request: DeleteQuestionsRequest, skipGlobalErrorRedirect = false): Observable<DeleteQuestionsResponse> {
@@ -274,6 +283,38 @@ export class AssessmentAdminService {
       classId: item?.classId ?? item?.ClassId ?? '',
       collegeId: item?.collegeId ?? item?.CollegeId ?? '',
       name: item?.name ?? item?.Name ?? ''
+    };
+  }
+
+  private mapAssessmentRecord(record: any): AssessmentRecord {
+    return {
+      assessmentId: record?.assessmentId ?? record?.assessment_id ?? record?.AssessmentId ?? '',
+      collegeId: record?.collegeId ?? record?.college_id ?? record?.CollegeId ?? '',
+      subjectId: record?.subjectId ?? record?.subject_id ?? record?.SubjectId ?? null,
+      subjectName: record?.subjectName ?? record?.subject_name ?? record?.SubjectName ?? null,
+      topicId: record?.topicId ?? record?.topic_id ?? record?.TopicId ?? null,
+      topicName: record?.topicName ?? record?.topic_name ?? record?.TopicName ?? null,
+      assessmentName: record?.assessmentName ?? record?.assessment_name ?? record?.AssessmentName ?? '',
+      assessmentType: record?.assessmentType ?? record?.assessment_type ?? record?.AssessmentType ?? '',
+      assessmentStatus: record?.assessmentStatus ?? record?.assessment_status ?? record?.AssessmentStatus ?? '',
+      durationMinutes: record?.durationMinutes ?? record?.duration_minutes ?? record?.DurationMinutes ?? 0,
+      totalMarks: record?.totalMarks ?? record?.total_marks ?? record?.TotalMarks ?? 0,
+      difficultyLevel: record?.difficultyLevel ?? record?.difficulty_level ?? record?.DifficultyLevel ?? 0,
+      startDateTime: record?.startDateTime ?? record?.start_datetime ?? record?.StartDateTime ?? null,
+      endDateTime: record?.endDateTime ?? record?.end_datetime ?? record?.EndDateTime ?? null,
+      instructions: record?.instructions ?? record?.Instructions ?? null,
+      assignedBatchIds: record?.assignedBatchIds ?? record?.assigned_batch_ids ?? record?.AssignedBatchIds ?? [],
+      allowLateEntry: record?.allowLateEntry ?? record?.allow_late_entry ?? record?.AllowLateEntry ?? false,
+      showResultsImmediately: record?.showResultsImmediately ?? record?.show_results_immediately ?? record?.ShowResultsImmediately ?? false,
+      passingPercentage: record?.passingPercentage ?? record?.passing_percentage ?? record?.PassingPercentage ?? 0,
+      allowQuestionReview: record?.allowQuestionReview ?? record?.allow_question_review ?? record?.AllowQuestionReview ?? false,
+      negativeMarking: record?.negativeMarking ?? record?.negative_marking ?? record?.NegativeMarking ?? false,
+      isTotalMarksAutoCalculated:
+        record?.isTotalMarksAutoCalculated ?? record?.is_total_marks_auto_calculated ?? record?.IsTotalMarksAutoCalculated ?? null,
+      createdBy: record?.createdBy ?? record?.created_by ?? record?.CreatedBy ?? '',
+      createdAt: record?.createdAt ?? record?.created_at ?? record?.CreatedAt ?? '',
+      modifiedAt: record?.modifiedAt ?? record?.modified_at ?? record?.ModifiedAt ?? null,
+      questionIds: record?.questionIds ?? record?.question_ids ?? record?.QuestionIds ?? []
     };
   }
 }

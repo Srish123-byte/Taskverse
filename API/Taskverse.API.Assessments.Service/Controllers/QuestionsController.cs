@@ -99,6 +99,8 @@ public class QuestionsController : ControllerBase
     [HttpPost("search")]
     [ProducesResponseType(typeof(PagedQuestionRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<PagedQuestionRecord>> SearchQuestionBank([FromBody] QuestionBankSearchRequest request)
     {
@@ -128,6 +130,14 @@ public class QuestionsController : ControllerBase
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
         }
         catch (Exception ex)
         {

@@ -1,6 +1,8 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { finalize, map, switchMap } from 'rxjs/operators';
+import { RouteAddress } from '../../../common/constants/routes.constants';
 import {
   ProctorSessionResponse,
   StudentAssessmentDetail,
@@ -58,7 +60,8 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
   constructor(
     private readonly studentAssessmentsService: StudentAssessmentsService,
     private readonly deviceInformationService: DeviceInformationService,
-    private readonly changeDetectorRef: ChangeDetectorRef
+    private readonly changeDetectorRef: ChangeDetectorRef,
+    private readonly router: Router
   ) {}
 
   ngOnInit(): void {
@@ -132,7 +135,11 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
   }
 
   getActionLabel(status: string): string {
-    return this.isLiveStatus(status) ? 'Start Assessment' : 'View Details';
+    if (this.isLiveStatus(status)) {
+      return 'Start Assessment';
+    }
+
+    return 'View Details';
   }
 
   get currentQuestion(): StudentAttemptRecoveryQuestion | null {
@@ -192,7 +199,9 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
       .subscribe({
         next: detail => {
           this.selectedAssessmentDetail = detail;
-          this.selectedAssessmentActionLabel = this.getActionLabel(assessment.assessmentStatus);
+          this.selectedAssessmentActionLabel = this.isCompletedStatus(assessment.assessmentStatus)
+            ? 'View Report'
+            : this.getActionLabel(assessment.assessmentStatus);
           this.selectedAssessmentName = assessment.assessmentName;
           this.selectedAssessmentId = assessment.assessmentId;
           this.selectedAssessmentStatus = assessment.assessmentStatus;
@@ -232,6 +241,12 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
 
   startSelectedAssessment(): void {
     if (!this.canStartSelectedAssessment() || this.isStartingAssessment) {
+      return;
+    }
+
+    if (this.isCompletedStatus(this.selectedAssessmentStatus)) {
+      this.closeAssessmentDetailModal();
+      void this.router.navigateByUrl(`/${RouteAddress.Student.Results}`);
       return;
     }
 
@@ -443,6 +458,10 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
 
   private isLiveStatus(status: string | null | undefined): boolean {
     return status?.trim().toUpperCase() === 'LIVE';
+  }
+
+  private isCompletedStatus(status: string | null | undefined): boolean {
+    return status?.trim().toUpperCase() === 'COMPLETED';
   }
 
   private activateAttempt(attempt: StudentAttemptRecovery, session: ProctorSessionResponse): void {

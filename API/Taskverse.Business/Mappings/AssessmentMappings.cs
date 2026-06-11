@@ -101,6 +101,7 @@ public static class AssessmentMappings
             TopicName = model.TopicName,
             AssessmentStatus = model.AssessmentStatus,
             AssessmentDate = UtcDateTime.Normalize(model.AssessmentDate),
+            StartDateTime = UtcDateTime.Normalize(model.StartDateTime),
             TotalMarks = model.TotalMarks,
             DifficultyLevel = model.DifficultyLevel
         };

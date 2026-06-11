@@ -537,7 +537,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const payload = this.buildCreateAssessmentPayload();
+    const payload = this.buildCreateAssessmentPayload(action);
     if (!payload) {
       this.changeDetectorRef.detectChanges();
       return;
@@ -578,7 +578,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const payload = this.buildCreateAssessmentPayload();
+    const payload = this.buildCreateAssessmentPayload(action);
     if (!payload) {
       this.changeDetectorRef.detectChanges();
       return;
@@ -691,6 +691,10 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   }
 
   private validateAssessmentSubmission(action: 'draft' | 'schedule' | 'update'): string {
+    if (action === 'draft') {
+      return '';
+    }
+
     const startDateTime = this.parseDateTimeLocalValue(this.startDate);
     const endDateTime = this.parseDateTimeLocalValue(this.endDate);
 
@@ -700,10 +704,6 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
 
     if (this.instructionWordCount > AssessmentCreatorComponent.maxInstructionWordCount) {
       return `Instructions cannot exceed ${AssessmentCreatorComponent.maxInstructionWordCount} words.`;
-    }
-
-    if (action === 'draft') {
-      return '';
     }
 
     if (!this.assessmentName.trim()) {
@@ -742,13 +742,13 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     return '';
   }
 
-  private buildCreateAssessmentPayload(): CreateAssessmentRequest | null {
-    const persistedTotalMarks = this.resolvePersistedTotalMarks();
+  private buildCreateAssessmentPayload(action: 'draft' | 'schedule' | 'update' = 'schedule'): CreateAssessmentRequest | null {
+    const persistedTotalMarks = this.resolvePersistedTotalMarks(action === 'draft');
     if (persistedTotalMarks === null) {
       return null;
     }
 
-    const passingPercentage = this.resolvePassingPercentage();
+    const passingPercentage = this.resolvePassingPercentage(action === 'draft');
     if (passingPercentage === null) {
       return null;
     }
@@ -777,7 +777,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   }
 
   private buildPublishAssessmentPayload(assessmentId?: string | null): PublishAssessmentRequest | null {
-    const payload = this.buildCreateAssessmentPayload();
+    const payload = this.buildCreateAssessmentPayload('schedule');
     if (!payload) {
       return null;
     }
@@ -788,8 +788,20 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     };
   }
 
-  private resolvePersistedTotalMarks(): number | null {
+  private resolvePersistedTotalMarks(allowDraftFallback = false): number | null {
     const totalMarks = this.totalMarks;
+
+    if (allowDraftFallback) {
+      if (!Number.isFinite(totalMarks) || totalMarks < 0) {
+        return 0;
+      }
+
+      if (!Number.isInteger(totalMarks)) {
+        return Math.max(0, Math.floor(totalMarks));
+      }
+
+      return totalMarks;
+    }
 
     if (!Number.isFinite(totalMarks) || totalMarks < 0) {
       this.submissionErrorMessage = 'Total marks could not be calculated from the selected questions.';
@@ -805,7 +817,15 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     return totalMarks;
   }
 
-  private resolvePassingPercentage(): number | null {
+  private resolvePassingPercentage(allowDraftFallback = false): number | null {
+    if (allowDraftFallback) {
+      if (this.passingPercentage == null || !Number.isFinite(this.passingPercentage)) {
+        return 0;
+      }
+
+      return Math.min(100, Math.max(0, Math.floor(this.passingPercentage)));
+    }
+
     if (this.passingPercentage == null || !Number.isFinite(this.passingPercentage)) {
       this.submissionErrorMessage = 'Passing percentage is required.';
       return null;
@@ -832,7 +852,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     this.assessmentAdminService.getAssessment(assessmentId).subscribe({
       next: assessment => {
         this.applyAssessmentRecord(assessment);
-        this.loadQuestionBank(assessment.subjectId, assessment.topicId);
+        this.loadQuestionBank();
         this.isAssessmentLoading = false;
         this.changeDetectorRef.detectChanges();
       },

@@ -190,6 +190,7 @@ public class AssessmentSearchItemDto
     public string? TopicName { get; set; }
     public string AssessmentStatus { get; set; } = default!;
     public DateTime? AssessmentDate { get; set; }
+    public DateTime? StartDateTime { get; set; }
     public int TotalMarks { get; set; }
     public int DifficultyLevel { get; set; }
 }

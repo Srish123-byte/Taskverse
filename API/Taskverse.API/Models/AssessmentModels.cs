@@ -18,6 +18,7 @@ public class CreateQuestionBankAssessmentRequestModel
     public int TotalMarks { get; set; }
     public DateTime? StartDateTime { get; set; }
     public DateTime? EndDateTime { get; set; }
+    public bool IsDraftSave { get; set; }
 }
 
 public class PublishQuestionBankAssessmentRequestModel
@@ -169,6 +170,7 @@ public class AssessmentSearchItemResponseModel
     public string? TopicName { get; set; }
     public string AssessmentStatus { get; set; } = string.Empty;
     public DateTime? AssessmentDate { get; set; }
+    public DateTime? StartDateTime { get; set; }
     public int TotalMarks { get; set; }
     public int DifficultyLevel { get; set; }
 }

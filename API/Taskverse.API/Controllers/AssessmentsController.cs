@@ -63,7 +63,9 @@ public class AssessmentsController : TaskverseBaseController
             return BadRequest(new { message = "Assessment request is required." });
         }
 
-        var instructionValidationError = ValidateInstructionWordLimit(model.Instructions);
+        var instructionValidationError = model.IsDraftSave
+            ? null
+            : ValidateInstructionWordLimit(model.Instructions);
         if (instructionValidationError is not null)
         {
             return BadRequest(new { message = instructionValidationError });
@@ -471,6 +473,8 @@ public class AssessmentsController : TaskverseBaseController
     [SwaggerResponse(200, "Paged question bank result", typeof(PagedQuestionBankResponseModel))]
     [SwaggerResponse(400, "Invalid request or CollegeId header is missing/invalid")]
     [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Subject or topic filter not found")]
+    [SwaggerResponse(409, "Question-bank filters are inconsistent")]
     [SwaggerResponse(503, "Assessments microservice is unavailable")]
     [SwaggerResponse(500, "Unexpected error")]
     public async Task<IActionResult> SearchQuestionBank([FromBody] QuestionBankSearchRequestModel model)
@@ -494,6 +498,14 @@ public class AssessmentsController : TaskverseBaseController
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
         }
         catch (HttpRequestException ex)
         {
