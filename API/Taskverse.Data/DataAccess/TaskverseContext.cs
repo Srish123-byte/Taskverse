@@ -435,7 +435,7 @@ public class TaskverseContext : DbContext
             entity.Property(ps => ps.BrowserVersion).HasColumnName("browser_version").HasMaxLength(100);
             entity.Property(ps => ps.OperatingSystem).HasColumnName("operating_system").HasMaxLength(100);
             entity.Property(ps => ps.DeviceType).HasColumnName("device_type").HasMaxLength(50);
-            entity.Property(ps => ps.UserAgent).HasColumnName("user_agent").HasMaxLength(100);
+            entity.Property(ps => ps.UserAgent).HasColumnName("user_agent").HasMaxLength(200);
             entity.Property(ps => ps.IpAddress).HasColumnName("ip_address").HasMaxLength(100);
             entity.Property(ps => ps.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(ps => ps.ModifiedAt).HasColumnName("modified_at");

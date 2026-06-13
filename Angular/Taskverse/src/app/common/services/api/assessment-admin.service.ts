@@ -198,8 +198,8 @@ export class AssessmentAdminService {
     return this.http.get<QuestionBankItem>(`${this.url}/questions/${questionId}`, undefined, skipGlobalErrorRedirect);
   }
 
-  searchQuestionBank(request: QuestionBankSearchRequest): Observable<PagedQuestionBankResult> {
-    return this.http.post<PagedQuestionBankResult>(`${this.url}/questions/search`, request);
+  searchQuestionBank(request: QuestionBankSearchRequest, skipGlobalErrorRedirect = false): Observable<PagedQuestionBankResult> {
+    return this.http.post<PagedQuestionBankResult>(`${this.url}/questions/search`, request, undefined, skipGlobalErrorRedirect);
   }
 
   getQuestionClassificationCatalog(): Observable<QuestionClassificationCatalog> {

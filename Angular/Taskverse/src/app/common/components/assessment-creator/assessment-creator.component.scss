@@ -288,6 +288,43 @@
   overflow-y: auto;
 }
 
+.pagination-shell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px 22px;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(30, 41, 59, 0.54);
+}
+
+.pagination-info {
+  color: #cbd5e1;
+  font-size: 0.9rem;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-btn {
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0 14px;
+}
+
+.page-btn-active {
+  background: linear-gradient(135deg, #59c6f7 0%, #27aae1 100%);
+  border-color: transparent;
+  color: #08213e;
+}
+
+.page-btn:disabled {
+  opacity: 0.48;
+}
+
 .question-row {
   border-top: 1px solid rgba(148, 163, 184, 0.1);
 }

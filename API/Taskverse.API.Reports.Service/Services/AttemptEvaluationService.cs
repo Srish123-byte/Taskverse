@@ -71,8 +71,8 @@ public class AttemptEvaluationService : IAttemptEvaluationService
             AttemptId = attempt.AttemptId,
             StudentId = attempt.StudentId,
             TotalMarks = assessment.TotalMarks,
-            ObtainedMarks = evaluation.ObtainedMarks,
-            Percentage = evaluation.Percentage,
+            ObtainedMarks = attempt.TotalScore,
+            Percentage = attempt.Percentage,
             Rank = rank,
             ResultStatus = evaluation.ResultStatus,
             GeneratedAt = DateTime.UtcNow

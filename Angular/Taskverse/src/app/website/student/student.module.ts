@@ -5,6 +5,7 @@ import { StudentRoutes } from './student.routes';
 import { StudentShellComponent } from './student-shell/student-shell.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { MyAssessmentsComponent } from './my-assessments/my-assessments.component';
+import { AssessmentRunnerComponent } from './assessment-runner/assessment-runner.component';
 import { ResultsComponent } from './results/results.component';
 import { HelpCenterComponent } from './help-center/help-center.component';
 
@@ -13,6 +14,7 @@ import { HelpCenterComponent } from './help-center/help-center.component';
     StudentShellComponent,
     DashboardComponent,
     MyAssessmentsComponent,
+    AssessmentRunnerComponent,
     ResultsComponent,
     HelpCenterComponent
   ],

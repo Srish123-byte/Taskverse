@@ -72,6 +72,7 @@ public class ResultManager : IResultManager
 
         try
         {
+            _context.Attempts.Update(attempt);
             _context.Results.Add(result);
 
             var existingResults = await _context.Results

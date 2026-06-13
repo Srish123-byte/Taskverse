@@ -82,6 +82,7 @@ public class ProctorOrchestrator : IProctorOrchestrator
                 MetadataJson = BuildAssessmentStartedMetadata(request, startedAt),
                 CreatedAt = now
             };
+            _ = await GetOrCreateViolationSummaryAsync(session, attempt);
 
             _proctorManager.AddProctoringSession(session);
             _proctorManager.AddProctoringEvent(startEvent);
@@ -161,7 +162,10 @@ public class ProctorOrchestrator : IProctorOrchestrator
 
             await SaveChangesWithWrapAsync("Unable to register the proctoring session heartbeat.");
 
-            return new SessionHeartbeatResponseRecord(session.ProctoringSessionId, heartbeatAt);
+            return new SessionHeartbeatResponseRecord(
+                session.ProctoringSessionId,
+                heartbeatAt,
+                BuildSessionStateRecord(session, summary));
         }, "registering the proctoring session heartbeat");
     }
 
@@ -229,7 +233,10 @@ public class ProctorOrchestrator : IProctorOrchestrator
                 await SaveChangesWithWrapAsync("Unable to initialize the proctoring violation summary.");
             }
 
-            return new ProctorEventBatchResultRecord(successfulEvents.Count, failures);
+            return new ProctorEventBatchResultRecord(
+                successfulEvents.Count,
+                failures,
+                BuildSessionStateRecord(session, summary));
         }, "recording proctoring events");
     }
 
@@ -294,12 +301,40 @@ public class ProctorOrchestrator : IProctorOrchestrator
         {
             var student = await GetStudentByUserIdAsync(studentUserId);
             var session = await GetSessionForStudentOwnedAccessAsync(sessionId, student.StudentId);
-            var summary = await _proctorManager.GetViolationSummaryAsync(session.ProctoringSessionId)
-                ?? throw new KeyNotFoundException(
-                    $"Proctoring violation summary for session '{sessionId}' was not found.");
+            var attempt = await GetAttemptForStudentAsync(session.AttemptId, student.StudentId);
+            var summary = await GetOrCreateViolationSummaryAsync(session, attempt);
+            if (_proctorManager.IsViolationSummaryNew(summary))
+            {
+                await SaveChangesWithWrapAsync("Unable to initialize the proctoring violation summary.");
+            }
 
-            return session.ToStateRecord(summary);
+            return BuildSessionStateRecord(session, summary);
         }, "retrieving the proctoring session state");
+    }
+
+    public async Task<ProctorSessionStateRecord> GetSessionStateByAttempt(Guid attemptId, Guid studentUserId)
+    {
+        ValidateGetAttemptSessionStateRequest(attemptId);
+
+        if (studentUserId == Guid.Empty)
+        {
+            throw new ArgumentException("Student user id is required.");
+        }
+
+        return await ExecuteDbOperationAsync(async () =>
+        {
+            var student = await GetStudentByUserIdAsync(studentUserId);
+            var attempt = await GetAttemptForStudentAsync(attemptId, student.StudentId);
+            var session = await _proctorManager.GetActiveSessionForAttemptAsync(attempt.AttemptId, student.StudentId)
+                ?? throw new KeyNotFoundException($"An active proctoring session for attempt '{attemptId}' was not found.");
+            var summary = await GetOrCreateViolationSummaryAsync(session, attempt);
+            if (_proctorManager.IsViolationSummaryNew(summary))
+            {
+                await SaveChangesWithWrapAsync("Unable to initialize the proctoring violation summary.");
+            }
+
+            return BuildSessionStateRecord(session, summary);
+        }, "retrieving the student proctoring session state by attempt");
     }
 
     public async Task<ProctorSessionStateRecord> GetSessionStateByAttempt(Guid attemptId)
@@ -325,7 +360,7 @@ public class ProctorOrchestrator : IProctorOrchestrator
                 ?? throw new KeyNotFoundException(
                     $"Proctoring violation summary for attempt '{attemptId}' was not found.");
 
-            return session.ToStateRecord(summary);
+            return BuildSessionStateRecord(session, summary);
         }, "retrieving the proctoring session state by attempt");
     }
 
@@ -836,6 +871,187 @@ public class ProctorOrchestrator : IProctorOrchestrator
         }
     }
 
+    private ProctorSessionStateRecord BuildSessionStateRecord(
+        ProctoringSession session,
+        ProctoringViolationSummary summary)
+    {
+        var rules = BuildRuleRecords(summary);
+        var enforcement = BuildEnforcementRecord(rules);
+
+        return session.ToStateRecord(summary, rules, enforcement);
+    }
+
+    private List<ProctorSessionRuleRecord> BuildRuleRecords(ProctoringViolationSummary summary)
+        => [
+            BuildOverallViolationsRuleRecord(summary),
+            BuildRuleRecord(
+                nameof(EventType.FULLSCREEN_EXITED),
+                "Fullscreen",
+                _proctoringSettings.Fullscreen.Required,
+                summary.FullScreenExitCount,
+                _proctoringSettings.Fullscreen.MaxExitsAllowed,
+                _proctoringSettings.Fullscreen.WarningMessage,
+                _proctoringSettings.Fullscreen.LockAttemptOnLimitExceeded,
+                _proctoringSettings.Fullscreen.AutoSubmitOnLimitExceeded),
+            BuildRuleRecord(
+                nameof(EventType.TAB_SWITCHED),
+                "Tab Switching",
+                _proctoringSettings.TabSwitching.DetectionEnabled,
+                summary.TabSwitchCount,
+                _proctoringSettings.TabSwitching.MaxSwitchesAllowed,
+                _proctoringSettings.TabSwitching.WarningMessage,
+                _proctoringSettings.TabSwitching.LockAttemptOnLimitExceeded,
+                _proctoringSettings.TabSwitching.AutoSubmitOnLimitExceeded),
+            BuildRuleRecord(
+                nameof(EventType.COPY_ATTEMPTED),
+                "Copy",
+                _proctoringSettings.Clipboard.DisableCopy,
+                summary.CopyAttemptCount,
+                _proctoringSettings.Clipboard.MaxCopyAttemptsAllowed,
+                _proctoringSettings.Clipboard.WarningMessage,
+                _proctoringSettings.Clipboard.LockAttemptOnLimitExceeded,
+                _proctoringSettings.Clipboard.AutoSubmitOnLimitExceeded),
+            BuildRuleRecord(
+                nameof(EventType.PASTE_ATTEMPTED),
+                "Paste",
+                _proctoringSettings.Clipboard.DisablePaste,
+                summary.PasteAttemptCount,
+                _proctoringSettings.Clipboard.MaxPasteAttemptsAllowed,
+                _proctoringSettings.Clipboard.WarningMessage,
+                _proctoringSettings.Clipboard.LockAttemptOnLimitExceeded,
+                _proctoringSettings.Clipboard.AutoSubmitOnLimitExceeded),
+            BuildRuleRecord(
+                nameof(EventType.CUT_ATTEMPTED),
+                "Cut",
+                _proctoringSettings.Clipboard.DisableCut,
+                summary.CutAttemptCount,
+                _proctoringSettings.Clipboard.MaxCutAttemptsAllowed,
+                _proctoringSettings.Clipboard.WarningMessage,
+                _proctoringSettings.Clipboard.LockAttemptOnLimitExceeded,
+                _proctoringSettings.Clipboard.AutoSubmitOnLimitExceeded),
+            BuildRuleRecord(
+                nameof(EventType.CONTEXT_MENU_ATTEMPTED),
+                "Context Menu",
+                _proctoringSettings.ContextMenu.Disabled,
+                summary.ContextMenuAttemptCount,
+                _proctoringSettings.ContextMenu.MaxAttemptsAllowed,
+                _proctoringSettings.ContextMenu.WarningMessage,
+                _proctoringSettings.ContextMenu.LockAttemptOnLimitExceeded,
+                _proctoringSettings.ContextMenu.AutoSubmitOnLimitExceeded),
+            BuildRuleRecord(
+                nameof(EventType.BLOCKED_KEYBOARD_SHORTCUT),
+                "Keyboard Shortcuts",
+                _proctoringSettings.KeyboardShortcuts.Disabled,
+                summary.BlockedShortcutCount,
+                _proctoringSettings.KeyboardShortcuts.MaxBlockedShortcutAttemptsAllowed,
+                _proctoringSettings.KeyboardShortcuts.WarningMessage,
+                _proctoringSettings.KeyboardShortcuts.LockAttemptOnLimitExceeded,
+                _proctoringSettings.KeyboardShortcuts.AutoSubmitOnLimitExceeded),
+            BuildRuleRecord(
+                nameof(EventType.POSSIBLE_DEVTOOLS_OPENED),
+                "Developer Tools",
+                _proctoringSettings.DevTools.DetectionEnabled || _proctoringSettings.DevTools.BlockCommonShortcuts,
+                summary.PossibleDevtoolsCount,
+                _proctoringSettings.DevTools.MaxDetectionsAllowed,
+                _proctoringSettings.DevTools.WarningMessage,
+                _proctoringSettings.DevTools.LockAttemptOnLimitExceeded,
+                _proctoringSettings.DevTools.AutoSubmitOnLimitExceeded),
+            BuildRuleRecord(
+                nameof(EventType.NETWORK_DISCONNECTED),
+                "Network",
+                _proctoringSettings.Network.TrackDisconnects,
+                summary.NetworkDisconnectCount,
+                _proctoringSettings.Network.MaxDisconnectsAllowed,
+                _proctoringSettings.Network.WarningMessage,
+                _proctoringSettings.Network.LockAttemptOnLimitExceeded,
+                _proctoringSettings.Network.AutoSubmitOnLimitExceeded)
+        ];
+
+    private ProctorSessionRuleRecord BuildOverallViolationsRuleRecord(ProctoringViolationSummary summary)
+    {
+        var currentCount =
+            summary.TabSwitchCount +
+            summary.FullScreenExitCount +
+            summary.CopyAttemptCount +
+            summary.PasteAttemptCount +
+            summary.CutAttemptCount +
+            summary.ContextMenuAttemptCount +
+            summary.BlockedShortcutCount +
+            summary.PossibleDevtoolsCount +
+            summary.NetworkDisconnectCount;
+
+        var settings = _proctoringSettings.OverallViolations;
+        int? maxAllowed = settings.Enabled ? settings.AutoSubmitAtCount : null;
+        int? remainingCount = maxAllowed.HasValue
+            ? Math.Max(0, maxAllowed.Value - currentCount)
+            : null;
+        var isThresholdExceeded = settings.Enabled && maxAllowed.HasValue && currentCount >= maxAllowed.Value;
+
+        return new ProctorSessionRuleRecord(
+            "TOTAL_VIOLATIONS",
+            "Total Violations",
+            settings.WarningMessage,
+            currentCount,
+            maxAllowed,
+            remainingCount,
+            settings.Enabled,
+            settings.LockAttemptOnLimitExceeded,
+            settings.AutoSubmitOnLimitExceeded,
+            isThresholdExceeded);
+    }
+
+    private static ProctorSessionRuleRecord BuildRuleRecord(
+        string eventType,
+        string displayName,
+        bool isEnabled,
+        int currentCount,
+        int maxAllowedCount,
+        string warningMessage,
+        bool lockAttemptOnLimitExceeded,
+        bool autoSubmitOnLimitExceeded)
+    {
+        int? maxAllowed = isEnabled ? maxAllowedCount : null;
+        int? remainingCount = maxAllowed is null
+            ? null
+            : Math.Max(0, maxAllowed.Value - currentCount);
+        var isThresholdExceeded = isEnabled && maxAllowed is not null && currentCount > maxAllowed.Value;
+
+        return new ProctorSessionRuleRecord(
+            eventType,
+            displayName,
+            warningMessage,
+            currentCount,
+            maxAllowed,
+            remainingCount,
+            isEnabled,
+            lockAttemptOnLimitExceeded,
+            autoSubmitOnLimitExceeded,
+            isThresholdExceeded);
+    }
+
+    private static ProctorSessionEnforcementRecord BuildEnforcementRecord(IEnumerable<ProctorSessionRuleRecord> rules)
+    {
+        var autoSubmitRule = rules.FirstOrDefault(item => item.IsThresholdExceeded && item.AutoSubmitOnLimitExceeded);
+        if (autoSubmitRule is not null)
+        {
+            return new ProctorSessionEnforcementRecord(
+                "AUTO_SUBMIT",
+                autoSubmitRule.EventType,
+                autoSubmitRule.WarningMessage);
+        }
+
+        var lockRule = rules.FirstOrDefault(item => item.IsThresholdExceeded && item.LockAttemptOnLimitExceeded);
+        if (lockRule is not null)
+        {
+            return new ProctorSessionEnforcementRecord(
+                "LOCK",
+                lockRule.EventType,
+                lockRule.WarningMessage);
+        }
+
+        return new ProctorSessionEnforcementRecord("NONE", null, null);
+    }
+
     private int CalculateRiskScore(ProctoringViolationSummary summary)
     {
         var weights = _proctoringSettings.RiskScoring.Weights;
@@ -936,7 +1152,9 @@ internal static class ProctorSessionMappings
 
     public static ProctorSessionStateRecord ToStateRecord(
         this ProctoringSession session,
-        ProctoringViolationSummary summary)
+        ProctoringViolationSummary summary,
+        List<ProctorSessionRuleRecord> rules,
+        ProctorSessionEnforcementRecord enforcement)
     {
         return new ProctorSessionStateRecord(
             session.ProctoringSessionId,
@@ -964,6 +1182,8 @@ internal static class ProctorSessionMappings
                 summary.NetworkDisconnectCount,
                 summary.RiskScore,
                 summary.RiskLevel.ToString(),
-                summary.LastEventAt));
+                summary.LastEventAt),
+            rules,
+            enforcement);
     }
 }

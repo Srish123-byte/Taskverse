@@ -181,6 +181,44 @@ public class ProctorController : ControllerBase
         }
     }
 
+    [HttpGet("attempts/{attemptId:guid}/session")]
+    [ProducesResponseType(typeof(ProctorSessionStateRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<ProctorSessionStateRecord>> GetStudentSessionStateByAttempt(
+        Guid attemptId,
+        [FromQuery] Guid studentUserId)
+    {
+        try
+        {
+            var result = await _proctorOrchestrator.GetSessionStateByAttempt(attemptId, studentUserId);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.GetBaseException().Message });
+        }
+    }
+
     [HttpGet("attempts/{attemptId:guid}")]
     [ProducesResponseType(typeof(ProctorSessionStateRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

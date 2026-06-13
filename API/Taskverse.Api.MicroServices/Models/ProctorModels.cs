@@ -36,7 +36,9 @@ public record SessionHeartbeatResponseModel(
     [property: JsonProperty("session_id")]
     Guid SessionId,
     [property: JsonProperty("last_heartbeat_at")]
-    DateTime LastHeartbeatAt);
+    DateTime LastHeartbeatAt,
+    [property: JsonProperty("session_state")]
+    ProctorSessionStateModel SessionState);
 
 public record ProctorEventBatchItemModel(
     [property: JsonProperty("attempt_id")]
@@ -66,7 +68,9 @@ public record ProctorEventBatchResultModel(
     [property: JsonProperty("processed_count")]
     int ProcessedCount,
     [property: JsonProperty("failures")]
-    List<ProctorEventBatchFailureModel> Failures);
+    List<ProctorEventBatchFailureModel> Failures,
+    [property: JsonProperty("session_state")]
+    ProctorSessionStateModel SessionState);
 
 public record EndProctorSessionModel(
     [property: JsonProperty("attempt_id")]
@@ -106,6 +110,36 @@ public record ProctorSessionSummaryModel(
     [property: JsonProperty("last_event_at")]
     DateTime? LastEventAt);
 
+public record ProctorSessionRuleModel(
+    [property: JsonProperty("event_type")]
+    string EventType,
+    [property: JsonProperty("display_name")]
+    string DisplayName,
+    [property: JsonProperty("warning_message")]
+    string WarningMessage,
+    [property: JsonProperty("current_count")]
+    int CurrentCount,
+    [property: JsonProperty("max_allowed_count")]
+    int? MaxAllowedCount,
+    [property: JsonProperty("remaining_count")]
+    int? RemainingCount,
+    [property: JsonProperty("is_enabled")]
+    bool IsEnabled,
+    [property: JsonProperty("lock_attempt_on_limit_exceeded")]
+    bool LockAttemptOnLimitExceeded,
+    [property: JsonProperty("auto_submit_on_limit_exceeded")]
+    bool AutoSubmitOnLimitExceeded,
+    [property: JsonProperty("is_threshold_exceeded")]
+    bool IsThresholdExceeded);
+
+public record ProctorSessionEnforcementModel(
+    [property: JsonProperty("action")]
+    string Action,
+    [property: JsonProperty("triggered_by_event_type")]
+    string? TriggeredByEventType,
+    [property: JsonProperty("message")]
+    string? Message);
+
 public record ProctorSessionStateModel(
     [property: JsonProperty("session_id")]
     Guid SessionId,
@@ -134,7 +168,11 @@ public record ProctorSessionStateModel(
     [property: JsonProperty("ip_address")]
     string? IpAddress,
     [property: JsonProperty("summary")]
-    ProctorSessionSummaryModel Summary);
+    ProctorSessionSummaryModel Summary,
+    [property: JsonProperty("rules")]
+    List<ProctorSessionRuleModel> Rules,
+    [property: JsonProperty("enforcement")]
+    ProctorSessionEnforcementModel Enforcement);
 
 public record StartProctorSessionModel(
     [property: JsonProperty("attempt_id")]

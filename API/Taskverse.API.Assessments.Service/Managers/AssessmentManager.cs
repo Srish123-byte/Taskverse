@@ -174,7 +174,7 @@ public class AssessmentManager : IAssessmentManager
     {
         if (allowPartialDraft)
         {
-            return await CreatePartialDraftAsync(assessment);
+            return await CreatePartialDraftAsync(assessment, questionIds.NormalizeQuestionIds());
         }
 
         ValidateAssessment(assessment, questionIds);
@@ -207,7 +207,7 @@ public class AssessmentManager : IAssessmentManager
         return assessment;
     }
 
-    private async Task<Assessment> CreatePartialDraftAsync(Assessment assessment)
+    private async Task<Assessment> CreatePartialDraftAsync(Assessment assessment, IReadOnlyList<Guid> questionIds)
     {
         ValidatePartialDraft(assessment);
 
@@ -224,6 +224,13 @@ public class AssessmentManager : IAssessmentManager
 
         _context.Assessments.Add(assessment);
         await SaveChangesWithWrapAsync("Unable to save the assessment draft.");
+
+        if (questionIds.Count > 0)
+        {
+            var questions = await LoadQuestionsForDraftUpdateAsync(assessment.CollegeId, questionIds);
+            await SyncAssessmentQuestionsAsync(assessment, questions, questionIds);
+            await SaveChangesWithWrapAsync("Unable to save the assessment draft questions.");
+        }
 
         return assessment;
     }
@@ -711,6 +718,11 @@ public class AssessmentManager : IAssessmentManager
                     throw new InvalidOperationException("This assessment has already been submitted by the current student.");
                 }
 
+                if (await TryRestartExpiredUnengagedAttemptAsync(latestAttempt, assessment))
+                {
+                    return latestAttempt.ToStudentAssessmentStartRecord();
+                }
+
                 if (await EnsureAttemptClosedIfExpiredAsync(latestAttempt, assessment))
                 {
                     throw new InvalidOperationException("The previous attempt has already expired and was auto-submitted.");
@@ -765,6 +777,7 @@ public class AssessmentManager : IAssessmentManager
             var attempt = await GetAttemptForStudentAsync(attemptId, student.StudentId);
             var assessment = await GetAssessmentForAttemptRecoveryAsync(attempt.AssessmentId, student);
 
+            await TryRestartExpiredUnengagedAttemptAsync(attempt, assessment);
             await EnsureAttemptClosedIfExpiredAsync(attempt, assessment);
 
             if (attempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
@@ -1775,6 +1788,75 @@ public class AssessmentManager : IAssessmentManager
 
         await AutoSubmitAttemptAsync(attempt, expiresAt);
         return true;
+    }
+
+    private async Task<bool> TryRestartExpiredUnengagedAttemptAsync(Attempt attempt, Assessment assessment)
+    {
+        if (attempt.AttemptStatus is not AttemptStatus.In_Progress)
+        {
+            return false;
+        }
+
+        if (!IsAttemptExpired(attempt, assessment, out _))
+        {
+            return false;
+        }
+
+        if (await HasMeaningfulAttemptEngagementAsync(attempt))
+        {
+            return false;
+        }
+
+        var restartedAt = DateTime.UtcNow;
+        attempt.StartedAt = restartedAt;
+        attempt.LastActivityAt = restartedAt;
+        attempt.ExpiresAt = CalculateAttemptExpiresAt(restartedAt, assessment);
+        attempt.SubmittedAt = null;
+        attempt.AttemptStatus = AttemptStatus.In_Progress;
+        attempt.AttemptedQuestions = 0;
+        attempt.CorrectAnswers = 0;
+        attempt.WrongAnswers = 0;
+        attempt.UnansweredQuestions = attempt.TotalQuestions;
+        attempt.TotalScore = 0;
+        attempt.Percentage = 0;
+        attempt.TimeTakenSeconds = 0;
+        attempt.IsPassed = false;
+
+        await SaveChangesWithWrapAsync("Unable to restart the expired assessment attempt.");
+        return true;
+    }
+
+    private async Task<bool> HasMeaningfulAttemptEngagementAsync(Attempt attempt)
+    {
+        if (attempt.AttemptedQuestions > 0)
+        {
+            return true;
+        }
+
+        var hasSavedAnswers = await _context.AttemptAnswers
+            .AsNoTracking()
+            .AnyAsync(item => item.AttemptId == attempt.AttemptId);
+
+        if (hasSavedAnswers)
+        {
+            return true;
+        }
+
+        var latestSession = await _context.ProctoringSessions
+            .AsNoTracking()
+            .Where(item => item.AttemptId == attempt.AttemptId)
+            .OrderByDescending(item => item.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (latestSession is null)
+        {
+            return false;
+        }
+
+        return latestSession.LastHeartbeatAt.HasValue
+            || latestSession.LastKnownQuestionId.HasValue
+            || latestSession.EndedAt.HasValue
+            || latestSession.ModifiedAt.HasValue;
     }
 
     private static bool IsAttemptExpired(Attempt attempt, Assessment assessment, out DateTime expiresAt)

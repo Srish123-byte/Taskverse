@@ -57,7 +57,8 @@ public static class ProctorMappings
         return new SessionHeartbeatResponseModel
         {
             SessionId = dto.SessionId,
-            LastHeartbeatAt = UtcDateTime.Normalize(dto.LastHeartbeatAt)
+            LastHeartbeatAt = UtcDateTime.Normalize(dto.LastHeartbeatAt),
+            SessionState = dto.SessionState.ToResponseModel()
         };
     }
 
@@ -102,7 +103,8 @@ public static class ProctorMappings
             {
                 Index = item.Index,
                 Message = item.Message
-            }).ToList()
+            }).ToList(),
+            SessionState = dto.SessionState.ToResponseModel()
         };
     }
 
@@ -137,6 +139,25 @@ public static class ProctorMappings
                 RiskScore = dto.Summary.RiskScore,
                 RiskLevel = dto.Summary.RiskLevel,
                 LastEventAt = UtcDateTime.Normalize(dto.Summary.LastEventAt)
+            },
+            Rules = dto.Rules.Select(item => new ProctorSessionRuleResponseModel
+            {
+                EventType = item.EventType,
+                DisplayName = item.DisplayName,
+                WarningMessage = item.WarningMessage,
+                CurrentCount = item.CurrentCount,
+                MaxAllowedCount = item.MaxAllowedCount,
+                RemainingCount = item.RemainingCount,
+                IsEnabled = item.IsEnabled,
+                LockAttemptOnLimitExceeded = item.LockAttemptOnLimitExceeded,
+                AutoSubmitOnLimitExceeded = item.AutoSubmitOnLimitExceeded,
+                IsThresholdExceeded = item.IsThresholdExceeded
+            }).ToList(),
+            Enforcement = new ProctorSessionEnforcementResponseModel
+            {
+                Action = dto.Enforcement.Action,
+                TriggeredByEventType = dto.Enforcement.TriggeredByEventType,
+                Message = dto.Enforcement.Message
             }
         };
     }

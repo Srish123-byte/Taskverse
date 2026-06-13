@@ -34,6 +34,13 @@ public partial class MicroServiceOrchestrator
         return await Get<ProctorSessionStateModel>(url);
     }
 
+    public async Task<ObjectResult> GetProctorSessionByAttempt(Guid attemptId, Guid studentUserId)
+    {
+        var url =
+            $"{GetMicroServiceUrl(MicroService.Proctor)}api/v1/proctor/attempts/{attemptId}/session?studentUserId={studentUserId}";
+        return await Get<ProctorSessionStateModel>(url);
+    }
+
     public async Task<ObjectResult> GetAttemptProctorSession(Guid attemptId, Guid collegeId, string requesterRole, string requesterName)
     {
         var encodedRequesterRole = Uri.EscapeDataString(requesterRole ?? string.Empty);

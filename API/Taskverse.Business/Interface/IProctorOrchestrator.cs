@@ -39,6 +39,7 @@ public class SessionHeartbeatResponseDto
 {
     public Guid SessionId { get; set; }
     public DateTime LastHeartbeatAt { get; set; }
+    public ProctorSessionStateDto SessionState { get; set; } = new();
 }
 
 public class EndProctorSessionDto
@@ -75,6 +76,7 @@ public class ProctorEventBatchResultDto
 {
     public int ProcessedCount { get; set; }
     public List<ProctorEventBatchFailureDto> Failures { get; set; } = [];
+    public ProctorSessionStateDto SessionState { get; set; } = new();
 }
 
 public class ProctorSummaryDto
@@ -102,6 +104,8 @@ public class ProctorSessionStateDto
     public string? UserAgent { get; set; }
     public string? IpAddress { get; set; }
     public ProctorSessionSummaryDto Summary { get; set; } = new();
+    public List<ProctorSessionRuleDto> Rules { get; set; } = [];
+    public ProctorSessionEnforcementDto Enforcement { get; set; } = new();
 }
 
 public class ProctorSessionSummaryDto
@@ -120,12 +124,34 @@ public class ProctorSessionSummaryDto
     public DateTime? LastEventAt { get; set; }
 }
 
+public class ProctorSessionRuleDto
+{
+    public string EventType { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string WarningMessage { get; set; } = string.Empty;
+    public int CurrentCount { get; set; }
+    public int? MaxAllowedCount { get; set; }
+    public int? RemainingCount { get; set; }
+    public bool IsEnabled { get; set; }
+    public bool LockAttemptOnLimitExceeded { get; set; }
+    public bool AutoSubmitOnLimitExceeded { get; set; }
+    public bool IsThresholdExceeded { get; set; }
+}
+
+public class ProctorSessionEnforcementDto
+{
+    public string Action { get; set; } = "NONE";
+    public string? TriggeredByEventType { get; set; }
+    public string? Message { get; set; }
+}
+
 public interface IProctorOrchestrator
 {
     Task<ProctorSessionDto> StartSession(StartProctorSessionDto dto, Guid studentUserId);
     Task<SessionHeartbeatResponseDto> HeartbeatSession(Guid sessionId, SessionHeartbeatDto dto, Guid studentUserId);
     Task<ProctorEventBatchResultDto> RecordEvents(Guid sessionId, ProctorEventBatchDto dto, Guid studentUserId);
     Task<ProctorSessionDto> EndSession(Guid sessionId, EndProctorSessionDto dto, Guid studentUserId);
+    Task<ProctorSessionStateDto> GetSessionByAttempt(Guid attemptId, Guid studentUserId);
     Task<ProctorSessionStateDto> GetSession(Guid sessionId, Guid studentUserId);
     Task<ProctorSessionStateDto> GetAttemptSession(Guid attemptId, Guid collegeId, string requesterRole, string requesterName);
     Task RecordEvent(string sessionId, string eventType, string? payload);

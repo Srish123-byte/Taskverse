@@ -1,6 +1,7 @@
 import { ChangeDetectorRef, Component, HostBinding, Input, OnDestroy, OnInit } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { ActivatedRoute, ParamMap, Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import {
   AssessmentRecord,
   AssessmentAdminService,
@@ -9,11 +10,12 @@ import {
   AssessmentAssignmentClass,
   CreateAssessmentRequest,
   PublishAssessmentRequest,
+  QuestionClassificationCatalog,
   QuestionBankItem
 } from '../../services/api/assessment-admin.service';
 import { RouteAddress } from '../../constants/routes.constants';
 import { CollegeAdminService, CollegeBatchSummary, CollegeClassSummary } from '../../services/api/college-admin.service';
-import { forkJoin, Subject, takeUntil } from 'rxjs';
+import { distinctUntilChanged, forkJoin, map, Subject, switchMap, takeUntil } from 'rxjs';
 
 interface DifficultyOption {
   value: string;
@@ -41,6 +43,7 @@ type AssessmentBuilderMode = 'create' | 'edit';
 })
 export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   private static readonly maxInstructionWordCount = 1000;
+  private static readonly questionBankPageSize = 10;
   @Input() theme: 'college-admin' | 'trainer' = 'college-admin';
   @Input() backRoute = '';
 
@@ -59,8 +62,13 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   assessmentLoadErrorMessage = '';
   private loadedAssessmentRecord: AssessmentRecord | null = null;
   private readonly destroy$ = new Subject<void>();
+  private assignmentCatalogLoadSubscription?: Subscription;
+  private questionBankLoadSubscription?: Subscription;
+  private assessmentLoadSubscription?: Subscription;
+  private questionClassificationLoadSubscription?: Subscription;
 
   questions: QuestionBankItem[] = [];
+  questionClassificationCatalog: QuestionClassificationCatalog = { subjects: [] };
   assignmentCatalog: AssessmentAssignmentCatalog = { classes: [] };
 
   selectedBatchIds = new Set<string>();
@@ -89,6 +97,8 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   private pendingSubmitAction: 'draft' | 'schedule' | null = null;
 
   questionSearchTerm = '';
+  questionBankCurrentPage = 1;
+  questionBankTotalCount = 0;
 
   @HostBinding('class.theme-trainer')
   get isTrainerTheme(): boolean {
@@ -153,7 +163,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   }
 
   get isInitialPageLoading(): boolean {
-    return this.isQuestionBankLoading || (this.isEditMode && this.isAssessmentLoading);
+    return (this.isEditMode && this.isAssessmentLoading) || this.shouldShowInitialQuestionBankLoader();
   }
 
   get hasBlockingLoadError(): boolean {
@@ -236,23 +246,16 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
         (question.subject ?? '').toLowerCase().includes(normalizedSearch) ||
         (question.topic ?? '').toLowerCase().includes(normalizedSearch);
 
-      const matchesDifficulty =
-        this.selectedDifficulty === 'all' ||
-        question.difficultyLevel === Number(this.selectedDifficulty);
-
-      const matchesSubject =
-        !this.selectedQuestionBankSubjectId ||
-        question.subjectId === this.selectedQuestionBankSubjectId;
-
-      const matchesTopic =
-        !this.selectedQuestionBankTopicId ||
-        question.topicId === this.selectedQuestionBankTopicId;
-
-      return matchesSearch && matchesDifficulty && matchesSubject && matchesTopic;
+      return matchesSearch;
     });
   }
 
   get visibleSubjects(): AssessmentCreatorSubjectOption[] {
+    const catalogSubjects = this.mapQuestionClassificationSubjects();
+    if (catalogSubjects.length > 0) {
+      return this.includeAssessmentSubjectIfMissing(catalogSubjects, this.loadedAssessmentRecord);
+    }
+
     return this.buildSubjectOptions(this.questions, this.loadedAssessmentRecord);
   }
 
@@ -266,12 +269,44 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   }
 
   get questionBankSubjects(): AssessmentCreatorSubjectOption[] {
-    return this.visibleSubjects;
+    const catalogSubjects = this.mapQuestionClassificationSubjects();
+    return catalogSubjects.length > 0
+      ? this.includeAssessmentSubjectIfMissing(catalogSubjects, this.loadedAssessmentRecord)
+      : this.visibleSubjects;
   }
 
   get questionBankTopics() {
     const subject = this.questionBankSubjects.find(item => item.subjectId === this.selectedQuestionBankSubjectId);
     return subject?.topics ?? [];
+  }
+
+  get totalQuestionBankPages(): number {
+    return Math.max(1, Math.ceil(this.questionBankTotalCount / AssessmentCreatorComponent.questionBankPageSize));
+  }
+
+  get questionBankPageStart(): number {
+    return this.questionBankTotalCount === 0
+      ? 0
+      : (this.questionBankCurrentPage - 1) * AssessmentCreatorComponent.questionBankPageSize + 1;
+  }
+
+  get questionBankPageEnd(): number {
+    return Math.min(
+      this.questionBankCurrentPage * AssessmentCreatorComponent.questionBankPageSize,
+      this.questionBankTotalCount
+    );
+  }
+
+  get questionBankPageNumbers(): number[] {
+    const pages: number[] = [];
+    const start = Math.max(1, this.questionBankCurrentPage - 2);
+    const end = Math.min(this.totalQuestionBankPages, this.questionBankCurrentPage + 2);
+
+    for (let page = start; page <= end; page += 1) {
+      pages.push(page);
+    }
+
+    return pages;
   }
 
   constructor(
@@ -285,13 +320,22 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.refreshMinimumScheduleDateTime();
+    this.loadQuestionClassificationCatalog();
 
     this.activatedRoute.paramMap
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(paramMap => this.applyRouteContext(paramMap));
+      .pipe(
+        map(paramMap => paramMap.get('id')),
+        distinctUntilChanged(),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(assessmentId => this.applyRouteContext(assessmentId));
   }
 
   ngOnDestroy(): void {
+    this.assignmentCatalogLoadSubscription?.unsubscribe();
+    this.questionBankLoadSubscription?.unsubscribe();
+    this.assessmentLoadSubscription?.unsubscribe();
+    this.questionClassificationLoadSubscription?.unsubscribe();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -341,6 +385,12 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
         !this.questionBankTopics.some(topic => topic.topicId === this.selectedQuestionBankTopicId)) {
       this.selectedQuestionBankTopicId = '';
     }
+  }
+
+  onQuestionBankFilterChange(): void {
+    this.onQuestionBankSubjectChange();
+    this.questionBankCurrentPage = 1;
+    this.loadQuestionBank();
   }
 
   isQuestionSelected(questionId: string): boolean {
@@ -431,12 +481,30 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     this.submissionErrorMessage = '';
   }
 
+  goToQuestionBankPage(page: number): void {
+    if (page < 1 || page > this.totalQuestionBankPages || page === this.questionBankCurrentPage) {
+      return;
+    }
+
+    this.questionBankCurrentPage = page;
+    this.loadQuestionBank();
+  }
+
+  previousQuestionBankPage(): void {
+    this.goToQuestionBankPage(this.questionBankCurrentPage - 1);
+  }
+
+  nextQuestionBankPage(): void {
+    this.goToQuestionBankPage(this.questionBankCurrentPage + 1);
+  }
+
   private loadAssignmentCatalog(): void {
+    this.assignmentCatalogLoadSubscription?.unsubscribe();
     this.isAssignmentLoading = true;
     this.assignmentErrorMessage = '';
 
     if (this.theme === 'trainer') {
-      this.assessmentAdminService.getTrainerAssignedClassesAndBatches().subscribe({
+      this.assignmentCatalogLoadSubscription = this.assessmentAdminService.getTrainerAssignedClassesAndBatches().subscribe({
         next: catalog => {
           this.assignmentCatalog = catalog ?? { classes: [] };
           this.isAssignmentLoading = false;
@@ -455,7 +523,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.collegeAdminService.getClassConfiguration().subscribe({
+    this.assignmentCatalogLoadSubscription = this.collegeAdminService.getClassConfiguration().subscribe({
       next: configuration => {
         this.assignmentCatalog = {
           classes: (configuration?.classes ?? []).map(classItem => this.mapCollegeClassToAssignmentClass(classItem))
@@ -474,40 +542,64 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     });
   }
 
+  private loadQuestionClassificationCatalog(): void {
+    this.questionClassificationLoadSubscription?.unsubscribe();
+    this.questionClassificationLoadSubscription = this.assessmentAdminService
+      .getQuestionClassificationCatalog()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: catalog => {
+          this.questionClassificationCatalog = catalog ?? { subjects: [] };
+          this.onSubjectChange();
+          this.onQuestionBankSubjectChange();
+          this.changeDetectorRef.detectChanges();
+        },
+        error: () => {
+          this.questionClassificationCatalog = { subjects: [] };
+          this.changeDetectorRef.detectChanges();
+        }
+      });
+  }
+
   private loadQuestionBank(subjectId?: string | null, topicId?: string | null): void {
+    this.questionBankLoadSubscription?.unsubscribe();
     this.isQuestionBankLoading = true;
     this.questionBankErrorMessage = '';
 
-    this.assessmentAdminService.searchQuestionBank({
-      subjectId: subjectId?.trim() || undefined,
-      topicId: topicId?.trim() || undefined,
-      pageNumber: 1,
-      pageSize: 100
-    })
+    this.questionBankLoadSubscription = this.assessmentAdminService.searchQuestionBank(
+      {
+        difficultyLevel: this.selectedDifficulty === 'all' ? undefined : Number(this.selectedDifficulty),
+        subjectId: subjectId?.trim() || this.selectedQuestionBankSubjectId || undefined,
+        topicId: topicId?.trim() || this.selectedQuestionBankTopicId || undefined,
+        pageNumber: this.questionBankCurrentPage,
+        pageSize: AssessmentCreatorComponent.questionBankPageSize
+      },
+      true
+    )
       .pipe(takeUntil(this.destroy$))
       .subscribe({
       next: result => {
         this.questions = result?.items ?? [];
+        this.questionBankTotalCount = result?.totalCount ?? 0;
+        this.questionBankCurrentPage = result?.pageNumber > 0 ? result.pageNumber : this.questionBankCurrentPage;
         this.isQuestionBankLoading = false;
         this.changeDetectorRef.detectChanges();
       },
       error: error => {
-        this.questionBankErrorMessage =
-          error?.error?.detail ||
-          error?.error?.message ||
-          'Unable to load the question bank right now.';
+        this.questions = [];
+        this.questionBankTotalCount = 0;
+        this.questionBankErrorMessage = this.getQuestionBankLoadErrorMessage(error);
         this.isQuestionBankLoading = false;
         this.changeDetectorRef.detectChanges();
       }
     });
   }
 
-  private applyRouteContext(paramMap: ParamMap): void {
-    const assessmentId = paramMap.get('id');
-
+  private applyRouteContext(assessmentId: string | null): void {
     if (assessmentId) {
       this.builderMode = 'edit';
       this.editingAssessmentId = assessmentId;
+      this.questionBankCurrentPage = 1;
       this.loadAssignmentCatalog();
       this.loadAssessmentForEdit(assessmentId);
       return;
@@ -630,11 +722,19 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const draftSyncPayload: CreateAssessmentRequest = {
+      ...payload,
+      isDraftSave: true
+    };
+
     this.isSubmitting = true;
     this.pendingSubmitAction = null;
     this.submissionErrorMessage = '';
 
-    this.assessmentAdminService.publishAssessment(payload, true).subscribe({
+    this.assessmentAdminService
+      .updateAssessment(this.editingAssessmentId, draftSyncPayload, true)
+      .pipe(switchMap(() => this.assessmentAdminService.publishAssessment(payload, true)))
+      .subscribe({
       next: assessment => {
         this.isSubmitting = false;
         this.submissionErrorMessage = '';
@@ -650,7 +750,11 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       error: error => {
         this.handleSubmissionError(this.getAssessmentSubmissionErrorMessage(error, 'schedule'));
       }
-    });
+      });
+  }
+
+  private shouldShowInitialQuestionBankLoader(): boolean {
+    return this.isQuestionBankLoading && this.questions.length === 0 && !this.questionBankErrorMessage;
   }
 
   private handleSuccessfulSubmission(message: string, assessment: AssessmentRecord): void {
@@ -845,11 +949,12 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   }
 
   private loadAssessmentForEdit(assessmentId: string): void {
+    this.assessmentLoadSubscription?.unsubscribe();
     this.isAssessmentLoading = true;
     this.assessmentLoadErrorMessage = '';
     this.submissionErrorMessage = '';
 
-    this.assessmentAdminService.getAssessment(assessmentId).subscribe({
+    this.assessmentLoadSubscription = this.assessmentAdminService.getAssessment(assessmentId).subscribe({
       next: assessment => {
         this.applyAssessmentRecord(assessment);
         this.loadQuestionBank();
@@ -923,6 +1028,8 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     this.allowQuestionReview = true;
     this.negativeMarking = false;
     this.questionSearchTerm = '';
+    this.questionBankCurrentPage = 1;
+    this.questionBankTotalCount = 0;
     this.selectedBatchIds.clear();
     this.selectedQuestionIds.clear();
   }
@@ -1045,6 +1152,60 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       .sort((left, right) => left.subjectName.localeCompare(right.subjectName));
   }
 
+  private mapQuestionClassificationSubjects(): AssessmentCreatorSubjectOption[] {
+    return (this.questionClassificationCatalog.subjects ?? [])
+      .map(subject => ({
+        subjectId: subject.subjectId,
+        subjectName: subject.subjectName,
+        topics: (subject.topics ?? [])
+          .map(topic => ({
+            topicId: topic.topicId,
+            topicName: topic.topicName
+          }))
+          .sort((left, right) => left.topicName.localeCompare(right.topicName))
+      }))
+      .sort((left, right) => left.subjectName.localeCompare(right.subjectName));
+  }
+
+  private includeAssessmentSubjectIfMissing(
+    subjects: AssessmentCreatorSubjectOption[],
+    assessment?: AssessmentRecord | null
+  ): AssessmentCreatorSubjectOption[] {
+    const subjectId = assessment?.subjectId?.trim();
+    const subjectName = assessment?.subjectName?.trim();
+    const topicId = assessment?.topicId?.trim();
+    const topicName = assessment?.topicName?.trim();
+
+    if (!subjectId || !subjectName) {
+      return subjects;
+    }
+
+    const subjectMap = new Map<string, AssessmentCreatorSubjectOption>(
+      subjects.map(subject => [subject.subjectId, {
+        subjectId: subject.subjectId,
+        subjectName: subject.subjectName,
+        topics: [...subject.topics]
+      }])
+    );
+
+    const subject = subjectMap.get(subjectId) ?? {
+      subjectId,
+      subjectName,
+      topics: []
+    };
+
+    if (topicId && topicName && !subject.topics.some(topic => topic.topicId === topicId)) {
+      subject.topics.push({ topicId, topicName });
+      subject.topics.sort((left: AssessmentCreatorTopicOption, right: AssessmentCreatorTopicOption) =>
+        left.topicName.localeCompare(right.topicName));
+    }
+
+    subjectMap.set(subjectId, subject);
+
+    return Array.from(subjectMap.values())
+      .sort((left, right) => left.subjectName.localeCompare(right.subjectName));
+  }
+
   private ensureSelectedQuestionsLoaded(questionIds: string[]): void {
     const missingQuestionIds = questionIds.filter(questionId =>
       !!questionId && !this.questions.some(question => question.questionId === questionId));
@@ -1082,6 +1243,22 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     }
 
     this.questions = Array.from(questionMap.values());
+  }
+
+  private getQuestionBankLoadErrorMessage(error: any): string {
+    const serverMessage = `${error?.error?.detail ?? ''} ${error?.error?.message ?? ''}`.toLowerCase();
+
+    if (serverMessage.includes('i/o operation has been aborted') ||
+        serverMessage.includes('request was canceled') ||
+        error?.status === 499) {
+      return 'Question bank loading was interrupted. Please try again.';
+    }
+
+    if (error?.status === 503) {
+      return 'Question bank is temporarily unavailable. Please try again in a moment.';
+    }
+
+    return 'Unable to load the question bank right now.';
   }
 
   private mapCollegeClassToAssignmentClass(classItem: CollegeClassSummary): AssessmentAssignmentClass {

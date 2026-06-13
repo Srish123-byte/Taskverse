@@ -244,6 +244,7 @@ public class ProctorController : TaskverseBaseController
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetProctoringSessionState(Guid sessionId)
@@ -277,6 +278,10 @@ public class ProctorController : TaskverseBaseController
         {
             return NotFound(new { message = ex.Message });
         }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
         catch (HttpRequestException ex)
         {
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
@@ -288,6 +293,68 @@ public class ProctorController : TaskverseBaseController
                 ex,
                 "Unhandled proctoring session state retrieval error for sessionId={SessionId}, userId={UserId}",
                 sessionId,
+                currentUserId.Value);
+
+            return Problem(
+                detail: detail,
+                title: detail,
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    [HttpGet("attempts/{attemptId:guid}/session")]
+    [ProducesResponseType(typeof(ProctorSessionStateResponseModel), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetProctoringSessionStateByAttempt(Guid attemptId)
+    {
+        var accessCheck = EnsureStudentAccess();
+        if (accessCheck is not null)
+        {
+            return accessCheck;
+        }
+
+        var currentUserId = GetCurrentUserId();
+        if (!currentUserId.HasValue)
+        {
+            return BadRequest(new { message = "Student user context is missing or invalid." });
+        }
+
+        try
+        {
+            var dto = await _proctorOrchestrator.GetSessionByAttempt(attemptId, currentUserId.Value);
+            return Ok(dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            _logger.LogError(
+                ex,
+                "Unhandled proctoring session retrieval by attempt error for attemptId={AttemptId}, userId={UserId}",
+                attemptId,
                 currentUserId.Value);
 
             return Problem(

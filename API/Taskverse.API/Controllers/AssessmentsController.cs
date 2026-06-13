@@ -507,6 +507,22 @@ public class AssessmentsController : TaskverseBaseController
         {
             return Conflict(new { message = ex.Message });
         }
+        catch (OperationCanceledException ex) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            _logger.LogWarning(
+                ex,
+                "Question bank search request was canceled by the client for collegeId={CollegeId}",
+                collegeId);
+            return StatusCode(499, new { message = "Question bank search request was canceled." });
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Question bank search request was canceled before completion for collegeId={CollegeId}",
+                collegeId);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "Question bank search could not be completed right now." });
+        }
         catch (HttpRequestException ex)
         {
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });

@@ -1,7 +1,6 @@
-import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { map } from 'rxjs/operators';
 
 export interface ProctoringDeviceDetails {
   browserName: string;
@@ -16,8 +15,6 @@ export interface ProctoringDeviceDetails {
   providedIn: 'root'
 })
 export class DeviceInformationService {
-  constructor(private readonly http: HttpClient) {}
-
   isMobile(): boolean {
     return /Mobi|Android/i.test(navigator.userAgent);
   }
@@ -79,12 +76,7 @@ export class DeviceInformationService {
   }
 
   private resolveIpAddress(): Observable<string | null> {
-    return this.http
-      .get<{ ip?: string }>('https://api64.ipify.org?format=json')
-      .pipe(
-        map(response => response.ip?.trim() || null),
-        catchError(() => of(null))
-      );
+    return of(null);
   }
 
   private resolveDeviceType(): string {

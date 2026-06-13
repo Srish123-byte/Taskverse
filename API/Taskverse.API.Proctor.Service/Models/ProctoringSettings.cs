@@ -3,6 +3,7 @@ namespace Taskverse.API.Proctor.Service.Models;
 public class ProctoringSettings
 {
     public bool Enabled { get; set; }
+    public OverallViolationsSettings OverallViolations { get; set; } = new();
     public FullscreenSettings Fullscreen { get; set; } = new();
     public TabSwitchingSettings TabSwitching { get; set; } = new();
     public ClipboardSettings Clipboard { get; set; } = new();
@@ -13,6 +14,12 @@ public class ProctoringSettings
     public WarningsSettings Warnings { get; set; } = new();
     public RiskScoringSettings RiskScoring { get; set; } = new();
     public EventLoggingSettings EventLogging { get; set; } = new();
+}
+
+public class OverallViolationsSettings : ThresholdProctoringRuleSettings
+{
+    public bool Enabled { get; set; }
+    public int AutoSubmitAtCount { get; set; }
 }
 
 public class ThresholdProctoringRuleSettings

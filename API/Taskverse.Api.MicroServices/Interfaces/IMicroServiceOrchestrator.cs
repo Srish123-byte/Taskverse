@@ -65,6 +65,7 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> RecordProctorEvents(Guid sessionId, Guid studentUserId, ProctorEventBatchModel model);
     Task<ObjectResult> EndProctorSession(Guid sessionId, Guid studentUserId, EndProctorSessionModel model);
     Task<ObjectResult> GetProctorSession(Guid sessionId, Guid studentUserId);
+    Task<ObjectResult> GetProctorSessionByAttempt(Guid attemptId, Guid studentUserId);
     Task<ObjectResult> GetAttemptProctorSession(Guid attemptId, Guid collegeId, string requesterRole, string requesterName);
     Task<ObjectResult> RecordProctorEvent(ProctorEventModel model);
     Task<ObjectResult> GetProctorSummary(string sessionId);

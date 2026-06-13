@@ -41,6 +41,7 @@ public class SessionHeartbeatResponseModel
 {
     public Guid SessionId { get; set; }
     public DateTime LastHeartbeatAt { get; set; }
+    public ProctorSessionStateResponseModel SessionState { get; set; } = new();
 }
 
 public class EndProctorSessionRequestModel
@@ -77,6 +78,7 @@ public class ProctorEventBatchResponseModel
 {
     public int ProcessedCount { get; set; }
     public List<ProctorEventBatchFailureResponseModel> Failures { get; set; } = [];
+    public ProctorSessionStateResponseModel SessionState { get; set; } = new();
 }
 
 public class ProctorSessionSummaryResponseModel
@@ -95,6 +97,27 @@ public class ProctorSessionSummaryResponseModel
     public DateTime? LastEventAt { get; set; }
 }
 
+public class ProctorSessionRuleResponseModel
+{
+    public string EventType { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string WarningMessage { get; set; } = string.Empty;
+    public int CurrentCount { get; set; }
+    public int? MaxAllowedCount { get; set; }
+    public int? RemainingCount { get; set; }
+    public bool IsEnabled { get; set; }
+    public bool LockAttemptOnLimitExceeded { get; set; }
+    public bool AutoSubmitOnLimitExceeded { get; set; }
+    public bool IsThresholdExceeded { get; set; }
+}
+
+public class ProctorSessionEnforcementResponseModel
+{
+    public string Action { get; set; } = "NONE";
+    public string? TriggeredByEventType { get; set; }
+    public string? Message { get; set; }
+}
+
 public class ProctorSessionStateResponseModel
 {
     public Guid SessionId { get; set; }
@@ -111,4 +134,6 @@ public class ProctorSessionStateResponseModel
     public string? UserAgent { get; set; }
     public string? IpAddress { get; set; }
     public ProctorSessionSummaryResponseModel Summary { get; set; } = new();
+    public List<ProctorSessionRuleResponseModel> Rules { get; set; } = [];
+    public ProctorSessionEnforcementResponseModel Enforcement { get; set; } = new();
 }

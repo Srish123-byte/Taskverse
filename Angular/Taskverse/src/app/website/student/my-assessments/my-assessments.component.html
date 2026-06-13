@@ -72,7 +72,7 @@
     </div>
   </section>
 
-  <div *ngIf="isDetailModalOpen && selectedAssessmentDetail && !isAttemptMode" class="assessment-detail-backdrop" (click)="closeAssessmentDetailModal()">
+  <div *ngIf="isDetailModalOpen && selectedAssessmentDetail" class="assessment-detail-backdrop" (click)="closeAssessmentDetailModal()">
     <section class="assessment-detail-modal" (click)="$event.stopPropagation()">
       <button
         type="button"
@@ -123,7 +123,7 @@
             Close
           </button>
           <button
-            *ngIf="selectedAssessmentActionLabel"
+            *ngIf="shouldShowDetailAction() && selectedAssessmentActionLabel"
             type="button"
             class="assessment-detail-button assessment-detail-button-primary"
             [disabled]="isStartingAssessment || !canStartSelectedAssessment()"
@@ -139,92 +139,4 @@
 
     </section>
   </div>
-
-  <section *ngIf="isAttemptMode && activeAttempt" class="assessment-player-shell">
-    <header class="assessment-player-topbar">
-      <div class="assessment-player-heading">
-        <span class="assessment-detail-eyebrow">Assessment In Progress</span>
-        <h2>{{ activeAttempt.assessmentName }}</h2>
-      </div>
-
-      <div class="assessment-player-meta">
-        <div class="assessment-player-timer">
-          <span>Time Left</span>
-          <strong>{{ formattedCountdown }}</strong>
-        </div>
-        <button
-          type="button"
-          class="assessment-player-close"
-          aria-label="Exit assessment view"
-          (click)="exitAttemptMode()">
-          &times;
-        </button>
-      </div>
-    </header>
-
-    <div *ngIf="attemptErrorMessage" class="assessment-attempt-state assessment-attempt-state-error">
-      {{ attemptErrorMessage }}
-    </div>
-
-    <article *ngIf="currentQuestion as question" class="assessment-player-card">
-      <div class="assessment-question-meta">
-        <span>{{ getQuestionPositionLabel() }}</span>
-        <span>{{ question.marks }} marks</span>
-      </div>
-
-      <h3>{{ question.questionText }}</h3>
-      <p *ngIf="isMultipleAnswerQuestion(question)" class="assessment-question-helper">Select all that apply.</p>
-
-      <div class="assessment-question-options">
-        <label
-          *ngFor="let option of question.options ?? []; trackBy: trackByQuestionOption"
-          class="assessment-option-button"
-          [class.assessment-option-button-selected]="isQuestionOptionSelected(question, option)">
-          <input
-            [type]="isMultipleAnswerQuestion(question) ? 'checkbox' : 'radio'"
-            class="assessment-option-radio"
-            [name]="'question-' + question.questionId"
-            [checked]="isQuestionOptionSelected(question, option)"
-            (change)="selectQuestionOption(question, option)" />
-          <span>{{ option }}</span>
-        </label>
-      </div>
-    </article>
-
-    <div *ngIf="!currentQuestion" class="assessment-attempt-state">
-      No questions are available for this assessment attempt right now.
-    </div>
-
-    <footer class="assessment-player-actions">
-      <button
-        type="button"
-        class="assessment-detail-button assessment-detail-button-muted"
-        [disabled]="currentQuestionIndex === 0 || isSavingAnswer || isSubmittingAttempt"
-        (click)="showPreviousQuestion()">
-        Previous
-      </button>
-      <button
-        *ngIf="!isLastQuestion"
-        type="button"
-        class="assessment-detail-button assessment-detail-button-primary"
-        [disabled]="!activeAttempt.questions.length || currentQuestionIndex >= activeAttempt.questions.length - 1 || isSavingAnswer || isSubmittingAttempt"
-        (click)="showNextQuestion()">
-        {{ isSavingAnswer ? 'Saving...' : 'Next' }}
-      </button>
-      <button
-        *ngIf="isLastQuestion"
-        type="button"
-        class="assessment-detail-button assessment-detail-button-primary"
-        [disabled]="!activeAttempt.questions.length || isSavingAnswer || isSubmittingAttempt"
-        (click)="submitCurrentAttempt()">
-        {{
-          isSubmittingAttempt
-            ? 'Submitting...'
-            : isSavingAnswer
-              ? 'Saving...'
-              : 'Submit'
-        }}
-      </button>
-    </footer>
-  </section>
 </section>

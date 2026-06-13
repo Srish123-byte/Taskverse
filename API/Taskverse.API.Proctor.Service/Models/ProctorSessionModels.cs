@@ -58,7 +58,9 @@ public record SessionHeartbeatResponseRecord(
     [property: JsonPropertyName("session_id")]
     Guid SessionId,
     [property: JsonPropertyName("last_heartbeat_at")]
-    DateTime LastHeartbeatAt);
+    DateTime LastHeartbeatAt,
+    [property: JsonPropertyName("session_state")]
+    ProctorSessionStateRecord SessionState);
 
 public record ProctorEventBatchItemRequest(
     [property: JsonPropertyName("attempt_id")]
@@ -88,7 +90,9 @@ public record ProctorEventBatchResultRecord(
     [property: JsonPropertyName("processed_count")]
     int ProcessedCount,
     [property: JsonPropertyName("failures")]
-    List<ProctorEventBatchFailureRecord> Failures);
+    List<ProctorEventBatchFailureRecord> Failures,
+    [property: JsonPropertyName("session_state")]
+    ProctorSessionStateRecord SessionState);
 
 public record EndProctorSessionRequest(
     [property: JsonPropertyName("attempt_id")]
@@ -128,6 +132,36 @@ public record ProctorSessionSummaryRecord(
     [property: JsonPropertyName("last_event_at")]
     DateTime? LastEventAt);
 
+public record ProctorSessionRuleRecord(
+    [property: JsonPropertyName("event_type")]
+    string EventType,
+    [property: JsonPropertyName("display_name")]
+    string DisplayName,
+    [property: JsonPropertyName("warning_message")]
+    string WarningMessage,
+    [property: JsonPropertyName("current_count")]
+    int CurrentCount,
+    [property: JsonPropertyName("max_allowed_count")]
+    int? MaxAllowedCount,
+    [property: JsonPropertyName("remaining_count")]
+    int? RemainingCount,
+    [property: JsonPropertyName("is_enabled")]
+    bool IsEnabled,
+    [property: JsonPropertyName("lock_attempt_on_limit_exceeded")]
+    bool LockAttemptOnLimitExceeded,
+    [property: JsonPropertyName("auto_submit_on_limit_exceeded")]
+    bool AutoSubmitOnLimitExceeded,
+    [property: JsonPropertyName("is_threshold_exceeded")]
+    bool IsThresholdExceeded);
+
+public record ProctorSessionEnforcementRecord(
+    [property: JsonPropertyName("action")]
+    string Action,
+    [property: JsonPropertyName("triggered_by_event_type")]
+    string? TriggeredByEventType,
+    [property: JsonPropertyName("message")]
+    string? Message);
+
 public record ProctorSessionStateRecord(
     [property: JsonPropertyName("session_id")]
     Guid SessionId,
@@ -156,4 +190,8 @@ public record ProctorSessionStateRecord(
     [property: JsonPropertyName("ip_address")]
     string? IpAddress,
     [property: JsonPropertyName("summary")]
-    ProctorSessionSummaryRecord Summary);
+    ProctorSessionSummaryRecord Summary,
+    [property: JsonPropertyName("rules")]
+    List<ProctorSessionRuleRecord> Rules,
+    [property: JsonPropertyName("enforcement")]
+    ProctorSessionEnforcementRecord Enforcement);
