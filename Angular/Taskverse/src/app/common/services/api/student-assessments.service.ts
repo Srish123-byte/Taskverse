@@ -1,7 +1,6 @@
 import { HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
 import { HttpClientService } from '../http/http-client.service';
 
 export interface StudentAssessmentItem {
@@ -197,8 +196,39 @@ export interface StudentResult {
   percentage: number;
   rank: number;
   resultStatus: string;
+  submittedAt?: string | null;
   generatedAt: string;
+  durationMinutes: number;
+  totalQuestions: number;
+  attemptedQuestions: number;
+  correctAnswers: number;
+  wrongAnswers: number;
+  unansweredQuestions: number;
+  participantCount: number;
   hasPendingCodingEvaluation: boolean;
+  questionResults: StudentResultQuestionResult[];
+  questionExplanations: StudentResultQuestionExplanation[];
+}
+
+export interface StudentResultQuestionResult {
+  questionId: string;
+  displayOrder: number;
+  questionType: string;
+  questionText: string;
+  marks: number;
+  awardedMarks: number;
+  status: string;
+  userAnswers: string[];
+  correctAnswers: string[];
+  explanation?: string | null;
+}
+
+export interface StudentResultQuestionExplanation {
+  questionId: string;
+  displayOrder: number;
+  questionType: string;
+  questionText: string;
+  explanation?: string | null;
 }
 
 export interface StudentAttemptRecovery {
@@ -283,16 +313,14 @@ export class StudentAssessmentsService {
   }
 
   submitAttempt(attemptId: string): Observable<StudentAttemptSubmitResult> {
-    return this.http.post<StudentAttemptSubmitResult>(`students/attempts/${attemptId}/submit`);
+    return this.http.post<StudentAttemptSubmitResult>(`students/attempts/${attemptId}/submit`, {}, undefined, true);
   }
 
   getStudentAttemptResult(studentId: string, attemptId: string): Observable<StudentResult | null> {
-    return this.getStudentResults(studentId).pipe(
-      map(results => results.find(result => result.attemptId === attemptId) ?? null)
-    );
+    return this.http.get<StudentResult>(`results/students/${studentId}/attempts/${attemptId}`, undefined, true);
   }
 
   getStudentResults(studentId: string): Observable<StudentResult[]> {
-    return this.http.get<StudentResult[]>(`students/${studentId}/results`);
+    return this.http.get<StudentResult[]>(`results/students/${studentId}`);
   }
 }

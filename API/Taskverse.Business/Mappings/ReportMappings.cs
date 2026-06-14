@@ -52,8 +52,43 @@ public static class ReportMappings
             Percentage = model.Percentage,
             Rank = model.Rank,
             ResultStatus = model.ResultStatus,
+            SubmittedAt = model.SubmittedAt,
             GeneratedAt = model.GeneratedAt,
-            HasPendingCodingEvaluation = model.HasPendingCodingEvaluation
+            DurationMinutes = model.DurationMinutes,
+            TotalQuestions = model.TotalQuestions,
+            AttemptedQuestions = model.AttemptedQuestions,
+            CorrectAnswers = model.CorrectAnswers,
+            WrongAnswers = model.WrongAnswers,
+            UnansweredQuestions = model.UnansweredQuestions,
+            ParticipantCount = model.ParticipantCount,
+            HasPendingCodingEvaluation = model.HasPendingCodingEvaluation,
+            QuestionResults = model.QuestionResults?.Select(item => item.ToDto()).ToList() ?? [],
+            QuestionExplanations = model.QuestionExplanations?.Select(item => item.ToDto()).ToList() ?? []
+        };
+
+    public static StudentResultQuestionResultDto ToDto(this StudentResultQuestionResultModel model)
+        => new()
+        {
+            QuestionId = model.QuestionId,
+            DisplayOrder = model.DisplayOrder,
+            QuestionType = model.QuestionType,
+            QuestionText = model.QuestionText,
+            Marks = model.Marks,
+            AwardedMarks = model.AwardedMarks,
+            Status = model.Status,
+            UserAnswers = model.UserAnswers ?? [],
+            CorrectAnswers = model.CorrectAnswers ?? [],
+            Explanation = model.Explanation
+        };
+
+    public static StudentResultQuestionExplanationDto ToDto(this StudentResultQuestionExplanationModel model)
+        => new()
+        {
+            QuestionId = model.QuestionId,
+            DisplayOrder = model.DisplayOrder,
+            QuestionType = model.QuestionType,
+            QuestionText = model.QuestionText,
+            Explanation = model.Explanation
         };
 
     public static GenerateReportRequestModel ToMicroServiceModel(this GenerateReportDto dto)

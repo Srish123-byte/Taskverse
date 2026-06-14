@@ -295,15 +295,43 @@ export class AssessmentRunnerComponent implements OnInit, OnDestroy {
   }
 
   private async bootstrapRunner(): Promise<void> {
-    const navigationState = this.router.getCurrentNavigation()?.extras.state as AssessmentRunnerNavigationState | undefined;
+    const navigationState = this.readNavigationState();
     const initialAttempt = navigationState?.attempt ?? null;
-    this.shouldAutoStartRuntime = navigationState?.startInFullscreen === true;
+    const initialSession = navigationState?.session ?? null;
+    this.shouldAutoStartRuntime = navigationState?.startInFullscreen === true || (!!initialAttempt && !!initialSession);
 
     this.attempt = initialAttempt;
     if (this.attempt) {
       this.applyAttemptState(this.attempt);
     }
 
+    if (initialAttempt && initialSession && !this.consumePendingResumeInterruption() && !this.readPersistedSessionState()) {
+      this.proctorSessionId = initialSession.sessionId;
+      this.persistProctoringSessionState(initialSession);
+      this.isBootstrapping = false;
+      this.changeDetectorRef.detectChanges();
+      this.refreshProctorSessionState(false);
+      return;
+    }
+
+    this.refreshProctorSessionState(true);
+  }
+
+  private readNavigationState(): AssessmentRunnerNavigationState | undefined {
+    const currentNavigationState = this.router.getCurrentNavigation()?.extras.state as AssessmentRunnerNavigationState | undefined;
+    if (currentNavigationState?.attempt || currentNavigationState?.session) {
+      return currentNavigationState;
+    }
+
+    const historyState = window.history.state as AssessmentRunnerNavigationState | undefined;
+    if (historyState?.attempt || historyState?.session) {
+      return historyState;
+    }
+
+    return undefined;
+  }
+
+  private refreshProctorSessionState(shouldRecoverAttemptWhenMissing: boolean): void {
     const sessionSubscription = this.studentAssessmentsService
       .getProctorSessionStateByAttempt(this.attemptId)
       .subscribe({
@@ -321,7 +349,7 @@ export class AssessmentRunnerComponent implements OnInit, OnDestroy {
           this.applyProctorSessionState(sessionState);
           this.handleServerEnforcement(sessionState.enforcement);
 
-          if (!this.attempt) {
+          if (shouldRecoverAttemptWhenMissing && !this.attempt) {
             const recoverySubscription = this.studentAssessmentsService
               .getAttemptRecovery(this.attemptId)
               .pipe(finalize(() => {
@@ -330,6 +358,11 @@ export class AssessmentRunnerComponent implements OnInit, OnDestroy {
               }))
               .subscribe({
                 next: attempt => {
+                  if (this.isAttemptClosed(attempt.attemptStatus)) {
+                    void this.resolveClosedAttemptOutcome(attempt.attemptId);
+                    return;
+                  }
+
                   this.attempt = attempt;
                   this.applyAttemptState(attempt);
                   this.tryAutoStartRuntime();
@@ -568,6 +601,13 @@ export class AssessmentRunnerComponent implements OnInit, OnDestroy {
         },
         error: error => {
           console.error('Failed to submit student assessment attempt.', error);
+
+          if (this.isAttemptAlreadySubmittedError(error)) {
+            const submittedAttemptId = this.attempt?.attemptId ?? this.attemptId;
+            void this.resolveClosedAttemptOutcome(submittedAttemptId);
+            return;
+          }
+
           this.attemptErrorMessage = error?.error?.message || 'Unable to submit this assessment right now.';
           this.startAttemptRuntime();
           this.changeDetectorRef.detectChanges();
@@ -588,7 +628,7 @@ export class AssessmentRunnerComponent implements OnInit, OnDestroy {
     await this.assessmentProctoringService.exitFullscreen();
     this.clearPersistedAttemptState();
     this.assessmentProctoringService.clearQueuedEvents();
-    this.loadImmediateResultOrReturn(submittedAttemptId);
+    this.navigateToAttemptResult(submittedAttemptId);
   }
 
   private loadImmediateResultOrReturn(attemptId: string): void {
@@ -751,7 +791,41 @@ export class AssessmentRunnerComponent implements OnInit, OnDestroy {
     await this.assessmentProctoringService.exitFullscreen();
     this.clearPersistedAttemptState();
     this.assessmentProctoringService.clearQueuedEvents();
-    this.loadImmediateResultOrReturn(submittedAttemptId);
+    this.navigateToAttemptResult(submittedAttemptId);
+  }
+
+  private isAttemptClosed(attemptStatus: string | null | undefined): boolean {
+    const normalizedStatus = attemptStatus?.trim().toUpperCase();
+    return normalizedStatus === 'SUBMITTED' || normalizedStatus === 'AUTO_SUBMITTED';
+  }
+
+  private isAttemptAlreadySubmittedError(error: unknown): boolean {
+    const candidateMessage = this.extractErrorMessage(error).toLowerCase();
+    return candidateMessage.includes('already been submitted');
+  }
+
+  private extractErrorMessage(error: unknown): string {
+    if (!error || typeof error !== 'object') {
+      return '';
+    }
+
+    const responseError = (error as { error?: { message?: string } }).error;
+    if (responseError?.message) {
+      return responseError.message;
+    }
+
+    const directMessage = (error as { message?: string }).message;
+    return directMessage ?? '';
+  }
+
+  private async resolveClosedAttemptOutcome(attemptId: string): Promise<void> {
+    this.stopAttemptRuntime();
+    this.attemptErrorMessage = '';
+    this.attempt = null;
+    await this.assessmentProctoringService.exitFullscreen();
+    this.clearPersistedAttemptState();
+    this.assessmentProctoringService.clearQueuedEvents();
+    this.navigateToAttemptResult(attemptId);
   }
 
   private findRuleByEventType(eventType: string | null | undefined): ProctorSessionRuleResponse | undefined {
@@ -874,5 +948,12 @@ export class AssessmentRunnerComponent implements OnInit, OnDestroy {
 
   private navigateToAssessments(): void {
     void this.router.navigateByUrl(`/${RouteAddress.Student.MyAssessments}`);
+  }
+
+  private navigateToAttemptResult(attemptId: string): void {
+    void this.router.navigateByUrl(
+      `/${RouteAddress.Student.AttemptResults}/${attemptId}`,
+      { state: { pollForResult: true } }
+    );
   }
 }

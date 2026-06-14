@@ -3,6 +3,7 @@ using Npgsql;
 using Taskverse.API.Reports.Service.Models;
 using Taskverse.Data.DataAccess;
 using Taskverse.Data.Enums;
+using Taskverse.Data.Utilities;
 
 namespace Taskverse.API.Reports.Service.Managers;
 
@@ -15,10 +16,12 @@ public class ResultManager : IResultManager
     ];
 
     private readonly TaskverseContext _context;
+    private readonly ILogger<ResultManager> _logger;
 
-    public ResultManager(TaskverseContext context)
+    public ResultManager(TaskverseContext context, ILogger<ResultManager> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     public Task<bool> ResultExistsForAttemptAsync(Guid attemptId, CancellationToken cancellationToken = default)
@@ -43,6 +46,25 @@ public class ResultManager : IResultManager
     {
         return _context.AttemptAnswers
             .Where(item => item.AttemptId == attemptId)
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<List<AssessmentQuestionEvaluationContext>> GetAssessmentQuestionEvaluationContextsAsync(
+        Guid assessmentId,
+        CancellationToken cancellationToken = default)
+    {
+        return (
+            from assessmentQuestion in _context.AssessmentQuestions.AsNoTracking()
+            join question in _context.Questions.AsNoTracking()
+                on assessmentQuestion.QuestionId equals question.QuestionId
+            where assessmentQuestion.AssessmentId == assessmentId
+            orderby assessmentQuestion.DisplayOrder
+            select new AssessmentQuestionEvaluationContext(
+                question.QuestionId,
+                question.QuestionType,
+                question.Answer,
+                question.Marks,
+                question.NegativeMarks))
             .ToListAsync(cancellationToken);
     }
 
@@ -72,6 +94,11 @@ public class ResultManager : IResultManager
 
         try
         {
+            _logger.LogInformation(
+                "Persisting attempt evaluation. attemptId={AttemptId}, assessmentId={AssessmentId}, resultId={ResultId}.",
+                attempt.AttemptId,
+                result.AssessmentId,
+                result.ResultId);
             _context.Attempts.Update(attempt);
             _context.Results.Add(result);
 
@@ -89,12 +116,25 @@ public class ResultManager : IResultManager
 
             await _context.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
+            _logger.LogInformation(
+                "Persisted attempt evaluation successfully. attemptId={AttemptId}, resultId={ResultId}.",
+                attempt.AttemptId,
+                result.ResultId);
         }
         catch (DbUpdateException ex) when (IsDuplicateAttemptResult(ex))
         {
             throw new InvalidOperationException(
                 $"A result already exists for attempt '{result.AttemptId}'.",
                 ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to persist attempt evaluation. attemptId={AttemptId}, resultId={ResultId}.",
+                attempt.AttemptId,
+                result.ResultId);
+            throw;
         }
     }
 
@@ -123,6 +163,14 @@ public class ResultManager : IResultManager
         return studentResults
             .Select(item => item.Result.ToStudentResultResponse(
                 item.AssessmentName,
+                submittedAt: null,
+                durationMinutes: 0,
+                totalQuestions: 0,
+                attemptedQuestions: 0,
+                correctAnswers: 0,
+                wrongAnswers: 0,
+                unansweredQuestions: 0,
+                participantCount: 0,
                 item.Result.ResultStatus == ResultStatus.Pending))
             .ToList();
     }
@@ -144,6 +192,8 @@ public class ResultManager : IResultManager
 
         var studentAttemptResult = await (
             from result in _context.Results.AsNoTracking()
+            join attempt in _context.Attempts.AsNoTracking()
+                on result.AttemptId equals attempt.AttemptId
             join assessment in _context.Assessments.AsNoTracking()
                 on result.AssessmentId equals assessment.AssessmentId
             where result.StudentId == studentId &&
@@ -152,7 +202,9 @@ public class ResultManager : IResultManager
             select new
             {
                 Result = result,
-                assessment.AssessmentName
+                Attempt = attempt,
+                assessment.AssessmentName,
+                assessment.DurationMinutes
             })
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -162,9 +214,91 @@ public class ResultManager : IResultManager
                 $"Result was not found for student '{studentId}' and attempt '{attemptId}'.");
         }
 
+        var participantCount = await _context.Results
+            .AsNoTracking()
+            .Where(item => item.AssessmentId == studentAttemptResult.Result.AssessmentId)
+            .CountAsync(cancellationToken);
+
+        var questionResults = await (
+            from assessmentQuestion in _context.AssessmentQuestions.AsNoTracking()
+            join question in _context.Questions.AsNoTracking()
+                on assessmentQuestion.QuestionId equals question.QuestionId
+            join attemptAnswer in _context.AttemptAnswers.AsNoTracking().Where(item => item.AttemptId == attemptId)
+                on question.QuestionId equals attemptAnswer.QuestionId into attemptAnswerGroup
+            from attemptAnswer in attemptAnswerGroup.DefaultIfEmpty()
+            where assessmentQuestion.AssessmentId == studentAttemptResult.Result.AssessmentId
+            orderby assessmentQuestion.DisplayOrder
+            select new
+            {
+                question.QuestionId,
+                assessmentQuestion.DisplayOrder,
+                question.QuestionType,
+                question.QuestionText,
+                question.Marks,
+                question.Answer,
+                question.Explanation,
+                SelectedAnswer = attemptAnswer != null ? attemptAnswer.SelectedAnswer : null,
+                AwardedMarks = attemptAnswer != null ? attemptAnswer.MarksAwarded : 0m,
+                IsCorrect = attemptAnswer != null ? (bool?)attemptAnswer.IsCorrect : null
+            })
+            .ToListAsync(cancellationToken);
+
+        var mappedQuestionResults = questionResults
+            .Select(item =>
+            {
+                var userAnswers = QuestionAnswerJsonHelper.ParseStoredAnswers(item.SelectedAnswer);
+                var correctAnswers = QuestionAnswerJsonHelper.ParseStoredAnswers(item.Answer);
+                var hasAnswered = userAnswers.Count > 0;
+                var status = !hasAnswered
+                    ? "UNANSWERED"
+                    : string.Equals(item.QuestionType?.Trim(), "coding", StringComparison.OrdinalIgnoreCase) &&
+                      studentAttemptResult.Result.ResultStatus == ResultStatus.Pending
+                        ? "PENDING"
+                        : item.IsCorrect == true
+                            ? "CORRECT"
+                            : "INCORRECT";
+
+                return new StudentResultQuestionResultResponse(
+                    item.QuestionId,
+                    item.DisplayOrder,
+                    item.QuestionType ?? string.Empty,
+                    item.QuestionText,
+                    item.Marks,
+                    item.AwardedMarks,
+                    status,
+                    userAnswers,
+                    correctAnswers,
+                    item.Explanation);
+            })
+            .ToList();
+
+        var questionExplanations = await (
+            from assessmentQuestion in _context.AssessmentQuestions.AsNoTracking()
+            join question in _context.Questions.AsNoTracking()
+                on assessmentQuestion.QuestionId equals question.QuestionId
+            where assessmentQuestion.AssessmentId == studentAttemptResult.Result.AssessmentId
+            orderby assessmentQuestion.DisplayOrder
+            select new StudentResultQuestionExplanationResponse(
+                question.QuestionId,
+                assessmentQuestion.DisplayOrder,
+                question.QuestionType,
+                question.QuestionText,
+                question.Explanation))
+            .ToListAsync(cancellationToken);
+
         return studentAttemptResult.Result.ToStudentResultResponse(
             studentAttemptResult.AssessmentName,
-            studentAttemptResult.Result.ResultStatus == ResultStatus.Pending);
+            studentAttemptResult.Attempt.SubmittedAt,
+            studentAttemptResult.DurationMinutes,
+            studentAttemptResult.Attempt.TotalQuestions,
+            studentAttemptResult.Attempt.AttemptedQuestions,
+            studentAttemptResult.Attempt.CorrectAnswers,
+            studentAttemptResult.Attempt.WrongAnswers,
+            studentAttemptResult.Attempt.UnansweredQuestions,
+            participantCount,
+            studentAttemptResult.Result.ResultStatus == ResultStatus.Pending,
+            mappedQuestionResults,
+            questionExplanations);
     }
 
     private static bool IsDuplicateAttemptResult(DbUpdateException exception)

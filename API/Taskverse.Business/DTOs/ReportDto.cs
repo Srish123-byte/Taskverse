@@ -53,6 +53,39 @@ public class StudentResultDto
     public decimal Percentage { get; set; }
     public int Rank { get; set; }
     public string ResultStatus { get; set; } = default!;
+    public DateTime? SubmittedAt { get; set; }
     public DateTime GeneratedAt { get; set; }
+    public int DurationMinutes { get; set; }
+    public int TotalQuestions { get; set; }
+    public int AttemptedQuestions { get; set; }
+    public int CorrectAnswers { get; set; }
+    public int WrongAnswers { get; set; }
+    public int UnansweredQuestions { get; set; }
+    public int ParticipantCount { get; set; }
     public bool HasPendingCodingEvaluation { get; set; }
+    public List<StudentResultQuestionResultDto> QuestionResults { get; set; } = [];
+    public List<StudentResultQuestionExplanationDto> QuestionExplanations { get; set; } = [];
+}
+
+public class StudentResultQuestionResultDto
+{
+    public Guid QuestionId { get; set; }
+    public int DisplayOrder { get; set; }
+    public string QuestionType { get; set; } = default!;
+    public string QuestionText { get; set; } = default!;
+    public decimal Marks { get; set; }
+    public decimal AwardedMarks { get; set; }
+    public string Status { get; set; } = default!;
+    public List<string> UserAnswers { get; set; } = [];
+    public List<string> CorrectAnswers { get; set; } = [];
+    public string? Explanation { get; set; }
+}
+
+public class StudentResultQuestionExplanationDto
+{
+    public Guid QuestionId { get; set; }
+    public int DisplayOrder { get; set; }
+    public string QuestionType { get; set; } = default!;
+    public string QuestionText { get; set; } = default!;
+    public string? Explanation { get; set; }
 }

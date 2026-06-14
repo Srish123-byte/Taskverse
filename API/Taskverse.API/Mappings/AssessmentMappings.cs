@@ -514,8 +514,47 @@ public static class AssessmentMappings
             Percentage = dto.Percentage,
             Rank = dto.Rank,
             ResultStatus = dto.ResultStatus,
+            SubmittedAt = UtcDateTime.Normalize(dto.SubmittedAt),
             GeneratedAt = UtcDateTime.Normalize(dto.GeneratedAt),
-            HasPendingCodingEvaluation = dto.HasPendingCodingEvaluation
+            DurationMinutes = dto.DurationMinutes,
+            TotalQuestions = dto.TotalQuestions,
+            AttemptedQuestions = dto.AttemptedQuestions,
+            CorrectAnswers = dto.CorrectAnswers,
+            WrongAnswers = dto.WrongAnswers,
+            UnansweredQuestions = dto.UnansweredQuestions,
+            ParticipantCount = dto.ParticipantCount,
+            HasPendingCodingEvaluation = dto.HasPendingCodingEvaluation,
+            QuestionResults = dto.QuestionResults.Select(item => item.ToResponseModel()).ToList(),
+            QuestionExplanations = dto.QuestionExplanations.Select(item => item.ToResponseModel()).ToList()
+        };
+    }
+
+    public static StudentResultQuestionResultResponseModel ToResponseModel(this StudentResultQuestionResultDto dto)
+    {
+        return new StudentResultQuestionResultResponseModel
+        {
+            QuestionId = dto.QuestionId,
+            DisplayOrder = dto.DisplayOrder,
+            QuestionType = dto.QuestionType,
+            QuestionText = dto.QuestionText,
+            Marks = dto.Marks,
+            AwardedMarks = dto.AwardedMarks,
+            Status = dto.Status,
+            UserAnswers = dto.UserAnswers,
+            CorrectAnswers = dto.CorrectAnswers,
+            Explanation = dto.Explanation
+        };
+    }
+
+    public static StudentResultQuestionExplanationResponseModel ToResponseModel(this StudentResultQuestionExplanationDto dto)
+    {
+        return new StudentResultQuestionExplanationResponseModel
+        {
+            QuestionId = dto.QuestionId,
+            DisplayOrder = dto.DisplayOrder,
+            QuestionType = dto.QuestionType,
+            QuestionText = dto.QuestionText,
+            Explanation = dto.Explanation
         };
     }
 }

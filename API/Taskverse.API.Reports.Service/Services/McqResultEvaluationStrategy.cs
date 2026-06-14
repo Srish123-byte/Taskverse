@@ -7,7 +7,8 @@ namespace Taskverse.API.Reports.Service.Services;
 public class McqResultEvaluationStrategy : IResultEvaluationStrategy
 {
     public bool CanHandle(string questionType)
-        => string.Equals(questionType?.Trim(), "mcq", StringComparison.OrdinalIgnoreCase);
+        => string.Equals(questionType?.Trim(), "mcq", StringComparison.OrdinalIgnoreCase)
+           || string.Equals(questionType?.Trim(), "fill in the blanks", StringComparison.OrdinalIgnoreCase);
 
     public QuestionEvaluationResult Evaluate(
         AssessmentQuestionEvaluationContext question,

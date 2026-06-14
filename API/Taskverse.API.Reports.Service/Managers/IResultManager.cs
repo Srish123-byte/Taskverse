@@ -13,6 +13,10 @@ public interface IResultManager
 
     Task<List<AttemptAnswer>> GetAttemptAnswersAsync(Guid attemptId, CancellationToken cancellationToken = default);
 
+    Task<List<AssessmentQuestionEvaluationContext>> GetAssessmentQuestionEvaluationContextsAsync(
+        Guid assessmentId,
+        CancellationToken cancellationToken = default);
+
     Task<List<SubmittedAttemptScoreSnapshot>> GetSubmittedAttemptScoreSnapshotsAsync(
         Guid assessmentId,
         CancellationToken cancellationToken = default);

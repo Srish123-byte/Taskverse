@@ -366,6 +366,39 @@ public class StudentResultResponseModel
     public decimal Percentage { get; set; }
     public int Rank { get; set; }
     public string ResultStatus { get; set; } = string.Empty;
+    public DateTime? SubmittedAt { get; set; }
     public DateTime GeneratedAt { get; set; }
+    public int DurationMinutes { get; set; }
+    public int TotalQuestions { get; set; }
+    public int AttemptedQuestions { get; set; }
+    public int CorrectAnswers { get; set; }
+    public int WrongAnswers { get; set; }
+    public int UnansweredQuestions { get; set; }
+    public int ParticipantCount { get; set; }
     public bool HasPendingCodingEvaluation { get; set; }
+    public List<StudentResultQuestionResultResponseModel> QuestionResults { get; set; } = [];
+    public List<StudentResultQuestionExplanationResponseModel> QuestionExplanations { get; set; } = [];
+}
+
+public class StudentResultQuestionResultResponseModel
+{
+    public Guid QuestionId { get; set; }
+    public int DisplayOrder { get; set; }
+    public string QuestionType { get; set; } = string.Empty;
+    public string QuestionText { get; set; } = string.Empty;
+    public decimal Marks { get; set; }
+    public decimal AwardedMarks { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public List<string> UserAnswers { get; set; } = [];
+    public List<string> CorrectAnswers { get; set; } = [];
+    public string? Explanation { get; set; }
+}
+
+public class StudentResultQuestionExplanationResponseModel
+{
+    public Guid QuestionId { get; set; }
+    public int DisplayOrder { get; set; }
+    public string QuestionType { get; set; } = string.Empty;
+    public string QuestionText { get; set; } = string.Empty;
+    public string? Explanation { get; set; }
 }

@@ -15,6 +15,7 @@ const routes: Routes = [
       { path: 'dashboard', component: DashboardComponent },
       { path: 'my-assessments', component: MyAssessmentsComponent },
       { path: 'my-assessments/attempts/:attemptId/run', component: AssessmentRunnerComponent },
+      { path: 'results/attempts/:attemptId', component: ResultsComponent },
       { path: 'results', component: ResultsComponent },
       { path: 'help-center', component: HelpCenterComponent }
     ]

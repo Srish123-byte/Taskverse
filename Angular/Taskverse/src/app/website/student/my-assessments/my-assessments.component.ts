@@ -225,7 +225,7 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
           this.closeAssessmentDetailModal();
           void this.router.navigateByUrl(
             `/${RouteAddress.Student.AssessmentRunner}/${attempt.attemptId}/run`,
-            { state: { attempt, session } }
+            { state: { attempt, session, startInFullscreen: true } }
           );
         },
         error: error => {

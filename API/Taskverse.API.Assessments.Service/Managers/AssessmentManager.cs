@@ -2051,7 +2051,7 @@ public class AssessmentManager : IAssessmentManager
             await _context.Entry(attempt).ReloadAsync();
 
             var resultProcessingContext = await GetResultProcessingContextAsync(attempt.AssessmentId);
-            QueueAttemptResultProcessing(attempt.AttemptId, attempt.StudentId, resultProcessingContext);
+            await ProcessAttemptResultAsync(attempt.AttemptId, attempt.StudentId, resultProcessingContext);
             return attempt;
         }
         catch (DbUpdateException ex)
@@ -2083,36 +2083,41 @@ public class AssessmentManager : IAssessmentManager
             .FirstAsync();
     }
 
-    private void QueueAttemptResultProcessing(
-        Guid attemptId,
-        Guid studentId,
-        ResultProcessingContext resultProcessingContext)
-    {
-        _ = ProcessAttemptResultAsync(attemptId, studentId, resultProcessingContext);
-    }
-
     private async Task ProcessAttemptResultAsync(
         Guid attemptId,
         Guid studentId,
         ResultProcessingContext resultProcessingContext)
     {
+        AttemptEvaluationResultClientModel? evaluationResult;
+
         try
         {
-            await _reportsServiceClient.EvaluateAttemptAsync(attemptId, resultProcessingContext.PassingPercentage);
-
-            if (!resultProcessingContext.ShowResultsImmediately)
-            {
-                return;
-            }
-
-            await _reportsServiceClient.GetStudentAttemptResultAsync(studentId, attemptId);
+            evaluationResult = await _reportsServiceClient.EvaluateAttemptAsync(
+                attemptId,
+                resultProcessingContext.PassingPercentage);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(
+            _logger.LogError(
                 ex,
-                "Attempt {AttemptId} was finalized but async Reports processing did not complete.",
+                "Attempt {AttemptId} was submitted, but result evaluation did not complete.",
                 attemptId);
+            throw new InvalidOperationException(
+                $"Result evaluation did not complete for attempt '{attemptId}'.",
+                ex);
+        }
+
+        if (!resultProcessingContext.ShowResultsImmediately)
+        {
+            return;
+        }
+
+        if (evaluationResult is null)
+        {
+            _logger.LogInformation(
+                "Attempt {AttemptId} evaluation completed without an immediate result payload for student {StudentId}.",
+                attemptId,
+                studentId);
         }
     }
 
