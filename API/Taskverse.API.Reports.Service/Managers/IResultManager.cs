@@ -17,14 +17,9 @@ public interface IResultManager
         Guid assessmentId,
         CancellationToken cancellationToken = default);
 
-    Task<List<SubmittedAttemptScoreSnapshot>> GetSubmittedAttemptScoreSnapshotsAsync(
-        Guid assessmentId,
-        CancellationToken cancellationToken = default);
-        
     Task PersistAttemptEvaluationAsync(
         Attempt attempt,
         Result result,
-        IReadOnlyDictionary<Guid, int> rankByAttemptId,
         CancellationToken cancellationToken = default);
 
     Task<List<StudentResultResponse>> GetStudentResultsAsync(

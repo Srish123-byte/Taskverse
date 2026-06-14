@@ -204,7 +204,3 @@ public record AttemptEvaluationSummary(
     decimal Percentage,
     ResultStatus ResultStatus,
     bool HasPendingCodingEvaluation);
-
-public record SubmittedAttemptScoreSnapshot(
-    Guid AttemptId,
-    decimal ObtainedMarks);

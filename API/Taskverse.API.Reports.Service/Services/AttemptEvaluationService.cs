@@ -80,6 +80,7 @@ public class AttemptEvaluationService : IAttemptEvaluationService
             attempt.AttemptId,
             attemptAnswers.Count,
             assessmentQuestionContexts.Count);
+
         var evaluation = BuildEvaluation(
             attempt,
             assessment,
@@ -87,15 +88,9 @@ public class AttemptEvaluationService : IAttemptEvaluationService
             assessmentQuestionContexts,
             passingPercentage,
             _resultEvaluationStrategyFactory);
-        var rankingSnapshots = await _resultManager.GetSubmittedAttemptScoreSnapshotsAsync(
-            assessment.AssessmentId,
-            cancellationToken);
 
-        var rankByAttemptId = CalculateCompetitionRanks(rankingSnapshots, attempt.AttemptId, evaluation.ObtainedMarks);
-        var rank = rankByAttemptId.TryGetValue(attempt.AttemptId, out var computedRank)
-            ? computedRank
-            : 1;
-
+        // Rank is computed inside PersistAttemptEvaluationAsync based on the
+        // results table — so we don't need to pre-calculate it here.
         var result = new Result
         {
             ResultId = Guid.NewGuid(),
@@ -105,7 +100,7 @@ public class AttemptEvaluationService : IAttemptEvaluationService
             TotalMarks = assessment.TotalMarks,
             ObtainedMarks = attempt.TotalScore,
             Percentage = attempt.Percentage,
-            Rank = rank,
+            Rank = 1,   // default; overwritten by PersistAttemptEvaluationAsync
             ResultStatus = evaluation.ResultStatus,
             GeneratedAt = DateTime.UtcNow
         };
@@ -117,11 +112,13 @@ public class AttemptEvaluationService : IAttemptEvaluationService
             result.ResultStatus,
             evaluation.HasPendingCodingEvaluation);
 
-        await _resultManager.PersistAttemptEvaluationAsync(attempt, result, rankByAttemptId, cancellationToken);
+        await _resultManager.PersistAttemptEvaluationAsync(attempt, result, cancellationToken);
         _logger.LogInformation(
-            "Persisted evaluation for attemptId={AttemptId}. resultId={ResultId}.",
+            "Persisted evaluation for attemptId={AttemptId}. resultId={ResultId}, rank={Rank}.",
             attempt.AttemptId,
-            result.ResultId);
+            result.ResultId,
+            result.Rank);
+
         return AttemptEvaluationExecutionResult.Completed(result.ToAttemptResultResponse(evaluation.HasPendingCodingEvaluation));
     }
 
@@ -195,47 +192,6 @@ public class AttemptEvaluationService : IAttemptEvaluationService
         }
 
         return QuestionAnswerJsonHelper.ParseStoredAnswers(attemptAnswer.SelectedAnswer).Count > 0;
-    }
-
-    private static Dictionary<Guid, int> CalculateCompetitionRanks(
-        IEnumerable<SubmittedAttemptScoreSnapshot> persistedSnapshots,
-        Guid currentAttemptId,
-        decimal currentAttemptMarks)
-    {
-        var snapshots = persistedSnapshots.ToList();
-        var currentSnapshot = snapshots.FirstOrDefault(item => item.AttemptId == currentAttemptId);
-        if (currentSnapshot is null)
-        {
-            snapshots.Add(new SubmittedAttemptScoreSnapshot(currentAttemptId, currentAttemptMarks));
-        }
-        else
-        {
-            var index = snapshots.FindIndex(item => item.AttemptId == currentAttemptId);
-            snapshots[index] = currentSnapshot with { ObtainedMarks = currentAttemptMarks };
-        }
-
-        var orderedSnapshots = snapshots
-            .OrderByDescending(item => item.ObtainedMarks)
-            .ThenBy(item => item.AttemptId)
-            .ToList();
-
-        var rankByAttemptId = new Dictionary<Guid, int>(orderedSnapshots.Count);
-        decimal? previousMarks = null;
-        var previousRank = 0;
-
-        for (var index = 0; index < orderedSnapshots.Count; index++)
-        {
-            var snapshot = orderedSnapshots[index];
-            var rank = previousMarks.HasValue && snapshot.ObtainedMarks == previousMarks.Value
-                ? previousRank
-                : index + 1;
-
-            rankByAttemptId[snapshot.AttemptId] = rank;
-            previousMarks = snapshot.ObtainedMarks;
-            previousRank = rank;
-        }
-
-        return rankByAttemptId;
     }
 
     private static void ValidatePassingPercentage(int passingPercentage)

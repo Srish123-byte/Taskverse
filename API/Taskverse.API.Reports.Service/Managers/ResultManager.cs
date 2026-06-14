@@ -9,12 +9,6 @@ namespace Taskverse.API.Reports.Service.Managers;
 
 public class ResultManager : IResultManager
 {
-    private static readonly AttemptStatus[] SubmittedAttemptStatuses =
-    [
-        AttemptStatus.Submitted,
-        AttemptStatus.Auto_Submitted
-    ];
-
     private readonly TaskverseContext _context;
     private readonly ILogger<ResultManager> _logger;
 
@@ -68,26 +62,9 @@ public class ResultManager : IResultManager
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<List<SubmittedAttemptScoreSnapshot>> GetSubmittedAttemptScoreSnapshotsAsync(
-        Guid assessmentId,
-        CancellationToken cancellationToken = default)
-    {
-        return await (
-            from attempt in _context.Attempts.AsNoTracking()
-            where attempt.AssessmentId == assessmentId &&
-                  SubmittedAttemptStatuses.Contains(attempt.AttemptStatus)
-            join attemptAnswer in _context.AttemptAnswers.AsNoTracking()
-                on attempt.AttemptId equals attemptAnswer.AttemptId into attemptAnswerGroup
-            select new SubmittedAttemptScoreSnapshot(
-                attempt.AttemptId,
-                attemptAnswerGroup.Sum(item => (decimal?)item.MarksAwarded) ?? 0m))
-            .ToListAsync(cancellationToken);
-    }
-
     public async Task PersistAttemptEvaluationAsync(
         Attempt attempt,
         Result result,
-        IReadOnlyDictionary<Guid, int> rankByAttemptId,
         CancellationToken cancellationToken = default)
     {
         await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
@@ -95,31 +72,62 @@ public class ResultManager : IResultManager
         try
         {
             _logger.LogInformation(
-                "Persisting attempt evaluation. attemptId={AttemptId}, assessmentId={AssessmentId}, resultId={ResultId}.",
+                "Persisting attempt evaluation. attemptId={AttemptId}, assessmentId={AssessmentId}, resultId={ResultId}, " +
+                "totalScore={TotalScore}, percentage={Percentage}, correctAnswers={CorrectAnswers}, wrongAnswers={WrongAnswers}.",
                 attempt.AttemptId,
                 result.AssessmentId,
-                result.ResultId);
-            _context.Attempts.Update(attempt);
-            _context.Results.Add(result);
+                result.ResultId,
+                attempt.TotalScore,
+                attempt.Percentage,
+                attempt.CorrectAnswers,
+                attempt.WrongAnswers);
 
+            _context.Attempts.Update(attempt);
+
+            // Load all results already persisted for this assessment so we can
+            // re-rank everyone (including the student being evaluated right now).
             var existingResults = await _context.Results
                 .Where(item => item.AssessmentId == result.AssessmentId)
                 .ToListAsync(cancellationToken);
 
+            _logger.LogDebug(
+                "Found {ExistingResultCount} existing result(s) for assessmentId={AssessmentId}. Computing ranks.",
+                existingResults.Count,
+                result.AssessmentId);
+
+            // Build the full leaderboard: existing results + the new one.
+            // The first student to complete will have an empty existingResults list
+            // and naturally receives rank 1.
+            var allResultsForRanking = existingResults
+                .Select(r => (r.AttemptId, r.ObtainedMarks))
+                .Append((result.AttemptId, result.ObtainedMarks))
+                .ToList();
+
+            var rankByAttemptId = ComputeRanks(allResultsForRanking);
+
             foreach (var existingResult in existingResults)
             {
-                if (rankByAttemptId.TryGetValue(existingResult.AttemptId, out var rank))
-                {
-                    existingResult.Rank = rank;
-                }
+                existingResult.Rank = rankByAttemptId[existingResult.AttemptId];
             }
+
+            result.Rank = rankByAttemptId[result.AttemptId];
+            _context.Results.Add(result);
+
+            var trackedEntries = _context.ChangeTracker.Entries()
+                .Select(e => $"{e.Entity.GetType().Name}[{e.State}]")
+                .ToList();
+            _logger.LogDebug(
+                "EF change tracker before SaveChanges for attemptId={AttemptId}: [{TrackedEntries}].",
+                attempt.AttemptId,
+                string.Join(", ", trackedEntries));
 
             await _context.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             _logger.LogInformation(
-                "Persisted attempt evaluation successfully. attemptId={AttemptId}, resultId={ResultId}.",
+                "Persisted attempt evaluation successfully. attemptId={AttemptId}, resultId={ResultId}, rank={Rank}.",
                 attempt.AttemptId,
-                result.ResultId);
+                result.ResultId,
+                result.Rank);
         }
         catch (DbUpdateException ex) when (IsDuplicateAttemptResult(ex))
         {
@@ -136,6 +144,38 @@ public class ResultManager : IResultManager
                 result.ResultId);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Assigns integer ranks to a set of (AttemptId, ObtainedMarks) pairs.
+    /// Higher marks = lower rank number. Ties share the same rank.
+    /// The first student (only one entry) always comes out as rank 1.
+    /// </summary>
+    private static Dictionary<Guid, int> ComputeRanks(
+        IReadOnlyList<(Guid AttemptId, decimal ObtainedMarks)> entries)
+    {
+        var ordered = entries
+            .OrderByDescending(e => e.ObtainedMarks)
+            .ThenBy(e => e.AttemptId)   // deterministic tie-break
+            .ToList();
+
+        var rankByAttemptId = new Dictionary<Guid, int>(ordered.Count);
+        decimal? previousMarks = null;
+        var previousRank = 0;
+
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            var (attemptId, marks) = ordered[i];
+            var rank = previousMarks.HasValue && marks == previousMarks.Value
+                ? previousRank
+                : i + 1;
+
+            rankByAttemptId[attemptId] = rank;
+            previousMarks = marks;
+            previousRank = rank;
+        }
+
+        return rankByAttemptId;
     }
 
     public async Task<List<StudentResultResponse>> GetStudentResultsAsync(
