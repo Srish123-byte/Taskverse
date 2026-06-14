@@ -206,6 +206,7 @@ export interface StudentResult {
   unansweredQuestions: number;
   participantCount: number;
   hasPendingCodingEvaluation: boolean;
+  showResultsImmediately: boolean;
   questionResults: StudentResultQuestionResult[];
   questionExplanations: StudentResultQuestionExplanation[];
 }

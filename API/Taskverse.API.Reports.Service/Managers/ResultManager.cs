@@ -211,7 +211,8 @@ public class ResultManager : IResultManager
                 wrongAnswers: 0,
                 unansweredQuestions: 0,
                 participantCount: 0,
-                item.Result.ResultStatus == ResultStatus.Pending))
+                hasPendingCodingEvaluation: item.Result.ResultStatus == ResultStatus.Pending,
+                showResultsImmediately: true))
             .ToList();
     }
 
@@ -237,14 +238,14 @@ public class ResultManager : IResultManager
             join assessment in _context.Assessments.AsNoTracking()
                 on result.AssessmentId equals assessment.AssessmentId
             where result.StudentId == studentId &&
-                  result.AttemptId == attemptId &&
-                  assessment.ShowResultsImmediately
+                  result.AttemptId == attemptId
             select new
             {
                 Result = result,
                 Attempt = attempt,
                 assessment.AssessmentName,
-                assessment.DurationMinutes
+                assessment.DurationMinutes,
+                assessment.ShowResultsImmediately
             })
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -252,6 +253,25 @@ public class ResultManager : IResultManager
         {
             throw new KeyNotFoundException(
                 $"Result was not found for student '{studentId}' and attempt '{attemptId}'.");
+        }
+
+        // When the instructor has not enabled immediate results, return a minimal
+        // stub — the Angular will display a "You'll be notified" panel instead
+        // of the full score / question-analysis view.
+        if (!studentAttemptResult.ShowResultsImmediately)
+        {
+            return studentAttemptResult.Result.ToStudentResultResponse(
+                studentAttemptResult.AssessmentName,
+                submittedAt: null,
+                durationMinutes: 0,
+                totalQuestions: 0,
+                attemptedQuestions: 0,
+                correctAnswers: 0,
+                wrongAnswers: 0,
+                unansweredQuestions: 0,
+                participantCount: 0,
+                hasPendingCodingEvaluation: false,
+                showResultsImmediately: false);
         }
 
         var participantCount = await _context.Results
@@ -336,7 +356,8 @@ public class ResultManager : IResultManager
             studentAttemptResult.Attempt.WrongAnswers,
             studentAttemptResult.Attempt.UnansweredQuestions,
             participantCount,
-            studentAttemptResult.Result.ResultStatus == ResultStatus.Pending,
+            hasPendingCodingEvaluation: studentAttemptResult.Result.ResultStatus == ResultStatus.Pending,
+            showResultsImmediately: true,
             mappedQuestionResults,
             questionExplanations);
     }

@@ -56,6 +56,11 @@ export class ResultsComponent implements OnInit, OnDestroy {
     return !!this.result;
   }
 
+  /** True when the assessment is configured to not release results immediately. */
+  get isPendingNotification(): boolean {
+    return this.result?.showResultsImmediately === false;
+  }
+
   get completedOnLabel(): string {
     const completedAt = this.result?.submittedAt ?? this.result?.generatedAt;
     if (!completedAt) {

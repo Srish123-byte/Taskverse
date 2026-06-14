@@ -20,7 +20,47 @@
     </div>
   </section>
 
-  <ng-container *ngIf="!isLoading && !errorMessage && result">
+  <!-- Pending notification panel: shown when showResultsImmediately = false -->
+  <ng-container *ngIf="!isLoading && !errorMessage && result && isPendingNotification">
+    <section class="pending-notification-panel">
+      <div class="pending-icon-ring">
+        <svg class="pending-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="24" cy="24" r="23" stroke="currentColor" stroke-width="2"/>
+          <path d="M14 24.5l7 7 13-14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+
+      <div class="pending-copy">
+        <span class="page-eyebrow">Assessment Submitted</span>
+        <h1>{{ result.assessmentName }}</h1>
+        <p class="pending-headline">You'll be notified when the result is ready!</p>
+        <p class="pending-subtext">
+          Your responses have been recorded. The result will be released by your instructor
+          once all submissions have been reviewed.
+        </p>
+      </div>
+
+      <div class="pending-actions">
+        <button
+          id="pending-back-to-assessments-btn"
+          type="button"
+          class="page-button page-button-primary"
+          (click)="returnToAssessments()">
+          Back to Assessments
+        </button>
+        <button
+          id="pending-back-to-dashboard-btn"
+          type="button"
+          class="page-button page-button-secondary"
+          (click)="returnToDashboard()">
+          Back to Dashboard
+        </button>
+      </div>
+    </section>
+  </ng-container>
+
+  <!-- Full results view: shown when showResultsImmediately = true -->
+  <ng-container *ngIf="!isLoading && !errorMessage && result && !isPendingNotification">
     <header class="results-hero">
       <div class="hero-copy">
         <span class="page-eyebrow">Assessment Result</span>

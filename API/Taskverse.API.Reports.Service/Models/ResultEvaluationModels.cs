@@ -85,6 +85,8 @@ public record StudentResultResponse(
     int ParticipantCount,
     [property: JsonPropertyName("has_pending_coding_evaluation")]
     bool HasPendingCodingEvaluation,
+    [property: JsonPropertyName("show_results_immediately")]
+    bool ShowResultsImmediately,
     [property: JsonPropertyName("question_results")]
     List<StudentResultQuestionResultResponse> QuestionResults,
     [property: JsonPropertyName("question_explanations")]
@@ -156,6 +158,7 @@ public static class ResultMappings
         int unansweredQuestions,
         int participantCount,
         bool hasPendingCodingEvaluation,
+        bool showResultsImmediately = true,
         List<StudentResultQuestionResultResponse>? questionResults = null,
         List<StudentResultQuestionExplanationResponse>? questionExplanations = null)
     {
@@ -180,6 +183,7 @@ public static class ResultMappings
             unansweredQuestions,
             participantCount,
             hasPendingCodingEvaluation,
+            showResultsImmediately,
             questionResults ?? [],
             questionExplanations ?? []);
     }
