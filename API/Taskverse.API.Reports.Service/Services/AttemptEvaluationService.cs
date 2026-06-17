@@ -47,7 +47,7 @@ public class AttemptEvaluationService : IAttemptEvaluationService
         if (await _resultManager.ResultExistsForAttemptAsync(attemptId, cancellationToken))
         {
             _logger.LogWarning("Skipping result evaluation because a result already exists for attemptId={AttemptId}.", attemptId);
-            throw new InvalidOperationException($"A result already exists for attempt '{attemptId}'.");
+            return AttemptEvaluationExecutionResult.Skipped();
         }
 
         var attempt = await _resultManager.GetAttemptAsync(attemptId, cancellationToken)

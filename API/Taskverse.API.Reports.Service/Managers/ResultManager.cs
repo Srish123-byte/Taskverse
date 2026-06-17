@@ -187,11 +187,13 @@ public class ResultManager : IResultManager
             throw new ArgumentException("Student id is required.");
         }
 
+        var resolvedStudentId = await ResolveStudentProfileIdAsync(studentId, cancellationToken);
+
         var studentResults = await (
             from result in _context.Results.AsNoTracking()
             join assessment in _context.Assessments.AsNoTracking()
                 on result.AssessmentId equals assessment.AssessmentId
-            where result.StudentId == studentId && assessment.ShowResultsImmediately
+            where result.StudentId == resolvedStudentId && assessment.ShowResultsImmediately
             orderby result.GeneratedAt descending, result.ResultId descending
             select new
             {
@@ -217,15 +219,9 @@ public class ResultManager : IResultManager
     }
 
     public async Task<StudentResultResponse> GetStudentAttemptResultAsync(
-        Guid studentId,
         Guid attemptId,
         CancellationToken cancellationToken = default)
     {
-        if (studentId == Guid.Empty)
-        {
-            throw new ArgumentException("Student id is required.");
-        }
-
         if (attemptId == Guid.Empty)
         {
             throw new ArgumentException("Attempt id is required.");
@@ -237,8 +233,7 @@ public class ResultManager : IResultManager
                 on result.AttemptId equals attempt.AttemptId
             join assessment in _context.Assessments.AsNoTracking()
                 on result.AssessmentId equals assessment.AssessmentId
-            where result.StudentId == studentId &&
-                  result.AttemptId == attemptId
+            where result.AttemptId == attemptId
             select new
             {
                 Result = result,
@@ -251,8 +246,7 @@ public class ResultManager : IResultManager
 
         if (studentAttemptResult is null)
         {
-            throw new KeyNotFoundException(
-                $"Result was not found for student '{studentId}' and attempt '{attemptId}'.");
+            throw new KeyNotFoundException($"Result was not found for attempt '{attemptId}'.");
         }
 
         // When the instructor has not enabled immediate results, return a minimal
@@ -360,6 +354,17 @@ public class ResultManager : IResultManager
             showResultsImmediately: true,
             mappedQuestionResults,
             questionExplanations);
+    }
+
+    private async Task<Guid> ResolveStudentProfileIdAsync(Guid studentIdentifier, CancellationToken cancellationToken)
+    {
+        var studentProfileId = await _context.Students
+            .AsNoTracking()
+            .Where(item => item.UserId == studentIdentifier)
+            .Select(item => (Guid?)item.StudentId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return studentProfileId ?? studentIdentifier;
     }
 
     private static bool IsDuplicateAttemptResult(DbUpdateException exception)

@@ -317,8 +317,8 @@ export class StudentAssessmentsService {
     return this.http.post<StudentAttemptSubmitResult>(`students/attempts/${attemptId}/submit`, {}, undefined, true);
   }
 
-  getStudentAttemptResult(studentId: string, attemptId: string): Observable<StudentResult | null> {
-    return this.http.get<StudentResult>(`results/students/${studentId}/attempts/${attemptId}`, undefined, true);
+  getStudentAttemptResult(attemptId: string): Observable<StudentResult | null> {
+    return this.http.get<StudentResult>(`results/students/attempts/${attemptId}`, undefined, true);
   }
 
   getStudentResults(studentId: string): Observable<StudentResult[]> {

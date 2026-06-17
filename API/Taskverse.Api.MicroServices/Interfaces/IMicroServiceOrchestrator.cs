@@ -58,7 +58,7 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> GetAssessmentReport(string assessmentId);
     Task<ObjectResult> GetReportsByUser(string userId);
     Task<ObjectResult> GetStudentResults(Guid studentId);
-    Task<ObjectResult> GetStudentAttemptResult(Guid studentId, Guid attemptId);
+    Task<ObjectResult> GetStudentAttemptResult(Guid attemptId);
 
     // Proctor
     Task<ObjectResult> StartProctorSession(Guid attemptId, Guid studentUserId, StartProctorSessionModel model);

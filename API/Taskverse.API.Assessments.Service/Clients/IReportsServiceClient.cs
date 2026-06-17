@@ -8,7 +8,6 @@ public interface IReportsServiceClient
         CancellationToken cancellationToken = default);
 
     Task<StudentAttemptResultClientModel?> GetStudentAttemptResultAsync(
-        Guid studentId,
         Guid attemptId,
         CancellationToken cancellationToken = default);
 }

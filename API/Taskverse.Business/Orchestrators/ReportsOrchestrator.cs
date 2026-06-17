@@ -108,11 +108,11 @@ public class ReportsOrchestrator : IReportsOrchestrator
         return models.Select(item => item.ToDto()).ToList();
     }
 
-    public async Task<StudentResultDto> GetStudentAttemptResult(Guid studentId, Guid attemptId)
+    public async Task<StudentResultDto> GetStudentAttemptResult(Guid attemptId)
     {
-        _log.Debug($"ReportsOrchestrator.GetStudentAttemptResult: studentId={studentId}, attemptId={attemptId}");
+        _log.Debug($"ReportsOrchestrator.GetStudentAttemptResult: attemptId={attemptId}");
 
-        var result = await _microServiceOrchestrator.GetStudentAttemptResult(studentId, attemptId);
+        var result = await _microServiceOrchestrator.GetStudentAttemptResult(attemptId);
         if (!result.IsSuccess())
         {
             var message = ExtractMessage(result.Value) ?? $"GetStudentAttemptResult failed with status {result.StatusCode}.";
@@ -127,7 +127,7 @@ public class ReportsOrchestrator : IReportsOrchestrator
 
         StudentResultModel model = result.DeserializeValue<StudentResultModel>()
             ?? throw new InvalidOperationException(
-                $"GetStudentAttemptResult returned an empty response for studentId={studentId} and attemptId={attemptId}.");
+                $"GetStudentAttemptResult returned an empty response for attemptId={attemptId}.");
 
         return model.ToDto();
     }

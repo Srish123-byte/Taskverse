@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { finalize, Subscription } from 'rxjs';
 import { RouteAddress } from '../../../common/constants/routes.constants';
@@ -7,7 +7,6 @@ import {
   StudentResult,
   StudentResultQuestionResult
 } from '../../../common/services/api/student-assessments.service';
-import { Session } from '../../../common/services/session/session.service';
 
 type ResultFilter = 'ALL' | 'CORRECT' | 'INCORRECT' | 'UNANSWERED' | 'PENDING';
 
@@ -32,8 +31,8 @@ export class ResultsComponent implements OnInit, OnDestroy {
   constructor(
     private readonly activatedRoute: ActivatedRoute,
     private readonly router: Router,
-    private readonly session: Session,
-    private readonly studentAssessmentsService: StudentAssessmentsService
+    private readonly studentAssessmentsService: StudentAssessmentsService,
+    private readonly changeDetectorRef: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -146,9 +145,8 @@ export class ResultsComponent implements OnInit, OnDestroy {
   }
 
   private loadAttemptResult(remainingPolls: number): void {
-    const studentId = this.session.userId;
-    if (!studentId || !this.attemptId) {
-      this.errorMessage = 'Student result context is unavailable.';
+    if (!this.attemptId) {
+      this.errorMessage = 'Assessment attempt context is unavailable.';
       return;
     }
 
@@ -156,28 +154,33 @@ export class ResultsComponent implements OnInit, OnDestroy {
     this.errorMessage = '';
 
     const resultSubscription = this.studentAssessmentsService
-      .getStudentAttemptResult(studentId, this.attemptId)
+      .getStudentAttemptResult(this.attemptId)
       .pipe(finalize(() => {
         this.isLoading = false;
+        this.changeDetectorRef.detectChanges();
       }))
       .subscribe({
         next: result => {
           this.result = result;
+          this.changeDetectorRef.detectChanges();
         },
         error: error => {
           const errorStatus = error?.status ?? 0;
           if (errorStatus === 404 && remainingPolls > 1) {
             this.isLoading = true;
+            this.changeDetectorRef.detectChanges();
             window.setTimeout(() => this.loadAttemptResult(remainingPolls - 1), 1500);
             return;
           }
 
           if (errorStatus === 404) {
             this.errorMessage = 'Your result is not available yet. Please check back in a moment.';
+            this.changeDetectorRef.detectChanges();
             return;
           }
 
           this.errorMessage = error?.error?.message || 'Unable to load this assessment result right now.';
+          this.changeDetectorRef.detectChanges();
         }
       });
 

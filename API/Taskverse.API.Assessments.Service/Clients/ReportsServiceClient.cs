@@ -46,12 +46,11 @@ public class ReportsServiceClient : IReportsServiceClient
     }
 
     public async Task<StudentAttemptResultClientModel?> GetStudentAttemptResultAsync(
-        Guid studentId,
         Guid attemptId,
         CancellationToken cancellationToken = default)
     {
         using var response = await _httpClient.GetAsync(
-            $"api/results/students/{studentId}/attempts/{attemptId}",
+            $"api/results/students/attempts/{attemptId}",
             cancellationToken);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
@@ -66,7 +65,7 @@ public class ReportsServiceClient : IReportsServiceClient
 
         var detail = await response.Content.ReadAsStringAsync(cancellationToken);
         throw new HttpRequestException(
-            $"Reports service student attempt result fetch failed for student '{studentId}' and attempt '{attemptId}' with status code {(int)response.StatusCode}. Response: {detail}");
+            $"Reports service student attempt result fetch failed for attempt '{attemptId}' with status code {(int)response.StatusCode}. Response: {detail}");
     }
 
     private sealed record EvaluateAttemptRequestModel(

@@ -618,35 +618,31 @@ export class AssessmentRunnerComponent implements OnInit, OnDestroy {
   }
 
   private async completeAttemptAndResolveOutcome(): Promise<void> {
-    await this.endProctoringSession(this.isAutoSubmitting ? 'ASSESSMENT_AUTO_SUBMITTED' : 'ASSESSMENT_SUBMITTED', 'Warning', {
-      autoSubmitted: this.isAutoSubmitting,
-      violationCount: this.violationCount
-    });
     const submittedAttemptId = this.attempt?.attemptId ?? this.attemptId;
     this.attemptErrorMessage = '';
-    this.attempt = null;
-    await this.assessmentProctoringService.exitFullscreen();
-    this.clearPersistedAttemptState();
-    this.assessmentProctoringService.clearQueuedEvents();
-    this.navigateToAttemptResult(submittedAttemptId);
+
+    await this.finalizeAttemptTeardownAndNavigateAsync(
+      submittedAttemptId,
+      () => this.endProctoringSession(
+        this.isAutoSubmitting ? 'ASSESSMENT_AUTO_SUBMITTED' : 'ASSESSMENT_SUBMITTED',
+        'Warning',
+        {
+          autoSubmitted: this.isAutoSubmitting,
+          violationCount: this.violationCount
+        })
+    );
   }
 
   private loadImmediateResultOrReturn(attemptId: string): void {
-    const studentId = this.session.userId;
-    if (!studentId) {
-      this.navigateToAssessments();
-      return;
-    }
-
     this.isLoadingImmediateResult = true;
     this.resultErrorMessage = '';
     this.changeDetectorRef.detectChanges();
-    this.pollForResult(studentId, attemptId, 6);
+    this.pollForResult(attemptId, 6);
   }
 
-  private pollForResult(studentId: string, attemptId: string, remainingPolls: number): void {
+  private pollForResult(attemptId: string, remainingPolls: number): void {
     const resultSubscription = this.studentAssessmentsService
-      .getStudentAttemptResult(studentId, attemptId)
+      .getStudentAttemptResult(attemptId)
       .pipe(finalize(() => {
         this.isLoadingImmediateResult = false;
         this.changeDetectorRef.detectChanges();
@@ -667,7 +663,7 @@ export class AssessmentRunnerComponent implements OnInit, OnDestroy {
           }
 
           this.isLoadingImmediateResult = true;
-          window.setTimeout(() => this.pollForResult(studentId, attemptId, remainingPolls - 1), 1500);
+          window.setTimeout(() => this.pollForResult(attemptId, remainingPolls - 1), 1500);
         },
         error: error => {
           console.error('Failed to resolve immediate student result.', error);
@@ -677,7 +673,7 @@ export class AssessmentRunnerComponent implements OnInit, OnDestroy {
           }
 
           this.isLoadingImmediateResult = true;
-          window.setTimeout(() => this.pollForResult(studentId, attemptId, remainingPolls - 1), 1500);
+          window.setTimeout(() => this.pollForResult(attemptId, remainingPolls - 1), 1500);
         }
       });
 
@@ -787,11 +783,7 @@ export class AssessmentRunnerComponent implements OnInit, OnDestroy {
 
   private async completeServerAutoSubmittedAttempt(): Promise<void> {
     const submittedAttemptId = this.attempt?.attemptId ?? this.attemptId;
-    this.attempt = null;
-    await this.assessmentProctoringService.exitFullscreen();
-    this.clearPersistedAttemptState();
-    this.assessmentProctoringService.clearQueuedEvents();
-    this.navigateToAttemptResult(submittedAttemptId);
+    await this.finalizeAttemptTeardownAndNavigateAsync(submittedAttemptId);
   }
 
   private isAttemptClosed(attemptStatus: string | null | undefined): boolean {
@@ -821,11 +813,30 @@ export class AssessmentRunnerComponent implements OnInit, OnDestroy {
   private async resolveClosedAttemptOutcome(attemptId: string): Promise<void> {
     this.stopAttemptRuntime();
     this.attemptErrorMessage = '';
+    await this.finalizeAttemptTeardownAndNavigateAsync(attemptId);
+  }
+
+  private async finalizeAttemptTeardownAndNavigateAsync(
+    attemptId: string,
+    beforeNavigate?: () => Promise<void>
+  ): Promise<void> {
+    try {
+      await beforeNavigate?.();
+    } catch (error) {
+      console.warn('Failed to finish pre-navigation assessment cleanup.', error);
+    }
+
     this.attempt = null;
-    await this.assessmentProctoringService.exitFullscreen();
     this.clearPersistedAttemptState();
     this.assessmentProctoringService.clearQueuedEvents();
-    this.navigateToAttemptResult(attemptId);
+
+    try {
+      await this.assessmentProctoringService.exitFullscreen();
+    } catch (error) {
+      console.warn('Failed to exit fullscreen during assessment teardown.', error);
+    } finally {
+      this.navigateToAttemptResult(attemptId);
+    }
   }
 
   private findRuleByEventType(eventType: string | null | undefined): ProctorSessionRuleResponse | undefined {

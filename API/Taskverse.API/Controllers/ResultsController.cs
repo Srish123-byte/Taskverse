@@ -80,25 +80,19 @@ public class ResultsController : TaskverseBaseController
     /// <summary>
     /// Returns the published result for a specific student attempt.
     /// </summary>
-    /// <param name="studentId">The student identifier.</param>
     /// <param name="attemptId">The attempt identifier.</param>
     /// <returns>The student's result for the requested attempt.</returns>
-    [HttpGet("/api/results/students/{studentId:guid}/attempts/{attemptId:guid}")]
+    [HttpGet("/api/results/students/attempts/{attemptId:guid}")]
     [SwaggerResponse(200, "Result for the specified student attempt", typeof(StudentResultResponseModel))]
-    [SwaggerResponse(400, "Invalid student id or attempt id")]
+    [SwaggerResponse(400, "Invalid attempt id")]
     [SwaggerResponse(403, "Forbidden")]
     [SwaggerResponse(404, "Result not found")]
     [SwaggerResponse(503, "Reports microservice is unavailable")]
     [SwaggerResponse(500, "Unexpected error")]
-    public async Task<IActionResult> GetStudentAttemptResult(Guid studentId, Guid attemptId)
+    public async Task<IActionResult> GetStudentAttemptResult(Guid attemptId)
     {
-        var accessCheck = EnsureStudentResultsAccess(studentId);
+        var accessCheck = EnsureStudentAttemptResultAccess();
         if (accessCheck is not null) return accessCheck;
-
-        if (studentId == Guid.Empty)
-        {
-            return BadRequest(new { message = "Student id is required." });
-        }
 
         if (attemptId == Guid.Empty)
         {
@@ -107,7 +101,7 @@ public class ResultsController : TaskverseBaseController
 
         try
         {
-            var dto = await _reportsOrchestrator.GetStudentAttemptResult(studentId, attemptId);
+            var dto = await _reportsOrchestrator.GetStudentAttemptResult(attemptId);
             return Ok(dto.ToResponseModel());
         }
         catch (ArgumentException ex)
@@ -127,8 +121,7 @@ public class ResultsController : TaskverseBaseController
             var detail = ex.GetBaseException().Message;
             _logger.LogError(
                 ex,
-                "Unhandled student attempt result retrieval error for studentId={StudentId}, attemptId={AttemptId}",
-                studentId,
+                "Unhandled student attempt result retrieval error for attemptId={AttemptId}",
                 attemptId);
             return Problem(
                 detail: detail,
@@ -158,6 +151,24 @@ public class ResultsController : TaskverseBaseController
             {
                 return null;
             }
+        }
+
+        return Forbid();
+    }
+
+    private IActionResult? EnsureStudentAttemptResultAccess()
+    {
+        if (User?.Identity?.IsAuthenticated != true)
+        {
+            return Forbid();
+        }
+
+        if (User.IsInRole(SuperAdminRole) ||
+            User.IsInRole(CollegeAdminRole) ||
+            User.IsInRole(TrainerRole) ||
+            User.IsInRole(StudentRole))
+        {
+            return null;
         }
 
         return Forbid();

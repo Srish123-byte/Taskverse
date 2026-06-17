@@ -925,7 +925,7 @@ public class AssessmentManager : IAssessmentManager
 
             if (attempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
             {
-                throw new InvalidOperationException("This assessment attempt has already been submitted.");
+                return attempt.ToStudentAttemptSubmitRecord();
             }
 
             var submittedAt = DateTime.UtcNow;
@@ -2042,7 +2042,7 @@ public class AssessmentManager : IAssessmentManager
                 if (currentAttempt is not null &&
                     currentAttempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
                 {
-                    throw new InvalidOperationException("This assessment attempt has already been submitted.");
+                    return currentAttempt;
                 }
 
                 throw new InvalidOperationException("This assessment attempt could not be submitted.");
