@@ -33,10 +33,9 @@ public class ResultOrchestrator : IResultOrchestrator
     }
 
     public Task<StudentResultResponse> GetStudentAttemptResultAsync(
-        Guid studentId,
         Guid attemptId,
         CancellationToken cancellationToken = default)
     {
-        return _resultManager.GetStudentAttemptResultAsync(studentId, attemptId, cancellationToken);
+        return _resultManager.GetStudentAttemptResultAsync(attemptId, cancellationToken);
     }
 }

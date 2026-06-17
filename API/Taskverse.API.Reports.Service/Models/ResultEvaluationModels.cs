@@ -65,10 +65,66 @@ public record StudentResultResponse(
     int Rank,
     [property: JsonPropertyName("result_status")]
     string ResultStatus,
+    [property: JsonPropertyName("submitted_at")]
+    DateTime? SubmittedAt,
     [property: JsonPropertyName("generated_at")]
     DateTime GeneratedAt,
+    [property: JsonPropertyName("duration_minutes")]
+    int DurationMinutes,
+    [property: JsonPropertyName("total_questions")]
+    int TotalQuestions,
+    [property: JsonPropertyName("attempted_questions")]
+    int AttemptedQuestions,
+    [property: JsonPropertyName("correct_answers")]
+    int CorrectAnswers,
+    [property: JsonPropertyName("wrong_answers")]
+    int WrongAnswers,
+    [property: JsonPropertyName("unanswered_questions")]
+    int UnansweredQuestions,
+    [property: JsonPropertyName("participant_count")]
+    int ParticipantCount,
     [property: JsonPropertyName("has_pending_coding_evaluation")]
-    bool HasPendingCodingEvaluation);
+    bool HasPendingCodingEvaluation,
+    [property: JsonPropertyName("show_results_immediately")]
+    bool ShowResultsImmediately,
+    [property: JsonPropertyName("question_results")]
+    List<StudentResultQuestionResultResponse> QuestionResults,
+    [property: JsonPropertyName("question_explanations")]
+    List<StudentResultQuestionExplanationResponse> QuestionExplanations);
+
+public record StudentResultQuestionResultResponse(
+    [property: JsonPropertyName("question_id")]
+    Guid QuestionId,
+    [property: JsonPropertyName("display_order")]
+    int DisplayOrder,
+    [property: JsonPropertyName("question_type")]
+    string QuestionType,
+    [property: JsonPropertyName("question_text")]
+    string QuestionText,
+    [property: JsonPropertyName("marks")]
+    decimal Marks,
+    [property: JsonPropertyName("awarded_marks")]
+    decimal AwardedMarks,
+    [property: JsonPropertyName("status")]
+    string Status,
+    [property: JsonPropertyName("user_answers")]
+    List<string> UserAnswers,
+    [property: JsonPropertyName("correct_answers")]
+    List<string> CorrectAnswers,
+    [property: JsonPropertyName("explanation")]
+    string? Explanation);
+
+public record StudentResultQuestionExplanationResponse(
+    [property: JsonPropertyName("question_id")]
+    Guid QuestionId,
+    [property: JsonPropertyName("display_order")]
+    int DisplayOrder,
+    [property: JsonPropertyName("question_type")]
+    string QuestionType,
+    [property: JsonPropertyName("question_text")]
+    string QuestionText,
+    [property: JsonPropertyName("explanation")]
+    string? Explanation);
 
 public static class ResultMappings
 {
@@ -93,7 +149,18 @@ public static class ResultMappings
     public static StudentResultResponse ToStudentResultResponse(
         this Taskverse.Data.DataAccess.Result result,
         string assessmentName,
-        bool hasPendingCodingEvaluation)
+        DateTime? submittedAt,
+        int durationMinutes,
+        int totalQuestions,
+        int attemptedQuestions,
+        int correctAnswers,
+        int wrongAnswers,
+        int unansweredQuestions,
+        int participantCount,
+        bool hasPendingCodingEvaluation,
+        bool showResultsImmediately = true,
+        List<StudentResultQuestionResultResponse>? questionResults = null,
+        List<StudentResultQuestionExplanationResponse>? questionExplanations = null)
     {
         return new StudentResultResponse(
             result.ResultId,
@@ -106,8 +173,19 @@ public static class ResultMappings
             result.Percentage,
             result.Rank,
             result.ResultStatus.ToString().ToUpperInvariant(),
+            submittedAt,
             result.GeneratedAt,
-            hasPendingCodingEvaluation);
+            durationMinutes,
+            totalQuestions,
+            attemptedQuestions,
+            correctAnswers,
+            wrongAnswers,
+            unansweredQuestions,
+            participantCount,
+            hasPendingCodingEvaluation,
+            showResultsImmediately,
+            questionResults ?? [],
+            questionExplanations ?? []);
     }
 }
 
@@ -128,8 +206,5 @@ public record QuestionEvaluationResult(
 public record AttemptEvaluationSummary(
     decimal ObtainedMarks,
     decimal Percentage,
-    ResultStatus ResultStatus);
-
-public record SubmittedAttemptScoreSnapshot(
-    Guid AttemptId,
-    decimal ObtainedMarks);
+    ResultStatus ResultStatus,
+    bool HasPendingCodingEvaluation);

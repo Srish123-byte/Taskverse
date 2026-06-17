@@ -33,6 +33,8 @@ public interface IAssessmentOrchestrator
 
     Task<StudentAttemptRecoveryRecord> GetStudentAttemptRecovery(Guid attemptId, Guid studentUserId);
 
+    Task<ProctorSessionStateRecord> GetAttemptProctorSession(Guid attemptId, Guid collegeId, string requesterRole, string requesterName);
+
     Task<StudentAttemptSubmitRecord> SubmitStudentAttempt(Guid attemptId, Guid studentUserId);
 
     Task<StudentAttemptAnswerRecord> SaveStudentAttemptAnswer(

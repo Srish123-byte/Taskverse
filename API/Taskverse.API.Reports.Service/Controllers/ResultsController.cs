@@ -86,22 +86,18 @@ public class ResultsController : ControllerBase
         }
     }
 
-    [HttpGet("students/{studentId:guid}/attempts/{attemptId:guid}")]
+    [HttpGet("students/attempts/{attemptId:guid}")]
     [ProducesResponseType(typeof(StudentResultResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<StudentResultResponse>> GetStudentAttemptResult(
-        Guid studentId,
         Guid attemptId,
         CancellationToken cancellationToken)
     {
         try
         {
-            var result = await _resultOrchestrator.GetStudentAttemptResultAsync(
-                studentId,
-                attemptId,
-                cancellationToken);
+            var result = await _resultOrchestrator.GetStudentAttemptResultAsync(attemptId, cancellationToken);
             return Ok(result);
         }
         catch (ArgumentException ex)

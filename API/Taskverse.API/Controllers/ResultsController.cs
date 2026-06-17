@@ -34,8 +34,7 @@ public class ResultsController : TaskverseBaseController
     /// </summary>
     /// <param name="studentId">The student identifier.</param>
     /// <returns>The student's result list.</returns>
-    [HttpGet("/api/students/{studentId:guid}/results")]
-    [HttpGet("/api/student/{studentId:guid}/results")]
+    [HttpGet("/api/results/students/{studentId:guid}")]
     [SwaggerResponse(200, "Available results for the specified student", typeof(List<StudentResultResponseModel>))]
     [SwaggerResponse(400, "Invalid student id")]
     [SwaggerResponse(403, "Forbidden")]
@@ -78,6 +77,59 @@ public class ResultsController : TaskverseBaseController
         }
     }
 
+    /// <summary>
+    /// Returns the published result for a specific student attempt.
+    /// </summary>
+    /// <param name="attemptId">The attempt identifier.</param>
+    /// <returns>The student's result for the requested attempt.</returns>
+    [HttpGet("/api/results/students/attempts/{attemptId:guid}")]
+    [SwaggerResponse(200, "Result for the specified student attempt", typeof(StudentResultResponseModel))]
+    [SwaggerResponse(400, "Invalid attempt id")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Result not found")]
+    [SwaggerResponse(503, "Reports microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> GetStudentAttemptResult(Guid attemptId)
+    {
+        var accessCheck = EnsureStudentAttemptResultAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        if (attemptId == Guid.Empty)
+        {
+            return BadRequest(new { message = "Attempt id is required." });
+        }
+
+        try
+        {
+            var dto = await _reportsOrchestrator.GetStudentAttemptResult(attemptId);
+            return Ok(dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            _logger.LogError(
+                ex,
+                "Unhandled student attempt result retrieval error for attemptId={AttemptId}",
+                attemptId);
+            return Problem(
+                detail: detail,
+                title: detail,
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
     private IActionResult? EnsureStudentResultsAccess(Guid studentId)
     {
         if (User?.Identity?.IsAuthenticated != true)
@@ -99,6 +151,24 @@ public class ResultsController : TaskverseBaseController
             {
                 return null;
             }
+        }
+
+        return Forbid();
+    }
+
+    private IActionResult? EnsureStudentAttemptResultAccess()
+    {
+        if (User?.Identity?.IsAuthenticated != true)
+        {
+            return Forbid();
+        }
+
+        if (User.IsInRole(SuperAdminRole) ||
+            User.IsInRole(CollegeAdminRole) ||
+            User.IsInRole(TrainerRole) ||
+            User.IsInRole(StudentRole))
+        {
+            return null;
         }
 
         return Forbid();

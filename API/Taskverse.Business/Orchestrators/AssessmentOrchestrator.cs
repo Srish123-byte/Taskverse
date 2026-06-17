@@ -396,6 +396,8 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         throw result.StatusCode switch
         {
             StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status404NotFound => new KeyNotFoundException(message),
+            StatusCodes.Status409Conflict => new InvalidOperationException(message),
             StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
             _ => new Exception(message)
         };

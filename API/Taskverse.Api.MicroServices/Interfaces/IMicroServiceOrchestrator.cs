@@ -58,12 +58,17 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> GetAssessmentReport(string assessmentId);
     Task<ObjectResult> GetReportsByUser(string userId);
     Task<ObjectResult> GetStudentResults(Guid studentId);
+    Task<ObjectResult> GetStudentAttemptResult(Guid attemptId);
 
     // Proctor
-    Task<ObjectResult> StartProctorSession(StartProctorSessionModel model);
-    Task<ObjectResult> GetProctorSession(string sessionId);
+    Task<ObjectResult> StartProctorSession(Guid attemptId, Guid studentUserId, StartProctorSessionModel model);
+    Task<ObjectResult> HeartbeatProctorSession(Guid sessionId, Guid studentUserId, SessionHeartbeatModel model);
+    Task<ObjectResult> RecordProctorEvents(Guid sessionId, Guid studentUserId, ProctorEventBatchModel model);
+    Task<ObjectResult> EndProctorSession(Guid sessionId, Guid studentUserId, EndProctorSessionModel model);
+    Task<ObjectResult> GetProctorSession(Guid sessionId, Guid studentUserId);
+    Task<ObjectResult> GetProctorSessionByAttempt(Guid attemptId, Guid studentUserId);
+    Task<ObjectResult> GetAttemptProctorSession(Guid attemptId, Guid collegeId, string requesterRole, string requesterName);
     Task<ObjectResult> RecordProctorEvent(ProctorEventModel model);
-    Task<ObjectResult> EndProctorSession(string sessionId);
     Task<ObjectResult> GetProctorSummary(string sessionId);
 
     // Coding Engine

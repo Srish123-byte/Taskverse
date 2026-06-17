@@ -18,7 +18,7 @@
       <div class="success-popup-icon" aria-hidden="true"></div>
       <h3>Saved Successfully</h3>
       <p>{{ successMessage }}</p>
-      <button type="button" class="success-popup-action" (click)="closeSuccessMessage()">Cancel</button>
+      <button type="button" class="success-popup-action" (click)="closeSuccessMessage()">Okay</button>
     </section>
   </div>
 
@@ -90,6 +90,17 @@
             <option *ngFor="let option of questionTypeOptions" [ngValue]="option.value">{{ option.label }}</option>
           </select>
         </label>
+
+        <label *ngIf="isMcq" class="field field-span-2">
+          <span>Answer Mode</span>
+          <div class="selection-mode-toggle">
+            <input type="checkbox" formControlName="allowMultipleAnswers" />
+            <span>Allow multiple correct answers</span>
+          </div>
+          <small class="selection-mode-hint">
+            {{ allowMultipleAnswersControl.value ? 'Students will see checkboxes and can select all that apply.' : 'Students will see radio buttons and can select one option.' }}
+          </small>
+        </label>
       </div>
     </section>
 
@@ -121,9 +132,17 @@
 
     <section *ngIf="usesSelectableOptions" class="editor-card">
       <div class="section-title">Options &amp; Correct Answer</div>
+      <p *ngIf="isMultiCorrectMcq" class="selection-mode-hint">Select all correct options. Students will see the same question with checkboxes and helper text.</p>
       <div class="options-list">
         <label *ngFor="let control of optionsArray.controls; let index = index" class="option-row">
-          <input type="radio" name="mcqAnswer" [value]="getOptionLabel(index)" [checked]="answerControl.value === getOptionLabel(index)" (change)="answerControl.setValue(getOptionLabel(index))" />
+          <input
+            *ngIf="isMultiCorrectMcq; else singleCorrectOption"
+            type="checkbox"
+            [checked]="isCorrectAnswerOptionSelected(index)"
+            (change)="toggleCorrectAnswerOption(index, $any($event.target).checked)" />
+          <ng-template #singleCorrectOption>
+            <input type="radio" name="mcqAnswer" [value]="getOptionLabel(index)" [checked]="answerControl.value === getOptionLabel(index)" (change)="answerControl.setValue(getOptionLabel(index))" />
+          </ng-template>
           <span class="option-badge">{{ getOptionLabel(index) }}</span>
           <input type="text" [formControl]="control" [placeholder]="'Enter option ' + getOptionLabel(index)" />
         </label>

@@ -14,7 +14,6 @@ public interface IResultOrchestrator
         CancellationToken cancellationToken = default);
 
     Task<StudentResultResponse> GetStudentAttemptResultAsync(
-        Guid studentId,
         Guid attemptId,
         CancellationToken cancellationToken = default);
 }

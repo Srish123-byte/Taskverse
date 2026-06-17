@@ -40,8 +40,9 @@ public class CreateQuestionRequest
 
     public List<string>? Options { get; set; }
 
-    [Required]
-    public string Answer { get; set; } = string.Empty;
+    public string? Answer { get; set; }
+
+    public List<string>? CorrectAnswers { get; set; }
 
     [MaxLength(1000)]
     public string? Explanation { get; set; }

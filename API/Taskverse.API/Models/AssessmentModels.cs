@@ -18,6 +18,7 @@ public class CreateQuestionBankAssessmentRequestModel
     public int TotalMarks { get; set; }
     public DateTime? StartDateTime { get; set; }
     public DateTime? EndDateTime { get; set; }
+    public bool IsDraftSave { get; set; }
 }
 
 public class PublishQuestionBankAssessmentRequestModel
@@ -104,7 +105,8 @@ public class CreateQuestionRequestModel
     public string QuestionType { get; set; } = string.Empty;
     public string QuestionText { get; set; } = string.Empty;
     public List<string>? Options { get; set; }
-    public string Answer { get; set; } = string.Empty;
+    public string? Answer { get; set; }
+    public List<string>? CorrectAnswers { get; set; }
     public string? Explanation { get; set; }
     public decimal Marks { get; set; }
     public decimal NegativeMarks { get; set; }
@@ -168,6 +170,7 @@ public class AssessmentSearchItemResponseModel
     public string? TopicName { get; set; }
     public string AssessmentStatus { get; set; } = string.Empty;
     public DateTime? AssessmentDate { get; set; }
+    public DateTime? StartDateTime { get; set; }
     public int TotalMarks { get; set; }
     public int DifficultyLevel { get; set; }
 }
@@ -298,12 +301,14 @@ public class StudentAssessmentStartResponseModel
 public class SaveStudentAttemptAnswerRequestModel
 {
     public string? SelectedAnswer { get; set; }
+    public List<string>? SelectedAnswers { get; set; }
 }
 
 public class StudentAttemptAnswerResponseModel
 {
     public Guid QuestionId { get; set; }
     public string? SelectedAnswer { get; set; }
+    public List<string>? SelectedAnswers { get; set; }
     public DateTime? AnsweredAt { get; set; }
 }
 
@@ -324,7 +329,9 @@ public class StudentAttemptRecoveryQuestionResponseModel
     public decimal Marks { get; set; }
     public decimal NegativeMarks { get; set; }
     public int DifficultyLevel { get; set; }
+    public bool AllowsMultipleAnswers { get; set; }
     public string? SelectedAnswer { get; set; }
+    public List<string>? SelectedAnswers { get; set; }
     public DateTime? AnsweredAt { get; set; }
 }
 
@@ -359,6 +366,39 @@ public class StudentResultResponseModel
     public decimal Percentage { get; set; }
     public int Rank { get; set; }
     public string ResultStatus { get; set; } = string.Empty;
+    public DateTime? SubmittedAt { get; set; }
     public DateTime GeneratedAt { get; set; }
+    public int DurationMinutes { get; set; }
+    public int TotalQuestions { get; set; }
+    public int AttemptedQuestions { get; set; }
+    public int CorrectAnswers { get; set; }
+    public int WrongAnswers { get; set; }
+    public int UnansweredQuestions { get; set; }
+    public int ParticipantCount { get; set; }
     public bool HasPendingCodingEvaluation { get; set; }
+    public List<StudentResultQuestionResultResponseModel> QuestionResults { get; set; } = [];
+    public List<StudentResultQuestionExplanationResponseModel> QuestionExplanations { get; set; } = [];
+}
+
+public class StudentResultQuestionResultResponseModel
+{
+    public Guid QuestionId { get; set; }
+    public int DisplayOrder { get; set; }
+    public string QuestionType { get; set; } = string.Empty;
+    public string QuestionText { get; set; } = string.Empty;
+    public decimal Marks { get; set; }
+    public decimal AwardedMarks { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public List<string> UserAnswers { get; set; } = [];
+    public List<string> CorrectAnswers { get; set; } = [];
+    public string? Explanation { get; set; }
+}
+
+public class StudentResultQuestionExplanationResponseModel
+{
+    public Guid QuestionId { get; set; }
+    public int DisplayOrder { get; set; }
+    public string QuestionType { get; set; } = string.Empty;
+    public string QuestionText { get; set; } = string.Empty;
+    public string? Explanation { get; set; }
 }

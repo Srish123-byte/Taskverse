@@ -13,14 +13,13 @@ public interface IResultManager
 
     Task<List<AttemptAnswer>> GetAttemptAnswersAsync(Guid attemptId, CancellationToken cancellationToken = default);
 
-    Task<List<SubmittedAttemptScoreSnapshot>> GetSubmittedAttemptScoreSnapshotsAsync(
+    Task<List<AssessmentQuestionEvaluationContext>> GetAssessmentQuestionEvaluationContextsAsync(
         Guid assessmentId,
         CancellationToken cancellationToken = default);
-        
+
     Task PersistAttemptEvaluationAsync(
         Attempt attempt,
         Result result,
-        IReadOnlyDictionary<Guid, int> rankByAttemptId,
         CancellationToken cancellationToken = default);
 
     Task<List<StudentResultResponse>> GetStudentResultsAsync(
@@ -28,7 +27,6 @@ public interface IResultManager
         CancellationToken cancellationToken = default);
 
     Task<StudentResultResponse> GetStudentAttemptResultAsync(
-        Guid studentId,
         Guid attemptId,
         CancellationToken cancellationToken = default);
 }

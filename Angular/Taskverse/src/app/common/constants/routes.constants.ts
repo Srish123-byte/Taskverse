@@ -48,10 +48,12 @@ export const RouteAddress = {
   },
 
   Student: {
-    Root:          'student',
-    Dashboard:     'student/dashboard',
-    MyAssessments: 'student/my-assessments',
-    Results:       'student/results',
-    HelpCenter:    'student/help-center'
+    Root:             'student',
+    Dashboard:        'student/dashboard',
+    MyAssessments:    'student/my-assessments',
+    AssessmentRunner: 'student/my-assessments/attempts',
+    Results:          'student/results',
+    AttemptResults:   'student/results/attempts',
+    HelpCenter:       'student/help-center'
   }
 };

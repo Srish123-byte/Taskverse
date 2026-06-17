@@ -110,7 +110,8 @@ export class QuestionImportParserService {
       questionType,
       questionText: this.requireText(getValue('questionText'), 'QuestionText', rowNumber),
       options,
-      answer: this.requireText(getValue('answer'), 'Answer', rowNumber),
+      answer: this.resolvePrimaryAnswer(getValue('answer'), rowNumber),
+      correctAnswers: this.parseCorrectAnswers(getValue('answer'), rowNumber),
       explanation: this.normalizeNullableText(getValue('explanation')) || undefined,
       marks: this.parseNumber(getValue('marks'), 'Marks', rowNumber),
       negativeMarks: this.parseNumber(getValue('negativeMarks'), 'NegativeMarks', rowNumber),
@@ -149,6 +150,39 @@ export class QuestionImportParserService {
 
       return normalizedOption;
     });
+  }
+
+  private parseCorrectAnswers(value: string, rowNumber: number): string[] {
+    const normalizedValue = value.trim();
+    if (!normalizedValue) {
+      throw new Error(`Row ${rowNumber}: Answer is required.`);
+    }
+
+    try {
+      const parsedValue = JSON.parse(normalizedValue);
+      if (!Array.isArray(parsedValue) || parsedValue.length === 0) {
+        throw new Error(`Row ${rowNumber}: Answer must be a non-empty JSON array when array syntax is used.`);
+      }
+
+      return parsedValue.map((answer, answerIndex) => {
+        const normalizedAnswer = this.normalizeNullableText(String(answer ?? ''));
+        if (!normalizedAnswer) {
+          throw new Error(`Row ${rowNumber}: Answer ${answerIndex + 1} cannot be empty.`);
+        }
+
+        return normalizedAnswer;
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith(`Row ${rowNumber}:`)) {
+        throw error;
+      }
+
+      return [this.requireText(value, 'Answer', rowNumber)];
+    }
+  }
+
+  private resolvePrimaryAnswer(value: string, rowNumber: number): string {
+    return this.parseCorrectAnswers(value, rowNumber)[0];
   }
 
   private parseDifficultyLevel(value: string, rowNumber: number): number {

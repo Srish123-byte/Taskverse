@@ -27,6 +27,7 @@ public class TaskverseContext : DbContext
     public DbSet<Question> Questions { get; set; }
     public DbSet<ProctoringSession> ProctoringSessions { get; set; }
     public DbSet<ProctoringEvent> ProctoringEvents { get; set; }
+    public DbSet<ProctoringViolationSummary> ProctoringViolationSummaries { get; set; }
     public DbSet<Result> Results { get; set; }
     public DbSet<Student> Students { get; set; }
     public DbSet<Trainer> Trainers { get; set; }
@@ -425,11 +426,16 @@ public class TaskverseContext : DbContext
             entity.Property(ps => ps.ProctoringStatus).HasColumnName("proctoring_status");
             entity.Property(ps => ps.StartedAt).HasColumnName("started_at");
             entity.Property(ps => ps.EndedAt).HasColumnName("ended_at");
+            entity.Property(ps => ps.LastHeartbeatAt).HasColumnName("last_heartbeat_at");
+            entity.Property(ps => ps.LastKnownQuestionId).HasColumnName("last_known_question_id");
+            entity.Property(ps => ps.LastKnownIsFullscreen).HasColumnName("last_known_is_fullscreen");
+            entity.Property(ps => ps.LastKnownVisibilityState).HasColumnName("last_known_visibility_state").HasConversion<int>();
+            entity.Property(ps => ps.LastKnownNetworkStatus).HasColumnName("last_known_network_status").HasConversion<int>();
             entity.Property(ps => ps.BrowserName).HasColumnName("browser_name").HasMaxLength(100);
             entity.Property(ps => ps.BrowserVersion).HasColumnName("browser_version").HasMaxLength(100);
             entity.Property(ps => ps.OperatingSystem).HasColumnName("operating_system").HasMaxLength(100);
             entity.Property(ps => ps.DeviceType).HasColumnName("device_type").HasMaxLength(50);
-            entity.Property(ps => ps.UserAgent).HasColumnName("user_agent").HasMaxLength(100);
+            entity.Property(ps => ps.UserAgent).HasColumnName("user_agent").HasMaxLength(200);
             entity.Property(ps => ps.IpAddress).HasColumnName("ip_address").HasMaxLength(100);
             entity.Property(ps => ps.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(ps => ps.ModifiedAt).HasColumnName("modified_at");
@@ -511,6 +517,45 @@ public class TaskverseContext : DbContext
                 .HasForeignKey(pe => pe.QuestionId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("proctoring_events_question_id_fkey");
+        });
+
+        // Configure ProctoringViolationSummary entity
+        modelBuilder.Entity<ProctoringViolationSummary>(entity =>
+        {
+            entity.ToTable("proctoring_violation_summaries");
+            entity.HasKey(pvs => pvs.ProctoringViolationSummaryId);
+            entity.Property(pvs => pvs.ProctoringViolationSummaryId).HasColumnName("proctoring_violation_summary_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(pvs => pvs.AttemptId).HasColumnName("attempt_id");
+            entity.Property(pvs => pvs.ProctoringSessionId).HasColumnName("proctoring_session_id");
+            entity.Property(pvs => pvs.TabSwitchCount).HasColumnName("tab_switch_count").HasDefaultValue(0);
+            entity.Property(pvs => pvs.FullScreenExitCount).HasColumnName("full_screen_exit_count").HasDefaultValue(0);
+            entity.Property(pvs => pvs.CopyAttemptCount).HasColumnName("copy_attempt_count").HasDefaultValue(0);
+            entity.Property(pvs => pvs.PasteAttemptCount).HasColumnName("paste_attempt_count").HasDefaultValue(0);
+            entity.Property(pvs => pvs.CutAttemptCount).HasColumnName("cut_attempt_count").HasDefaultValue(0);
+            entity.Property(pvs => pvs.ContextMenuAttemptCount).HasColumnName("context_menu_attempt_count").HasDefaultValue(0);
+            entity.Property(pvs => pvs.BlockedShortcutCount).HasColumnName("blocked_shortcut_count").HasDefaultValue(0);
+            entity.Property(pvs => pvs.PossibleDevtoolsCount).HasColumnName("possible_devtools_count").HasDefaultValue(0);
+            entity.Property(pvs => pvs.NetworkDisconnectCount).HasColumnName("network_disconnect_count").HasDefaultValue(0);
+            entity.Property(pvs => pvs.RiskScore).HasColumnName("risk_score").HasDefaultValue(0);
+            entity.Property(pvs => pvs.RiskLevel).HasColumnName("risk_level").HasConversion<int>().HasDefaultValue(RiskLevel.Low);
+            entity.Property(pvs => pvs.LastEventAt).HasColumnName("last_event_at");
+            entity.Property(pvs => pvs.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(pvs => pvs.ModifiedAt).HasColumnName("modified_at");
+
+            entity.HasIndex(pvs => pvs.AttemptId)
+                .HasDatabaseName("idx_proctoring_violation_summaries_attempt_id");
+
+            entity.HasOne(pvs => pvs.Attempt)
+                .WithMany()
+                .HasForeignKey(pvs => pvs.AttemptId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("proctoring_violation_summaries_attempt_id_fkey");
+
+            entity.HasOne(pvs => pvs.ProctoringSession)
+                .WithMany()
+                .HasForeignKey(pvs => pvs.ProctoringSessionId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("proctoring_violation_summaries_proctoring_session_id_fkey");
         });
 
         // Configure AuditLog entity

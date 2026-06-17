@@ -27,6 +27,7 @@ public class AssessmentManager : IAssessmentManager
     private readonly AssessmentSettings _assessmentSettings;
     private readonly IStudentAttemptAnswerSaveStrategyFactory _studentAttemptAnswerSaveStrategyFactory;
     private readonly IReportsServiceClient _reportsServiceClient;
+    private readonly IProctorServiceClient _proctorServiceClient;
     private readonly ILogger<AssessmentManager> _logger;
 
     private sealed record ResultProcessingContext(int PassingPercentage, bool ShowResultsImmediately);
@@ -36,12 +37,14 @@ public class AssessmentManager : IAssessmentManager
         IOptions<AssessmentSettings> assessmentSettings,
         IStudentAttemptAnswerSaveStrategyFactory studentAttemptAnswerSaveStrategyFactory,
         IReportsServiceClient reportsServiceClient,
+        IProctorServiceClient proctorServiceClient,
         ILogger<AssessmentManager> logger)
     {
         _context = context;
         _assessmentSettings = assessmentSettings.Value;
         _studentAttemptAnswerSaveStrategyFactory = studentAttemptAnswerSaveStrategyFactory;
         _reportsServiceClient = reportsServiceClient;
+        _proctorServiceClient = proctorServiceClient;
         _logger = logger;
     }
 
@@ -169,9 +172,9 @@ public class AssessmentManager : IAssessmentManager
         AssessmentStatus targetStatus,
         bool allowPartialDraft = false)
     {
-        if (allowPartialDraft && ShouldPersistAsPartialDraft(assessment, questionIds))
+        if (allowPartialDraft)
         {
-            return await CreatePartialDraftAsync(assessment);
+            return await CreatePartialDraftAsync(assessment, questionIds.NormalizeQuestionIds());
         }
 
         ValidateAssessment(assessment, questionIds);
@@ -183,9 +186,6 @@ public class AssessmentManager : IAssessmentManager
         var normalizedAssignedBatchIds = NormalizeAssignedBatchIds(assessment.AssignedBatchIds);
 
         await ValidateAssignedBatchesAsync(assessment.CollegeId, normalizedAssignedBatchIds);
-        await EnsureAssessmentNotAlreadyCreatedForSelectedBatchesAsync(
-            assessment.CollegeId,
-            normalizedAssignedBatchIds);
 
         assessment.AssignedBatchIds = normalizedAssignedBatchIds;
 
@@ -207,7 +207,7 @@ public class AssessmentManager : IAssessmentManager
         return assessment;
     }
 
-    private async Task<Assessment> CreatePartialDraftAsync(Assessment assessment)
+    private async Task<Assessment> CreatePartialDraftAsync(Assessment assessment, IReadOnlyList<Guid> questionIds)
     {
         ValidatePartialDraft(assessment);
 
@@ -224,6 +224,13 @@ public class AssessmentManager : IAssessmentManager
 
         _context.Assessments.Add(assessment);
         await SaveChangesWithWrapAsync("Unable to save the assessment draft.");
+
+        if (questionIds.Count > 0)
+        {
+            var questions = await LoadQuestionsForDraftUpdateAsync(assessment.CollegeId, questionIds);
+            await SyncAssessmentQuestionsAsync(assessment, questions, questionIds);
+            await SaveChangesWithWrapAsync("Unable to save the assessment draft questions.");
+        }
 
         return assessment;
     }
@@ -245,6 +252,15 @@ public class AssessmentManager : IAssessmentManager
             assessment.TotalMarks = 0;
         }
 
+        if (assessment.PassingPercentage < 0)
+        {
+            assessment.PassingPercentage = 0;
+        }
+        else if (assessment.PassingPercentage > 100)
+        {
+            assessment.PassingPercentage = 100;
+        }
+
         assessment.AssignedBatchIds = NormalizeAssignedBatchIds(assessment.AssignedBatchIds);
 
         var safeStartDateTime = assessment.StartDateTime ?? utcNow.Add(PartialDraftStartOffset);
@@ -264,6 +280,39 @@ public class AssessmentManager : IAssessmentManager
 
     private async Task EnsurePartialDraftClassificationAsync(Assessment assessment)
     {
+        ApplyPartialDraftClassificationFallback(assessment);
+
+        SubjectTopicResolver.Resolution classification;
+        try
+        {
+            classification = await ResolveAssessmentClassificationAsync(assessment);
+        }
+        catch (KeyNotFoundException)
+        {
+            classification = await ResolveDraftPlaceholderClassificationAsync(assessment);
+        }
+        catch (InvalidOperationException)
+        {
+            classification = await ResolveDraftPlaceholderClassificationAsync(assessment);
+        }
+
+        ApplyClassification(assessment, classification);
+    }
+
+    private async Task<SubjectTopicResolver.Resolution> ResolveDraftPlaceholderClassificationAsync(Assessment assessment)
+    {
+        assessment.SubjectId = null;
+        assessment.Subject = null;
+        assessment.SubjectName = PartialDraftSubjectName;
+        assessment.TopicId = null;
+        assessment.Topic = null;
+        assessment.TopicName = PartialDraftTopicName;
+
+        return await ResolveAssessmentClassificationAsync(assessment);
+    }
+
+    private static void ApplyPartialDraftClassificationFallback(Assessment assessment)
+    {
         if (!assessment.SubjectId.HasValue &&
             string.IsNullOrWhiteSpace(assessment.SubjectName) &&
             !assessment.TopicId.HasValue)
@@ -275,9 +324,6 @@ public class AssessmentManager : IAssessmentManager
         {
             assessment.TopicName = PartialDraftTopicName;
         }
-
-        var classification = await ResolveAssessmentClassificationAsync(assessment);
-        ApplyClassification(assessment, classification);
     }
 
     private async Task<List<Question>> LoadQuestionsForDraftUpdateAsync(Guid collegeId, IReadOnlyList<Guid> questionIds)
@@ -642,7 +688,8 @@ public class AssessmentManager : IAssessmentManager
                 .FirstOrDefaultAsync(item =>
                     item.AssessmentId == assessmentId &&
                     (item.AssessmentStatus == AssessmentStatus.Scheduled ||
-                     item.AssessmentStatus == AssessmentStatus.Live));
+                     item.AssessmentStatus == AssessmentStatus.Live ||
+                     item.AssessmentStatus == AssessmentStatus.Completed));
 
             if (assessment is null)
             {
@@ -669,6 +716,11 @@ public class AssessmentManager : IAssessmentManager
                 if (latestAttempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
                 {
                     throw new InvalidOperationException("This assessment has already been submitted by the current student.");
+                }
+
+                if (await TryRestartExpiredUnengagedAttemptAsync(latestAttempt, assessment))
+                {
+                    return latestAttempt.ToStudentAssessmentStartRecord();
                 }
 
                 if (await EnsureAttemptClosedIfExpiredAsync(latestAttempt, assessment))
@@ -725,6 +777,7 @@ public class AssessmentManager : IAssessmentManager
             var attempt = await GetAttemptForStudentAsync(attemptId, student.StudentId);
             var assessment = await GetAssessmentForAttemptRecoveryAsync(attempt.AssessmentId, student);
 
+            await TryRestartExpiredUnengagedAttemptAsync(attempt, assessment);
             await EnsureAttemptClosedIfExpiredAsync(attempt, assessment);
 
             if (attempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
@@ -734,6 +787,55 @@ public class AssessmentManager : IAssessmentManager
 
             return await BuildStudentAttemptRecoveryAsync(attempt, assessment);
         }, "recovering the student assessment attempt");
+    }
+
+    public async Task<ProctorSessionStateRecord> GetAttemptProctorSession(Guid attemptId, Guid collegeId, string requesterRole, string requesterName)
+    {
+        if (attemptId == Guid.Empty)
+        {
+            throw new ArgumentException("AttemptId is required.");
+        }
+
+        if (collegeId == Guid.Empty)
+        {
+            throw new ArgumentException("CollegeId is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(requesterRole))
+        {
+            throw new ArgumentException("RequesterRole is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(requesterName))
+        {
+            throw new ArgumentException("RequesterName is required.");
+        }
+
+        return await ExecuteDbOperationAsync(async () =>
+        {
+            var attempt = await _context.Attempts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.AttemptId == attemptId);
+
+            if (attempt is null)
+            {
+                throw new KeyNotFoundException($"Attempt '{attemptId}' was not found.");
+            }
+
+            var assessment = await _context.Assessments
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.AssessmentId == attempt.AssessmentId);
+
+            if (assessment is null)
+            {
+                throw new KeyNotFoundException($"Assessment '{attempt.AssessmentId}' was not found.");
+            }
+
+            EnsureAssessmentReadAuthorized(assessment, collegeId, requesterRole, requesterName);
+
+            var session = await _proctorServiceClient.GetSessionByAttemptAsync(attemptId);
+            return session ?? throw new KeyNotFoundException($"Proctoring session for attempt '{attemptId}' was not found.");
+        }, "retrieving the attempt proctoring session");
     }
 
     /// <inheritdoc />
@@ -823,7 +925,7 @@ public class AssessmentManager : IAssessmentManager
 
             if (attempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
             {
-                throw new InvalidOperationException("This assessment attempt has already been submitted.");
+                return attempt.ToStudentAttemptSubmitRecord();
             }
 
             var submittedAt = DateTime.UtcNow;
@@ -1199,41 +1301,6 @@ public class AssessmentManager : IAssessmentManager
 
     }
 
-    private async Task EnsureAssessmentNotAlreadyCreatedForSelectedBatchesAsync(
-        Guid collegeId,
-        Guid[] assignedBatchIds)
-    {
-        if (assignedBatchIds.Length == 0)
-        {
-            return;
-        }
-
-        var candidateAssessments = await _context.Assessments
-            .AsNoTracking()
-            .Where(item =>
-                item.CollegeId == collegeId &&
-                item.AssessmentStatus != AssessmentStatus.Soft_Deleted &&
-                item.AssessmentStatus != AssessmentStatus.Cancelled)
-            .Select(item => new
-            {
-                item.AssessmentId,
-                item.AssessmentStatus,
-                item.AssignedBatchIds
-            })
-            .ToListAsync();
-
-        var requestedBatchSet = assignedBatchIds.ToHashSet();
-        var duplicateAssessment = candidateAssessments.FirstOrDefault(item =>
-            item.AssignedBatchIds is not null &&
-            item.AssignedBatchIds.Length == requestedBatchSet.Count &&
-            item.AssignedBatchIds.ToHashSet().SetEquals(requestedBatchSet));
-
-        if (duplicateAssessment is not null)
-        {
-            throw new InvalidOperationException("Assessment has already been created for the selected batches.");
-        }
-    }
-
     private async Task<Assessment> GetAssessmentByIdAsync(Guid assessmentId)
     {
         var assessment = await _context.Assessments
@@ -1329,14 +1396,32 @@ public class AssessmentManager : IAssessmentManager
 
     private static void EnsureAssessmentCanBeDeleted(Assessment assessment)
     {
-        if (assessment.AssessmentStatus == AssessmentStatus.Live)
-        {
-            throw new InvalidOperationException("Live assessments cannot be deleted. Cancel the assessment first.");
-        }
-
         if (assessment.AssessmentStatus == AssessmentStatus.Soft_Deleted || assessment.IsDeleted == true)
         {
             throw new InvalidOperationException("This assessment has already been soft deleted.");
+        }
+
+        if (assessment.AssessmentStatus is not AssessmentStatus.Draft and not AssessmentStatus.Scheduled)
+        {
+            throw new InvalidOperationException("Only draft or scheduled assessments can be deleted.");
+        }
+
+        if (assessment.AssessmentStatus != AssessmentStatus.Scheduled)
+        {
+            return;
+        }
+
+        if (!assessment.StartDateTime.HasValue)
+        {
+            throw new InvalidOperationException(
+                "This scheduled assessment cannot be deleted because its start time is unavailable.");
+        }
+
+        var deleteCutoffTime = assessment.StartDateTime.Value.AddMinutes(-15);
+        if (DateTime.UtcNow > deleteCutoffTime)
+        {
+            throw new InvalidOperationException(
+                "Scheduled assessments can only be deleted until 15 minutes before the start time.");
         }
     }
 
@@ -1705,6 +1790,75 @@ public class AssessmentManager : IAssessmentManager
         return true;
     }
 
+    private async Task<bool> TryRestartExpiredUnengagedAttemptAsync(Attempt attempt, Assessment assessment)
+    {
+        if (attempt.AttemptStatus is not AttemptStatus.In_Progress)
+        {
+            return false;
+        }
+
+        if (!IsAttemptExpired(attempt, assessment, out _))
+        {
+            return false;
+        }
+
+        if (await HasMeaningfulAttemptEngagementAsync(attempt))
+        {
+            return false;
+        }
+
+        var restartedAt = DateTime.UtcNow;
+        attempt.StartedAt = restartedAt;
+        attempt.LastActivityAt = restartedAt;
+        attempt.ExpiresAt = CalculateAttemptExpiresAt(restartedAt, assessment);
+        attempt.SubmittedAt = null;
+        attempt.AttemptStatus = AttemptStatus.In_Progress;
+        attempt.AttemptedQuestions = 0;
+        attempt.CorrectAnswers = 0;
+        attempt.WrongAnswers = 0;
+        attempt.UnansweredQuestions = attempt.TotalQuestions;
+        attempt.TotalScore = 0;
+        attempt.Percentage = 0;
+        attempt.TimeTakenSeconds = 0;
+        attempt.IsPassed = false;
+
+        await SaveChangesWithWrapAsync("Unable to restart the expired assessment attempt.");
+        return true;
+    }
+
+    private async Task<bool> HasMeaningfulAttemptEngagementAsync(Attempt attempt)
+    {
+        if (attempt.AttemptedQuestions > 0)
+        {
+            return true;
+        }
+
+        var hasSavedAnswers = await _context.AttemptAnswers
+            .AsNoTracking()
+            .AnyAsync(item => item.AttemptId == attempt.AttemptId);
+
+        if (hasSavedAnswers)
+        {
+            return true;
+        }
+
+        var latestSession = await _context.ProctoringSessions
+            .AsNoTracking()
+            .Where(item => item.AttemptId == attempt.AttemptId)
+            .OrderByDescending(item => item.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (latestSession is null)
+        {
+            return false;
+        }
+
+        return latestSession.LastHeartbeatAt.HasValue
+            || latestSession.LastKnownQuestionId.HasValue
+            || latestSession.EndedAt.HasValue
+            || latestSession.ModifiedAt.HasValue;
+    }
+
     private static bool IsAttemptExpired(Attempt attempt, Assessment assessment, out DateTime expiresAt)
     {
         expiresAt = ResolveAttemptExpiresAt(attempt, assessment, DateTime.UtcNow);
@@ -1888,7 +2042,7 @@ public class AssessmentManager : IAssessmentManager
                 if (currentAttempt is not null &&
                     currentAttempt.AttemptStatus is AttemptStatus.Submitted or AttemptStatus.Auto_Submitted)
                 {
-                    throw new InvalidOperationException("This assessment attempt has already been submitted.");
+                    return currentAttempt;
                 }
 
                 throw new InvalidOperationException("This assessment attempt could not be submitted.");
@@ -1897,7 +2051,7 @@ public class AssessmentManager : IAssessmentManager
             await _context.Entry(attempt).ReloadAsync();
 
             var resultProcessingContext = await GetResultProcessingContextAsync(attempt.AssessmentId);
-            QueueAttemptResultProcessing(attempt.AttemptId, attempt.StudentId, resultProcessingContext);
+            await ProcessAttemptResultAsync(attempt.AttemptId, attempt.StudentId, resultProcessingContext);
             return attempt;
         }
         catch (DbUpdateException ex)
@@ -1929,36 +2083,41 @@ public class AssessmentManager : IAssessmentManager
             .FirstAsync();
     }
 
-    private void QueueAttemptResultProcessing(
-        Guid attemptId,
-        Guid studentId,
-        ResultProcessingContext resultProcessingContext)
-    {
-        _ = ProcessAttemptResultAsync(attemptId, studentId, resultProcessingContext);
-    }
-
     private async Task ProcessAttemptResultAsync(
         Guid attemptId,
         Guid studentId,
         ResultProcessingContext resultProcessingContext)
     {
+        AttemptEvaluationResultClientModel? evaluationResult;
+
         try
         {
-            await _reportsServiceClient.EvaluateAttemptAsync(attemptId, resultProcessingContext.PassingPercentage);
-
-            if (!resultProcessingContext.ShowResultsImmediately)
-            {
-                return;
-            }
-
-            await _reportsServiceClient.GetStudentAttemptResultAsync(studentId, attemptId);
+            evaluationResult = await _reportsServiceClient.EvaluateAttemptAsync(
+                attemptId,
+                resultProcessingContext.PassingPercentage);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(
+            _logger.LogError(
                 ex,
-                "Attempt {AttemptId} was finalized but async Reports processing did not complete.",
+                "Attempt {AttemptId} was submitted, but result evaluation did not complete.",
                 attemptId);
+            throw new InvalidOperationException(
+                $"Result evaluation did not complete for attempt '{attemptId}'.",
+                ex);
+        }
+
+        if (!resultProcessingContext.ShowResultsImmediately)
+        {
+            return;
+        }
+
+        if (evaluationResult is null)
+        {
+            _logger.LogInformation(
+                "Attempt {AttemptId} evaluation completed without an immediate result payload for student {StudentId}.",
+                attemptId,
+                studentId);
         }
     }
 
@@ -2023,39 +2182,6 @@ public class AssessmentManager : IAssessmentManager
         {
             throw new ArgumentException("CreatedBy is required.");
         }
-
-        if (assessment.TotalMarks < 0)
-        {
-            throw new ArgumentException("Total marks cannot be negative.");
-        }
-
-        ValidatePassingPercentage(assessment.PassingPercentage);
-
-        if (assessment.EndDateTime.HasValue &&
-            assessment.StartDateTime.HasValue &&
-            assessment.EndDateTime <= assessment.StartDateTime)
-        {
-            throw new ArgumentException("End datetime must be greater than start datetime.");
-        }
-    }
-
-    private static bool ShouldPersistAsPartialDraft(Assessment assessment, List<Guid> questionIds)
-    {
-        return string.IsNullOrWhiteSpace(assessment.AssessmentName) ||
-               !HasCompleteAssessmentClassification(assessment) ||
-               assessment.DurationMinutes <= 0 ||
-               NormalizeAssignedBatchIds(assessment.AssignedBatchIds).Length == 0 ||
-               questionIds.Count == 0;
-    }
-
-    private static bool HasCompleteAssessmentClassification(Assessment assessment)
-    {
-        var hasSubject = assessment.SubjectId.HasValue ||
-                         !string.IsNullOrWhiteSpace(assessment.SubjectName);
-        var hasTopic = assessment.TopicId.HasValue ||
-                       !string.IsNullOrWhiteSpace(assessment.TopicName);
-
-        return hasSubject && hasTopic;
     }
 
     private static void ValidateDeleteAssessmentRequest(DeleteAssessmentRequest request)

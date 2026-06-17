@@ -115,18 +115,18 @@
           </div>
 
           <div class="hub-filters">
-            <select [(ngModel)]="selectedDifficulty">
+            <select [(ngModel)]="selectedDifficulty" (ngModelChange)="onQuestionBankFilterChange()">
               <option *ngFor="let option of difficultyOptions" [value]="option.value">{{ option.label }}</option>
             </select>
 
-            <select [(ngModel)]="selectedQuestionBankSubjectId" (ngModelChange)="onQuestionBankSubjectChange()">
+            <select [(ngModel)]="selectedQuestionBankSubjectId" (ngModelChange)="onQuestionBankFilterChange()">
               <option value="">All subjects</option>
               <option *ngFor="let subject of questionBankSubjects; trackBy: trackBySubjectId" [value]="subject.subjectId">
                 {{ subject.subjectName }}
               </option>
             </select>
 
-            <select [(ngModel)]="selectedQuestionBankTopicId">
+            <select [(ngModel)]="selectedQuestionBankTopicId" (ngModelChange)="onQuestionBankFilterChange()">
               <option value="">All topics</option>
               <option *ngFor="let topic of questionBankTopics" [value]="topic.topicId">
                 {{ topic.topicName }}
@@ -192,7 +192,42 @@
               </article>
 
               <div *ngIf="filteredQuestions.length === 0" class="empty-state">
-                No questions match the current filters.
+                No questions on this page match the current filters.
+              </div>
+            </div>
+
+            <div *ngIf="questionBankTotalCount > 0" class="pagination-shell">
+              <span class="pagination-info">
+                Showing {{ questionBankPageStart }}-{{ questionBankPageEnd }} of {{ questionBankTotalCount }} questions
+              </span>
+
+              <div class="pagination-controls">
+                <button
+                  type="button"
+                  class="page-btn page-btn-nav"
+                  [disabled]="questionBankCurrentPage === 1"
+                  (click)="previousQuestionBankPage()"
+                  aria-label="Previous question bank page">
+                  &#8249;
+                </button>
+
+                <button
+                  *ngFor="let page of questionBankPageNumbers"
+                  type="button"
+                  class="page-btn"
+                  [class.page-btn-active]="page === questionBankCurrentPage"
+                  (click)="goToQuestionBankPage(page)">
+                  {{ page }}
+                </button>
+
+                <button
+                  type="button"
+                  class="page-btn page-btn-nav"
+                  [disabled]="questionBankCurrentPage === totalQuestionBankPages"
+                  (click)="nextQuestionBankPage()"
+                  aria-label="Next question bank page">
+                  &#8250;
+                </button>
               </div>
             </div>
           </div>

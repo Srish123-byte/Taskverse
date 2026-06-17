@@ -23,6 +23,7 @@ interface FilterOption {
   styleUrl: './assessments-management.component.scss'
 })
 export class AssessmentsManagementComponent implements OnInit {
+  private static readonly scheduledDeleteBufferMinutes = 15;
   private static readonly snackBarConfig = {
     duration: 3500,
     horizontalPosition: 'center' as const,
@@ -150,8 +151,33 @@ export class AssessmentsManagementComponent implements OnInit {
     void this.router.navigateByUrl(`/${this.editAssessmentRouteBase}/${assessment.assessmentId}`);
   }
 
-  deleteAssessment(): void {
-    this.openSnackBar('Delete assessment is not wired yet.');
+  deleteAssessmentItem(assessment: AssessmentManagementItem): void {
+    if (!this.isDeleteAllowed(assessment)) {
+      this.openSnackBar(this.getDeleteRestrictionMessage(assessment));
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete "${assessment.assessmentName}"? This will soft delete the assessment and it can only be recovered by super admin within 30 days.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.assessmentAdminService.deleteAssessment(assessment.assessmentId, true).subscribe({
+      next: () => {
+        this.openSnackBar('Assessment deleted successfully.');
+        this.loadAssessments();
+      },
+      error: error => {
+        this.openSnackBar(
+          error?.error?.detail ||
+          error?.error?.message ||
+          'Unable to delete the assessment right now.'
+        );
+      }
+    });
   }
 
   getStatusClass(status: string): string {
@@ -192,6 +218,25 @@ export class AssessmentsManagementComponent implements OnInit {
     return normalizedStatus === 'DRAFT' || normalizedStatus === 'SCHEDULED' || normalizedStatus === 'CANCELLED';
   }
 
+  isDeleteAllowed(assessment: AssessmentManagementItem): boolean {
+    const normalizedStatus = this.normalizeStatus(assessment.assessmentStatus);
+    if (normalizedStatus === 'DRAFT') {
+      return true;
+    }
+
+    if (normalizedStatus !== 'SCHEDULED') {
+      return false;
+    }
+
+    const startDateTime = this.parseUtcDate(assessment.startDateTime ?? assessment.assessmentDate);
+    if (!startDateTime) {
+      return false;
+    }
+
+    return startDateTime.getTime() - Date.now() >=
+      AssessmentsManagementComponent.scheduledDeleteBufferMinutes * 60 * 1000;
+  }
+
   getEditRestrictionMessage(assessment: AssessmentManagementItem): string {
     const normalizedStatus = this.normalizeStatus(assessment.assessmentStatus);
 
@@ -204,6 +249,20 @@ export class AssessmentsManagementComponent implements OnInit {
     }
 
     return `Edit isn't allowed once the assessment is ${normalizedStatus}`;
+  }
+
+  getDeleteRestrictionMessage(assessment: AssessmentManagementItem): string {
+    const normalizedStatus = this.normalizeStatus(assessment.assessmentStatus);
+
+    if (normalizedStatus === 'SCHEDULED') {
+      if (!assessment.startDateTime && !assessment.assessmentDate) {
+        return "Delete isn't allowed because the assessment start time is unavailable.";
+      }
+
+      return "Delete isn't allowed within 15 minutes of the scheduled start time.";
+    }
+
+    return `Delete isn't allowed once the assessment is ${normalizedStatus}`;
   }
 
   private loadAssessments(): void {
@@ -266,6 +325,15 @@ export class AssessmentsManagementComponent implements OnInit {
 
   private normalizeStatus(status: string): string {
     return status.trim().replace(/_/g, ' ').toUpperCase();
+  }
+
+  private parseUtcDate(value?: string | null): Date | null {
+    if (!value) {
+      return null;
+    }
+
+    const parsedDate = new Date(value);
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
   }
 
   private openSnackBar(message: string): void {

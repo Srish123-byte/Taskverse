@@ -116,7 +116,10 @@
         <button
           type="button"
           class="icon-button icon-button-danger"
-          (click)="deleteAssessment()"
+          [class.icon-button-blocked]="!isDeleteAllowed(assessment)"
+          [attr.aria-disabled]="!isDeleteAllowed(assessment)"
+          [attr.title]="!isDeleteAllowed(assessment) ? getDeleteRestrictionMessage(assessment) : 'Delete assessment'"
+          (click)="deleteAssessmentItem(assessment)"
           aria-label="Delete assessment">
           <img src="assets/icons/nav/trash.svg" alt="" class="row-action-icon" aria-hidden="true" />
         </button>

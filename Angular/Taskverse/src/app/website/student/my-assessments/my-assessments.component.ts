@@ -1,14 +1,14 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { finalize } from 'rxjs/operators';
+import { finalize, map, switchMap } from 'rxjs/operators';
+import { RouteAddress } from '../../../common/constants/routes.constants';
 import {
   StudentAssessmentDetail,
   StudentAssessmentItem,
-  StudentAttemptAnswer,
-  StudentAttemptRecovery,
-  StudentAttemptRecoveryQuestion,
   StudentAssessmentsService
 } from '../../../common/services/api/student-assessments.service';
+import { DeviceInformationService } from '../../../common/services/utilities/device-information.service';
 
 type AssessmentTab = 'active' | 'past';
 
@@ -35,24 +35,18 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
   selectedAssessmentStatus = '';
   isDetailModalOpen = false;
   isStartingAssessment = false;
-  isSavingAnswer = false;
-  isSubmittingAttempt = false;
-  activeAttempt: StudentAttemptRecovery | null = null;
-  currentQuestionIndex = 0;
-  countdownSeconds = 0;
   attemptErrorMessage = '';
   loadingAssessmentId: string | null = null;
   private readonly subscriptions = new Subscription();
   private assessmentsLoadSubscription?: Subscription;
   private assessmentDetailSubscription?: Subscription;
   private attemptStartSubscription?: Subscription;
-  private answerSaveSubscription?: Subscription;
-  private attemptSubmitSubscription?: Subscription;
-  private countdownTimerId: number | null = null;
 
   constructor(
     private readonly studentAssessmentsService: StudentAssessmentsService,
-    private readonly changeDetectorRef: ChangeDetectorRef
+    private readonly deviceInformationService: DeviceInformationService,
+    private readonly changeDetectorRef: ChangeDetectorRef,
+    private readonly router: Router
   ) {}
 
   ngOnInit(): void {
@@ -60,7 +54,6 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.stopCountdown();
     this.subscriptions.unsubscribe();
   }
 
@@ -75,10 +68,6 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
 
   trackByAssessmentId(_: number, assessment: StudentAssessmentItem): string {
     return assessment.assessmentId;
-  }
-
-  trackByQuestionOption(_: number, option: string): string {
-    return option;
   }
 
   getDifficultyLabel(level: number): string {
@@ -121,41 +110,11 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
   }
 
   getActionLabel(status: string): string {
-    return this.isLiveStatus(status) ? 'Start Assessment' : 'View Details';
-  }
-
-  get currentQuestion(): StudentAttemptRecoveryQuestion | null {
-    if (!this.activeAttempt?.questions?.length) {
-      return null;
+    if (this.isLiveStatus(status)) {
+      return 'Start Assessment';
     }
 
-    return this.activeAttempt.questions[this.currentQuestionIndex] ?? null;
-  }
-
-  get isAttemptMode(): boolean {
-    return !!this.activeAttempt;
-  }
-
-  get formattedCountdown(): string {
-    const hours = Math.floor(this.countdownSeconds / 3600);
-    const minutes = Math.floor((this.countdownSeconds % 3600) / 60);
-    const seconds = this.countdownSeconds % 60;
-
-    return [hours, minutes, seconds]
-      .map(value => value.toString().padStart(2, '0'))
-      .join(':');
-  }
-
-  get isLastQuestion(): boolean {
-    return !!this.activeAttempt?.questions?.length && this.currentQuestionIndex === this.activeAttempt.questions.length - 1;
-  }
-
-  getQuestionPositionLabel(): string {
-    if (!this.activeAttempt?.questions?.length) {
-      return 'Question';
-    }
-
-    return `Question ${this.currentQuestionIndex + 1} of ${this.activeAttempt.questions.length}`;
+    return 'View Details';
   }
 
   isPrimaryAction(status: string): boolean {
@@ -164,6 +123,10 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
 
   canStartSelectedAssessment(): boolean {
     return !!this.selectedAssessmentId;
+  }
+
+  shouldShowDetailAction(): boolean {
+    return this.isLiveStatus(this.selectedAssessmentStatus) || this.isCompletedStatus(this.selectedAssessmentStatus);
   }
 
   openAssessmentAction(assessment: StudentAssessmentItem): void {
@@ -181,12 +144,12 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
       .subscribe({
         next: detail => {
           this.selectedAssessmentDetail = detail;
-          this.selectedAssessmentActionLabel = this.getActionLabel(assessment.assessmentStatus);
+          this.selectedAssessmentActionLabel = this.isCompletedStatus(assessment.assessmentStatus)
+            ? 'View Report'
+            : (this.isLiveStatus(assessment.assessmentStatus) ? this.getActionLabel(assessment.assessmentStatus) : '');
           this.selectedAssessmentName = assessment.assessmentName;
           this.selectedAssessmentId = assessment.assessmentId;
           this.selectedAssessmentStatus = assessment.assessmentStatus;
-          this.activeAttempt = null;
-          this.currentQuestionIndex = 0;
           this.isDetailModalOpen = true;
           this.changeDetectorRef.detectChanges();
         },
@@ -207,18 +170,18 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
     this.selectedAssessmentName = '';
     this.selectedAssessmentId = null;
     this.selectedAssessmentStatus = '';
-    this.activeAttempt = null;
-    this.currentQuestionIndex = 0;
-    this.countdownSeconds = 0;
     this.isStartingAssessment = false;
-    this.isSavingAnswer = false;
-    this.isSubmittingAttempt = false;
     this.attemptErrorMessage = '';
-    this.stopCountdown();
   }
 
-  startSelectedAssessment(): void {
+  async startSelectedAssessment(): Promise<void> {
     if (!this.canStartSelectedAssessment() || this.isStartingAssessment) {
+      return;
+    }
+
+    if (this.isCompletedStatus(this.selectedAssessmentStatus)) {
+      this.closeAssessmentDetailModal();
+      void this.router.navigateByUrl(`/${RouteAddress.Student.Results}`);
       return;
     }
 
@@ -230,20 +193,51 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
     this.attemptStartSubscription?.unsubscribe();
     this.isStartingAssessment = true;
     this.attemptErrorMessage = '';
-
-    this.attemptStartSubscription = this.studentAssessmentsService
-      .startAssessment(assessmentId)
+    this.attemptStartSubscription = this.deviceInformationService
+      .getProctoringDeviceDetails()
+      .pipe(
+        switchMap(deviceDetails =>
+          this.studentAssessmentsService.startAssessment(assessmentId, deviceDetails).pipe(
+            switchMap(attempt =>
+              this.studentAssessmentsService
+                .startProctorSession(attempt.attemptId, {
+                  attemptId: attempt.attemptId,
+                  assessmentId: attempt.assessmentId,
+                  startedAt: attempt.startedAt ?? new Date().toISOString(),
+                  browserName: deviceDetails.browserName,
+                  browserVersion: deviceDetails.browserVersion,
+                  operatingSystem: deviceDetails.operatingSystem,
+                  deviceType: deviceDetails.deviceType,
+                  userAgent: deviceDetails.userAgent,
+                  ipAddress: deviceDetails.ipAddress
+                })
+                .pipe(map(session => ({ attempt, session })))
+            )
+          )
+        )
+      )
       .pipe(finalize(() => {
         this.isStartingAssessment = false;
         this.changeDetectorRef.detectChanges();
       }))
       .subscribe({
-        next: attempt => {
-          this.activateAttempt(attempt);
+        next: ({ attempt, session }) => {
+          this.closeAssessmentDetailModal();
+          void this.router.navigateByUrl(
+            `/${RouteAddress.Student.AssessmentRunner}/${attempt.attemptId}/run`,
+            { state: { attempt, session, startInFullscreen: true } }
+          );
         },
         error: error => {
           console.error('Failed to start student assessment.', error);
-          this.attemptErrorMessage = error?.error?.message || 'Unable to start this assessment right now.';
+          const errorMessage = error?.error?.message || 'Unable to start this assessment and proctoring session right now.';
+          this.attemptErrorMessage = errorMessage;
+
+          if (this.shouldTreatAssessmentAsCompleted(errorMessage)) {
+            this.markSelectedAssessmentAsCompleted();
+            this.loadAssessments();
+          }
+
           this.changeDetectorRef.detectChanges();
         }
       });
@@ -251,187 +245,23 @@ export class MyAssessmentsComponent implements OnInit, OnDestroy {
     this.subscriptions.add(this.attemptStartSubscription);
   }
 
-  showPreviousQuestion(): void {
-    if (this.currentQuestionIndex <= 0 || this.isSavingAnswer || this.isSubmittingAttempt) {
-      return;
-    }
-
-    this.currentQuestionIndex -= 1;
-  }
-
-  showNextQuestion(): void {
-    if (
-      !this.activeAttempt ||
-      this.isSavingAnswer ||
-      this.isSubmittingAttempt ||
-      this.currentQuestionIndex >= this.activeAttempt.questions.length - 1
-    ) {
-      return;
-    }
-
-    this.persistCurrentAnswer(savedAnswer => {
-      const currentQuestion = this.currentQuestion;
-      if (currentQuestion) {
-        currentQuestion.selectedAnswer = savedAnswer.selectedAnswer ?? null;
-        currentQuestion.answeredAt = savedAnswer.answeredAt ?? null;
-      }
-
-      this.currentQuestionIndex += 1;
-      this.changeDetectorRef.detectChanges();
-    });
-  }
-
-  submitCurrentAttempt(): void {
-    if (!this.activeAttempt || this.isSavingAnswer || this.isSubmittingAttempt) {
-      return;
-    }
-
-    this.persistCurrentAnswer(savedAnswer => {
-      const attempt = this.activeAttempt;
-      const currentQuestion = this.currentQuestion;
-      if (!attempt) {
-        return;
-      }
-
-      if (currentQuestion) {
-        currentQuestion.selectedAnswer = savedAnswer.selectedAnswer ?? null;
-        currentQuestion.answeredAt = savedAnswer.answeredAt ?? null;
-      }
-
-      this.attemptSubmitSubscription?.unsubscribe();
-      this.isSubmittingAttempt = true;
-      this.attemptErrorMessage = '';
-
-      this.attemptSubmitSubscription = this.studentAssessmentsService
-        .submitAttempt(attempt.attemptId)
-        .pipe(finalize(() => {
-          this.isSubmittingAttempt = false;
-          this.changeDetectorRef.detectChanges();
-        }))
-        .subscribe({
-          next: () => {
-            this.exitAttemptMode();
-            this.loadAssessments();
-          },
-          error: error => {
-            console.error('Failed to submit student assessment attempt.', error);
-            this.attemptErrorMessage = error?.error?.message || 'Unable to submit this assessment right now.';
-            this.changeDetectorRef.detectChanges();
-          }
-        });
-
-      this.subscriptions.add(this.attemptSubmitSubscription);
-    });
-  }
-
-  selectQuestionOption(question: StudentAttemptRecoveryQuestion, option: string): void {
-    question.selectedAnswer = option;
-  }
-
-  exitAttemptMode(): void {
-    this.activeAttempt = null;
-    this.currentQuestionIndex = 0;
-    this.countdownSeconds = 0;
-    this.isSavingAnswer = false;
-    this.isSubmittingAttempt = false;
-    this.attemptErrorMessage = '';
-    this.stopCountdown();
-    this.changeDetectorRef.detectChanges();
-  }
-
-  private persistCurrentAnswer(onSuccess: (savedAnswer: StudentAttemptAnswer) => void): void {
-    if (!this.activeAttempt) {
-      return;
-    }
-
-    const currentQuestion = this.currentQuestion;
-    if (!currentQuestion) {
-      return;
-    }
-
-    this.answerSaveSubscription?.unsubscribe();
-    this.isSavingAnswer = true;
-    this.attemptErrorMessage = '';
-
-    this.answerSaveSubscription = this.studentAssessmentsService
-      .saveAttemptAnswer(this.activeAttempt.attemptId, currentQuestion.questionId, {
-        selectedAnswer: currentQuestion.selectedAnswer ?? null
-      })
-      .pipe(finalize(() => {
-        this.isSavingAnswer = false;
-        this.changeDetectorRef.detectChanges();
-      }))
-      .subscribe({
-        next: savedAnswer => {
-          onSuccess(savedAnswer);
-        },
-        error: error => {
-          console.error('Failed to save student assessment answer.', error);
-          this.attemptErrorMessage = error?.error?.message || 'Unable to save this answer right now.';
-          this.changeDetectorRef.detectChanges();
-        }
-      });
-
-    this.subscriptions.add(this.answerSaveSubscription);
-  }
-
   private isLiveStatus(status: string | null | undefined): boolean {
     return status?.trim().toUpperCase() === 'LIVE';
   }
 
-  private activateAttempt(attempt: StudentAttemptRecovery): void {
-    this.activeAttempt = attempt;
-    this.currentQuestionIndex = 0;
-    this.attemptErrorMessage = '';
-    this.selectedAssessmentName = attempt.assessmentName;
-    this.selectedAssessmentDetail = null;
-    this.isDetailModalOpen = false;
-    this.countdownSeconds = this.resolveInitialCountdown(attempt);
-    this.startCountdown();
-    this.changeDetectorRef.detectChanges();
+  private isCompletedStatus(status: string | null | undefined): boolean {
+    return status?.trim().toUpperCase() === 'COMPLETED';
   }
 
-  private resolveInitialCountdown(attempt: StudentAttemptRecovery): number {
-    const maxDurationSeconds = Math.max(0, attempt.durationMinutes * 60);
-    const normalizedStatus = attempt.attemptStatus?.trim().toUpperCase();
-
-    if (normalizedStatus === 'IN_PROGRESS' && attempt.remainingSeconds >= 0) {
-      return maxDurationSeconds > 0
-        ? Math.min(attempt.remainingSeconds, maxDurationSeconds)
-        : attempt.remainingSeconds;
-    }
-
-    if (attempt.remainingSeconds > 0) {
-      return attempt.remainingSeconds;
-    }
-
-    return maxDurationSeconds;
+  private shouldTreatAssessmentAsCompleted(message: string | null | undefined): boolean {
+    const normalizedMessage = message?.trim().toLowerCase() ?? '';
+    return normalizedMessage.includes('already expired and was auto-submitted')
+      || normalizedMessage.includes('already been submitted by the current student');
   }
 
-  private startCountdown(): void {
-    this.stopCountdown();
-
-    if (this.countdownSeconds <= 0) {
-      return;
-    }
-
-    this.countdownTimerId = window.setInterval(() => {
-      if (this.countdownSeconds <= 1) {
-        this.countdownSeconds = 0;
-        this.stopCountdown();
-      } else {
-        this.countdownSeconds -= 1;
-      }
-
-      this.changeDetectorRef.detectChanges();
-    }, 1000);
-  }
-
-  private stopCountdown(): void {
-    if (this.countdownTimerId !== null) {
-      window.clearInterval(this.countdownTimerId);
-      this.countdownTimerId = null;
-    }
+  private markSelectedAssessmentAsCompleted(): void {
+    this.selectedAssessmentStatus = 'COMPLETED';
+    this.selectedAssessmentActionLabel = 'View Report';
   }
 
   private loadAssessments(): void {

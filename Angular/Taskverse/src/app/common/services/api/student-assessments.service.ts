@@ -35,17 +35,147 @@ export interface StudentAttemptRecoveryQuestion {
   marks: number;
   negativeMarks: number;
   difficultyLevel: number;
+  allowsMultipleAnswers: boolean;
   selectedAnswer?: string | null;
+  selectedAnswers?: string[] | null;
   answeredAt?: string | null;
 }
 
 export interface SaveStudentAttemptAnswerRequest {
   selectedAnswer?: string | null;
+  selectedAnswers?: string[] | null;
+}
+
+export interface StartStudentAssessmentRequest {
+  browserName?: string | null;
+  browserVersion?: string | null;
+  operatingSystem?: string | null;
+  deviceType?: string | null;
+  userAgent?: string | null;
+  ipAddress?: string | null;
+}
+
+export interface StartProctorSessionRequest extends StartStudentAssessmentRequest {
+  attemptId: string;
+  assessmentId: string;
+  studentId?: string | null;
+  startedAt?: string | null;
+}
+
+export interface ProctorSessionResponse {
+  sessionId: string;
+  attemptId: string;
+  assessmentId: string;
+  studentId: string;
+  status: string;
+  startedAt?: string | null;
+  endedAt?: string | null;
+}
+
+export interface SessionHeartbeatRequest {
+  attemptId: string;
+  clientTimestamp?: string | null;
+  visibilityState: 'Visible' | 'Hidden' | 'Unknown';
+  isFullscreen: boolean;
+  networkStatus: 'Online' | 'Offline' | 'Unstable' | 'Unknown';
+  questionId?: string | null;
+}
+
+export interface SessionHeartbeatResponse {
+  sessionId: string;
+  lastHeartbeatAt: string;
+  sessionState: ProctorSessionStateResponse;
+}
+
+export interface ProctorEventBatchRequestItem {
+  attemptId: string;
+  eventType: string;
+  severity: string;
+  clientTimestamp?: string | null;
+  questionId?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface ProctorEventBatchRequest {
+  events: ProctorEventBatchRequestItem[];
+}
+
+export interface ProctorEventBatchFailureResponse {
+  index: number;
+  message: string;
+}
+
+export interface ProctorEventBatchResponse {
+  processedCount: number;
+  failures: ProctorEventBatchFailureResponse[];
+  sessionState: ProctorSessionStateResponse;
+}
+
+export interface EndProctorSessionRequest {
+  attemptId: string;
+  eventType: string;
+  severity: string;
+  clientTimestamp?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface ProctorSessionSummaryResponse {
+  tabSwitchCount: number;
+  fullScreenExitCount: number;
+  copyAttemptCount: number;
+  pasteAttemptCount: number;
+  cutAttemptCount: number;
+  contextMenuAttemptCount: number;
+  blockedShortcutCount: number;
+  possibleDevtoolsCount: number;
+  networkDisconnectCount: number;
+  riskScore: number;
+  riskLevel: string;
+  lastEventAt?: string | null;
+}
+
+export interface ProctorSessionRuleResponse {
+  eventType: string;
+  displayName: string;
+  warningMessage: string;
+  currentCount: number;
+  maxAllowedCount?: number | null;
+  remainingCount?: number | null;
+  isEnabled: boolean;
+  lockAttemptOnLimitExceeded: boolean;
+  autoSubmitOnLimitExceeded: boolean;
+  isThresholdExceeded: boolean;
+}
+
+export interface ProctorSessionEnforcementResponse {
+  action: 'NONE' | 'LOCK' | 'AUTO_SUBMIT' | string;
+  triggeredByEventType?: string | null;
+  message?: string | null;
+}
+
+export interface ProctorSessionStateResponse {
+  sessionId: string;
+  attemptId: string;
+  assessmentId: string;
+  studentId: string;
+  status: string;
+  startedAt?: string | null;
+  endedAt?: string | null;
+  browserName?: string | null;
+  browserVersion?: string | null;
+  operatingSystem?: string | null;
+  deviceType?: string | null;
+  userAgent?: string | null;
+  ipAddress?: string | null;
+  summary: ProctorSessionSummaryResponse;
+  rules: ProctorSessionRuleResponse[];
+  enforcement: ProctorSessionEnforcementResponse;
 }
 
 export interface StudentAttemptAnswer {
   questionId: string;
   selectedAnswer?: string | null;
+  selectedAnswers?: string[] | null;
   answeredAt?: string | null;
 }
 
@@ -53,6 +183,53 @@ export interface StudentAttemptSubmitResult {
   attemptId: string;
   attemptStatus: string;
   submittedAt?: string | null;
+}
+
+export interface StudentResult {
+  resultId: string;
+  assessmentId: string;
+  assessmentName: string;
+  attemptId: string;
+  studentId: string;
+  totalMarks: number;
+  obtainedMarks: number;
+  percentage: number;
+  rank: number;
+  resultStatus: string;
+  submittedAt?: string | null;
+  generatedAt: string;
+  durationMinutes: number;
+  totalQuestions: number;
+  attemptedQuestions: number;
+  correctAnswers: number;
+  wrongAnswers: number;
+  unansweredQuestions: number;
+  participantCount: number;
+  hasPendingCodingEvaluation: boolean;
+  showResultsImmediately: boolean;
+  questionResults: StudentResultQuestionResult[];
+  questionExplanations: StudentResultQuestionExplanation[];
+}
+
+export interface StudentResultQuestionResult {
+  questionId: string;
+  displayOrder: number;
+  questionType: string;
+  questionText: string;
+  marks: number;
+  awardedMarks: number;
+  status: string;
+  userAnswers: string[];
+  correctAnswers: string[];
+  explanation?: string | null;
+}
+
+export interface StudentResultQuestionExplanation {
+  questionId: string;
+  displayOrder: number;
+  questionType: string;
+  questionText: string;
+  explanation?: string | null;
 }
 
 export interface StudentAttemptRecovery {
@@ -93,8 +270,35 @@ export class StudentAssessmentsService {
     return this.http.get<StudentAssessmentDetail>(`${this.url}/${assessmentId}`);
   }
 
-  startAssessment(assessmentId: string): Observable<StudentAttemptRecovery> {
-    return this.http.post<StudentAttemptRecovery>(`${this.url}/${assessmentId}/start`);
+  startAssessment(
+    assessmentId: string,
+    request: StartStudentAssessmentRequest = {}
+  ): Observable<StudentAttemptRecovery> {
+    return this.http.post<StudentAttemptRecovery>(`${this.url}/${assessmentId}/start`, request);
+  }
+
+  startProctorSession(attemptId: string, request: StartProctorSessionRequest): Observable<ProctorSessionResponse> {
+    return this.http.post<ProctorSessionResponse>(`v1/proctor/attempts/${attemptId}/session`, request);
+  }
+
+  sendSessionHeartbeat(sessionId: string, request: SessionHeartbeatRequest): Observable<SessionHeartbeatResponse> {
+    return this.http.post<SessionHeartbeatResponse>(`v1/sessionhealth/sessions/${sessionId}/heartbeat`, request);
+  }
+
+  recordProctorEvents(sessionId: string, request: ProctorEventBatchRequest): Observable<ProctorEventBatchResponse> {
+    return this.http.post<ProctorEventBatchResponse>(`v1/proctor/session/${sessionId}/event`, request);
+  }
+
+  endProctorSession(sessionId: string, request: EndProctorSessionRequest): Observable<ProctorSessionResponse> {
+    return this.http.post<ProctorSessionResponse>(`v1/proctor/session/${sessionId}/end`, request);
+  }
+
+  getProctorSessionState(sessionId: string): Observable<ProctorSessionStateResponse> {
+    return this.http.get<ProctorSessionStateResponse>(`v1/proctor/sessions/${sessionId}`);
+  }
+
+  getProctorSessionStateByAttempt(attemptId: string): Observable<ProctorSessionStateResponse> {
+    return this.http.get<ProctorSessionStateResponse>(`v1/proctor/attempts/${attemptId}/session`);
   }
 
   getAttemptRecovery(attemptId: string): Observable<StudentAttemptRecovery> {
@@ -110,6 +314,14 @@ export class StudentAssessmentsService {
   }
 
   submitAttempt(attemptId: string): Observable<StudentAttemptSubmitResult> {
-    return this.http.post<StudentAttemptSubmitResult>(`students/attempts/${attemptId}/submit`);
+    return this.http.post<StudentAttemptSubmitResult>(`students/attempts/${attemptId}/submit`, {}, undefined, true);
+  }
+
+  getStudentAttemptResult(attemptId: string): Observable<StudentResult | null> {
+    return this.http.get<StudentResult>(`results/students/attempts/${attemptId}`, undefined, true);
+  }
+
+  getStudentResults(studentId: string): Observable<StudentResult[]> {
+    return this.http.get<StudentResult[]>(`results/students/${studentId}`);
   }
 }

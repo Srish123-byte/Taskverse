@@ -101,6 +101,7 @@ public static class AssessmentMappings
             TopicName = model.TopicName,
             AssessmentStatus = model.AssessmentStatus,
             AssessmentDate = UtcDateTime.Normalize(model.AssessmentDate),
+            StartDateTime = UtcDateTime.Normalize(model.StartDateTime),
             TotalMarks = model.TotalMarks,
             DifficultyLevel = model.DifficultyLevel
         };
@@ -231,6 +232,7 @@ public static class AssessmentMappings
             dto.QuestionText,
             dto.Options,
             dto.Answer,
+            dto.CorrectAnswers,
             dto.Explanation,
             dto.Marks,
             dto.NegativeMarks,
@@ -335,13 +337,15 @@ public static class AssessmentMappings
 
     public static SaveStudentAttemptAnswerModel ToMicroServiceModel(this SaveStudentAttemptAnswerDto dto)
         => new(
-            dto.SelectedAnswer);
+            dto.SelectedAnswer,
+            dto.SelectedAnswers);
 
     public static StudentAttemptAnswerDto ToDto(this StudentAttemptAnswerModel model)
         => new()
         {
             QuestionId = model.QuestionId,
             SelectedAnswer = model.SelectedAnswer,
+            SelectedAnswers = model.SelectedAnswers,
             AnsweredAt = UtcDateTime.Normalize(model.AnsweredAt)
         };
 
@@ -364,7 +368,9 @@ public static class AssessmentMappings
             Marks = model.Marks,
             NegativeMarks = model.NegativeMarks,
             DifficultyLevel = model.DifficultyLevel,
+            AllowsMultipleAnswers = model.AllowsMultipleAnswers,
             SelectedAnswer = model.SelectedAnswer,
+            SelectedAnswers = model.SelectedAnswers,
             AnsweredAt = UtcDateTime.Normalize(model.AnsweredAt)
         };
 

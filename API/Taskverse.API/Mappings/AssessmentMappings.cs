@@ -54,6 +54,7 @@ public static class AssessmentMappings
             QuestionText = model.QuestionText,
             Options = model.Options,
             Answer = model.Answer,
+            CorrectAnswers = model.CorrectAnswers,
             Explanation = model.Explanation,
             Marks = model.Marks,
             NegativeMarks = model.NegativeMarks,
@@ -198,6 +199,7 @@ public static class AssessmentMappings
             TopicName = dto.TopicName,
             AssessmentStatus = dto.AssessmentStatus,
             AssessmentDate = UtcDateTime.Normalize(dto.AssessmentDate),
+            StartDateTime = UtcDateTime.Normalize(dto.StartDateTime),
             TotalMarks = dto.TotalMarks,
             DifficultyLevel = dto.DifficultyLevel
         };
@@ -427,7 +429,8 @@ public static class AssessmentMappings
     {
         return new SaveStudentAttemptAnswerDto
         {
-            SelectedAnswer = model.SelectedAnswer
+            SelectedAnswer = model.SelectedAnswer,
+            SelectedAnswers = model.SelectedAnswers
         };
     }
 
@@ -438,6 +441,7 @@ public static class AssessmentMappings
         {
             QuestionId = dto.QuestionId,
             SelectedAnswer = dto.SelectedAnswer,
+            SelectedAnswers = dto.SelectedAnswers,
             AnsweredAt = UtcDateTime.Normalize(dto.AnsweredAt)
         };
     }
@@ -466,7 +470,9 @@ public static class AssessmentMappings
             Marks = dto.Marks,
             NegativeMarks = dto.NegativeMarks,
             DifficultyLevel = dto.DifficultyLevel,
+            AllowsMultipleAnswers = dto.AllowsMultipleAnswers,
             SelectedAnswer = dto.SelectedAnswer,
+            SelectedAnswers = dto.SelectedAnswers,
             AnsweredAt = UtcDateTime.Normalize(dto.AnsweredAt)
         };
     }
@@ -508,8 +514,47 @@ public static class AssessmentMappings
             Percentage = dto.Percentage,
             Rank = dto.Rank,
             ResultStatus = dto.ResultStatus,
+            SubmittedAt = UtcDateTime.Normalize(dto.SubmittedAt),
             GeneratedAt = UtcDateTime.Normalize(dto.GeneratedAt),
-            HasPendingCodingEvaluation = dto.HasPendingCodingEvaluation
+            DurationMinutes = dto.DurationMinutes,
+            TotalQuestions = dto.TotalQuestions,
+            AttemptedQuestions = dto.AttemptedQuestions,
+            CorrectAnswers = dto.CorrectAnswers,
+            WrongAnswers = dto.WrongAnswers,
+            UnansweredQuestions = dto.UnansweredQuestions,
+            ParticipantCount = dto.ParticipantCount,
+            HasPendingCodingEvaluation = dto.HasPendingCodingEvaluation,
+            QuestionResults = dto.QuestionResults.Select(item => item.ToResponseModel()).ToList(),
+            QuestionExplanations = dto.QuestionExplanations.Select(item => item.ToResponseModel()).ToList()
+        };
+    }
+
+    public static StudentResultQuestionResultResponseModel ToResponseModel(this StudentResultQuestionResultDto dto)
+    {
+        return new StudentResultQuestionResultResponseModel
+        {
+            QuestionId = dto.QuestionId,
+            DisplayOrder = dto.DisplayOrder,
+            QuestionType = dto.QuestionType,
+            QuestionText = dto.QuestionText,
+            Marks = dto.Marks,
+            AwardedMarks = dto.AwardedMarks,
+            Status = dto.Status,
+            UserAnswers = dto.UserAnswers,
+            CorrectAnswers = dto.CorrectAnswers,
+            Explanation = dto.Explanation
+        };
+    }
+
+    public static StudentResultQuestionExplanationResponseModel ToResponseModel(this StudentResultQuestionExplanationDto dto)
+    {
+        return new StudentResultQuestionExplanationResponseModel
+        {
+            QuestionId = dto.QuestionId,
+            DisplayOrder = dto.DisplayOrder,
+            QuestionType = dto.QuestionType,
+            QuestionText = dto.QuestionText,
+            Explanation = dto.Explanation
         };
     }
 }
