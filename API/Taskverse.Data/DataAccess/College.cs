@@ -30,4 +30,6 @@ public class College
 
     [Column("modified_at")]
     public DateTime? ModifiedAt { get; set; }
+
+    public ICollection<CodingQuestion> CodingQuestions { get; set; } = [];
 }

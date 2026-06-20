@@ -34,4 +34,8 @@ public class Student
     public College College { get; set; }
     public Class? Class { get; set; }
     public Batch? Batch { get; set; }
+
+    public ICollection<StudentCode> StudentCodes { get; set; } = [];
+
+    public ICollection<CodeExecutionRequest> CodeExecutionRequests { get; set; } = [];
 }

@@ -12,13 +12,25 @@ public class TaskverseContext : DbContext
 
     public DbSet<User> Users { get; set; }
     public DbSet<Role> Roles { get; set; }
+    public DbSet<LookupComparisonMode> LookupComparisonModes { get; set; }
+    public DbSet<LookupCodeExecutionStatus> LookupCodeExecutionStatuses { get; set; }
+    public DbSet<LookupCodeExecutionResultStatus> LookupCodeExecutionResultStatuses { get; set; }
     public DbSet<College> Colleges { get; set; }
     public DbSet<Class> Classes { get; set; }
     public DbSet<Batch> Batches { get; set; }
     public DbSet<Subject> Subjects { get; set; }
+    public DbSet<CodingLanguage> CodingLanguages { get; set; }
+    public DbSet<CodingQuestion> CodingQuestions { get; set; }
+    public DbSet<CodingSetting> CodingSettings { get; set; }
+    public DbSet<StarterCode> StarterCodes { get; set; }
+    public DbSet<StudentCode> StudentCodes { get; set; }
+    public DbSet<CodeExecutionRequest> CodeExecutionRequests { get; set; }
+    public DbSet<CodeExecutionResult> CodeExecutionResults { get; set; }
+    public DbSet<TestCase> TestCases { get; set; }
     public DbSet<SubjectBatch> SubjectBatches { get; set; }
     public DbSet<Topic> Topics { get; set; }
     public DbSet<Assessment> Assessments { get; set; }
+    public DbSet<AssessmentCodingQuestion> AssessmentCodingQuestions { get; set; }
     public DbSet<AssessmentQuestion> AssessmentQuestions { get; set; }
     public DbSet<Attempt> Attempts { get; set; }
     public DbSet<AttemptAnswer> AttemptAnswers { get; set; }
@@ -48,6 +60,227 @@ public class TaskverseContext : DbContext
             entity.Property(r => r.Description).HasColumnName("description");
             entity.Property(r => r.IsActive).HasColumnName("is_active").HasDefaultValue(true);
             entity.HasIndex(r => r.Name).IsUnique();
+        });
+
+        // Configure LookupComparisonMode entity
+        modelBuilder.Entity<LookupComparisonMode>(entity =>
+        {
+            entity.ToTable("lookup_comparison_mode");
+            entity.HasKey(lcm => lcm.ComparisonModeId);
+            entity.Property(lcm => lcm.ComparisonModeId).HasColumnName("comparison_mode_id");
+            entity.Property(lcm => lcm.ComparisonMode).HasColumnName("comparison_mode").IsRequired().HasMaxLength(50);
+
+            entity.HasIndex(lcm => lcm.ComparisonMode).IsUnique();
+        });
+
+        // Configure LookupCodeExecutionStatus entity
+        modelBuilder.Entity<LookupCodeExecutionStatus>(entity =>
+        {
+            entity.ToTable("lookup_code_execution_status");
+            entity.HasKey(lces => lces.CodeExecutionStatusId);
+            entity.Property(lces => lces.CodeExecutionStatusId).HasColumnName("code_execution_status_id");
+            entity.Property(lces => lces.CodeExecutionStatus).HasColumnName("code_execution_status").IsRequired().HasMaxLength(30);
+
+            entity.HasIndex(lces => lces.CodeExecutionStatus).IsUnique();
+        });
+
+        // Configure LookupCodeExecutionResultStatus entity
+        modelBuilder.Entity<LookupCodeExecutionResultStatus>(entity =>
+        {
+            entity.ToTable("lookup_code_execution_result_status");
+            entity.HasKey(lcers => lcers.CodeExecutionResultStatusId);
+            entity.Property(lcers => lcers.CodeExecutionResultStatusId).HasColumnName("code_execution_result_status_id");
+            entity.Property(lcers => lcers.CodeExecutionResultStatus).HasColumnName("code_execution_result_status").IsRequired().HasMaxLength(30);
+
+            entity.HasIndex(lcers => lcers.CodeExecutionResultStatus).IsUnique();
+        });
+
+        // Configure CodeExecutionRequest entity
+        modelBuilder.Entity<CodeExecutionRequest>(entity =>
+        {
+            entity.ToTable("code_execution_requests");
+            entity.HasKey(cer => cer.CodeExecutionRequestId);
+            entity.Property(cer => cer.CodeExecutionRequestId).HasColumnName("code_execution_request_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(cer => cer.StudentId).HasColumnName("student_id");
+            entity.Property(cer => cer.AssessmentId).HasColumnName("assessment_id");
+            entity.Property(cer => cer.CodingLanguageId).HasColumnName("coding_language_id");
+            entity.Property(cer => cer.Code).HasColumnName("code").IsRequired();
+            entity.Property(cer => cer.InputPayload).HasColumnName("input_payload");
+            entity.Property(cer => cer.CodeExecutionStatusId).HasColumnName("code_execution_status").HasDefaultValue((short)1);
+            entity.Property(cer => cer.RequestedAt).HasColumnName("requested_at").HasDefaultValueSql("now()");
+            entity.Property(cer => cer.StartedAt).HasColumnName("started_at");
+            entity.Property(cer => cer.CompletedAt).HasColumnName("completed_at");
+            entity.Property(cer => cer.WorkerId).HasColumnName("worker_id").HasMaxLength(100);
+            entity.Property(cer => cer.CorrelationId).HasColumnName("correlation_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(cer => cer.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(cer => cer.ModifiedAt).HasColumnName("modified_at");
+
+            entity.HasIndex(cer => cer.StudentId);
+            entity.HasIndex(cer => cer.AssessmentId);
+            entity.HasIndex(cer => cer.CodingLanguageId);
+            entity.HasIndex(cer => cer.CodeExecutionStatusId);
+            entity.HasIndex(cer => cer.CorrelationId);
+
+            entity.HasOne(cer => cer.Student)
+                  .WithMany(s => s.CodeExecutionRequests)
+                  .HasForeignKey(cer => cer.StudentId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("fk_code_execution_requests_students");
+
+            entity.HasOne(cer => cer.Assessment)
+                  .WithMany(a => a.CodeExecutionRequests)
+                  .HasForeignKey(cer => cer.AssessmentId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("fk_code_execution_requests_tasks");
+
+            entity.HasOne(cer => cer.CodingLanguage)
+                  .WithMany(cl => cl.CodeExecutionRequests)
+                  .HasForeignKey(cer => cer.CodingLanguageId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("fk_code_execution_requests_coding_languages");
+
+            entity.HasOne(cer => cer.CodeExecutionStatus)
+                  .WithMany(lces => lces.CodeExecutionRequests)
+                  .HasForeignKey(cer => cer.CodeExecutionStatusId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Configure CodeExecutionResult entity
+        modelBuilder.Entity<CodeExecutionResult>(entity =>
+        {
+            entity.ToTable("code_execution_results");
+            entity.HasKey(cer => cer.CodeExecutionResultId);
+            entity.Property(cer => cer.CodeExecutionResultId).HasColumnName("code_execution_result_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(cer => cer.CodeExecutionRequestId).HasColumnName("code_execution_request_id");
+            entity.Property(cer => cer.CodeExecutionResultStatusId).HasColumnName("code_execution_result_status").HasDefaultValue((short)1);
+            entity.Property(cer => cer.StandardOutput).HasColumnName("standard_output");
+            entity.Property(cer => cer.StandardError).HasColumnName("standard_error");
+            entity.Property(cer => cer.CompilerOutput).HasColumnName("compiler_output");
+            entity.Property(cer => cer.ExitCode).HasColumnName("exit_code");
+            entity.Property(cer => cer.ExecutionTimeMs).HasColumnName("execution_time_ms");
+            entity.Property(cer => cer.MemoryUsedKb).HasColumnName("memory_used_kb");
+            entity.Property(cer => cer.TotalTestCases).HasColumnName("total_test_cases");
+            entity.Property(cer => cer.PassedTestCases).HasColumnName("passed_test_cases");
+            entity.Property(cer => cer.CodingScore).HasColumnName("coding_score").HasColumnType("numeric(5,2)");
+            entity.Property(cer => cer.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(cer => cer.ModifiedAt).HasColumnName("modified_at");
+
+            entity.HasIndex(cer => cer.CodeExecutionRequestId)
+                  .IsUnique()
+                  .HasDatabaseName("uq_code_execution_results_request");
+            entity.HasIndex(cer => cer.CodeExecutionResultStatusId);
+
+            entity.HasOne(cer => cer.CodeExecutionRequest)
+                  .WithOne(cerq => cerq.CodeExecutionResult)
+                  .HasForeignKey<CodeExecutionResult>(cer => cer.CodeExecutionRequestId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("fk_code_execution_results_requests");
+
+            entity.HasOne(cer => cer.CodeExecutionResultStatus)
+                  .WithMany(lcers => lcers.CodeExecutionResults)
+                  .HasForeignKey(cer => cer.CodeExecutionResultStatusId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Configure CodingQuestion entity
+        modelBuilder.Entity<CodingQuestion>(entity =>
+        {
+            entity.ToTable("coding_questions");
+            entity.HasKey(cq => cq.CodingQuestionId);
+            entity.Property(cq => cq.CodingQuestionId).HasColumnName("coding_question_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(cq => cq.CollegeId).HasColumnName("college_id");
+            entity.Property(cq => cq.QuestionTitle).HasColumnName("question_title").IsRequired().HasMaxLength(250);
+            entity.Property(cq => cq.ProblemStatement).HasColumnName("problem_statement").IsRequired();
+            entity.Property(cq => cq.DetailedDescription).HasColumnName("detailed_description");
+            entity.Property(cq => cq.DifficultyLevel).HasColumnName("difficulty_level").HasDefaultValue(1);
+            entity.Property(cq => cq.QuestionType).HasColumnName("question_type").IsRequired().HasMaxLength(50).HasDefaultValue("coding");
+            entity.Property(cq => cq.TopicTag).HasColumnName("topic_tag").HasColumnType("text[]");
+            entity.Property(cq => cq.InputFormat).HasColumnName("input_format");
+            entity.Property(cq => cq.OutputFormat).HasColumnName("output_format");
+            entity.Property(cq => cq.ConstraintsText).HasColumnName("constraints_text");
+            entity.Property(cq => cq.Explanation).HasColumnName("explanation");
+            entity.Property(cq => cq.Examples).HasColumnName("examples").HasColumnType("jsonb");
+            entity.Property(cq => cq.DefaultLanguageCode).HasColumnName("default_language_code").HasMaxLength(50);
+            entity.Property(cq => cq.DefaultTimeLimitMs).HasColumnName("default_time_limit_ms").HasDefaultValue(3000);
+            entity.Property(cq => cq.DefaultMemoryLimitKb).HasColumnName("default_memory_limit_kb").HasDefaultValue(262144);
+            entity.Property(cq => cq.DefaultMaxCodeSizeKb).HasColumnName("default_max_code_size_kb").HasDefaultValue(512);
+            entity.Property(cq => cq.Marks).HasColumnName("marks").HasColumnType("numeric(8,2)").HasDefaultValue(100m);
+            entity.Property(cq => cq.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(cq => cq.CreatedBy).HasColumnName("created_by");
+            entity.Property(cq => cq.ModifiedBy).HasColumnName("modified_by");
+            entity.Property(cq => cq.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(cq => cq.ModifiedAt).HasColumnName("modified_at");
+            entity.Property(cq => cq.Version).HasColumnName("version").HasDefaultValue(1);
+
+            entity.HasIndex(cq => cq.CollegeId);
+
+            entity.HasOne(cq => cq.College)
+                  .WithMany(c => c.CodingQuestions)
+                  .HasForeignKey(cq => cq.CollegeId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("fk_coding_questions_colleges");
+        });
+
+        // Configure AssessmentCodingQuestion entity
+        modelBuilder.Entity<AssessmentCodingQuestion>(entity =>
+        {
+            entity.ToTable("assessment_coding_questions");
+            entity.HasKey(acq => acq.AssessmentCodingQuestionId);
+            entity.Property(acq => acq.AssessmentCodingQuestionId).HasColumnName("assessment_coding_question_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(acq => acq.AssessmentId).HasColumnName("assessment_id");
+            entity.Property(acq => acq.CodingQuestionId).HasColumnName("coding_question_id");
+            entity.Property(acq => acq.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(acq => acq.ModifiedAt).HasColumnName("modified_at").HasDefaultValueSql("now()");
+
+            entity.HasIndex(acq => acq.AssessmentId);
+            entity.HasIndex(acq => acq.CodingQuestionId);
+
+            entity.HasOne(acq => acq.Assessment)
+                  .WithMany(a => a.AssessmentCodingQuestions)
+                  .HasForeignKey(acq => acq.AssessmentId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("fk_assessment_coding_questions_assessments");
+
+            entity.HasOne(acq => acq.CodingQuestion)
+                  .WithMany(cq => cq.AssessmentCodingQuestions)
+                  .HasForeignKey(acq => acq.CodingQuestionId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("fk_assessment_coding_questions_coding_questions");
+        });
+
+        // Configure TestCase entity
+        modelBuilder.Entity<TestCase>(entity =>
+        {
+            entity.ToTable("test_cases", tableBuilder =>
+            {
+                tableBuilder.HasCheckConstraint(
+                    "ck_test_cases_input_format",
+                    "input_format IN ('stdin', 'json', 'function_args')");
+            });
+
+            entity.HasKey(tc => tc.TestCaseId);
+            entity.Property(tc => tc.TestCaseId).HasColumnName("test_case_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(tc => tc.CodingQuestionId).HasColumnName("coding_question_id");
+            entity.Property(tc => tc.InputFormat).HasColumnName("input_format").IsRequired().HasMaxLength(30).HasDefaultValue("stdin");
+            entity.Property(tc => tc.InputData).HasColumnName("input_data");
+            entity.Property(tc => tc.ExpectedOutput).HasColumnName("expected_output");
+            entity.Property(tc => tc.ComparisonMode).HasColumnName("comparison_mode").HasDefaultValue(2);
+            entity.Property(tc => tc.NumericTolerance).HasColumnName("numeric_tolerance").HasColumnType("numeric(18,4)");
+            entity.Property(tc => tc.IsHidden).HasColumnName("is_hidden").HasDefaultValue(false);
+            entity.Property(tc => tc.IsSample).HasColumnName("is_sample").HasDefaultValue(false);
+            entity.Property(tc => tc.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(tc => tc.TimeLimitMs).HasColumnName("time_limit_ms");
+            entity.Property(tc => tc.MemoryLimitKb).HasColumnName("memory_limit_kb");
+            entity.Property(tc => tc.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(tc => tc.ModifiedAt).HasColumnName("modified_at");
+
+            entity.HasIndex(tc => tc.CodingQuestionId);
+
+            entity.HasOne(tc => tc.CodingQuestion)
+                  .WithMany(cq => cq.TestCases)
+                  .HasForeignKey(tc => tc.CodingQuestionId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("fk_test_cases_coding_questions");
         });
 
         // Configure College entity
@@ -189,6 +422,111 @@ public class TaskverseContext : DbContext
             entity.Property(s => s.ModifiedAt).HasColumnName("modified_at");
 
             entity.HasIndex(s => s.SubjectName).IsUnique();
+        });
+
+        // Configure CodingLanguage entity
+        modelBuilder.Entity<CodingLanguage>(entity =>
+        {
+            entity.ToTable("coding_languages");
+            entity.HasKey(cl => cl.CodingLanguageId);
+            entity.Property(cl => cl.CodingLanguageId).HasColumnName("coding_language_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(cl => cl.LanguageCode).HasColumnName("language_code").IsRequired().HasMaxLength(50);
+            entity.Property(cl => cl.DisplayName).HasColumnName("display_name").IsRequired().HasMaxLength(100);
+            entity.Property(cl => cl.MonacoLanguageCode).HasColumnName("monaco_language_code").IsRequired().HasMaxLength(50);
+            entity.Property(cl => cl.FileExtension).HasColumnName("file_extension").HasMaxLength(20);
+            entity.Property(cl => cl.RuntimeName).HasColumnName("runtime_name").HasMaxLength(100);
+            entity.Property(cl => cl.RuntimeVersion).HasColumnName("runtime_version").HasMaxLength(50);
+            entity.Property(cl => cl.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(cl => cl.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(cl => cl.ModifiedAt).HasColumnName("modified_at");
+
+            entity.HasIndex(cl => cl.LanguageCode)
+                  .IsUnique()
+                  .HasDatabaseName("uq_coding_languages_language_code");
+        });
+
+        // Configure CodingSetting entity
+        modelBuilder.Entity<CodingSetting>(entity =>
+        {
+            entity.ToTable("coding_settings");
+            entity.HasKey(cs => cs.CodingSettingId);
+            entity.Property(cs => cs.CodingSettingId).HasColumnName("coding_setting_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(cs => cs.DefaultLanguageId).HasColumnName("default_language_id");
+            entity.Property(cs => cs.TimeLimitMs).HasColumnName("time_limit_ms").HasDefaultValue(3000);
+            entity.Property(cs => cs.MemoryLimitKb).HasColumnName("memory_limit_kb").HasDefaultValue(262144);
+            entity.Property(cs => cs.MaxCodeSizeKb).HasColumnName("max_code_size_kb").HasDefaultValue(512);
+            entity.Property(cs => cs.IsCodeExecutionEnabled).HasColumnName("is_code_execution_enabled").HasDefaultValue(false);
+            entity.Property(cs => cs.IsSubmissionEnabled).HasColumnName("is_submission_enabled").HasDefaultValue(true);
+            entity.Property(cs => cs.AllowLanguageChange).HasColumnName("allow_language_change").HasDefaultValue(true);
+            entity.Property(cs => cs.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(cs => cs.ModifiedAt).HasColumnName("modified_at");
+
+            entity.HasIndex(cs => cs.DefaultLanguageId);
+
+            entity.HasOne(cs => cs.DefaultLanguage)
+                  .WithMany(cl => cl.CodingSettings)
+                  .HasForeignKey(cs => cs.DefaultLanguageId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("fk_coding_settings_default_language");
+        });
+
+        // Configure StarterCode entity
+        modelBuilder.Entity<StarterCode>(entity =>
+        {
+            entity.ToTable("starter_code");
+            entity.HasKey(sc => sc.StarterCodeId);
+            entity.Property(sc => sc.StarterCodeId).HasColumnName("starter_code_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(sc => sc.CodingLanguageId).HasColumnName("coding_language_id");
+            entity.Property(sc => sc.StarterCodeContent).HasColumnName("starter_code").IsRequired();
+            entity.Property(sc => sc.SolutionTemplate).HasColumnName("solution_template");
+            entity.Property(sc => sc.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(sc => sc.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(sc => sc.ModifiedAt).HasColumnName("modified_at");
+
+            entity.HasIndex(sc => sc.CodingLanguageId);
+
+            entity.HasOne(sc => sc.CodingLanguage)
+                  .WithMany(cl => cl.StarterCodes)
+                  .HasForeignKey(sc => sc.CodingLanguageId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("fk_task_starter_code_coding_languages");
+        });
+
+        // Configure StudentCode entity
+        modelBuilder.Entity<StudentCode>(entity =>
+        {
+            entity.ToTable("student_code");
+            entity.HasKey(sc => sc.StudentCodeId);
+            entity.Property(sc => sc.StudentCodeId).HasColumnName("student_code_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(sc => sc.StudentId).HasColumnName("student_id");
+            entity.Property(sc => sc.AssessmentId).HasColumnName("assessment_id");
+            entity.Property(sc => sc.CodingLanguageId).HasColumnName("coding_language_id");
+            entity.Property(sc => sc.Code).HasColumnName("code").IsRequired();
+            entity.Property(sc => sc.LastSavedAt).HasColumnName("last_saved_at").HasDefaultValueSql("now()");
+            entity.Property(sc => sc.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(sc => sc.ModifiedAt).HasColumnName("modified_at");
+
+            entity.HasIndex(sc => sc.StudentId);
+            entity.HasIndex(sc => sc.AssessmentId);
+            entity.HasIndex(sc => sc.CodingLanguageId);
+
+            entity.HasOne(sc => sc.Student)
+                  .WithMany(s => s.StudentCodes)
+                  .HasForeignKey(sc => sc.StudentId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("fk_student_code");
+
+            entity.HasOne(sc => sc.Assessment)
+                  .WithMany(a => a.StudentCodes)
+                  .HasForeignKey(sc => sc.AssessmentId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("fk_student_assessment_code_assessments");
+
+            entity.HasOne(sc => sc.CodingLanguage)
+                  .WithMany(cl => cl.StudentCodes)
+                  .HasForeignKey(sc => sc.CodingLanguageId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("fk_student_assessment_code_coding_languages");
         });
 
         // Configure SubjectBatch entity

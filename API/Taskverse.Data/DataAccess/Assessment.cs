@@ -104,4 +104,10 @@ public class Assessment
     public Topic? Topic { get; set; }
 
     public ICollection<AssessmentQuestion> AssessmentQuestions { get; set; } = [];
+
+    public ICollection<AssessmentCodingQuestion> AssessmentCodingQuestions { get; set; } = [];
+
+    public ICollection<StudentCode> StudentCodes { get; set; } = [];
+
+    public ICollection<CodeExecutionRequest> CodeExecutionRequests { get; set; } = [];
 }
