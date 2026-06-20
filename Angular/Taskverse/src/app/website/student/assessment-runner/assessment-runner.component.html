@@ -99,9 +99,23 @@
         </div>
 
         <h3>{{ question.questionText }}</h3>
-        <p *ngIf="isMultipleAnswerQuestion(question)" class="assessment-question-helper">Select all that apply.</p>
+        <p *ngIf="!isCodingQuestion(question) && isMultipleAnswerQuestion(question)" class="assessment-question-helper">Select all that apply.</p>
 
-        <div class="assessment-question-options">
+        <app-coding
+          *ngIf="isCodingQuestion(question); else objectiveQuestionTemplate"
+          class="assessment-coding-editor"
+          title="Coding Workspace"
+          description="Write and refine your answer in the editor below."
+          helperText="Your code is saved as part of this assessment answer when you move to the next question or submit."
+          language="javascript"
+          theme="vs-dark"
+          [code]="question.selectedAnswer ?? ''"
+          [height]="'420px'"
+          (codeChange)="updateCodingAnswer(question, $event)">
+        </app-coding>
+
+        <ng-template #objectiveQuestionTemplate>
+          <div class="assessment-question-options">
           <label
             *ngFor="let option of question.options ?? []; trackBy: trackByQuestionOption"
             class="assessment-option-button"
@@ -114,7 +128,8 @@
               (change)="selectQuestionOption(question, option)" />
             <span>{{ option }}</span>
           </label>
-        </div>
+          </div>
+        </ng-template>
       </article>
 
       <div *ngIf="!currentQuestion" class="runner-alert">

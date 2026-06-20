@@ -173,8 +173,17 @@ export class AssessmentRunnerComponent implements OnInit, OnDestroy {
     return this.proctorRules.filter(rule => rule.autoSubmitOnLimitExceeded).length;
   }
 
+  isCodingQuestion(question: StudentAttemptRecoveryQuestion | null | undefined): boolean {
+    return question?.questionType?.trim().toLowerCase() === 'coding';
+  }
+
   isMultipleAnswerQuestion(question: StudentAttemptRecoveryQuestion): boolean {
     return question.allowsMultipleAnswers;
+  }
+
+  updateCodingAnswer(question: StudentAttemptRecoveryQuestion, code: string): void {
+    question.selectedAnswer = code;
+    question.selectedAnswers = code ? [code] : [];
   }
 
   trackByQuestionOption(_: number, option: string): string {

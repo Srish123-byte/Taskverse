@@ -1,3 +1,5 @@
+using Taskverse.Shared.Diagnostics;
+
 namespace Taskverse.API.CodingEngine.Service;
 
 public class Startup
@@ -27,6 +29,7 @@ public class Startup
     {
         app.UseHttpsRedirection();
         app.MapControllers();
+        app.MapSystemEndpoint();
         app.MapHealthChecks("/health");
     }
 }

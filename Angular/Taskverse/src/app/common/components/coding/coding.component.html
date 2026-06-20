@@ -1,0 +1,22 @@
+<section class="coding-shell">
+  <header class="coding-header">
+    <div>
+      <p class="coding-kicker">Shared Coding</p>
+      <h3 class="coding-title">{{ title }}</h3>
+      <p class="coding-description">{{ description }}</p>
+    </div>
+    <span class="coding-language">{{ language }}</span>
+  </header>
+
+  <app-monaco-editor
+    [value]="code"
+    [language]="language"
+    [theme]="theme"
+    [readOnly]="readOnly"
+    [height]="height"
+    [options]="editorOptions"
+    (valueChange)="onCodeChange($event)">
+  </app-monaco-editor>
+
+  <p class="coding-helper">{{ helperText }}</p>
+</section>

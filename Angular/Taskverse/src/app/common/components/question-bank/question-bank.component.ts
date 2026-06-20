@@ -245,6 +245,10 @@ export class QuestionBankComponent implements OnInit {
 
     this.assessmentAdminService.getQuestion(questionId, true).subscribe({
       next: () => {
+        if (this.editQuestionRouteSegments.length === 0) {
+          return;
+        }
+
         void this.router.navigate(
           ['/', ...this.editQuestionRouteSegments, questionId],
           {

@@ -7,6 +7,7 @@ using Taskverse.API.Assessments.Service.Models;
 using Taskverse.API.Assessments.Service.Orchestrators;
 using Taskverse.API.Assessments.Service.Services;
 using Taskverse.Data.DataAccess;
+using Taskverse.Shared.Diagnostics;
 
 namespace Taskverse.API.Assessments.Service;
 
@@ -51,6 +52,7 @@ public class Startup
 
         app.UseHttpsRedirection();
         app.MapControllers();
+        app.MapSystemEndpoint();
         app.UseCors("AllowTaskverse");
         app.MapHealthChecks("/health");
     }

@@ -7,6 +7,7 @@ using System.Text;
 using Taskverse.API.Auth.Service.Filters;
 using Taskverse.API.Auth.Service.Services;
 using Taskverse.Data.DataAccess;
+using Taskverse.Shared.Diagnostics;
 
 namespace Taskverse.API.Auth.Service;
 
@@ -67,6 +68,7 @@ public class Startup
         app.UseAuthorization();
 
         app.MapControllers();
+        app.MapSystemEndpoint();
         app.MapHealthChecks("/health");
     }
 

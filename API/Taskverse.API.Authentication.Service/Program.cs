@@ -1,3 +1,5 @@
+using Taskverse.Shared.Diagnostics;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -13,6 +15,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.MapSystemEndpoint();
 
 var summaries = new[]
 {

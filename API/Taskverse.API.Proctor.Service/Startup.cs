@@ -5,6 +5,7 @@ using Taskverse.API.Proctor.Service.Managers;
 using Taskverse.API.Proctor.Service.Models;
 using Taskverse.API.Proctor.Service.Orchestrators;
 using Taskverse.Data.DataAccess;
+using Taskverse.Shared.Diagnostics;
 
 namespace Taskverse.API.Proctor.Service;
 
@@ -59,6 +60,7 @@ public class Startup
 
         app.UseHttpsRedirection();
         app.MapControllers();
+        app.MapSystemEndpoint();
         app.MapHealthChecks("/health");
     }
 

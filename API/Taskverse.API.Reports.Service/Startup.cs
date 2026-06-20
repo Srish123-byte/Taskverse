@@ -5,6 +5,7 @@ using Taskverse.API.Reports.Service.Managers;
 using Taskverse.API.Reports.Service.Orchestrators;
 using Taskverse.API.Reports.Service.Services;
 using Taskverse.Data.DataAccess;
+using Taskverse.Shared.Diagnostics;
 
 namespace Taskverse.API.Reports.Service;
 
@@ -58,6 +59,7 @@ public class Startup
 
         app.UseHttpsRedirection();
         app.MapControllers();
+        app.MapSystemEndpoint();
         app.MapHealthChecks("/health");
     }
 

@@ -18,7 +18,8 @@ public class QuestionManager : IQuestionManager
     private static readonly HashSet<string> AllowedQuestionTypes =
     [
         "mcq",
-        "fill in the blanks"
+        "fill in the blanks",
+        "coding"
     ];
 
     private readonly TaskverseContext _context;
@@ -506,7 +507,7 @@ public class QuestionManager : IQuestionManager
         var normalizedQuestionType = question.QuestionType.Trim().ToLowerInvariant();
         if (!AllowedQuestionTypes.Contains(normalizedQuestionType))
         {
-            throw new ArgumentException("Question type must be either 'mcq' or 'fill in the blanks'.");
+            throw new ArgumentException("Question type must be either 'mcq', 'fill in the blanks', or 'coding'.");
         }
 
         question.QuestionType = normalizedQuestionType;
@@ -560,6 +561,11 @@ public class QuestionManager : IQuestionManager
         if (normalizedQuestionType == "fill in the blanks" && normalizedAnswers.Count != 1)
         {
             throw new ArgumentException("Fill in the blanks questions support exactly one answer.");
+        }
+
+        if (normalizedQuestionType == "coding" && normalizedAnswers.Count != 1)
+        {
+            throw new ArgumentException("Coding questions require exactly one reference solution.");
         }
 
         if (question.Marks < 0)

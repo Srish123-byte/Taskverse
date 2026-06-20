@@ -4,6 +4,7 @@ using Npgsql;
 using Taskverse.API.Users.Service.Filters;
 using Taskverse.Data.DataAccess;
 using Taskverse.API.Users.Service.Services;
+using Taskverse.Shared.Diagnostics;
 
 namespace Taskverse.API.Users.Service;
 
@@ -61,6 +62,7 @@ public class Startup
         app.UseCors("AllowTaskverse");
 
         app.MapControllers();
+        app.MapSystemEndpoint();
         app.MapHealthChecks("/health");
     }
 

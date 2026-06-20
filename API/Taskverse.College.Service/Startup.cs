@@ -5,6 +5,7 @@ using Taskverse.API.College.Service.Orchestrators;
 using Taskverse.API.College.Service.Filters;
 using Taskverse.API.College.Service.Services;
 using Taskverse.Data.DataAccess;
+using Taskverse.Shared.Diagnostics;
 
 namespace Taskverse.API.College.Service;
 
@@ -58,6 +59,7 @@ public class Startup
         }
         app.UseHttpsRedirection();
         app.MapControllers();
+        app.MapSystemEndpoint();
         app.UseCors("AllowTaskverse");
         app.MapHealthChecks("/health");
     }

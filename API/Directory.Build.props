@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup Condition="'$(UsingMicrosoftNETSdkWeb)' == 'true'">
+    <VersionPrefix Condition="'$(VersionPrefix)' == ''">1.0.0</VersionPrefix>
+    <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">$(VersionPrefix)</AssemblyVersion>
+    <FileVersion Condition="'$(FileVersion)' == ''">$(VersionPrefix)</FileVersion>
+    <InformationalVersion Condition="'$(InformationalVersion)' == ''">$(VersionPrefix)</InformationalVersion>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UsingMicrosoftNETSdkWeb)' == 'true'">
+    <Compile Include="$(MSBuildThisFileDirectory)Shared\Diagnostics\SystemEndpointRouteBuilderExtensions.cs"
+             Link="Shared\Diagnostics\SystemEndpointRouteBuilderExtensions.cs" />
+  </ItemGroup>
+</Project>

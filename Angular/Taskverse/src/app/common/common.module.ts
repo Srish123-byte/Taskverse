@@ -15,6 +15,8 @@ import { QuestionBankComponent } from './components/question-bank/question-bank.
 import { QuestionEditorComponent } from './components/question-editor/question-editor.component';
 import { AssessmentsManagementComponent } from './components/assessments-management/assessments-management.component';
 import { AssessmentCreatorComponent } from './components/assessment-creator/assessment-creator.component';
+import { CodingComponent } from './components/coding/coding.component';
+import { MonacoEditorComponent } from './components/coding/monaco-editor/monaco-editor.component';
 
 import { FormatPhone } from './pipes/format-phone.pipe';
 import { ToLowerCaseText } from './pipes/to-lower-case-text.pipe';
@@ -44,6 +46,8 @@ import { MaterialModule } from '../material.module';
     AssessmentsManagementComponent,
     AssessmentCreatorComponent,
     QuestionEditorComponent,
+    CodingComponent,
+    MonacoEditorComponent,
     FormatPhone,
     ToLowerCaseText,
     ToUpperCaseText
@@ -60,6 +64,8 @@ import { MaterialModule } from '../material.module';
     AssessmentsManagementComponent,
     AssessmentCreatorComponent,
     QuestionEditorComponent,
+    CodingComponent,
+    MonacoEditorComponent,
     FormatPhone,
     ToLowerCaseText,
     ToUpperCaseText,
