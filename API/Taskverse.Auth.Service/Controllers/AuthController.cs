@@ -141,6 +141,37 @@ public class AuthController : ControllerBase
         }
     }
 
+    [Authorize]
+    [HttpPost("change-temporary-password")]
+    public async Task<IActionResult> ChangeTemporaryPassword([FromBody] ChangeTemporaryPasswordRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var requestUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(requestUserId, out var userGuid))
+            return Unauthorized(new { message = "Invalid user ID" });
+
+        try
+        {
+            await _authService.ChangeTemporaryPasswordAsync(userGuid, request);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Change temporary password error: {ex.Message}");
+            return StatusCode(500, new { message = "An error occurred while changing the temporary password" });
+        }
+    }
+
     /// <summary>
     /// Health check endpoint
     /// </summary>

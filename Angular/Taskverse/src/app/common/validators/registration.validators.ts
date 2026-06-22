@@ -25,9 +25,8 @@ export const strictEmailValidator: ValidatorFn =
   (control: AbstractControl): ValidationErrors | null => {
     const value: string = (control.value ?? '').trim();
     if (!value) return null;
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const hasDotCom    = /\.com$/i.test(value);
-    return emailPattern.test(value) && hasDotCom ? null : { strictEmail: true };
+    const emailPattern = /^[^\s@]+@[^\s@]+$/;
+    return emailPattern.test(value) ? null : { strictEmail: true };
   };
 
 // ─── Phone ────────────────────────────────────────────────────────────────────

@@ -366,6 +366,37 @@ public class CollegeAdminController : TaskverseBaseController
         }
     }
 
+    [HttpPost("users/bulk-upload/students")]
+    [SwaggerResponse(200, "Bulk student upload processed", typeof(BulkStudentUploadResultResponseModel))]
+    [SwaggerResponse(400, "Invalid request")]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> BulkUploadStudents([FromBody] BulkStudentUploadRequestModel model)
+    {
+        var accessCheck = EnsureCollegeAdminAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        var uploadedByUserId = GetPerformedByUserId();
+        if (uploadedByUserId is null)
+        {
+            return BadRequest(new { message = "The current user id could not be resolved." });
+        }
+
+        try
+        {
+            var result = await _collegeAdminOrchestrator.BulkUploadStudents(
+                collegeId,
+                model.ToDto(uploadedByUserId.Value, GetPerformedBy(), GetPerformedBy(), collegeId));
+            return Ok(result.ToResponseModel());
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     private IActionResult? EnsureCollegeAdminAccess()
     {
         if (User?.Identity?.IsAuthenticated != true || !User.IsInRole(CollegeAdminRole))

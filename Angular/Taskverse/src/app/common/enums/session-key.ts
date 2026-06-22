@@ -7,4 +7,6 @@ export class SessionKey {
   static UserId = 'user-id';
   static Role = 'role';
   static CollegeId = 'college-id';
+  static MustChangePassword = 'must-change-password';
+  static PasswordChangeSuccess = 'password-change-success';
 }

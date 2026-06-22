@@ -1,0 +1,63 @@
+<section class="bulk-upload-shell">
+  <div class="bulk-upload-copy">
+    <p class="bulk-upload-kicker">Student Bulk Upload</p>
+    <h3>Import students from Excel or CSV</h3>
+    <p>
+      Required columns: <strong>fullName</strong>, <strong>email</strong>, <strong>phone</strong>,
+      <strong>collegeId</strong>, <strong>classId</strong>, and <strong>batchId</strong>.
+    </p>
+  </div>
+
+  <div class="bulk-upload-actions">
+    <label class="bulk-upload-button">
+      <input type="file" accept=".csv,.xls,.xlsx" (change)="onFileSelected($event)" />
+      <span>{{ isParsing ? 'Parsing...' : 'Choose File' }}</span>
+    </label>
+    <button type="button" class="bulk-upload-secondary" (click)="clearSelection()" [disabled]="isUploading || isParsing">
+      Clear
+    </button>
+    <button type="button" class="bulk-upload-primary" (click)="upload()" [disabled]="!parsedFile || isUploading || isParsing">
+      {{ isUploading ? 'Uploading...' : 'Upload Students' }}
+    </button>
+  </div>
+
+  <div *ngIf="errorMessage" class="bulk-upload-state bulk-upload-state-error">{{ errorMessage }}</div>
+
+  <div *ngIf="parsedFile" class="bulk-upload-preview">
+    <div class="bulk-upload-summary">
+      <strong>{{ parsedFile.fileName }}</strong>
+      <span>{{ parsedFile.rows.length }} row{{ parsedFile.rows.length === 1 ? '' : 's' }} ready for upload</span>
+    </div>
+
+    <div class="bulk-upload-table">
+      <div class="bulk-upload-table-header">
+        <span>Full Name</span>
+        <span>Email</span>
+        <span>Phone</span>
+        <span>CollegeId</span>
+        <span>ClassId</span>
+        <span>BatchId</span>
+      </div>
+
+      <article *ngFor="let row of previewRows" class="bulk-upload-table-row">
+        <span>{{ row.fullName }}</span>
+        <span>{{ row.email }}</span>
+        <span>{{ row.phone }}</span>
+        <span>{{ row.collegeId }}</span>
+        <span>{{ row.classId }}</span>
+        <span>{{ row.batchId }}</span>
+      </article>
+    </div>
+
+    <p *ngIf="parsedFile.rows.length > previewRows.length" class="bulk-upload-footnote">
+      Previewing the first {{ previewRows.length }} rows.
+    </p>
+  </div>
+
+  <div *ngIf="lastResult" class="bulk-upload-result">
+    <span>{{ lastResult.createdCount }} created</span>
+    <span>{{ lastResult.duplicateCount }} duplicates skipped</span>
+    <span>{{ lastResult.invalidCount }} invalid row{{ lastResult.invalidCount === 1 ? '' : 's' }}</span>
+  </div>
+</section>
+

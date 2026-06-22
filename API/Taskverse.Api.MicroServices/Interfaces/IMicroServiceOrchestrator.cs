@@ -19,6 +19,7 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> RefreshToken(RefreshTokenRequestModel model);
     Task<ObjectResult> Logout(LogoutRequestModel model);
     Task<ObjectResult> ValidateToken(ValidateTokenRequestModel model);
+    Task<ObjectResult> ChangeTemporaryPassword(ChangeTemporaryPasswordRequestModel model);
 
     // Exam Engine
     Task<ObjectResult> GetExam(string examId);

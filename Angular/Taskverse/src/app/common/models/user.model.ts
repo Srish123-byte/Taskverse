@@ -10,4 +10,5 @@ export interface User {
   role: RoleType;
   isActive: boolean;
   status: string;
+  mustChangePassword?: boolean;
 }

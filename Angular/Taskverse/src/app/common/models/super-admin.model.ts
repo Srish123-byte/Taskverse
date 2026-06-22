@@ -47,6 +47,39 @@ export interface PagedUsersResult {
   pageSize: number;
 }
 
+export interface BulkStudentUploadRow {
+  fullName: string;
+  email: string;
+  phone: string;
+  collegeId: string;
+  classId: string;
+  batchId: string;
+}
+
+export interface BulkStudentUploadRequest {
+  rows: BulkStudentUploadRow[];
+}
+
+export interface BulkStudentUploadCreatedUser {
+  fullName: string;
+  email: string;
+}
+
+export interface BulkStudentUploadRowIssue {
+  rowNumber: number;
+  email: string;
+  message: string;
+}
+
+export interface BulkStudentUploadResult {
+  createdCount: number;
+  duplicateCount: number;
+  invalidCount: number;
+  createdUsers: BulkStudentUploadCreatedUser[];
+  duplicateRows: BulkStudentUploadRowIssue[];
+  invalidRows: BulkStudentUploadRowIssue[];
+}
+
 export interface College {
   collegeId: string;
   name: string;

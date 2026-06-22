@@ -20,6 +20,7 @@ using Taskverse.Business.Configuration;
 using Taskverse.Business.Interface;
 using Taskverse.Business.Managers;
 using Taskverse.Business.Orchestrators;
+using Taskverse.Business.Services;
 using Taskverse.Data.DataAccess;
 using Taskverse.Data.Enums;
 using Taskverse.Api.MicroServices;
@@ -167,6 +168,7 @@ public class Startup
         services.Configure<Configuration.JwtSettings>(Configuration.GetSection("JwtSettings"));
         services.Configure<CorsSettings>(Configuration.GetSection("TaskverseCorsPolicySettings"));
         services.Configure<MicroServiceSettings>(Configuration.GetSection("MicroServiceSettings"));
+        services.Configure<EmailSettings>(Configuration.GetSection("EmailSettings"));
     }
 
     private void ConfigureHttpClients(IServiceCollection services)
@@ -215,6 +217,8 @@ public class Startup
 
         // Managers
         services.AddScoped<IUsersManager, UsersManager>();
+        services.AddScoped<IEmailService, SmtpEmailService>();
+        services.AddScoped<IBulkStudentUploadService, BulkStudentUploadService>();
 
         // MicroService layer
         services.AddScoped<IMicroServiceOrchestrator, MicroServiceOrchestrator>();

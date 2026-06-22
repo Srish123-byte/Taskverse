@@ -33,6 +33,28 @@ public static class SuperAdminMappings
         PageSize   = model.PageSize   > 0 ? model.PageSize   : 10
     };
 
+    public static BulkStudentUploadRequestDto ToDto(
+        this BulkStudentUploadRequestModel model,
+        Guid uploadedByUserId,
+        string uploadedByEmail,
+        string uploadedByDisplayName,
+        Guid? restrictedCollegeId = null) => new()
+    {
+        UploadedByUserId = uploadedByUserId,
+        UploadedByEmail = uploadedByEmail,
+        UploadedByDisplayName = uploadedByDisplayName,
+        RestrictedCollegeId = restrictedCollegeId,
+        Rows = (model.Rows ?? []).Select(row => new BulkStudentUploadRowDto
+        {
+            FullName = row.FullName,
+            Email = row.Email,
+            Phone = row.Phone,
+            CollegeId = row.CollegeId,
+            ClassId = row.ClassId,
+            BatchId = row.BatchId
+        }).ToList()
+    };
+
     public static PagedUserSearchResponseModel ToResponseModel(this PagedUsersResultDto dto) => new()
     {
         Items      = dto.Items.Select(x => x.ToResponseModel()).ToList(),
@@ -79,6 +101,30 @@ public static class SuperAdminMappings
         Status = dto.Status,
         CreatedAt = dto.CreatedAt,
         InstitutionName = dto.InstitutionName
+    };
+
+    public static BulkStudentUploadResultResponseModel ToResponseModel(this BulkStudentUploadResultDto dto) => new()
+    {
+        CreatedCount = dto.CreatedCount,
+        DuplicateCount = dto.DuplicateCount,
+        InvalidCount = dto.InvalidCount,
+        CreatedUsers = dto.CreatedUsers.Select(item => new BulkStudentUploadCreatedUserResponseModel
+        {
+            FullName = item.FullName,
+            Email = item.Email
+        }).ToList(),
+        DuplicateRows = dto.DuplicateRows.Select(item => new BulkStudentUploadRowIssueResponseModel
+        {
+            RowNumber = item.RowNumber,
+            Email = item.Email,
+            Message = item.Message
+        }).ToList(),
+        InvalidRows = dto.InvalidRows.Select(item => new BulkStudentUploadRowIssueResponseModel
+        {
+            RowNumber = item.RowNumber,
+            Email = item.Email,
+            Message = item.Message
+        }).ToList()
     };
 
     public static SuperAdminDashboardResponseModel ToResponseModel(this SuperAdminDashboardDto dto) => new()

@@ -10,8 +10,15 @@ export class CanActivateAuthService {
     private readonly router: Router
   ) {}
 
-  canActivate(): boolean {
+  canActivate(state: RouterStateSnapshot): boolean {
     if (this.session.isLoggedIn()) {
+      if (this.session.mustChangePassword &&
+          !state.url.includes(`/${RouteAddress.ChangeTemporaryPassword}`) &&
+          !state.url.includes(`/${RouteAddress.Logout}`)) {
+        void this.router.navigateByUrl(`/${RouteAddress.ChangeTemporaryPassword}`);
+        return false;
+      }
+
       return true;
     }
     void this.router.navigateByUrl(`/${RouteAddress.Login}`);
@@ -20,5 +27,5 @@ export class CanActivateAuthService {
 }
 
 export const canActivateAuth: CanActivateFn =
-  (_route: ActivatedRouteSnapshot, _state: RouterStateSnapshot) =>
-    inject(CanActivateAuthService).canActivate();
+  (_route: ActivatedRouteSnapshot, state: RouterStateSnapshot) =>
+    inject(CanActivateAuthService).canActivate(state);

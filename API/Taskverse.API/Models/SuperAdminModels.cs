@@ -73,6 +73,44 @@ public class PagedUserSearchResponseModel
     public int PageSize { get; set; }
 }
 
+public class BulkStudentUploadRequestModel
+{
+    public List<BulkStudentUploadRowRequestModel> Rows { get; set; } = [];
+}
+
+public class BulkStudentUploadRowRequestModel
+{
+    public string FullName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string CollegeId { get; set; } = string.Empty;
+    public string ClassId { get; set; } = string.Empty;
+    public string BatchId { get; set; } = string.Empty;
+}
+
+public class BulkStudentUploadResultResponseModel
+{
+    public int CreatedCount { get; set; }
+    public int DuplicateCount { get; set; }
+    public int InvalidCount { get; set; }
+    public List<BulkStudentUploadCreatedUserResponseModel> CreatedUsers { get; set; } = [];
+    public List<BulkStudentUploadRowIssueResponseModel> DuplicateRows { get; set; } = [];
+    public List<BulkStudentUploadRowIssueResponseModel> InvalidRows { get; set; } = [];
+}
+
+public class BulkStudentUploadCreatedUserResponseModel
+{
+    public string FullName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+}
+
+public class BulkStudentUploadRowIssueResponseModel
+{
+    public int RowNumber { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+}
+
 public class SuperAdminDashboardResponseModel
 {
     public SuperAdminTotalsResponseModel Totals { get; set; } = new();

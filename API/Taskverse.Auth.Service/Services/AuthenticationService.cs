@@ -101,7 +101,8 @@ public class AuthenticationService : IAuthenticationService
                 CollegeId = user.CollegeId?.ToString(),
                 CollegeName = user.CollegeName,
                 Roles = [user.Role],
-                Status = user.Status.ToString()
+                Status = user.Status.ToString(),
+                MustChangePassword = user.MustChangePassword
             };
         }
         catch (UnauthorizedAccessException)
@@ -240,6 +241,59 @@ public class AuthenticationService : IAuthenticationService
         }
     }
 
+    public async Task ChangeTemporaryPasswordAsync(Guid userId, ChangeTemporaryPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.CurrentPassword) || string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            throw new InvalidOperationException("CurrentPassword and NewPassword are required.");
+        }
+
+        var user = await _context.Users.FirstOrDefaultAsync(item => item.Id == userId);
+        if (user is null)
+        {
+            throw new UnauthorizedAccessException("User was not found.");
+        }
+
+        if (!user.MustChangePassword)
+        {
+            throw new InvalidOperationException("This account is not awaiting a temporary password change.");
+        }
+
+        var passwordHasher = new PasswordHasher<User>();
+        var verificationResult = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword);
+        if (verificationResult == PasswordVerificationResult.Failed)
+        {
+            throw new InvalidOperationException("The current temporary password is incorrect.");
+        }
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+        user.PasswordHash = passwordHasher.HashPassword(user, request.NewPassword);
+        user.TemporaryPassword = null;
+        user.MustChangePassword = false;
+        user.PasswordChangedAt = DateTime.UtcNow;
+        user.ModifiedAt = DateTime.UtcNow;
+
+        if (IsBulkUploadedStudent(user))
+        {
+            await EnsureStudentRecordAsync(user);
+        }
+
+        var activeSessions = await _context.AuthSessions
+            .Where(session => session.UserId == userId && session.RevokedAt == null)
+            .ToListAsync();
+
+        var now = DateTime.UtcNow;
+        foreach (var session in activeSessions)
+        {
+            session.RevokedAt = now;
+            session.ModifiedAt = now;
+        }
+
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+    }
+
     private bool ShouldRotateAccessToken(string? accessToken)
     {
         if (string.IsNullOrWhiteSpace(accessToken))
@@ -284,6 +338,49 @@ public class AuthenticationService : IAuthenticationService
         }
 
         return null;
+    }
+
+    private bool IsBulkUploadedStudent(User user) =>
+        user.IsBulkUploaded &&
+        string.Equals(user.Role, "Student", StringComparison.OrdinalIgnoreCase);
+
+    private async Task EnsureStudentRecordAsync(User user)
+    {
+        if (!user.CollegeId.HasValue || !user.ClassId.HasValue || !user.BatchId.HasValue)
+        {
+            throw new InvalidOperationException("Bulk uploaded students must have college, class, and batch values before activation.");
+        }
+
+        var existingStudent = await _context.Students.FirstOrDefaultAsync(student => student.UserId == user.Id);
+        if (existingStudent is not null)
+        {
+            existingStudent.FullName = user.FullName;
+            existingStudent.Email = user.Email;
+            existingStudent.Phone = user.Phone;
+            existingStudent.CollegeId = user.CollegeId.Value;
+            existingStudent.ClassId = user.ClassId;
+            existingStudent.BatchId = user.BatchId;
+            existingStudent.Status = UserStatus.APPROVED;
+            existingStudent.ApprovedBy = user.UploadedBy;
+            existingStudent.ModifiedAt = DateTime.UtcNow;
+            return;
+        }
+
+        _context.Students.Add(new Student
+        {
+            StudentId = Guid.NewGuid(),
+            UserId = user.Id,
+            CollegeId = user.CollegeId.Value,
+            ClassId = user.ClassId,
+            BatchId = user.BatchId,
+            FullName = user.FullName,
+            Email = user.Email,
+            Phone = user.Phone,
+            Status = UserStatus.APPROVED,
+            CreatedAt = DateTime.UtcNow,
+            ModifiedAt = DateTime.UtcNow,
+            ApprovedBy = user.UploadedBy
+        });
     }
 
     private static (string FirstName, string LastName) SplitName(string fullName)

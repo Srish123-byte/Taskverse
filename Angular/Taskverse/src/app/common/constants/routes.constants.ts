@@ -5,6 +5,7 @@ export const RouteAddress = {
   SessionTimeout: 'session-timeout',
   RoleDirector:   'role-director',
   ApprovalStatus: 'approval-status',
+  ChangeTemporaryPassword: 'change-temporary-password',
   Error:          'error',
 
   SuperAdmin: {

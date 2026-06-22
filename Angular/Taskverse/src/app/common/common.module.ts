@@ -15,6 +15,7 @@ import { QuestionBankComponent } from './components/question-bank/question-bank.
 import { QuestionEditorComponent } from './components/question-editor/question-editor.component';
 import { AssessmentsManagementComponent } from './components/assessments-management/assessments-management.component';
 import { AssessmentCreatorComponent } from './components/assessment-creator/assessment-creator.component';
+import { StudentBulkUploadComponent } from './components/student-bulk-upload/student-bulk-upload.component';
 
 import { FormatPhone } from './pipes/format-phone.pipe';
 import { ToLowerCaseText } from './pipes/to-lower-case-text.pipe';
@@ -41,6 +42,7 @@ import { MaterialModule } from '../material.module';
     ProcessingOverlayComponent,
     SessionInactivityWarningComponent,
     QuestionBankComponent,
+    StudentBulkUploadComponent,
     AssessmentsManagementComponent,
     AssessmentCreatorComponent,
     QuestionEditorComponent,
@@ -57,6 +59,7 @@ import { MaterialModule } from '../material.module';
     ProcessingOverlayComponent,
     SessionInactivityWarningComponent,
     QuestionBankComponent,
+    StudentBulkUploadComponent,
     AssessmentsManagementComponent,
     AssessmentCreatorComponent,
     QuestionEditorComponent,
