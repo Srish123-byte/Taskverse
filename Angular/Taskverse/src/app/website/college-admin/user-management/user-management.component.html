@@ -19,6 +19,8 @@
     <div *ngIf="actionMessage && !errorMessage" class="page-state">{{ actionMessage }}</div>
 
     <div *ngIf="!isLoading && !errorMessage" class="users-page-shell">
+      <app-student-bulk-upload scope="college-admin"></app-student-bulk-upload>
+
       <section class="filters-shell">
         <div class="filter-field">
           <label for="roleFilter">Role Type</label>

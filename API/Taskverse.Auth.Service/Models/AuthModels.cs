@@ -20,6 +20,7 @@ public class LoginResponse
     public string? CollegeName { get; set; }
     public List<string> Roles { get; set; } = [];
     public string Status { get; set; }
+    public bool MustChangePassword { get; set; }
 }
 
 public class RefreshTokenRequest
@@ -54,4 +55,10 @@ public class LogoutRequest
 {
     public string? UserId { get; set; }
     public string? RefreshToken { get; set; }
+}
+
+public class ChangeTemporaryPasswordRequest
+{
+    public string CurrentPassword { get; set; } = default!;
+    public string NewPassword { get; set; } = default!;
 }

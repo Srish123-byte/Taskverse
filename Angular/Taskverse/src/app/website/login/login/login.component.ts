@@ -15,6 +15,7 @@ import { RouteAddress } from '../../../common/constants/routes.constants';
 import { RoleType } from '../../../common/enums/role-type.enum';
 import { SessionActivityService } from '../../../common/services/session/session-activity.service';
 import { Session } from '../../../common/services/session/session.service';
+import { SessionKey } from '../../../common/enums/session-key';
 
 export type AuthMode = 'login' | 'register';
 
@@ -68,8 +69,15 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     if (this.session.isLoggedIn()) {
-      void this.router.navigateByUrl(`/${RouteAddress.RoleDirector}`);
+      void this.router.navigateByUrl(this.session.mustChangePassword
+        ? `/${RouteAddress.ChangeTemporaryPassword}`
+        : `/${RouteAddress.RoleDirector}`);
       return;
+    }
+
+    if (sessionStorage.getItem(SessionKey.PasswordChangeSuccess) === 'true') {
+      this.successMessage = 'Password changed successfully. Please sign in with your new password.';
+      sessionStorage.removeItem(SessionKey.PasswordChangeSuccess);
     }
 
     this.loginForm = this.fb.group({
@@ -86,7 +94,6 @@ export class LoginComponent implements OnInit, OnDestroy {
       ]],
       email: ['', [
         Validators.required,
-        Validators.email,
         strictEmailValidator
       ]],
       phone: ['', [
@@ -166,11 +173,17 @@ export class LoginComponent implements OnInit, OnDestroy {
         this.session.refreshToken = response.refreshToken;
         this.session.accessTokenExpiresAt = response.expiresAt;
         this.session.lastActivityAt = new Date().toISOString();
+        this.session.mustChangePassword = !!response.user.mustChangePassword;
         this.session.user = response.user;
         this.session.userEmail = response.user.email;
         this.session.userId = response.user.userId;
         this.session.role = response.user.role;
         this.sessionActivityService.registerActivity();
+        if (this.session.mustChangePassword) {
+          this.navigateToChangeTemporaryPassword();
+          return;
+        }
+
         this.navigateToLandingPage();
       },
       error: err => {
@@ -238,6 +251,14 @@ export class LoginComponent implements OnInit, OnDestroy {
     void this.router.navigateByUrl(`/${RouteAddress.RoleDirector}`)
       .catch(() => {
         this.errorMessage = 'Signed in, but we could not open your dashboard.';
+      });
+  }
+
+  private navigateToChangeTemporaryPassword(): void {
+    this.isLoading = false;
+    void this.router.navigateByUrl(`/${RouteAddress.ChangeTemporaryPassword}`)
+      .catch(() => {
+        this.errorMessage = 'Signed in, but we could not open the temporary password change screen.';
       });
   }
 

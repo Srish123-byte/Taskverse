@@ -324,44 +324,71 @@ namespace Taskverse.Data.Migrations
                     b.Property<Guid?>("ApprovedBy")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("BatchId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("BatchId1")
+                    b.Property<Guid?>("BatchId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("CollegeId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ClassId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CurrentStreak")
+                        .HasColumnType("integer")
+                        .HasColumnName("current_streak");
+
+                    b.Property<DateTime?>("DateOfBirth")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_of_birth");
 
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("EnrollmentNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("enrollment_number");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("LastAssessmentDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_assessment_date");
+
+                    b.Property<int?>("LongestStreak")
+                        .HasColumnType("integer")
+                        .HasColumnName("longest_streak");
+
                     b.Property<DateTime>("ModifiedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("phone");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
 
-                    b.Property<int>("StatusId")
-                        .HasColumnType("integer");
+                    b.Property<int?>("TotalAssessmentsTaken")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_assessments_taken");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("StudentId");
 
-                    b.HasIndex("BatchId");
+                    b.HasIndex("ClassId");
 
-                    b.HasIndex("BatchId1");
+                    b.HasIndex("BatchId");
 
                     b.HasIndex("CollegeId");
 
@@ -493,14 +520,34 @@ namespace Taskverse.Data.Migrations
                         .HasColumnName("modified_at")
                         .HasDefaultValueSql("now()");
 
+                    b.Property<bool>("MustChangePassword")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasColumnName("must_change_password")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
 
+                    b.Property<string>("TemporaryPassword")
+                        .HasColumnType("text")
+                        .HasColumnName("temporary_password");
+
+                    b.Property<DateTime?>("PasswordChangedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("password_changed_at");
+
                     b.Property<string>("Phone")
                         .HasColumnType("text")
                         .HasColumnName("phone");
+
+                    b.Property<bool>("IsBulkUploaded")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_bulk_uploaded")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("Role")
                         .IsRequired()
@@ -510,6 +557,14 @@ namespace Taskverse.Data.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
+
+                    b.Property<DateTime?>("TempPasswordIssuedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("temp_password_issued_at");
+
+                    b.Property<Guid?>("UploadedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uploaded_by");
 
                     b.HasKey("Id");
 
@@ -523,6 +578,8 @@ namespace Taskverse.Data.Migrations
                         .IsUnique();
 
                     b.HasIndex("Role");
+
+                    b.HasIndex("UploadedBy");
 
                     b.ToTable("users", (string)null);
                 });
@@ -573,12 +630,14 @@ namespace Taskverse.Data.Migrations
                     b.HasOne("Taskverse.Data.DataAccess.Batch", "Batch")
                         .WithMany()
                         .HasForeignKey("BatchId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_students_batch");
 
-                    b.HasOne("Taskverse.Data.DataAccess.Batch", null)
+                    b.HasOne("Taskverse.Data.DataAccess.Class", "Class")
                         .WithMany("Students")
-                        .HasForeignKey("BatchId1");
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_students_class");
 
                     b.HasOne("Taskverse.Data.DataAccess.College", "College")
                         .WithMany()
@@ -593,6 +652,8 @@ namespace Taskverse.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Batch");
+
+                    b.Navigation("Class");
 
                     b.Navigation("College");
 
@@ -658,6 +719,12 @@ namespace Taskverse.Data.Migrations
 
             modelBuilder.Entity("Taskverse.Data.DataAccess.User", b =>
                 {
+                    b.HasOne("Taskverse.Data.DataAccess.User", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedBy")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_users_uploaded_by");
+
                     b.HasOne("Taskverse.Data.DataAccess.Batch", null)
                         .WithMany()
                         .HasForeignKey("BatchId")

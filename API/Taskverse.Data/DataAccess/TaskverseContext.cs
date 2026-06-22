@@ -83,6 +83,12 @@ public class TaskverseContext : DbContext
             entity.Property(u => u.BatchId).HasColumnName("batch_id");
             entity.Property(u => u.ClassId).HasColumnName("class_id");
             entity.Property(u => u.PasswordHash).HasColumnName("password_hash").IsRequired();
+            entity.Property(u => u.TemporaryPassword).HasColumnName("temporary_password");
+            entity.Property(u => u.UploadedBy).HasColumnName("uploaded_by");
+            entity.Property(u => u.IsBulkUploaded).HasColumnName("is_bulk_uploaded").HasDefaultValue(false);
+            entity.Property(u => u.MustChangePassword).HasColumnName("must_change_password").HasDefaultValue(false);
+            entity.Property(u => u.TempPasswordIssuedAt).HasColumnName("temp_password_issued_at");
+            entity.Property(u => u.PasswordChangedAt).HasColumnName("password_changed_at");
             entity.Property(u => u.Status).HasColumnName("status");
 
             entity.HasIndex(u => u.Email).IsUnique();
@@ -90,6 +96,7 @@ public class TaskverseContext : DbContext
             entity.HasIndex(u => u.Role);
             entity.HasIndex(u => u.BatchId);
             entity.HasIndex(u => u.ClassId);
+            entity.HasIndex(u => u.UploadedBy);
 
             // Foreign key: users.college_id -> colleges.college_id
             entity.HasOne<College>()
@@ -119,6 +126,12 @@ public class TaskverseContext : DbContext
                 .HasForeignKey(u => u.ClassId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("fk_users_class");
+
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(u => u.UploadedBy)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_users_uploaded_by");
         });
 
         // Configure Class entity

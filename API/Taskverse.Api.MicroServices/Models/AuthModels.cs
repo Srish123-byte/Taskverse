@@ -13,7 +13,8 @@ public record LoginResponseModel(
     string CollegeId,
     string CollegeName,
     List<string> Roles,
-    string Status);
+    string Status,
+    bool MustChangePassword);
 
 public record RefreshTokenResponseModel(
     string AccessToken,
@@ -31,3 +32,8 @@ public record ValidateTokenResponseModel(
     string? UserId,
     List<string>? Roles,
     DateTime? ExpiresAt);
+
+public record ChangeTemporaryPasswordRequestModel(
+    string UserId,
+    string CurrentPassword,
+    string NewPassword);

@@ -19,14 +19,17 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 
     private readonly IMicroServiceOrchestrator _microServiceOrchestrator;
     private readonly IDbContextFactory<TaskverseContext> _dbContextFactory;
+    private readonly IBulkStudentUploadService _bulkStudentUploadService;
     private static readonly ILog _log = LogManager.GetLogger(typeof(SuperAdminOrchestrator));
 
     public SuperAdminOrchestrator(
         IMicroServiceOrchestrator microServiceOrchestrator,
-        IDbContextFactory<TaskverseContext> dbContextFactory)
+        IDbContextFactory<TaskverseContext> dbContextFactory,
+        IBulkStudentUploadService bulkStudentUploadService)
     {
         _microServiceOrchestrator = microServiceOrchestrator;
         _dbContextFactory = dbContextFactory;
+        _bulkStudentUploadService = bulkStudentUploadService;
     }
 
     public async Task<SuperAdminDashboardDto> GetDashboard()
@@ -210,6 +213,9 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
         var affectedRows = await context.SaveChangesAsync();
         _log.Debug($"SuperAdminOrchestrator.RejectUser: persisted rejection for userId={userId}, affectedRows={affectedRows}");
     }
+
+    public Task<BulkStudentUploadResultDto> BulkUploadStudents(BulkStudentUploadRequestDto dto) =>
+        _bulkStudentUploadService.UploadAsync(dto);
 
     private async Task<CollegeDto> ExecuteCollegeAction(
         string operationName,

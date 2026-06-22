@@ -23,6 +23,12 @@ public class User
         public Guid? ClassId { get; set; }
 
         public string PasswordHash { get; set; } = null!;
+        public string? TemporaryPassword { get; set; }
+        public Guid? UploadedBy { get; set; }
+        public bool IsBulkUploaded { get; set; }
+        public bool MustChangePassword { get; set; }
+        public DateTime? TempPasswordIssuedAt { get; set; }
+        public DateTime? PasswordChangedAt { get; set; }
 
         public UserStatus Status { get; set; }
 }

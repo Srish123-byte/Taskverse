@@ -20,13 +20,16 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
 
     private readonly IMicroServiceOrchestrator _microServiceOrchestrator;
     private readonly IDbContextFactory<TaskverseContext> _dbContextFactory;
+    private readonly IBulkStudentUploadService _bulkStudentUploadService;
 
     public CollegeAdminOrchestrator(
         IMicroServiceOrchestrator microServiceOrchestrator,
-        IDbContextFactory<TaskverseContext> dbContextFactory)
+        IDbContextFactory<TaskverseContext> dbContextFactory,
+        IBulkStudentUploadService bulkStudentUploadService)
     {
         _microServiceOrchestrator = microServiceOrchestrator;
         _dbContextFactory = dbContextFactory;
+        _bulkStudentUploadService = bulkStudentUploadService;
     }
 
     public async Task<CollegeAdminDashboardDto> GetDashboard(Guid collegeId)
@@ -496,6 +499,12 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
         _log.Debug($"CollegeAdminOrchestrator.RejectUser: collegeId={collegeId}, userId={userId}");
         var result = await _microServiceOrchestrator.RejectCollegeUser(collegeId.ToString(), userId, dto.ToMicroServiceModel());
         EnsureMicroServiceSuccess(result, nameof(RejectUser));
+    }
+
+    public Task<BulkStudentUploadResultDto> BulkUploadStudents(Guid collegeId, BulkStudentUploadRequestDto dto)
+    {
+        dto.RestrictedCollegeId = collegeId;
+        return _bulkStudentUploadService.UploadAsync(dto);
     }
 
     private async Task<CollegeAdminTotalsDto> GetDashboardTotals(Guid collegeId)

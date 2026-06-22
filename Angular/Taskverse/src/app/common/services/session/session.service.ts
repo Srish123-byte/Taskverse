@@ -75,6 +75,13 @@ export class Session {
     this.storage.setItem(SessionKey.CollegeId, value);
   }
 
+  get mustChangePassword(): boolean {
+    return this.storage.getItem(SessionKey.MustChangePassword) === 'true';
+  }
+  set mustChangePassword(value: boolean) {
+    this.storage.setItem(SessionKey.MustChangePassword, String(value));
+  }
+
   // In-memory user profile (reactive)
   get user(): User | null {
     return this._user$.value;
@@ -98,6 +105,7 @@ export class Session {
     this.storage.removeItem(SessionKey.UserId);
     this.storage.removeItem(SessionKey.Role);
     this.storage.removeItem(SessionKey.CollegeId);
+    this.storage.removeItem(SessionKey.MustChangePassword);
   }
 
   private syncCollegeId(user: User | null): void {

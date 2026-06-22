@@ -19,4 +19,5 @@ public interface ICollegeAdminOrchestrator
     Task DeleteBatch(Guid collegeId, string classId, string batchId);
     Task ApproveUser(Guid collegeId, string userId, UserActionDto dto);
     Task RejectUser(Guid collegeId, string userId, UserActionDto dto);
+    Task<BulkStudentUploadResultDto> BulkUploadStudents(Guid collegeId, BulkStudentUploadRequestDto dto);
 }

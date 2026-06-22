@@ -27,6 +27,7 @@ public class CurrentUserResponseModel
     public string Role { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public string Status { get; set; } = string.Empty;
+    public bool MustChangePassword { get; set; }
 }
 
 public class RefreshLoginResponseModel
@@ -60,4 +61,10 @@ public class ValidateTokenResponseModel
     public string? UserId { get; set; }
     public List<string>? Roles { get; set; }
     public DateTime? ExpiresAt { get; set; }
+}
+
+public class ChangeTemporaryPasswordRequestModel
+{
+    [Required] public string CurrentPassword { get; set; } = string.Empty;
+    [Required] public string NewPassword { get; set; } = string.Empty;
 }

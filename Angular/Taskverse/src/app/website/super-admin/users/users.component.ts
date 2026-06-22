@@ -1,4 +1,5 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { NavigationEnd, Router } from '@angular/router';
 import { Subject, Subscription, filter, takeUntil } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -12,6 +13,13 @@ import { SuperAdminService } from '../../../common/services/api/super-admin.serv
   styleUrl: './users.component.scss'
 })
 export class UsersComponent implements OnInit, OnDestroy {
+  private static readonly actionSnackBarConfig = {
+    duration: 3500,
+    horizontalPosition: 'center' as const,
+    verticalPosition: 'top' as const,
+    panelClass: ['question-editor-success-snackbar']
+  };
+
   // Data
   users: PendingUser[] = [];
   availableRoles: string[] = [];
@@ -30,7 +38,6 @@ export class UsersComponent implements OnInit, OnDestroy {
   isLoading = false;
   activeUserId: string | null = null;
   errorMessage = '';
-  actionMessage = '';
 
   private readonly searchSubject = new Subject<void>();
   private routeSubscription?: Subscription;
@@ -46,7 +53,8 @@ export class UsersComponent implements OnInit, OnDestroy {
   constructor(
     private readonly superAdminService: SuperAdminService,
     private readonly router: Router,
-    private readonly changeDetectorRef: ChangeDetectorRef
+    private readonly changeDetectorRef: ChangeDetectorRef,
+    private readonly snackBar: MatSnackBar
   ) {}
 
   ngOnInit(): void {
@@ -163,11 +171,10 @@ export class UsersComponent implements OnInit, OnDestroy {
     if (this.activeUserId) return;
     this.activeUserId = user.userId;
     this.errorMessage = '';
-    this.actionMessage = '';
 
     this.superAdminService.approveUser(user.userId).subscribe({
       next: () => {
-        this.actionMessage = `${user.fullName} has been approved.`;
+        this.showActionMessage(`${user.fullName} has been approved.`);
         this.activeUserId = null;
         this.loadUsers();
       },
@@ -183,11 +190,10 @@ export class UsersComponent implements OnInit, OnDestroy {
     if (this.activeUserId) return;
     this.activeUserId = user.userId;
     this.errorMessage = '';
-    this.actionMessage = '';
 
     this.superAdminService.rejectUser(user.userId).subscribe({
       next: () => {
-        this.actionMessage = `${user.fullName} has been rejected.`;
+        this.showActionMessage(`${user.fullName} has been rejected.`);
         this.activeUserId = null;
         this.loadUsers();
       },
@@ -197,6 +203,10 @@ export class UsersComponent implements OnInit, OnDestroy {
         this.changeDetectorRef.detectChanges();
       }
     });
+  }
+
+  private showActionMessage(message: string): void {
+    this.snackBar.open(message, 'Close', UsersComponent.actionSnackBarConfig);
   }
 
   // ── Data loading ─────────────────────────────────────────────────────
