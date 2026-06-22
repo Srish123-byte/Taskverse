@@ -13,7 +13,7 @@ public interface IQuestionManager
     /// </summary>
     /// <param name="questions">The imported question rows to validate and save.</param>
     /// <returns>The saved questions.</returns>
-    Task<List<Question>> CreateQuestions(List<QuestionImportItem> questions);
+    Task<List<QuestionRecord>> CreateQuestions(List<QuestionImportItem> questions);
 
     /// <summary>
     /// Returns the active subject-topic classification catalog for question creation flows.
@@ -27,16 +27,16 @@ public interface IQuestionManager
     /// <param name="collegeId">The college identifier.</param>
     /// <param name="questionId">The question identifier.</param>
     /// <returns>The requested question.</returns>
-    Task<Question> GetQuestionById(Guid collegeId, Guid questionId);
+    Task<QuestionRecord> GetQuestionById(Guid collegeId, Guid questionId);
 
     /// <summary>
     /// Updates an existing question in the question bank.
     /// </summary>
     /// <param name="questionId">The question identifier.</param>
-    /// <param name="updatedQuestion">The updated question payload.</param>
+    /// <param name="request">The updated question payload.</param>
     /// <param name="requesterRole">The role of the caller performing the update.</param>
     /// <returns>The updated question.</returns>
-    Task<Question> UpdateQuestion(Guid questionId, Question updatedQuestion, string? requesterRole);
+    Task<QuestionRecord> UpdateQuestion(Guid questionId, CreateQuestionRequest request, string? requesterRole);
 
     /// <summary>
     /// Deletes one or more questions after enforcing role and assessment status restrictions.
@@ -60,7 +60,7 @@ public interface IQuestionManager
     /// <param name="pageNumber">The requested page number.</param>
     /// <param name="pageSize">The requested page size.</param>
     /// <returns>The paged questions and the total match count.</returns>
-    Task<(List<Question> Items, int TotalCount)> SearchQuestionBank(
+    Task<(List<QuestionRecord> Items, int TotalCount)> SearchQuestionBank(
         Guid collegeId,
         int? difficultyLevel,
         Guid? subjectId,

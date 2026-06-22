@@ -1,18 +1,21 @@
 import { Location } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectorRef, Component, HostBinding, Input, OnDestroy, OnInit } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { HttpErrorResponse } from '@angular/common/http';
 import { Subject, takeUntil } from 'rxjs';
 import {
   AssessmentAdminService,
+  CodingQuestionExample,
+  CodingTestCase,
   CreateQuestionRequest,
   PagedQuestionBankResult,
   QuestionClassificationCatalog,
   QuestionBankItem
 } from '../../services/api/assessment-admin.service';
 
-type QuestionType = 'mcq' | 'fill in the blanks';
+type EditorMode = 'coding' | 'non-coding';
+type QuestionType = 'mcq' | 'fill in the blanks' | 'coding';
 
 @Component({
   selector: 'app-question-editor',
@@ -23,6 +26,7 @@ type QuestionType = 'mcq' | 'fill in the blanks';
 export class QuestionEditorComponent implements OnInit, OnDestroy {
   private static readonly addNewOptionValue = '__add_new__';
   private static readonly fillInTheBlankPlaceholderPattern = /_{3,}/;
+  private static readonly codingQuestionType = 'coding';
 
   @Input() theme: 'college-admin' | 'trainer' = 'college-admin';
   @Input() questionBankRoute = '';
@@ -49,6 +53,24 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
     { value: 'fill in the blanks', label: 'Fill in the Blanks' }
   ];
 
+  readonly codingLanguageOptions = [
+    { value: 'python', label: 'Python' },
+    { value: 'javascript', label: 'JavaScript' },
+    { value: 'java', label: 'Java' },
+    { value: 'csharp', label: 'C#' },
+    { value: 'cpp', label: 'C++' },
+    { value: 'c', label: 'C' }
+  ];
+
+  readonly comparisonModeOptions = [
+    { value: 1, label: 'exact' },
+    { value: 2, label: 'trimmed' },
+    { value: 3, label: 'case_insensitive' },
+    { value: 4, label: 'json' },
+    { value: 5, label: 'numeric_tolerance' },
+    { value: 6, label: 'unordered_json' }
+  ];
+
   readonly form: FormGroup;
 
   subjectOptions: string[] = [];
@@ -60,6 +82,7 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
   subjectSelection = '';
   topicSelection = '';
 
+  editorMode: EditorMode = 'non-coding';
   isLoading = false;
   isSaving = false;
   isEditMode = false;
@@ -79,14 +102,14 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
     private readonly changeDetectorRef: ChangeDetectorRef
   ) {
     this.form = this.formBuilder.group({
-      stream: ['', [Validators.required, Validators.maxLength(100)]],
-      subject: ['', [Validators.required, Validators.maxLength(100)]],
-      topic: ['', [Validators.required, Validators.maxLength(200)]],
+      stream: ['', [Validators.maxLength(100)]],
+      subject: ['', [Validators.maxLength(100)]],
+      topic: ['', [Validators.maxLength(200)]],
       topicTag: ['', [Validators.required, Validators.maxLength(500)]],
       difficultyLevel: [1, [Validators.required]],
       questionType: ['mcq' as QuestionType, [Validators.required]],
       allowMultipleAnswers: [false],
-      questionText: ['', [Validators.required, this.fillInTheBlankQuestionTextValidator()]],
+      questionText: ['', [this.fillInTheBlankQuestionTextValidator()]],
       marks: [1, [Validators.required, Validators.min(0)]],
       negativeMarks: [0, [Validators.required, Validators.min(0)]],
       options: this.formBuilder.array([
@@ -95,9 +118,21 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
         this.createOptionControl(),
         this.createOptionControl()
       ]),
-      answer: ['', [Validators.required]],
+      answer: [''],
       correctAnswers: this.formBuilder.control<string[]>([]),
-      explanation: ['', [Validators.maxLength(1000)]]
+      explanation: ['', [Validators.maxLength(1000)]],
+      questionTitle: ['', [Validators.maxLength(250)]],
+      problemStatement: [''],
+      detailedDescription: [''],
+      inputFormat: [''],
+      outputFormat: [''],
+      constraintsText: [''],
+      defaultLanguageCode: ['python'],
+      defaultTimeLimitMs: [3000, [Validators.min(1)]],
+      defaultMemoryLimitKb: [262144, [Validators.min(1)]],
+      defaultMaxCodeSizeKb: [512, [Validators.min(1)]],
+      examples: this.formBuilder.array([this.createExampleGroup()]),
+      testCases: this.formBuilder.array([this.createTestCaseGroup(true)])
     });
   }
 
@@ -105,17 +140,23 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
     this.questionId = this.route.snapshot.paramMap.get('id') ?? '';
     this.isEditMode = this.questionId.length > 0;
     this.fallbackReturnUrl = (history.state?.returnUrl as string | undefined) ?? '';
-    this.loadExistingValues();
+
+    this.editorMode = this.resolveEditorMode(this.route.snapshot.queryParamMap.get('question_type'));
+    this.applyEditorModeRules();
+
     if (this.isEditMode) {
       this.loadQuestionForEdit();
+    } else {
+      this.loadExistingValues();
     }
-    this.applyQuestionTypeRules(this.questionTypeControl.value ?? 'mcq');
-    this.questionTypeControl.valueChanges.subscribe(value => {
-      this.applyQuestionTypeRules(value ?? 'mcq');
-    });
-    this.allowMultipleAnswersControl.valueChanges.subscribe(() => {
-      this.applyQuestionTypeRules(this.questionTypeControl.value ?? 'mcq');
-    });
+
+    this.questionTypeControl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(value => this.applyQuestionTypeRules((value ?? 'mcq') as QuestionType));
+
+    this.allowMultipleAnswersControl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.applyQuestionTypeRules((this.questionTypeControl.value ?? 'mcq') as QuestionType));
   }
 
   ngOnDestroy(): void {
@@ -125,6 +166,14 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
 
   get optionsArray(): FormArray<FormControl<string | null>> {
     return this.form.get('options') as FormArray<FormControl<string | null>>;
+  }
+
+  get examplesArray(): FormArray<FormGroup> {
+    return this.form.get('examples') as FormArray<FormGroup>;
+  }
+
+  get testCasesArray(): FormArray<FormGroup> {
+    return this.form.get('testCases') as FormArray<FormGroup>;
   }
 
   get questionTypeControl(): FormControl<QuestionType | null> {
@@ -179,17 +228,60 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
     return this.form.get('explanation') as FormControl<string | null>;
   }
 
+  get questionTitleControl(): FormControl<string | null> {
+    return this.form.get('questionTitle') as FormControl<string | null>;
+  }
+
+  get problemStatementControl(): FormControl<string | null> {
+    return this.form.get('problemStatement') as FormControl<string | null>;
+  }
+
+  get detailedDescriptionControl(): FormControl<string | null> {
+    return this.form.get('detailedDescription') as FormControl<string | null>;
+  }
+
+  get inputFormatControl(): FormControl<string | null> {
+    return this.form.get('inputFormat') as FormControl<string | null>;
+  }
+
+  get outputFormatControl(): FormControl<string | null> {
+    return this.form.get('outputFormat') as FormControl<string | null>;
+  }
+
+  get constraintsTextControl(): FormControl<string | null> {
+    return this.form.get('constraintsText') as FormControl<string | null>;
+  }
+
+  get defaultLanguageCodeControl(): FormControl<string | null> {
+    return this.form.get('defaultLanguageCode') as FormControl<string | null>;
+  }
+
+  get defaultTimeLimitMsControl(): FormControl<number | null> {
+    return this.form.get('defaultTimeLimitMs') as FormControl<number | null>;
+  }
+
+  get defaultMemoryLimitKbControl(): FormControl<number | null> {
+    return this.form.get('defaultMemoryLimitKb') as FormControl<number | null>;
+  }
+
+  get defaultMaxCodeSizeKbControl(): FormControl<number | null> {
+    return this.form.get('defaultMaxCodeSizeKb') as FormControl<number | null>;
+  }
+
+  get isCodingEditor(): boolean {
+    return this.editorMode === 'coding';
+  }
+
   get isMcq(): boolean {
     return this.questionTypeControl.value === 'mcq';
   }
 
   get isMultiCorrectMcq(): boolean {
-    return this.isMcq && !!this.allowMultipleAnswersControl.value;
+    return !this.isCodingEditor && this.isMcq && !!this.allowMultipleAnswersControl.value;
   }
 
   get usesSelectableOptions(): boolean {
-    const questionType = this.questionTypeControl.value;
-    return questionType === 'mcq' || questionType === 'fill in the blanks';
+    return !this.isCodingEditor;
   }
 
   get addNewOptionValue(): string {
@@ -208,15 +300,19 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
     return this.topicSelection === this.addNewOptionValue;
   }
 
-  get canGoBack(): boolean {
-    return window.history.length > 1;
-  }
-
   get pageTitle(): string {
+    if (this.isCodingEditor) {
+      return this.isEditMode ? 'Edit Coding Question' : 'Add New Coding Question';
+    }
+
     return this.isEditMode ? 'Edit Question' : 'Add New Question';
   }
 
   get pageDescription(): string {
+    if (this.isCodingEditor) {
+      return 'Design a complex algorithmic challenge for technical evaluations.';
+    }
+
     return this.isEditMode
       ? 'Modify the details of this question and keep your shared repository up to date.'
       : 'Create a question and save it directly into the shared repository.';
@@ -288,6 +384,31 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
     this.topicControl.setValue('', { emitEvent: false });
   }
 
+  addExample(): void {
+    this.examplesArray.push(this.createExampleGroup());
+  }
+
+  removeExample(index: number): void {
+    if (this.examplesArray.length === 1) {
+      this.examplesArray.at(0).reset({ input: '', output: '', explanation: '' });
+      return;
+    }
+
+    this.examplesArray.removeAt(index);
+  }
+
+  addTestCase(): void {
+    this.testCasesArray.push(this.createTestCaseGroup(false));
+  }
+
+  removeTestCase(index: number): void {
+    if (this.testCasesArray.length === 1) {
+      return;
+    }
+
+    this.testCasesArray.removeAt(index);
+  }
+
   goToQuestionBank(): void {
     if (!this.questionBankRoute) {
       return;
@@ -324,11 +445,7 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      if (this.questionTextControl.hasError('fillInTheBlankPlaceholder')) {
-        this.errorMessage = 'Fill in the blanks questions must include a blank shown with underscore characters like ____ in the question text.';
-      } else {
-        this.errorMessage = 'Please complete the required fields before saving.';
-      }
+      this.errorMessage = this.getValidationErrorMessage();
       return;
     }
 
@@ -344,7 +461,7 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
     if (this.isEditMode) {
       this.assessmentAdminService.updateQuestion(this.questionId, payload).subscribe({
         next: question => {
-          this.successMessage = 'Question updated successfully.';
+          this.successMessage = this.isCodingEditor ? 'Coding question updated successfully.' : 'Question updated successfully.';
           this.errorMessage = '';
           this.patchFormFromQuestion(question);
           this.isSaving = false;
@@ -363,7 +480,7 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
 
     this.assessmentAdminService.createQuestions([payload]).subscribe({
       next: () => {
-        this.successMessage = 'Question saved successfully.';
+        this.successMessage = this.isCodingEditor ? 'Coding question saved successfully.' : 'Question saved successfully.';
         this.errorMessage = '';
         this.resetForm();
         this.loadExistingValues();
@@ -372,7 +489,9 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
         this.errorMessage =
           error?.error?.detail ||
           error?.error?.message ||
-          'Unable to save the question to the repository right now.';
+          (this.isCodingEditor
+            ? 'Unable to save the coding question to the repository right now.'
+            : 'Unable to save the question to the repository right now.');
         this.successMessage = '';
         this.isSaving = false;
         this.changeDetectorRef.detectChanges();
@@ -407,7 +526,39 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
     return this.formBuilder.control('', Validators.required);
   }
 
+  private createExampleGroup(example?: CodingQuestionExample): FormGroup {
+    return this.formBuilder.group({
+      input: [example?.input ?? ''],
+      output: [example?.output ?? ''],
+      explanation: [example?.explanation ?? '']
+    });
+  }
+
+  private createTestCaseGroup(isSample: boolean, testCase?: CodingTestCase): FormGroup {
+    return this.formBuilder.group({
+      testCaseId: [testCase?.testCaseId ?? ''],
+      inputFormat: [testCase?.inputFormat ?? 'stdin', [Validators.required]],
+      inputData: [testCase?.inputData ?? ''],
+      expectedOutput: [testCase?.expectedOutput ?? '', [Validators.required]],
+      comparisonMode: [testCase?.comparisonMode ?? 2, [Validators.required, Validators.min(1)]],
+      numericTolerance: [testCase?.numericTolerance ?? null],
+      isHidden: [testCase?.isHidden ?? false],
+      isSample: [testCase?.isSample ?? isSample],
+      timeLimitMs: [testCase?.timeLimitMs ?? null],
+      memoryLimitKb: [testCase?.memoryLimitKb ?? null]
+    });
+  }
+
+  private resolveEditorMode(queryValue: string | null): EditorMode {
+    return queryValue?.trim().toLowerCase() === 'coding' ? 'coding' : 'non-coding';
+  }
+
   private loadExistingValues(): void {
+    if (this.isCodingEditor) {
+      this.changeDetectorRef.detectChanges();
+      return;
+    }
+
     this.loadQuestionClassificationCatalog();
     if (!this.isEditMode) {
       this.loadQuestionBankOptions();
@@ -418,9 +569,21 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
     this.beginLoading();
     this.errorMessage = '';
 
+    if (!this.isCodingEditor) {
+      this.loadQuestionClassificationCatalog();
+    }
+
     this.assessmentAdminService.getQuestion(this.questionId, true).subscribe({
       next: question => {
-        this.streamOptions = this.toDistinctSortedValues([question.stream]);
+        this.editorMode = question.questionType?.toLowerCase() === QuestionEditorComponent.codingQuestionType
+          ? 'coding'
+          : 'non-coding';
+
+        if (!this.isCodingEditor) {
+          this.streamOptions = this.toDistinctSortedValues([question.stream]);
+        }
+
+        this.applyEditorModeRules();
         this.patchFormFromQuestion(question);
         this.endLoading();
         this.changeDetectorRef.detectChanges();
@@ -470,13 +633,17 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
 
   private patchFormFromQuestion(question: QuestionBankItem): void {
     const questionType = (question.questionType?.toLowerCase() ?? 'mcq') as QuestionType;
+
+    if (questionType === 'coding') {
+      this.patchCodingQuestion(question);
+      return;
+    }
+
     const options = question.options ?? [];
     const correctAnswers = question.correctAnswers?.length
       ? question.correctAnswers
       : this.parseStoredAnswers(question.answer);
-    const answerLabels = this.usesOptionLabelAnswer(questionType)
-      ? this.resolveAnswerLabels(options, correctAnswers)
-      : [];
+    const answerLabels = this.resolveAnswerLabels(options, correctAnswers);
     const allowsMultipleAnswers = question.allowsMultipleAnswers || correctAnswers.length > 1;
 
     this.form.patchValue({
@@ -503,10 +670,47 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
     this.applyQuestionTypeRules(questionType);
   }
 
-  private resolveAnswerLabel(options: string[], answer: string | null | undefined): string {
-    const normalizedAnswer = answer?.trim().toLowerCase();
-    const selectedIndex = options.findIndex(option => option.trim().toLowerCase() === normalizedAnswer);
-    return selectedIndex >= 0 ? this.getOptionLabel(selectedIndex) : 'A';
+  private patchCodingQuestion(question: QuestionBankItem): void {
+    this.setArrayValues(
+      this.examplesArray,
+      question.examples?.length
+        ? question.examples.map(example => this.createExampleGroup(example))
+        : [this.createExampleGroup()]
+    );
+
+    this.setArrayValues(
+      this.testCasesArray,
+      question.testCases?.length
+        ? question.testCases.map(testCase => this.createTestCaseGroup(!!testCase.isSample, testCase))
+        : [this.createTestCaseGroup(true)]
+    );
+
+    this.form.patchValue({
+      topicTag: this.formatTopicTags(question.topicTag),
+      difficultyLevel: question.difficultyLevel ?? 1,
+      questionType: 'coding',
+      marks: question.marks ?? 100,
+      negativeMarks: 0,
+      explanation: question.explanation ?? '',
+      questionTitle: question.questionTitle ?? '',
+      problemStatement: question.problemStatement ?? question.questionText ?? '',
+      detailedDescription: question.detailedDescription ?? '',
+      inputFormat: question.inputFormat ?? '',
+      outputFormat: question.outputFormat ?? '',
+      constraintsText: question.constraintsText ?? '',
+      defaultLanguageCode: question.defaultLanguageCode ?? 'python',
+      defaultTimeLimitMs: question.defaultTimeLimitMs ?? 3000,
+      defaultMemoryLimitKb: question.defaultMemoryLimitKb ?? 262144,
+      defaultMaxCodeSizeKb: question.defaultMaxCodeSizeKb ?? 512
+    }, { emitEvent: false });
+  }
+
+  private setArrayValues(target: FormArray<FormGroup>, groups: FormGroup[]): void {
+    while (target.length > 0) {
+      target.removeAt(0);
+    }
+
+    groups.forEach(group => target.push(group));
   }
 
   private resolveAnswerLabels(options: string[], answers: string[] | null | undefined): string[] {
@@ -568,65 +772,137 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
         : 'Unable to update the question right now.');
   }
 
+  private applyEditorModeRules(): void {
+    if (this.isCodingEditor) {
+      this.streamControl.clearValidators();
+      this.subjectControl.clearValidators();
+      this.topicControl.clearValidators();
+      this.questionTypeControl.setValue('coding', { emitEvent: false });
+      this.questionTypeControl.disable({ emitEvent: false });
+      this.negativeMarksControl.setValue(0, { emitEvent: false });
+      this.negativeMarksControl.disable({ emitEvent: false });
+      this.questionTitleControl.addValidators(Validators.required);
+      this.problemStatementControl.addValidators(Validators.required);
+      this.questionTextControl.clearValidators();
+      this.applyQuestionTypeRules('coding');
+      return;
+    }
+
+    this.questionTypeControl.enable({ emitEvent: false });
+    this.negativeMarksControl.enable({ emitEvent: false });
+    this.streamControl.setValidators([Validators.required, Validators.maxLength(100)]);
+    this.subjectControl.setValidators([Validators.required, Validators.maxLength(100)]);
+    this.topicControl.setValidators([Validators.required, Validators.maxLength(200)]);
+    this.questionTitleControl.clearValidators();
+    this.problemStatementControl.clearValidators();
+    this.questionTypeControl.setValue(
+      this.questionTypeControl.value === 'fill in the blanks' ? 'fill in the blanks' : 'mcq',
+      { emitEvent: false }
+    );
+    this.applyQuestionTypeRules((this.questionTypeControl.value ?? 'mcq') as QuestionType);
+  }
+
   private applyQuestionTypeRules(questionType: QuestionType): void {
+    this.streamControl.updateValueAndValidity({ emitEvent: false });
+    this.subjectControl.updateValueAndValidity({ emitEvent: false });
+    this.topicControl.updateValueAndValidity({ emitEvent: false });
+    this.questionTitleControl.updateValueAndValidity({ emitEvent: false });
+    this.problemStatementControl.updateValueAndValidity({ emitEvent: false });
+
+    if (questionType === 'coding') {
+      this.syncCodingTestCaseValidators(true);
+      this.optionsArray.controls.forEach(control => {
+        control.clearValidators();
+        control.updateValueAndValidity({ emitEvent: false });
+      });
+      this.answerControl.clearValidators();
+      this.answerControl.updateValueAndValidity({ emitEvent: false });
+      this.correctAnswersControl.clearValidators();
+      this.correctAnswersControl.updateValueAndValidity({ emitEvent: false });
+      this.defaultTimeLimitMsControl.addValidators([Validators.required, Validators.min(1)]);
+      this.defaultMemoryLimitKbControl.addValidators([Validators.required, Validators.min(1)]);
+      this.defaultMaxCodeSizeKbControl.addValidators([Validators.required, Validators.min(1)]);
+      this.questionTextControl.updateValueAndValidity({ emitEvent: false });
+      return;
+    }
+
+    this.syncCodingTestCaseValidators(false);
+    this.defaultTimeLimitMsControl.clearValidators();
+    this.defaultMemoryLimitKbControl.clearValidators();
+    this.defaultMaxCodeSizeKbControl.clearValidators();
+
     if (questionType !== 'mcq' && this.allowMultipleAnswersControl.value) {
       this.allowMultipleAnswersControl.setValue(false, { emitEvent: false });
     }
 
-    if (questionType === 'mcq' || questionType === 'fill in the blanks') {
-      this.optionsArray.controls.forEach(control => {
-        control.addValidators(Validators.required);
-        control.updateValueAndValidity({ emitEvent: false });
-      });
+    this.optionsArray.controls.forEach(control => {
+      control.addValidators(Validators.required);
+      control.updateValueAndValidity({ emitEvent: false });
+    });
 
-      const selectedLabels = this.normalizeSelectionLabels(this.correctAnswersControl.value ?? []);
-      const currentAnswer = this.answerControl.value ?? '';
-      const isMultiCorrectMcq = questionType === 'mcq' && !!this.allowMultipleAnswersControl.value;
+    const selectedLabels = this.normalizeSelectionLabels(this.correctAnswersControl.value ?? []);
+    const currentAnswer = this.answerControl.value ?? '';
+    const isMultiCorrectMcq = questionType === 'mcq' && !!this.allowMultipleAnswersControl.value;
 
-      if (isMultiCorrectMcq) {
-        this.answerControl.clearValidators();
-        this.answerControl.updateValueAndValidity({ emitEvent: false });
-        this.correctAnswersControl.setValidators([this.minSelectionCountValidator(1)]);
-        this.correctAnswersControl.setValue(
-          selectedLabels.length > 0
-            ? selectedLabels
-            : (['A', 'B', 'C', 'D'].includes(currentAnswer) ? [currentAnswer] : []),
-          { emitEvent: false });
-        this.correctAnswersControl.updateValueAndValidity({ emitEvent: false });
-        this.questionTextControl.updateValueAndValidity({ emitEvent: false });
-        return;
-      }
-
-      const nextAnswer = ['A', 'B', 'C', 'D'].includes(currentAnswer)
-        ? currentAnswer
-        : selectedLabels[0] ?? 'A';
-      this.answerControl.setValue(nextAnswer, { emitEvent: false });
-      this.answerControl.addValidators(Validators.required);
+    if (isMultiCorrectMcq) {
+      this.answerControl.clearValidators();
       this.answerControl.updateValueAndValidity({ emitEvent: false });
-      this.correctAnswersControl.clearValidators();
-      this.correctAnswersControl.setValue([], { emitEvent: false });
+      this.correctAnswersControl.setValidators([this.minSelectionCountValidator(1)]);
+      this.correctAnswersControl.setValue(
+        selectedLabels.length > 0
+          ? selectedLabels
+          : (['A', 'B', 'C', 'D'].includes(currentAnswer) ? [currentAnswer] : []),
+        { emitEvent: false });
       this.correctAnswersControl.updateValueAndValidity({ emitEvent: false });
       this.questionTextControl.updateValueAndValidity({ emitEvent: false });
       return;
     }
 
-    this.optionsArray.controls.forEach(control => {
-      control.clearValidators();
-      control.setValue('', { emitEvent: false });
-      control.updateValueAndValidity({ emitEvent: false });
-    });
-
-    this.answerControl.setValue('', { emitEvent: false });
-    this.answerControl.addValidators(Validators.required);
+    const nextAnswer = ['A', 'B', 'C', 'D'].includes(currentAnswer)
+      ? currentAnswer
+      : selectedLabels[0] ?? 'A';
+    this.answerControl.setValue(nextAnswer, { emitEvent: false });
+    this.answerControl.setValidators([Validators.required]);
     this.answerControl.updateValueAndValidity({ emitEvent: false });
     this.correctAnswersControl.clearValidators();
     this.correctAnswersControl.setValue([], { emitEvent: false });
     this.correctAnswersControl.updateValueAndValidity({ emitEvent: false });
+    this.questionTextControl.setValidators([Validators.required, this.fillInTheBlankQuestionTextValidator()]);
     this.questionTextControl.updateValueAndValidity({ emitEvent: false });
   }
 
+  private syncCodingTestCaseValidators(isCoding: boolean): void {
+    this.testCasesArray.controls.forEach(group => {
+      const inputFormatControl = group.get('inputFormat');
+      const expectedOutputControl = group.get('expectedOutput');
+      const comparisonModeControl = group.get('comparisonMode');
+
+      if (!inputFormatControl || !expectedOutputControl || !comparisonModeControl) {
+        return;
+      }
+
+      if (isCoding) {
+        inputFormatControl.setValidators([Validators.required]);
+        expectedOutputControl.setValidators([Validators.required]);
+        comparisonModeControl.setValidators([Validators.required, Validators.min(1)]);
+      } else {
+        inputFormatControl.clearValidators();
+        expectedOutputControl.clearValidators();
+        comparisonModeControl.clearValidators();
+      }
+
+      inputFormatControl.updateValueAndValidity({ emitEvent: false });
+      expectedOutputControl.updateValueAndValidity({ emitEvent: false });
+      comparisonModeControl.updateValueAndValidity({ emitEvent: false });
+    });
+  }
+
   private buildPayload(): CreateQuestionRequest {
-    const questionType = this.questionTypeControl.value ?? 'mcq';
+    if (this.isCodingEditor) {
+      return this.buildCodingPayload();
+    }
+
+    const questionType = (this.questionTypeControl.value ?? 'mcq') as QuestionType;
     const correctAnswers = this.getCorrectAnswersPayloadValue(questionType);
 
     return {
@@ -636,11 +912,9 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
       topicTag: this.parseTopicTags(this.topicTagControl.value),
       questionType,
       questionText: this.questionTextControl.value?.trim() ?? '',
-      options: questionType === 'mcq' || questionType === 'fill in the blanks'
-        ? this.optionsArray.controls
-            .map(control => control.value?.trim() ?? '')
-            .filter(value => value.length > 0)
-        : undefined,
+      options: this.optionsArray.controls
+        .map(control => control.value?.trim() ?? '')
+        .filter(value => value.length > 0),
       answer: this.buildStoredAnswerPayload(correctAnswers),
       correctAnswers,
       explanation: this.explanationControl.value?.trim() || undefined,
@@ -650,12 +924,49 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
     };
   }
 
-  private getCorrectAnswersPayloadValue(questionType: QuestionType): string[] {
-    if (!this.usesOptionLabelAnswer(questionType)) {
-      const answer = this.answerControl.value?.trim() ?? '';
-      return answer ? [answer] : [];
-    }
+  private buildCodingPayload(): CreateQuestionRequest {
+    return {
+      topicTag: this.parseTopicTags(this.topicTagControl.value),
+      questionType: 'coding',
+      questionTitle: this.questionTitleControl.value?.trim() ?? '',
+      problemStatement: this.problemStatementControl.value?.trim() ?? '',
+      questionText: this.problemStatementControl.value?.trim() ?? '',
+      detailedDescription: this.detailedDescriptionControl.value?.trim() || undefined,
+      inputFormat: this.inputFormatControl.value?.trim() || undefined,
+      outputFormat: this.outputFormatControl.value?.trim() || undefined,
+      constraintsText: this.constraintsTextControl.value?.trim() || undefined,
+      explanation: this.explanationControl.value?.trim() || undefined,
+      marks: Number(this.marksControl.value ?? 0),
+      negativeMarks: 0,
+      difficultyLevel: Number(this.difficultyLevelControl.value ?? 1),
+      defaultLanguageCode: this.defaultLanguageCodeControl.value?.trim() || undefined,
+      defaultTimeLimitMs: Number(this.defaultTimeLimitMsControl.value ?? 3000),
+      defaultMemoryLimitKb: Number(this.defaultMemoryLimitKbControl.value ?? 262144),
+      defaultMaxCodeSizeKb: Number(this.defaultMaxCodeSizeKbControl.value ?? 512),
+      examples: this.examplesArray.controls
+        .map(group => ({
+          input: group.get('input')?.value?.trim() || undefined,
+          output: group.get('output')?.value?.trim() || undefined,
+          explanation: group.get('explanation')?.value?.trim() || undefined
+        }))
+        .filter(example => example.input || example.output || example.explanation),
+      testCases: this.testCasesArray.controls
+        .map(group => ({
+          testCaseId: group.get('testCaseId')?.value || undefined,
+          inputFormat: group.get('inputFormat')?.value?.trim() || 'stdin',
+          inputData: group.get('inputData')?.value?.trim() || undefined,
+          expectedOutput: group.get('expectedOutput')?.value?.trim() || undefined,
+          comparisonMode: Number(group.get('comparisonMode')?.value ?? 2),
+          numericTolerance: this.toNullableNumber(group.get('numericTolerance')?.value),
+          isHidden: !!group.get('isHidden')?.value,
+          isSample: !!group.get('isSample')?.value,
+          timeLimitMs: this.toNullableNumber(group.get('timeLimitMs')?.value),
+          memoryLimitKb: this.toNullableNumber(group.get('memoryLimitKb')?.value)
+        }))
+    };
+  }
 
+  private getCorrectAnswersPayloadValue(questionType: QuestionType): string[] {
     const selectedLabels = this.isMultiCorrectMcq
       ? this.correctAnswersControl.value ?? []
       : [this.answerControl.value ?? 'A'];
@@ -692,8 +1003,11 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
   }
 
   private syncClassificationSelections(): void {
-    this.subjectOptions = [...this.catalogSubjectOptions];
+    if (this.isCodingEditor) {
+      return;
+    }
 
+    this.subjectOptions = [...this.catalogSubjectOptions];
     this.topicOptions = this.resolveTopicOptions();
     this.streamSelection = this.resolveSelectionValue(this.streamControl.value, this.streamOptions);
     this.subjectSelection = this.resolveSelectionValue(this.subjectControl.value, this.subjectOptions);
@@ -728,18 +1042,30 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
       topic: '',
       topicTag: '',
       difficultyLevel: 1,
-      questionType: 'mcq',
+      questionType: this.isCodingEditor ? 'coding' : 'mcq',
       allowMultipleAnswers: false,
       questionText: '',
-      marks: 1,
+      marks: this.isCodingEditor ? 100 : 1,
       negativeMarks: 0,
       answer: 'A',
       correctAnswers: [],
-      explanation: ''
+      explanation: '',
+      questionTitle: '',
+      problemStatement: '',
+      detailedDescription: '',
+      inputFormat: '',
+      outputFormat: '',
+      constraintsText: '',
+      defaultLanguageCode: 'python',
+      defaultTimeLimitMs: 3000,
+      defaultMemoryLimitKb: 262144,
+      defaultMaxCodeSizeKb: 512
     });
 
     this.optionsArray.controls.forEach(control => control.setValue(''));
-    this.applyQuestionTypeRules('mcq');
+    this.setArrayValues(this.examplesArray, [this.createExampleGroup()]);
+    this.setArrayValues(this.testCasesArray, [this.createTestCaseGroup(true)]);
+    this.applyEditorModeRules();
     this.syncClassificationSelections();
     this.isSaving = false;
     this.changeDetectorRef.detectChanges();
@@ -757,10 +1083,6 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
         ? null
         : { fillInTheBlankPlaceholder: true };
     };
-  }
-
-  private usesOptionLabelAnswer(questionType: QuestionType): boolean {
-    return questionType === 'mcq' || questionType === 'fill in the blanks';
   }
 
   private minSelectionCountValidator(minimumCount: number): ValidatorFn {
@@ -787,18 +1109,18 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
     })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-      next: result => {
-        this.applyQuestionBankValues(result);
-        this.endLoading();
-      },
-      error: error => {
-        console.error('Failed to load question bank bootstrap data.', error);
-        this.streamOptions = [];
-        this.syncClassificationSelections();
-        this.endLoading();
-        this.changeDetectorRef.detectChanges();
-      }
-    });
+        next: result => {
+          this.applyQuestionBankValues(result);
+          this.endLoading();
+        },
+        error: error => {
+          console.error('Failed to load question bank bootstrap data.', error);
+          this.streamOptions = [];
+          this.syncClassificationSelections();
+          this.endLoading();
+          this.changeDetectorRef.detectChanges();
+        }
+      });
   }
 
   private loadQuestionClassificationCatalog(): void {
@@ -807,19 +1129,40 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
     this.assessmentAdminService.getQuestionClassificationCatalog()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-      next: catalog => {
-        this.applyQuestionClassificationCatalog(catalog);
-        this.endLoading();
-      },
-      error: error => {
-        console.error('Failed to load question classification catalog.', error);
-        this.catalogSubjectOptions = [];
-        this.questionBankTopicsBySubject = new Map<string, string[]>();
-        this.syncClassificationSelections();
-        this.endLoading();
-        this.changeDetectorRef.detectChanges();
-      }
-    });
+        next: catalog => {
+          this.applyQuestionClassificationCatalog(catalog);
+          this.endLoading();
+        },
+        error: error => {
+          console.error('Failed to load question classification catalog.', error);
+          this.catalogSubjectOptions = [];
+          this.questionBankTopicsBySubject = new Map<string, string[]>();
+          this.syncClassificationSelections();
+          this.endLoading();
+          this.changeDetectorRef.detectChanges();
+        }
+      });
+  }
+
+  private getValidationErrorMessage(): string {
+    if (!this.isCodingEditor && this.questionTextControl.hasError('fillInTheBlankPlaceholder')) {
+      return 'Fill in the blanks questions must include a blank shown with underscore characters like ____ in the question text.';
+    }
+
+    if (this.isCodingEditor) {
+      return 'Please complete the required coding question fields before saving.';
+    }
+
+    return 'Please complete the required fields before saving.';
+  }
+
+  private toNullableNumber(value: unknown): number | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+
+    const parsedValue = Number(value);
+    return Number.isFinite(parsedValue) ? parsedValue : null;
   }
 
   private beginLoading(): void {

@@ -66,12 +66,12 @@ public class QuestionsController : ControllerBase
             var questions = await _questionManager.CreateQuestions(
                 requests.Select((request, index) => new QuestionImportItem
                 {
+                    InputOrder = index,
                     SourceRowNumber = request.SourceRowNumber ?? index + 2,
-                    Question = request.ToEntity()
+                    Request = request
                 }).ToList());
-            var response = questions.Select(question => question.ToRecord()).ToList();
 
-            return StatusCode(StatusCodes.Status201Created, response);
+            return StatusCode(StatusCodes.Status201Created, questions);
         }
         catch (ArgumentException ex)
         {
@@ -122,7 +122,7 @@ public class QuestionsController : ControllerBase
                 request.PageSize);
 
             return Ok(new PagedQuestionRecord(
-                result.Items.Select(question => question.ToRecord()).ToList(),
+                result.Items,
                 result.TotalCount,
                 request.PageNumber > 0 ? request.PageNumber : 1,
                 request.PageSize is > 0 and <= 100 ? request.PageSize : 10));
@@ -168,7 +168,7 @@ public class QuestionsController : ControllerBase
         try
         {
             var question = await _questionManager.GetQuestionById(collegeId, id);
-            return Ok(question.ToRecord());
+            return Ok(question);
         }
         catch (ArgumentException ex)
         {
@@ -209,10 +209,8 @@ public class QuestionsController : ControllerBase
     {
         try
         {
-            var question = await _questionManager.UpdateQuestion(id, request.ToEntity(), request.RequesterRole);
-            var response = question.ToRecord();
-
-            return Ok(response);
+            var question = await _questionManager.UpdateQuestion(id, request, request.RequesterRole);
+            return Ok(question);
         }
         catch (ArgumentException ex)
         {

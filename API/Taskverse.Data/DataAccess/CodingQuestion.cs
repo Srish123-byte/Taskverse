@@ -71,8 +71,9 @@ public class CodingQuestion
     [Column("is_active")]
     public bool IsActive { get; set; } = true;
 
+    [MaxLength(200)]
     [Column("created_by")]
-    public Guid? CreatedBy { get; set; }
+    public string? CreatedBy { get; set; }
 
     [Column("modified_by")]
     public Guid? ModifiedBy { get; set; }

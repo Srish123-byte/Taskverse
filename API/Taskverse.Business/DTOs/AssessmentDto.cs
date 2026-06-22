@@ -113,15 +113,15 @@ public class CreateQuestionDto
 {
     public Guid CollegeId { get; set; }
     public string CreatedBy { get; set; } = default!;
-    public string RequesterRole { get; set; } = default!;
-    public string Stream { get; set; } = default!;
+    public string? RequesterRole { get; set; }
+    public string? Stream { get; set; }
     public Guid? SubjectId { get; set; }
     public string? Subject { get; set; }
     public Guid? TopicId { get; set; }
     public string? Topic { get; set; }
-    public List<string> TopicTag { get; set; } = [];
-    public string QuestionType { get; set; } = default!;
-    public string QuestionText { get; set; } = default!;
+    public List<string>? TopicTag { get; set; }
+    public string? QuestionType { get; set; }
+    public string? QuestionText { get; set; }
     public List<string>? Options { get; set; }
     public string? Answer { get; set; }
     public List<string>? CorrectAnswers { get; set; }
@@ -129,7 +129,40 @@ public class CreateQuestionDto
     public decimal Marks { get; set; }
     public decimal NegativeMarks { get; set; }
     public int DifficultyLevel { get; set; }
+    public string? QuestionTitle { get; set; }
+    public string? ProblemStatement { get; set; }
+    public string? DetailedDescription { get; set; }
+    public string? InputFormat { get; set; }
+    public string? OutputFormat { get; set; }
+    public string? ConstraintsText { get; set; }
+    public string? DefaultLanguageCode { get; set; }
+    public int? DefaultTimeLimitMs { get; set; }
+    public int? DefaultMemoryLimitKb { get; set; }
+    public int? DefaultMaxCodeSizeKb { get; set; }
+    public List<CodingQuestionExampleDto>? Examples { get; set; }
+    public List<CodingTestCaseDto>? TestCases { get; set; }
     public int? SourceRowNumber { get; set; }
+}
+
+public class CodingQuestionExampleDto
+{
+    public string? Input { get; set; }
+    public string? Output { get; set; }
+    public string? Explanation { get; set; }
+}
+
+public class CodingTestCaseDto
+{
+    public Guid TestCaseId { get; set; }
+    public string? InputFormat { get; set; }
+    public string? InputData { get; set; }
+    public string? ExpectedOutput { get; set; }
+    public int ComparisonMode { get; set; } = 2;
+    public decimal? NumericTolerance { get; set; }
+    public bool IsHidden { get; set; }
+    public bool IsSample { get; set; }
+    public int? TimeLimitMs { get; set; }
+    public int? MemoryLimitKb { get; set; }
 }
 
 public class DeleteQuestionsDto
@@ -253,13 +286,25 @@ public class AssessmentQuestionDto
     public string? Topic { get; set; }
     public List<string>? TopicTag { get; set; }
     public string QuestionType { get; set; } = default!;
-    public string QuestionText { get; set; } = default!;
+    public string? QuestionText { get; set; }
     public List<string>? Options { get; set; }
     public string? Answer { get; set; }
     public string? Explanation { get; set; }
     public decimal Marks { get; set; }
     public decimal NegativeMarks { get; set; }
     public int DifficultyLevel { get; set; }
+    public string? QuestionTitle { get; set; }
+    public string? ProblemStatement { get; set; }
+    public string? DetailedDescription { get; set; }
+    public string? InputFormat { get; set; }
+    public string? OutputFormat { get; set; }
+    public string? ConstraintsText { get; set; }
+    public List<CodingQuestionExampleDto>? Examples { get; set; }
+    public string? DefaultLanguageCode { get; set; }
+    public int? DefaultTimeLimitMs { get; set; }
+    public int? DefaultMemoryLimitKb { get; set; }
+    public int? DefaultMaxCodeSizeKb { get; set; }
+    public List<CodingTestCaseDto>? TestCases { get; set; }
     public int Version { get; set; }
     public string CreatedBy { get; set; } = default!;
     public DateTime CreatedAt { get; set; }

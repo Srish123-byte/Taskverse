@@ -25,6 +25,35 @@ public static class AssessmentMappings
             Marks = model.Marks,
             NegativeMarks = model.NegativeMarks,
             DifficultyLevel = model.DifficultyLevel,
+            QuestionTitle = model.QuestionTitle,
+            ProblemStatement = model.ProblemStatement,
+            DetailedDescription = model.DetailedDescription,
+            InputFormat = model.InputFormat,
+            OutputFormat = model.OutputFormat,
+            ConstraintsText = model.ConstraintsText,
+            Examples = model.Examples?.Select(item => new CodingQuestionExampleDto
+            {
+                Input = item.Input,
+                Output = item.Output,
+                Explanation = item.Explanation
+            }).ToList(),
+            DefaultLanguageCode = model.DefaultLanguageCode,
+            DefaultTimeLimitMs = model.DefaultTimeLimitMs,
+            DefaultMemoryLimitKb = model.DefaultMemoryLimitKb,
+            DefaultMaxCodeSizeKb = model.DefaultMaxCodeSizeKb,
+            TestCases = model.TestCases?.Select(item => new CodingTestCaseDto
+            {
+                TestCaseId = item.TestCaseId,
+                InputFormat = item.InputFormat,
+                InputData = item.InputData,
+                ExpectedOutput = item.ExpectedOutput,
+                ComparisonMode = item.ComparisonMode,
+                NumericTolerance = item.NumericTolerance,
+                IsHidden = item.IsHidden,
+                IsSample = item.IsSample,
+                TimeLimitMs = item.TimeLimitMs,
+                MemoryLimitKb = item.MemoryLimitKb
+            }).ToList(),
             Version = model.Version,
             CreatedBy = model.CreatedBy,
             CreatedAt = UtcDateTime.Normalize(model.CreatedAt),
@@ -237,6 +266,31 @@ public static class AssessmentMappings
             dto.Marks,
             dto.NegativeMarks,
             dto.DifficultyLevel,
+            dto.QuestionTitle,
+            dto.ProblemStatement,
+            dto.DetailedDescription,
+            dto.InputFormat,
+            dto.OutputFormat,
+            dto.ConstraintsText,
+            dto.DefaultLanguageCode,
+            dto.DefaultTimeLimitMs,
+            dto.DefaultMemoryLimitKb,
+            dto.DefaultMaxCodeSizeKb,
+            dto.Examples?.Select(item => new CodingQuestionExampleModel(
+                item.Input,
+                item.Output,
+                item.Explanation)).ToList(),
+            dto.TestCases?.Select(item => new CodingTestCaseModel(
+                item.TestCaseId,
+                item.InputFormat,
+                item.InputData,
+                item.ExpectedOutput,
+                item.ComparisonMode,
+                item.NumericTolerance,
+                item.IsHidden,
+                item.IsSample,
+                item.TimeLimitMs,
+                item.MemoryLimitKb)).ToList(),
             dto.SourceRowNumber);
 
     public static List<CreateQuestionModel> ToMicroServiceModels(this IEnumerable<CreateQuestionDto> dtos)

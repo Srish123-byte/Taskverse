@@ -14,7 +14,14 @@ namespace Taskverse.API.Assessments.Service.Managers;
 /// </summary>
 public class QuestionManager : IQuestionManager
 {
+    private const int DefaultCodingComparisonMode = 2;
     private static readonly Regex FillInTheBlankPlaceholderPattern = new("_{3,}", RegexOptions.Compiled);
+    private static readonly HashSet<string> AllowedCodingInputFormats =
+    [
+        "stdin",
+        "json",
+        "function_args"
+    ];
     private static readonly HashSet<string> AllowedQuestionTypes =
     [
         "mcq",
@@ -64,98 +71,51 @@ public class QuestionManager : IQuestionManager
     }
 
     /// <inheritdoc />
-    public async Task<List<Question>> CreateQuestions(List<QuestionImportItem> questions)
+    public async Task<List<QuestionRecord>> CreateQuestions(List<QuestionImportItem> questions)
     {
         if (questions.Count == 0)
         {
             throw new ArgumentException("At least one question is required.");
         }
 
-        var preparedQuestions = new List<Question>();
-        var importFingerprints = new HashSet<string>(StringComparer.Ordinal);
+        var createdRecordsByOrder = new Dictionary<int, QuestionRecord>();
 
-        foreach (var importItem in questions)
+        var standardItems = new List<QuestionImportItem>();
+        var codingItems = new List<QuestionImportItem>();
+
+        foreach (var question in questions)
         {
-            var question = importItem.Question;
+            var normalizedQuestionType = NormalizeQuestionType(question.Request.QuestionType);
+            question.Request.QuestionType = normalizedQuestionType;
 
-            try
+            if (normalizedQuestionType == "coding")
             {
-                await NormalizeSubjectTopicAsync(question);
-                ValidateQuestion(question);
+                codingItems.Add(question);
             }
-            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or KeyNotFoundException)
+            else
             {
-                throw new ArgumentException($"Row {importItem.SourceRowNumber}: {ex.Message}");
+                standardItems.Add(question);
             }
-
-            question.QuestionId = question.QuestionId == Guid.Empty ? Guid.NewGuid() : question.QuestionId;
-            question.IsActive = true;
-            question.CreatedAt = DateTime.UtcNow;
-            question.ModifiedAt = DateTime.UtcNow;
-            question.Version = question.Version <= 0 ? 1 : question.Version;
-
-            var fingerprint = BuildDuplicateFingerprint(question);
-            if (!importFingerprints.Add(fingerprint))
-            {
-                continue;
-            }
-
-            preparedQuestions.Add(question);
         }
 
-        if (preparedQuestions.Count == 0)
+        foreach (var item in await CreateStandardQuestionsAsync(standardItems))
         {
-            return [];
+            createdRecordsByOrder[item.InputOrder] = item.Record;
         }
 
-        var normalizedQuestionTexts = preparedQuestions
-            .Select(question => NormalizeForLookup(question.QuestionText))
-            .Where(value => !string.IsNullOrWhiteSpace(value))
-            .Distinct()
+        foreach (var item in await CreateCodingQuestionsAsync(codingItems))
+        {
+            createdRecordsByOrder[item.InputOrder] = item.Record;
+        }
+
+        return createdRecordsByOrder
+            .OrderBy(item => item.Key)
+            .Select(item => item.Value)
             .ToList();
-
-        var collegeIds = preparedQuestions
-            .Select(question => question.CollegeId)
-            .Distinct()
-            .ToList();
-
-        var existingQuestions = await _context.Questions
-            .AsNoTracking()
-            .Where(question =>
-                question.IsActive &&
-                collegeIds.Contains(question.CollegeId) &&
-                normalizedQuestionTexts.Contains(question.QuestionText.ToLower()))
-            .ToListAsync();
-
-        var existingFingerprints = existingQuestions
-            .Select(BuildDuplicateFingerprint)
-            .ToHashSet(StringComparer.Ordinal);
-
-        var uniqueQuestionsToCreate = preparedQuestions
-            .Where(question => !existingFingerprints.Contains(BuildDuplicateFingerprint(question)))
-            .ToList();
-
-        if (uniqueQuestionsToCreate.Count == 0)
-        {
-            return [];
-        }
-
-        _context.Questions.AddRange(uniqueQuestionsToCreate);
-
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateException ex)
-        {
-            throw new InvalidOperationException("Unable to save the question to the question bank.", ex);
-        }
-
-        return uniqueQuestionsToCreate;
     }
 
     /// <inheritdoc />
-    public async Task<Question> GetQuestionById(Guid collegeId, Guid questionId)
+    public async Task<QuestionRecord> GetQuestionById(Guid collegeId, Guid questionId)
     {
         if (collegeId == Guid.Empty)
         {
@@ -174,40 +134,111 @@ public class QuestionManager : IQuestionManager
                 item.CollegeId == collegeId &&
                 item.IsActive);
 
-        if (question is null)
+        if (question is not null)
+        {
+            await EnsureQuestionIsNotInLiveAssessmentAsync(question.QuestionId);
+            await SubjectTopicResolver.PopulateQuestionSubjectTopicIdsAsync(_context, [question]);
+            return question.ToRecord();
+        }
+
+        var codingQuestion = await _context.CodingQuestions
+            .AsNoTracking()
+            .Include(item => item.TestCases)
+            .FirstOrDefaultAsync(item =>
+                item.CodingQuestionId == questionId &&
+                item.CollegeId == collegeId &&
+                item.IsActive);
+
+        if (codingQuestion is null)
         {
             throw new KeyNotFoundException($"Question with id '{questionId}' was not found.");
         }
 
-        await EnsureQuestionIsNotInLiveAssessmentAsync(question.QuestionId);
-        await SubjectTopicResolver.PopulateQuestionSubjectTopicIdsAsync(_context, [question]);
-
-        return question;
+        await EnsureCodingQuestionIsNotInLiveAssessmentAsync(codingQuestion.CodingQuestionId);
+        return codingQuestion.ToRecord();
     }
 
     /// <inheritdoc />
-    public async Task<Question> UpdateQuestion(Guid questionId, Question updatedQuestion, string? requesterRole)
+    public async Task<QuestionRecord> UpdateQuestion(Guid questionId, CreateQuestionRequest request, string? requesterRole)
     {
-        await NormalizeSubjectTopicAsync(updatedQuestion);
-        ValidateQuestion(updatedQuestion);
-
         var existingQuestion = await _context.Questions.FirstOrDefaultAsync(question => question.QuestionId == questionId);
-        if (existingQuestion is null)
+        if (existingQuestion is not null)
+        {
+            var normalizedQuestionType = NormalizeQuestionType(request.QuestionType);
+            if (normalizedQuestionType == "coding")
+            {
+                throw new InvalidOperationException("Existing non-coding questions cannot be converted to coding questions.");
+            }
+
+            var updatedQuestion = request.ToEntity();
+            await NormalizeSubjectTopicAsync(updatedQuestion);
+            ValidateQuestion(updatedQuestion);
+            await EnsureQuestionIsNotInLiveAssessmentAsync(existingQuestion.QuestionId);
+
+            if (IsTrainer(requesterRole) &&
+                !string.Equals(existingQuestion.CreatedBy?.Trim(), updatedQuestion.CreatedBy?.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException("Only the user who created this question can update it.");
+            }
+
+            existingQuestion.ApplyUpdates(updatedQuestion);
+            existingQuestion.Version += 1;
+            existingQuestion.ModifiedAt = DateTime.UtcNow;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                throw new InvalidOperationException("Unable to update the question in the question bank.", ex);
+            }
+
+            return existingQuestion.ToRecord();
+        }
+
+        var existingCodingQuestion = await _context.CodingQuestions
+            .Include(question => question.TestCases)
+            .FirstOrDefaultAsync(question => question.CodingQuestionId == questionId);
+        if (existingCodingQuestion is null)
         {
             throw new KeyNotFoundException($"Question with id '{questionId}' was not found.");
         }
 
-        await EnsureQuestionIsNotInLiveAssessmentAsync(existingQuestion.QuestionId);
+        var codingQuestionType = NormalizeQuestionType(request.QuestionType);
+        if (!string.IsNullOrWhiteSpace(codingQuestionType) && codingQuestionType != "coding")
+        {
+            throw new InvalidOperationException("Existing coding questions cannot be converted to a non-coding question type.");
+        }
+
+        if (request.NegativeMarks != 0)
+        {
+            throw new ArgumentException("Coding questions do not support negative marks.");
+        }
+
+        var updatedCodingQuestion = request.ToCodingEntity();
+        var updatedTestCases = request.TestCases.ToTestCaseEntities();
+        await ValidateCodingQuestionAsync(updatedCodingQuestion, updatedTestCases);
+        await EnsureCodingQuestionIsNotInLiveAssessmentAsync(existingCodingQuestion.CodingQuestionId);
 
         if (IsTrainer(requesterRole) &&
-            !string.Equals(existingQuestion.CreatedBy?.Trim(), updatedQuestion.CreatedBy?.Trim(), StringComparison.OrdinalIgnoreCase))
+            !string.Equals(existingCodingQuestion.CreatedBy?.Trim(), updatedCodingQuestion.CreatedBy?.Trim(), StringComparison.OrdinalIgnoreCase))
         {
             throw new UnauthorizedAccessException("Only the user who created this question can update it.");
         }
 
-        existingQuestion.ApplyUpdates(updatedQuestion);
-        existingQuestion.Version += 1;
-        existingQuestion.ModifiedAt = DateTime.UtcNow;
+        existingCodingQuestion.ApplyUpdates(updatedCodingQuestion);
+        existingCodingQuestion.Version += 1;
+        existingCodingQuestion.ModifiedAt = DateTime.UtcNow;
+
+        _context.TestCases.RemoveRange(existingCodingQuestion.TestCases);
+        existingCodingQuestion.TestCases = updatedTestCases
+            .Select(testCase =>
+            {
+                testCase.CodingQuestionId = existingCodingQuestion.CodingQuestionId;
+                return testCase;
+            })
+            .ToList();
 
         try
         {
@@ -215,10 +246,10 @@ public class QuestionManager : IQuestionManager
         }
         catch (DbUpdateException ex)
         {
-            throw new InvalidOperationException("Unable to update the question in the question bank.", ex);
+            throw new InvalidOperationException("Unable to update the coding question in the question bank.", ex);
         }
 
-        return existingQuestion;
+        return existingCodingQuestion.ToRecord();
     }
 
     private static bool IsTrainer(string? requesterRole)
@@ -275,15 +306,22 @@ public class QuestionManager : IQuestionManager
         var questions = await _context.Questions
             .Where(question => normalizedQuestionIds.Contains(question.QuestionId))
             .ToListAsync();
+        var codingQuestions = await _context.CodingQuestions
+            .Where(question => normalizedQuestionIds.Contains(question.CodingQuestionId))
+            .ToListAsync();
 
-        var missingQuestionIds = normalizedQuestionIds.Except(questions.Select(question => question.QuestionId)).ToList();
+        var foundQuestionIds = questions.Select(question => question.QuestionId)
+            .Concat(codingQuestions.Select(question => question.CodingQuestionId))
+            .ToHashSet();
+        var missingQuestionIds = normalizedQuestionIds.Except(foundQuestionIds).ToList();
         if (missingQuestionIds.Count > 0)
         {
             throw new KeyNotFoundException($"Question(s) not found: {string.Join(", ", missingQuestionIds)}.");
         }
 
         var outOfCollegeQuestion = questions.FirstOrDefault(question => question.CollegeId != collegeId);
-        if (outOfCollegeQuestion is not null)
+        var outOfCollegeCodingQuestion = codingQuestions.FirstOrDefault(question => question.CollegeId != collegeId);
+        if (outOfCollegeQuestion is not null || outOfCollegeCodingQuestion is not null)
         {
             throw new UnauthorizedAccessException("You are not authorized to delete questions outside your college question bank.");
         }
@@ -291,12 +329,15 @@ public class QuestionManager : IQuestionManager
         var unauthorizedQuestion = questions.FirstOrDefault(question =>
             IsTrainer(requesterRole) &&
             !string.Equals(question.CreatedBy?.Trim(), createdBy.Trim(), StringComparison.OrdinalIgnoreCase));
-        if (unauthorizedQuestion is not null)
+        var unauthorizedCodingQuestion = codingQuestions.FirstOrDefault(question =>
+            IsTrainer(requesterRole) &&
+            !string.Equals(question.CreatedBy?.Trim(), createdBy.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (unauthorizedQuestion is not null || unauthorizedCodingQuestion is not null)
         {
             throw new UnauthorizedAccessException("You're not authorized to delete this question. Please try deleting a question you've created");
         }
 
-        var linkedAssessmentStatuses = await GetLinkedAssessmentStatusesAsync(questions);
+        var linkedAssessmentStatuses = await GetLinkedAssessmentStatusesAsync(questions, codingQuestions);
 
         if (linkedAssessmentStatuses.Any(status => status == AssessmentStatus.Scheduled))
         {
@@ -317,7 +358,17 @@ public class QuestionManager : IQuestionManager
             _context.AssessmentQuestions.RemoveRange(linkedAssessmentQuestions);
         }
 
+        var linkedAssessmentCodingQuestions = await _context.AssessmentCodingQuestions
+            .Where(item => normalizedQuestionIds.Contains(item.CodingQuestionId))
+            .ToListAsync();
+
+        if (linkedAssessmentCodingQuestions.Count > 0)
+        {
+            _context.AssessmentCodingQuestions.RemoveRange(linkedAssessmentCodingQuestions);
+        }
+
         _context.Questions.RemoveRange(questions);
+        _context.CodingQuestions.RemoveRange(codingQuestions);
 
         try
         {
@@ -328,14 +379,19 @@ public class QuestionManager : IQuestionManager
             throw new InvalidOperationException("Unable to delete the question(s) from the question bank.", ex);
         }
 
-        return questions.Select(question => question.QuestionId).ToList();
+        return questions.Select(question => question.QuestionId)
+            .Concat(codingQuestions.Select(question => question.CodingQuestionId))
+            .ToList();
     }
 
-    private async Task<HashSet<AssessmentStatus>> GetLinkedAssessmentStatusesAsync(IEnumerable<Question> questions)
+    private async Task<HashSet<AssessmentStatus>> GetLinkedAssessmentStatusesAsync(
+        IEnumerable<Question> questions,
+        IEnumerable<CodingQuestion> codingQuestions)
     {
         var statusSet = new HashSet<AssessmentStatus>();
         var questionList = questions.ToList();
         var questionIds = questionList.Select(question => question.QuestionId).ToList();
+        var codingQuestionIds = codingQuestions.Select(question => question.CodingQuestionId).ToList();
 
         var linkedStatuses = await _context.AssessmentQuestions
             .AsNoTracking()
@@ -358,11 +414,32 @@ public class QuestionManager : IQuestionManager
             statusSet.Add(status);
         }
 
+        var linkedCodingStatuses = await _context.AssessmentCodingQuestions
+            .AsNoTracking()
+            .Join(
+                _context.Assessments.AsNoTracking(),
+                assessmentQuestion => assessmentQuestion.AssessmentId,
+                assessment => assessment.AssessmentId,
+                (assessmentQuestion, assessment) => new
+                {
+                    assessmentQuestion.CodingQuestionId,
+                    assessment.AssessmentStatus
+                })
+            .Where(item => codingQuestionIds.Contains(item.CodingQuestionId))
+            .Select(item => item.AssessmentStatus)
+            .Distinct()
+            .ToListAsync();
+
+        foreach (var status in linkedCodingStatuses)
+        {
+            statusSet.Add(status);
+        }
+
         return statusSet;
     }
 
     /// <inheritdoc />
-    public async Task<(List<Question> Items, int TotalCount)> SearchQuestionBank(
+    public async Task<(List<QuestionRecord> Items, int TotalCount)> SearchQuestionBank(
         Guid collegeId,
         int? difficultyLevel,
         Guid? subjectId,
@@ -438,18 +515,55 @@ public class QuestionManager : IQuestionManager
             query = query.Where(question => question.Topic != null && question.Topic.ToLower() == normalizedTopic);
         }
 
-        var totalCount = await query.CountAsync();
-        var items = await query
+        var standardItems = await query
             .OrderByDescending(question => question.CreatedAt)
             .ThenBy(question => question.Subject)
             .ThenBy(question => question.Topic)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
             .ToListAsync();
 
-        await SubjectTopicResolver.PopulateQuestionSubjectTopicIdsAsync(_context, items);
+        await SubjectTopicResolver.PopulateQuestionSubjectTopicIdsAsync(_context, standardItems);
 
-        return (items, totalCount);
+        var includeCodingQuestions = string.IsNullOrWhiteSpace(subject) &&
+            string.IsNullOrWhiteSpace(topic) &&
+            (!subjectId.HasValue || subjectId.Value == Guid.Empty) &&
+            (!topicId.HasValue || topicId.Value == Guid.Empty);
+
+        var codingItems = new List<CodingQuestion>();
+        if (includeCodingQuestions)
+        {
+            var codingQuery = _context.CodingQuestions
+                .AsNoTracking()
+                .Include(question => question.TestCases)
+                .Where(question =>
+                    question.CollegeId == collegeId &&
+                    question.IsActive);
+
+            if (difficultyLevel.HasValue)
+            {
+                codingQuery = codingQuery.Where(question => question.DifficultyLevel == difficultyLevel.Value);
+            }
+
+            codingItems = await codingQuery
+                .OrderByDescending(question => question.CreatedAt)
+                .ThenBy(question => question.QuestionTitle)
+                .ToListAsync();
+        }
+
+        var combinedItems = standardItems
+            .Select(question => question.ToRecord())
+            .Concat(codingItems.Select(question => question.ToRecord()))
+            .OrderByDescending(question => question.CreatedAt)
+            .ThenBy(question => question.Subject ?? question.QuestionTitle ?? string.Empty)
+            .ThenBy(question => question.Topic ?? string.Empty)
+            .ToList();
+
+        var totalCount = combinedItems.Count;
+        var pagedItems = combinedItems
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return (pagedItems, totalCount);
     }
 
     private async Task NormalizeSubjectTopicAsync(Question question)
@@ -577,6 +691,396 @@ public class QuestionManager : IQuestionManager
         {
             throw new ArgumentException("Negative marks cannot be negative.");
         }
+    }
+
+    private async Task ValidateCodingQuestionAsync(CodingQuestion question, List<TestCase> testCases)
+    {
+        List<string> requestedLanguageCodes = string.IsNullOrWhiteSpace(question.DefaultLanguageCode)
+            ? []
+            : [question.DefaultLanguageCode.ToLowerInvariant()];
+
+        var languageLookup = requestedLanguageCodes.Count == 0
+            ? new Dictionary<string, CodingLanguage>(StringComparer.OrdinalIgnoreCase)
+            : await _context.CodingLanguages
+                .AsNoTracking()
+                .Where(language => language.IsActive && requestedLanguageCodes.Contains(language.LanguageCode))
+                .ToDictionaryAsync(language => language.LanguageCode, StringComparer.OrdinalIgnoreCase);
+
+        var requestedComparisonModes = testCases
+            .Select(testCase => testCase.ComparisonMode)
+            .Distinct()
+            .ToList();
+
+        var comparisonModes = requestedComparisonModes.Count == 0
+            ? new HashSet<short>()
+            : await _context.LookupComparisonModes
+                .AsNoTracking()
+                .Where(mode => requestedComparisonModes.Contains(mode.ComparisonModeId))
+                .Select(mode => mode.ComparisonModeId)
+                .ToHashSetAsync();
+
+        ValidateCodingQuestion(question, testCases, languageLookup, comparisonModes);
+    }
+
+    private async Task<List<(int InputOrder, QuestionRecord Record)>> CreateStandardQuestionsAsync(List<QuestionImportItem> items)
+    {
+        if (items.Count == 0)
+        {
+            return [];
+        }
+
+        var preparedQuestions = new List<(int InputOrder, Question Question)>();
+        var importFingerprints = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var importItem in items)
+        {
+            var question = importItem.Request.ToEntity();
+
+            try
+            {
+                await NormalizeSubjectTopicAsync(question);
+                ValidateQuestion(question);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or KeyNotFoundException)
+            {
+                throw new ArgumentException($"Row {importItem.SourceRowNumber}: {ex.Message}");
+            }
+
+            question.QuestionId = question.QuestionId == Guid.Empty ? Guid.NewGuid() : question.QuestionId;
+            question.IsActive = true;
+            question.CreatedAt = DateTime.UtcNow;
+            question.ModifiedAt = DateTime.UtcNow;
+            question.Version = question.Version <= 0 ? 1 : question.Version;
+
+            var fingerprint = BuildDuplicateFingerprint(question);
+            if (!importFingerprints.Add(fingerprint))
+            {
+                continue;
+            }
+
+            preparedQuestions.Add((importItem.InputOrder, question));
+        }
+
+        if (preparedQuestions.Count == 0)
+        {
+            return [];
+        }
+
+        var normalizedQuestionTexts = preparedQuestions
+            .Select(item => NormalizeForLookup(item.Question.QuestionText))
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct()
+            .ToList();
+
+        var collegeIds = preparedQuestions
+            .Select(item => item.Question.CollegeId)
+            .Distinct()
+            .ToList();
+
+        var existingQuestions = await _context.Questions
+            .AsNoTracking()
+            .Where(question =>
+                question.IsActive &&
+                collegeIds.Contains(question.CollegeId) &&
+                normalizedQuestionTexts.Contains(question.QuestionText.ToLower()))
+            .ToListAsync();
+
+        var existingFingerprints = existingQuestions
+            .Select(BuildDuplicateFingerprint)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var uniqueQuestionsToCreate = preparedQuestions
+            .Where(item => !existingFingerprints.Contains(BuildDuplicateFingerprint(item.Question)))
+            .ToList();
+
+        if (uniqueQuestionsToCreate.Count == 0)
+        {
+            return [];
+        }
+
+        _context.Questions.AddRange(uniqueQuestionsToCreate.Select(item => item.Question));
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            throw new InvalidOperationException("Unable to save the question to the question bank.", ex);
+        }
+
+        return uniqueQuestionsToCreate
+            .Select(item => (item.InputOrder, item.Question.ToRecord()))
+            .ToList();
+    }
+
+    private async Task<List<(int InputOrder, QuestionRecord Record)>> CreateCodingQuestionsAsync(List<QuestionImportItem> items)
+    {
+        if (items.Count == 0)
+        {
+            return [];
+        }
+
+        var requestedLanguageCodes = items
+            .Select(item => QuestionAnswerJsonHelper.NormalizeSingleValue(item.Request.DefaultLanguageCode)?.ToLowerInvariant())
+            .OfType<string>()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var languageLookup = requestedLanguageCodes.Count == 0
+            ? new Dictionary<string, CodingLanguage>(StringComparer.OrdinalIgnoreCase)
+            : await _context.CodingLanguages
+                .AsNoTracking()
+                .Where(language => language.IsActive && requestedLanguageCodes.Contains(language.LanguageCode))
+                .ToDictionaryAsync(language => language.LanguageCode, StringComparer.OrdinalIgnoreCase);
+
+        var requestedComparisonModes = items
+            .SelectMany(item => item.Request.TestCases ?? [])
+            .Select(testCase => testCase.ComparisonMode)
+            .Distinct()
+            .ToList();
+
+        var comparisonModes = requestedComparisonModes.Count == 0
+            ? new HashSet<short>()
+            : await _context.LookupComparisonModes
+                .AsNoTracking()
+                .Where(mode => requestedComparisonModes.Contains(mode.ComparisonModeId))
+                .Select(mode => mode.ComparisonModeId)
+                .ToHashSetAsync();
+
+        var preparedQuestions = new List<(int InputOrder, CodingQuestion Question)>();
+        var importFingerprints = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var importItem in items)
+        {
+            if (importItem.Request.NegativeMarks != 0)
+            {
+                throw new ArgumentException($"Row {importItem.SourceRowNumber}: Coding questions do not support negative marks.");
+            }
+
+            var question = importItem.Request.ToCodingEntity();
+            var testCases = importItem.Request.TestCases.ToTestCaseEntities();
+
+            try
+            {
+                ValidateCodingQuestion(question, testCases, languageLookup, comparisonModes);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                throw new ArgumentException($"Row {importItem.SourceRowNumber}: {ex.Message}");
+            }
+
+            question.CodingQuestionId = question.CodingQuestionId == Guid.Empty ? Guid.NewGuid() : question.CodingQuestionId;
+            question.IsActive = true;
+            question.CreatedAt = DateTime.UtcNow;
+            question.ModifiedAt = DateTime.UtcNow;
+            question.Version = question.Version <= 0 ? 1 : question.Version;
+            question.TestCases = testCases;
+
+            var fingerprint = BuildCodingDuplicateFingerprint(question);
+            if (!importFingerprints.Add(fingerprint))
+            {
+                continue;
+            }
+
+            preparedQuestions.Add((importItem.InputOrder, question));
+        }
+
+        if (preparedQuestions.Count == 0)
+        {
+            return [];
+        }
+
+        var codingCollegeIds = preparedQuestions
+            .Select(item => item.Question.CollegeId)
+            .Distinct()
+            .ToList();
+
+        var normalizedCodingTitles = preparedQuestions
+            .Select(item => NormalizeForLookup(item.Question.QuestionTitle))
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct()
+            .ToList();
+
+        var existingCodingQuestions = await _context.CodingQuestions
+            .AsNoTracking()
+            .Where(question =>
+                question.IsActive &&
+                codingCollegeIds.Contains(question.CollegeId) &&
+                normalizedCodingTitles.Contains(question.QuestionTitle.ToLower()))
+            .ToListAsync();
+
+        var existingFingerprints = existingCodingQuestions
+            .Select(BuildCodingDuplicateFingerprint)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var uniqueQuestionsToCreate = preparedQuestions
+            .Where(item => !existingFingerprints.Contains(BuildCodingDuplicateFingerprint(item.Question)))
+            .ToList();
+
+        if (uniqueQuestionsToCreate.Count == 0)
+        {
+            return [];
+        }
+
+        _context.CodingQuestions.AddRange(uniqueQuestionsToCreate.Select(item => item.Question));
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            throw new InvalidOperationException("Unable to save the coding question to the question bank.", ex);
+        }
+
+        return uniqueQuestionsToCreate
+            .Select(item => (item.InputOrder, item.Question.ToRecord()))
+            .ToList();
+    }
+
+    private static string NormalizeQuestionType(string? questionType)
+    {
+        return QuestionAnswerJsonHelper.NormalizeSingleValue(questionType)?.ToLowerInvariant() ?? string.Empty;
+    }
+
+    private static void ValidateCodingQuestion(
+        CodingQuestion question,
+        List<TestCase> testCases,
+        IReadOnlyDictionary<string, CodingLanguage> languageLookup,
+        ISet<short> comparisonModes)
+    {
+        if (question.CollegeId == Guid.Empty)
+        {
+            throw new ArgumentException("CollegeId is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(question.CreatedBy))
+        {
+            throw new ArgumentException("CreatedBy is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(question.QuestionTitle))
+        {
+            throw new ArgumentException("Question title is required for coding questions.");
+        }
+
+        if (string.IsNullOrWhiteSpace(question.ProblemStatement))
+        {
+            throw new ArgumentException("Problem statement is required for coding questions.");
+        }
+
+        if (question.QuestionType != "coding")
+        {
+            throw new ArgumentException("Question type must be 'coding' for coding questions.");
+        }
+
+        if (question.Marks < 0)
+        {
+            throw new ArgumentException("Marks cannot be negative.");
+        }
+
+        if (question.DefaultTimeLimitMs <= 0)
+        {
+            throw new ArgumentException("Default time limit must be greater than zero.");
+        }
+
+        if (question.DefaultMemoryLimitKb <= 0)
+        {
+            throw new ArgumentException("Default memory limit must be greater than zero.");
+        }
+
+        if (question.DefaultMaxCodeSizeKb <= 0)
+        {
+            throw new ArgumentException("Default max code size must be greater than zero.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(question.DefaultLanguageCode) &&
+            !languageLookup.ContainsKey(question.DefaultLanguageCode))
+        {
+            throw new ArgumentException($"Default language '{question.DefaultLanguageCode}' was not found or is inactive.");
+        }
+
+        if (testCases.Count == 0)
+        {
+            throw new ArgumentException("At least one test case is required for coding questions.");
+        }
+
+        foreach (var testCase in testCases)
+        {
+            if (!AllowedCodingInputFormats.Contains(testCase.InputFormat))
+            {
+                throw new ArgumentException("Test case input format must be one of 'stdin', 'json', or 'function_args'.");
+            }
+
+            if (string.IsNullOrWhiteSpace(testCase.ExpectedOutput))
+            {
+                throw new ArgumentException("Expected output is required for each coding test case.");
+            }
+
+            if (testCase.NumericTolerance.HasValue && testCase.NumericTolerance.Value < 0)
+            {
+                throw new ArgumentException("Numeric tolerance cannot be negative.");
+            }
+
+            if (testCase.TimeLimitMs.HasValue && testCase.TimeLimitMs.Value <= 0)
+            {
+                throw new ArgumentException("Test case time limit must be greater than zero when provided.");
+            }
+
+            if (testCase.MemoryLimitKb.HasValue && testCase.MemoryLimitKb.Value <= 0)
+            {
+                throw new ArgumentException("Test case memory limit must be greater than zero when provided.");
+            }
+
+            var comparisonModeId = testCase.ComparisonMode == 0
+                ? DefaultCodingComparisonMode
+                : testCase.ComparisonMode;
+
+            if (!comparisonModes.Contains((short)comparisonModeId))
+            {
+                throw new ArgumentException($"Comparison mode '{comparisonModeId}' was not found.");
+            }
+
+            testCase.ComparisonMode = comparisonModeId;
+        }
+    }
+
+    private async Task EnsureCodingQuestionIsNotInLiveAssessmentAsync(Guid codingQuestionId)
+    {
+        var liveAssessmentLinkExists = await _context.AssessmentCodingQuestions
+            .AsNoTracking()
+            .Join(
+                _context.Assessments.AsNoTracking(),
+                assessmentQuestion => assessmentQuestion.AssessmentId,
+                assessment => assessment.AssessmentId,
+                (assessmentQuestion, assessment) => new
+                {
+                    assessmentQuestion.CodingQuestionId,
+                    assessment.AssessmentStatus
+                })
+            .AnyAsync(item =>
+                item.CodingQuestionId == codingQuestionId &&
+                item.AssessmentStatus == AssessmentStatus.Live);
+
+        if (liveAssessmentLinkExists)
+        {
+            throw new InvalidOperationException("This question cannot be edited because it is included in a live assessment.");
+        }
+    }
+
+    private static string BuildCodingDuplicateFingerprint(CodingQuestion question)
+    {
+        return string.Join("|", [
+            question.CollegeId.ToString("D"),
+            NormalizeForLookup(question.QuestionTitle),
+            NormalizeForLookup(question.ProblemStatement),
+            NormalizeTopicTagsForLookup(question.TopicTag),
+            NormalizeForLookup(question.QuestionType),
+            NormalizeForLookup(question.DefaultLanguageCode),
+            question.Marks.ToString("0.##"),
+            question.DifficultyLevel.ToString()
+        ]);
     }
 
     private static bool HasMinimumValidOptions(string? options, int minimumCount)

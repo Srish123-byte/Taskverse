@@ -193,15 +193,15 @@ public record QuestionBankAssessmentModel(
 public record CreateQuestionModel(
     Guid CollegeId,
     string CreatedBy,
-    string RequesterRole,
-    string Stream,
+    string? RequesterRole,
+    string? Stream,
     Guid? SubjectId,
     string? Subject,
     Guid? TopicId,
     string? Topic,
-    List<string> TopicTag,
-    string QuestionType,
-    string QuestionText,
+    List<string>? TopicTag,
+    string? QuestionType,
+    string? QuestionText,
     List<string>? Options,
     string? Answer,
     [property: JsonProperty("correct_answers")]
@@ -210,7 +210,51 @@ public record CreateQuestionModel(
     decimal Marks,
     decimal NegativeMarks,
     int DifficultyLevel,
+    string? QuestionTitle,
+    string? ProblemStatement,
+    string? DetailedDescription,
+    string? InputFormat,
+    string? OutputFormat,
+    string? ConstraintsText,
+    string? DefaultLanguageCode,
+    int? DefaultTimeLimitMs,
+    int? DefaultMemoryLimitKb,
+    int? DefaultMaxCodeSizeKb,
+    [property: JsonProperty("examples")]
+    List<CodingQuestionExampleModel>? Examples,
+    [property: JsonProperty("test_cases")]
+    List<CodingTestCaseModel>? TestCases,
     int? SourceRowNumber);
+
+public record CodingQuestionExampleModel(
+    [property: JsonProperty("input")]
+    string? Input,
+    [property: JsonProperty("output")]
+    string? Output,
+    [property: JsonProperty("explanation")]
+    string? Explanation);
+
+public record CodingTestCaseModel(
+    [property: JsonProperty("test_case_id")]
+    Guid TestCaseId,
+    [property: JsonProperty("input_format")]
+    string? InputFormat,
+    [property: JsonProperty("input_data")]
+    string? InputData,
+    [property: JsonProperty("expected_output")]
+    string? ExpectedOutput,
+    [property: JsonProperty("comparison_mode")]
+    int ComparisonMode,
+    [property: JsonProperty("numeric_tolerance")]
+    decimal? NumericTolerance,
+    [property: JsonProperty("is_hidden")]
+    bool IsHidden,
+    [property: JsonProperty("is_sample")]
+    bool IsSample,
+    [property: JsonProperty("time_limit_ms")]
+    int? TimeLimitMs,
+    [property: JsonProperty("memory_limit_kb")]
+    int? MemoryLimitKb);
 
 public record DeleteQuestionsModel(
     string CreatedBy,
@@ -348,13 +392,25 @@ public record AssessmentQuestionModel(
     string? Topic,
     List<string>? TopicTag,
     string QuestionType,
-    string QuestionText,
+    string? QuestionText,
     List<string>? Options,
     string? Answer,
     string? Explanation,
     decimal Marks,
     decimal NegativeMarks,
     int DifficultyLevel,
+    string? QuestionTitle,
+    string? ProblemStatement,
+    string? DetailedDescription,
+    string? InputFormat,
+    string? OutputFormat,
+    string? ConstraintsText,
+    List<CodingQuestionExampleModel>? Examples,
+    string? DefaultLanguageCode,
+    int? DefaultTimeLimitMs,
+    int? DefaultMemoryLimitKb,
+    int? DefaultMaxCodeSizeKb,
+    List<CodingTestCaseModel>? TestCases,
     int Version,
     string CreatedBy,
     DateTime CreatedAt,

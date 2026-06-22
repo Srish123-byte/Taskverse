@@ -249,9 +249,13 @@ export class QuestionBankComponent implements OnInit {
           return;
         }
 
+        const question = this.questions.find(item => item.questionId === questionId);
         void this.router.navigate(
           ['/', ...this.editQuestionRouteSegments, questionId],
           {
+            queryParams: {
+              question_type: this.resolveQuestionTypeQueryParam(question?.questionType)
+            },
             state: {
               returnUrl: this.router.url
             }
@@ -260,6 +264,21 @@ export class QuestionBankComponent implements OnInit {
       error: error => {
         const message = this.getEditRestrictionMessage(error);
         this.snackBar.open(message, 'Close', QuestionBankComponent.editErrorSnackBarConfig);
+      }
+    });
+  }
+
+  openNewQuestionEditor(questionType: 'mcq' | 'coding'): void {
+    if (this.addQuestionRouteSegments.length === 0) {
+      return;
+    }
+
+    void this.router.navigate(['/', ...this.addQuestionRouteSegments], {
+      queryParams: {
+        question_type: questionType
+      },
+      state: {
+        returnUrl: this.router.url
       }
     });
   }
@@ -450,9 +469,10 @@ export class QuestionBankComponent implements OnInit {
   private applyClientFilters(): void {
     const normalizedSearch = this.searchTerm.trim().toLowerCase();
     this.filteredQuestions = this.questions.filter(question => {
+      const previewText = (question.questionText ?? question.problemStatement ?? question.questionTitle ?? '').toLowerCase();
       const matchesSearch =
         normalizedSearch.length === 0 ||
-        question.questionText.toLowerCase().includes(normalizedSearch) ||
+        previewText.includes(normalizedSearch) ||
         (question.subject ?? '').toLowerCase().includes(normalizedSearch) ||
         (question.topic ?? '').toLowerCase().includes(normalizedSearch);
 
@@ -472,6 +492,12 @@ export class QuestionBankComponent implements OnInit {
     } else {
       this.infoMessage = '';
     }
+  }
+
+  private resolveQuestionTypeQueryParam(questionType: string | null | undefined): 'mcq' | 'coding' {
+    return `${questionType ?? ''}`.trim().toLowerCase() === 'coding'
+      ? 'coding'
+      : 'mcq';
   }
 
   private buildDynamicOptions(questions: QuestionBankItem[]): void {

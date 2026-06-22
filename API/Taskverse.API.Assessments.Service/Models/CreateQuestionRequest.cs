@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Taskverse.API.Assessments.Service.Models;
 
@@ -14,9 +15,8 @@ public class CreateQuestionRequest
     [MaxLength(50)]
     public string? RequesterRole { get; set; }
 
-    [Required]
     [MaxLength(100)]
-    public string Stream { get; set; } = string.Empty;
+    public string? Stream { get; set; }
 
     public Guid? SubjectId { get; set; }
 
@@ -28,15 +28,12 @@ public class CreateQuestionRequest
     [MaxLength(200)]
     public string? Topic { get; set; }
 
-    [Required]
-    public List<string> TopicTag { get; set; } = [];
+    public List<string>? TopicTag { get; set; }
 
-    [Required]
     [MaxLength(50)]
-    public string QuestionType { get; set; } = string.Empty;
+    public string? QuestionType { get; set; }
 
-    [Required]
-    public string QuestionText { get; set; } = string.Empty;
+    public string? QuestionText { get; set; }
 
     public List<string>? Options { get; set; }
 
@@ -56,7 +53,153 @@ public class CreateQuestionRequest
     [Range(0, int.MaxValue)]
     public int DifficultyLevel { get; set; }
 
+    [MaxLength(250)]
+    public string? QuestionTitle { get; set; }
+
+    public string? ProblemStatement { get; set; }
+
+    public string? DetailedDescription { get; set; }
+
+    public string? InputFormat { get; set; }
+
+    public string? OutputFormat { get; set; }
+
+    public string? ConstraintsText { get; set; }
+
+    [MaxLength(50)]
+    public string? DefaultLanguageCode { get; set; }
+
+    [Range(1, int.MaxValue)]
+    public int? DefaultTimeLimitMs { get; set; }
+
+    [Range(1, int.MaxValue)]
+    public int? DefaultMemoryLimitKb { get; set; }
+
+    [Range(1, int.MaxValue)]
+    public int? DefaultMaxCodeSizeKb { get; set; }
+
+    public List<CodingQuestionExampleRequest>? Examples { get; set; }
+
+    public List<CodingTestCaseRequest>? TestCases { get; set; }
+
     public int? SourceRowNumber { get; set; }
+
+    [JsonPropertyName("examples")]
+    public List<CodingQuestionExampleRequest>? ExamplesAlias
+    {
+        set => Examples = value;
+    }
+
+    [JsonPropertyName("test_cases")]
+    public List<CodingTestCaseRequest>? TestCasesAlias
+    {
+        set => TestCases = value;
+    }
+}
+
+public class CodingQuestionExampleRequest
+{
+    public string? Input { get; set; }
+
+    public string? Output { get; set; }
+
+    public string? Explanation { get; set; }
+
+    [JsonPropertyName("input")]
+    public string? InputAlias
+    {
+        set => Input = value;
+    }
+
+    [JsonPropertyName("output")]
+    public string? OutputAlias
+    {
+        set => Output = value;
+    }
+
+    [JsonPropertyName("explanation")]
+    public string? ExplanationAlias
+    {
+        set => Explanation = value;
+    }
+}
+
+public class CodingTestCaseRequest
+{
+    [MaxLength(30)]
+    public string? InputFormat { get; set; }
+
+    public string? InputData { get; set; }
+
+    public string? ExpectedOutput { get; set; }
+
+    public int ComparisonMode { get; set; } = 2;
+
+    public decimal? NumericTolerance { get; set; }
+
+    public bool IsHidden { get; set; }
+
+    public bool IsSample { get; set; }
+
+    [Range(1, int.MaxValue)]
+    public int? TimeLimitMs { get; set; }
+
+    [Range(1, int.MaxValue)]
+    public int? MemoryLimitKb { get; set; }
+
+    [JsonPropertyName("input_format")]
+    public string? InputFormatAlias
+    {
+        set => InputFormat = value;
+    }
+
+    [JsonPropertyName("input_data")]
+    public string? InputDataAlias
+    {
+        set => InputData = value;
+    }
+
+    [JsonPropertyName("expected_output")]
+    public string? ExpectedOutputAlias
+    {
+        set => ExpectedOutput = value;
+    }
+
+    [JsonPropertyName("comparison_mode")]
+    public int ComparisonModeAlias
+    {
+        set => ComparisonMode = value;
+    }
+
+    [JsonPropertyName("numeric_tolerance")]
+    public decimal? NumericToleranceAlias
+    {
+        set => NumericTolerance = value;
+    }
+
+    [JsonPropertyName("is_hidden")]
+    public bool IsHiddenAlias
+    {
+        set => IsHidden = value;
+    }
+
+    [JsonPropertyName("is_sample")]
+    public bool IsSampleAlias
+    {
+        set => IsSample = value;
+    }
+
+    [JsonPropertyName("time_limit_ms")]
+    public int? TimeLimitMsAlias
+    {
+        set => TimeLimitMs = value;
+    }
+
+    [JsonPropertyName("memory_limit_kb")]
+    public int? MemoryLimitKbAlias
+    {
+        set => MemoryLimitKb = value;
+    }
 }
 
 public class DeleteQuestionsRequest

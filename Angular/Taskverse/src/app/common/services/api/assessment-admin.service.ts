@@ -14,22 +14,53 @@ export interface QuestionBankSearchRequest {
 }
 
 export interface CreateQuestionRequest {
-  stream: string;
+  stream?: string | null;
   subjectId?: string;
-  subject?: string;
+  subject?: string | null;
   topicId?: string;
-  topic?: string;
-  topicTag: string[];
-  questionType: string;
-  questionText: string;
+  topic?: string | null;
+  topicTag?: string[] | null;
+  questionType?: string | null;
+  questionText?: string | null;
   options?: string[];
-  answer?: string;
+  answer?: string | null;
   correctAnswers?: string[];
-  explanation?: string;
+  explanation?: string | null;
   marks: number;
   negativeMarks: number;
   difficultyLevel: number;
+  questionTitle?: string | null;
+  problemStatement?: string | null;
+  detailedDescription?: string | null;
+  inputFormat?: string | null;
+  outputFormat?: string | null;
+  constraintsText?: string | null;
+  defaultLanguageCode?: string | null;
+  defaultTimeLimitMs?: number | null;
+  defaultMemoryLimitKb?: number | null;
+  defaultMaxCodeSizeKb?: number | null;
+  examples?: CodingQuestionExample[] | null;
+  testCases?: CodingTestCase[] | null;
   sourceRowNumber?: number;
+}
+
+export interface CodingQuestionExample {
+  input?: string | null;
+  output?: string | null;
+  explanation?: string | null;
+}
+
+export interface CodingTestCase {
+  testCaseId?: string;
+  inputFormat?: string | null;
+  inputData?: string | null;
+  expectedOutput?: string | null;
+  comparisonMode: number;
+  numericTolerance?: number | null;
+  isHidden: boolean;
+  isSample: boolean;
+  timeLimitMs?: number | null;
+  memoryLimitKb?: number | null;
 }
 
 export interface QuestionBankItem {
@@ -42,7 +73,7 @@ export interface QuestionBankItem {
   topic?: string | null;
   topicTag?: string[] | null;
   questionType: string;
-  questionText: string;
+  questionText?: string | null;
   options?: string[] | null;
   answer?: string | null;
   correctAnswers?: string[] | null;
@@ -51,6 +82,18 @@ export interface QuestionBankItem {
   marks: number;
   negativeMarks: number;
   difficultyLevel: number;
+  questionTitle?: string | null;
+  problemStatement?: string | null;
+  detailedDescription?: string | null;
+  inputFormat?: string | null;
+  outputFormat?: string | null;
+  constraintsText?: string | null;
+  examples?: CodingQuestionExample[] | null;
+  defaultLanguageCode?: string | null;
+  defaultTimeLimitMs?: number | null;
+  defaultMemoryLimitKb?: number | null;
+  defaultMaxCodeSizeKb?: number | null;
+  testCases?: CodingTestCase[] | null;
   version: number;
   createdBy: string;
   createdAt: string;
@@ -195,11 +238,15 @@ export class AssessmentAdminService {
   constructor(private readonly http: HttpClientService) {}
 
   getQuestion(questionId: string, skipGlobalErrorRedirect = false): Observable<QuestionBankItem> {
-    return this.http.get<QuestionBankItem>(`${this.url}/questions/${questionId}`, undefined, skipGlobalErrorRedirect);
+    return this.http
+      .get<any>(`${this.url}/questions/${questionId}`, undefined, skipGlobalErrorRedirect)
+      .pipe(map(question => this.mapQuestionBankItem(question)));
   }
 
   searchQuestionBank(request: QuestionBankSearchRequest, skipGlobalErrorRedirect = false): Observable<PagedQuestionBankResult> {
-    return this.http.post<PagedQuestionBankResult>(`${this.url}/questions/search`, request, undefined, skipGlobalErrorRedirect);
+    return this.http
+      .post<any>(`${this.url}/questions/search`, request, undefined, skipGlobalErrorRedirect)
+      .pipe(map(result => this.mapPagedQuestionBankResult(result)));
   }
 
   getQuestionClassificationCatalog(): Observable<QuestionClassificationCatalog> {
@@ -211,7 +258,9 @@ export class AssessmentAdminService {
   }
 
   createQuestions(request: CreateQuestionRequest[]): Observable<QuestionBankItem[]> {
-    return this.http.post<QuestionBankItem[]>(`${this.url}/questions`, request);
+    return this.http
+      .post<any[]>(`${this.url}/questions`, request)
+      .pipe(map(items => (items ?? []).map(item => this.mapQuestionBankItem(item))));
   }
 
   getTrainerAssignedClassesAndBatches(): Observable<AssessmentAssignmentCatalog> {
@@ -221,7 +270,9 @@ export class AssessmentAdminService {
   }
 
   updateQuestion(questionId: string, request: CreateQuestionRequest): Observable<QuestionBankItem> {
-    return this.http.put<QuestionBankItem>(`${this.url}/questions/${questionId}`, request);
+    return this.http
+      .put<any>(`${this.url}/questions/${questionId}`, request)
+      .pipe(map(question => this.mapQuestionBankItem(question)));
   }
 
   createAssessment(request: CreateAssessmentRequest, skipGlobalErrorRedirect = false): Observable<AssessmentRecord> {
@@ -265,6 +316,74 @@ export class AssessmentAdminService {
     return {
       classes: (catalog?.classes ?? catalog?.Classes ?? []).map((item: any) => this.mapAssignmentClass(item))
     };
+  }
+
+  private mapPagedQuestionBankResult(result: any): PagedQuestionBankResult {
+    return {
+      items: (result?.items ?? result?.Items ?? []).map((item: any) => this.mapQuestionBankItem(item)),
+      totalCount: result?.totalCount ?? result?.TotalCount ?? 0,
+      pageNumber: result?.pageNumber ?? result?.PageNumber ?? 1,
+      pageSize: result?.pageSize ?? result?.PageSize ?? 10
+    };
+  }
+
+  private mapQuestionBankItem(item: any): QuestionBankItem {
+    const answer = item?.answer ?? item?.Answer ?? null;
+    const correctAnswers = this.parseStoredAnswers(answer);
+
+    return {
+      questionId: item?.questionId ?? item?.QuestionId ?? '',
+      collegeId: item?.collegeId ?? item?.CollegeId ?? '',
+      subjectId: item?.subjectId ?? item?.SubjectId ?? null,
+      topicId: item?.topicId ?? item?.TopicId ?? null,
+      stream: item?.stream ?? item?.Stream ?? null,
+      subject: item?.subject ?? item?.Subject ?? null,
+      topic: item?.topic ?? item?.Topic ?? null,
+      topicTag: item?.topicTag ?? item?.TopicTag ?? null,
+      questionType: item?.questionType ?? item?.QuestionType ?? '',
+      questionText: item?.questionText ?? item?.QuestionText ?? null,
+      options: item?.options ?? item?.Options ?? null,
+      answer,
+      correctAnswers,
+      allowsMultipleAnswers: correctAnswers.length > 1,
+      explanation: item?.explanation ?? item?.Explanation ?? null,
+      marks: item?.marks ?? item?.Marks ?? 0,
+      negativeMarks: item?.negativeMarks ?? item?.NegativeMarks ?? 0,
+      difficultyLevel: item?.difficultyLevel ?? item?.DifficultyLevel ?? 1,
+      questionTitle: item?.questionTitle ?? item?.QuestionTitle ?? null,
+      problemStatement: item?.problemStatement ?? item?.ProblemStatement ?? null,
+      detailedDescription: item?.detailedDescription ?? item?.DetailedDescription ?? null,
+      inputFormat: item?.inputFormat ?? item?.InputFormat ?? null,
+      outputFormat: item?.outputFormat ?? item?.OutputFormat ?? null,
+      constraintsText: item?.constraintsText ?? item?.ConstraintsText ?? null,
+      examples: item?.examples ?? item?.Examples ?? null,
+      defaultLanguageCode: item?.defaultLanguageCode ?? item?.DefaultLanguageCode ?? null,
+      defaultTimeLimitMs: item?.defaultTimeLimitMs ?? item?.DefaultTimeLimitMs ?? null,
+      defaultMemoryLimitKb: item?.defaultMemoryLimitKb ?? item?.DefaultMemoryLimitKb ?? null,
+      defaultMaxCodeSizeKb: item?.defaultMaxCodeSizeKb ?? item?.DefaultMaxCodeSizeKb ?? null,
+      testCases: item?.testCases ?? item?.TestCases ?? null,
+      version: item?.version ?? item?.Version ?? 1,
+      createdBy: item?.createdBy ?? item?.CreatedBy ?? '',
+      createdAt: item?.createdAt ?? item?.CreatedAt ?? '',
+      modifiedAt: item?.modifiedAt ?? item?.ModifiedAt ?? null
+    };
+  }
+
+  private parseStoredAnswers(answer: string | null | undefined): string[] {
+    if (!answer?.trim()) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(answer);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+      }
+    } catch {
+      // Fall back to the single-answer legacy format.
+    }
+
+    return [answer.trim()];
   }
 
   private mapAssignmentClass(item: any): AssessmentAssignmentClass {

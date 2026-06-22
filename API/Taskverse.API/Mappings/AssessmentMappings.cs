@@ -59,6 +59,34 @@ public static class AssessmentMappings
             Marks = model.Marks,
             NegativeMarks = model.NegativeMarks,
             DifficultyLevel = model.DifficultyLevel,
+            QuestionTitle = model.QuestionTitle,
+            ProblemStatement = model.ProblemStatement,
+            DetailedDescription = model.DetailedDescription,
+            InputFormat = model.InputFormat,
+            OutputFormat = model.OutputFormat,
+            ConstraintsText = model.ConstraintsText,
+            DefaultLanguageCode = model.DefaultLanguageCode,
+            DefaultTimeLimitMs = model.DefaultTimeLimitMs,
+            DefaultMemoryLimitKb = model.DefaultMemoryLimitKb,
+            DefaultMaxCodeSizeKb = model.DefaultMaxCodeSizeKb,
+            Examples = model.Examples?.Select(item => new Taskverse.Business.DTOs.CodingQuestionExampleDto
+            {
+                Input = item.Input,
+                Output = item.Output,
+                Explanation = item.Explanation
+            }).ToList(),
+            TestCases = model.TestCases?.Select(item => new Taskverse.Business.DTOs.CodingTestCaseDto
+            {
+                InputFormat = item.InputFormat,
+                InputData = item.InputData,
+                ExpectedOutput = item.ExpectedOutput,
+                ComparisonMode = item.ComparisonMode,
+                NumericTolerance = item.NumericTolerance,
+                IsHidden = item.IsHidden,
+                IsSample = item.IsSample,
+                TimeLimitMs = item.TimeLimitMs,
+                MemoryLimitKb = item.MemoryLimitKb
+            }).ToList(),
             SourceRowNumber = model.SourceRowNumber
         };
     }
@@ -144,6 +172,35 @@ public static class AssessmentMappings
             Marks = dto.Marks,
             NegativeMarks = dto.NegativeMarks,
             DifficultyLevel = dto.DifficultyLevel,
+            QuestionTitle = dto.QuestionTitle,
+            ProblemStatement = dto.ProblemStatement,
+            DetailedDescription = dto.DetailedDescription,
+            InputFormat = dto.InputFormat,
+            OutputFormat = dto.OutputFormat,
+            ConstraintsText = dto.ConstraintsText,
+            Examples = dto.Examples?.Select(item => new CodingQuestionExampleResponseModel
+            {
+                Input = item.Input,
+                Output = item.Output,
+                Explanation = item.Explanation
+            }).ToList(),
+            DefaultLanguageCode = dto.DefaultLanguageCode,
+            DefaultTimeLimitMs = dto.DefaultTimeLimitMs,
+            DefaultMemoryLimitKb = dto.DefaultMemoryLimitKb,
+            DefaultMaxCodeSizeKb = dto.DefaultMaxCodeSizeKb,
+            TestCases = dto.TestCases?.Select(item => new CodingTestCaseResponseModel
+            {
+                TestCaseId = item.TestCaseId,
+                InputFormat = item.InputFormat,
+                InputData = item.InputData,
+                ExpectedOutput = item.ExpectedOutput,
+                ComparisonMode = item.ComparisonMode,
+                NumericTolerance = item.NumericTolerance,
+                IsHidden = item.IsHidden,
+                IsSample = item.IsSample,
+                TimeLimitMs = item.TimeLimitMs,
+                MemoryLimitKb = item.MemoryLimitKb
+            }).ToList(),
             Version = dto.Version,
             CreatedBy = dto.CreatedBy,
             CreatedAt = UtcDateTime.Normalize(dto.CreatedAt),

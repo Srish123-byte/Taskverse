@@ -6,9 +6,7 @@
   <section class="editor-hero">
     <span class="hero-kicker">{{ heroKicker }}</span>
     <h2 class="page-title">{{ pageTitle }}</h2>
-    <p class="page-welcome">
-      {{ pageDescription }}
-    </p>
+    <p class="page-welcome">{{ pageDescription }}</p>
   </section>
 
   <div *ngIf="errorMessage" class="page-state page-state-error">{{ errorMessage }}</div>
@@ -23,159 +21,356 @@
   </div>
 
   <form [formGroup]="form" class="editor-form" (ngSubmit)="saveToRepository()" novalidate>
-    <section class="editor-card">
-      <div class="section-title">Classification</div>
-      <div class="form-grid form-grid-3">
-        <label class="field">
-          <span>Stream *</span>
-          <ng-container *ngIf="!isCustomStream; else customStreamField">
-            <select [value]="streamSelection" (change)="onStreamSelectionChange($any($event.target).value)">
-              <option value="">Select stream</option>
-              <option *ngFor="let item of streamOptions" [value]="item">{{ item }}</option>
-              <option [value]="addNewOptionValue">Add new stream</option>
+    <ng-container *ngIf="!isCodingEditor; else codingEditorTemplate">
+      <section class="editor-card">
+        <div class="section-title">Classification</div>
+        <div class="form-grid form-grid-3">
+          <label class="field">
+            <span>Stream *</span>
+            <ng-container *ngIf="!isCustomStream; else customStreamField">
+              <select [value]="streamSelection" (change)="onStreamSelectionChange($any($event.target).value)">
+                <option value="">Select stream</option>
+                <option *ngFor="let item of streamOptions" [value]="item">{{ item }}</option>
+                <option [value]="addNewOptionValue">Add new stream</option>
+              </select>
+            </ng-container>
+            <ng-template #customStreamField>
+              <div class="custom-entry-shell">
+                <input type="text" formControlName="stream" placeholder="Enter new stream" />
+                <button type="button" class="custom-entry-reset" (click)="resetStreamSelection()">Use existing</button>
+              </div>
+            </ng-template>
+          </label>
+
+          <label class="field">
+            <span>Subject *</span>
+            <ng-container *ngIf="!isCustomSubject; else customSubjectField">
+              <select [value]="subjectSelection" (change)="onSubjectSelectionChange($any($event.target).value)">
+                <option value="">Select subject</option>
+                <option *ngFor="let item of subjectOptions" [value]="item">{{ item }}</option>
+                <option [value]="addNewOptionValue">Add new subject</option>
+              </select>
+            </ng-container>
+            <ng-template #customSubjectField>
+              <div class="custom-entry-shell">
+                <input type="text" formControlName="subject" placeholder="Enter new subject" />
+                <button type="button" class="custom-entry-reset" (click)="resetSubjectSelection()">Use existing</button>
+              </div>
+            </ng-template>
+          </label>
+
+          <label class="field">
+            <span>Topic *</span>
+            <ng-container *ngIf="!isCustomTopic; else customTopicField">
+              <select [value]="topicSelection" (change)="onTopicSelectionChange($any($event.target).value)">
+                <option value="">Select topic</option>
+                <option *ngFor="let item of topicOptions" [value]="item">{{ item }}</option>
+                <option [value]="addNewOptionValue">Add new topic</option>
+              </select>
+            </ng-container>
+            <ng-template #customTopicField>
+              <div class="custom-entry-shell">
+                <input type="text" formControlName="topic" placeholder="Enter new topic" />
+                <button type="button" class="custom-entry-reset" (click)="resetTopicSelection()">Use existing</button>
+              </div>
+            </ng-template>
+          </label>
+
+          <label class="field">
+            <span>Difficulty Level *</span>
+            <select formControlName="difficultyLevel">
+              <option *ngFor="let option of difficultyOptions" [ngValue]="option.value">{{ option.label }}</option>
             </select>
-          </ng-container>
-          <ng-template #customStreamField>
-            <div class="custom-entry-shell">
-              <input type="text" formControlName="stream" placeholder="Enter new stream" />
-              <button type="button" class="custom-entry-reset" (click)="resetStreamSelection()">Use existing</button>
-            </div>
-          </ng-template>
-        </label>
+          </label>
 
-        <label class="field">
-          <span>Subject *</span>
-          <ng-container *ngIf="!isCustomSubject; else customSubjectField">
-            <select [value]="subjectSelection" (change)="onSubjectSelectionChange($any($event.target).value)">
-              <option value="">Select subject</option>
-              <option *ngFor="let item of subjectOptions" [value]="item">{{ item }}</option>
-              <option [value]="addNewOptionValue">Add new subject</option>
+          <label class="field field-span-2">
+            <span>Question Type *</span>
+            <select formControlName="questionType">
+              <option *ngFor="let option of questionTypeOptions" [ngValue]="option.value">{{ option.label }}</option>
             </select>
-          </ng-container>
-          <ng-template #customSubjectField>
-            <div class="custom-entry-shell">
-              <input type="text" formControlName="subject" placeholder="Enter new subject" />
-              <button type="button" class="custom-entry-reset" (click)="resetSubjectSelection()">Use existing</button>
+          </label>
+
+          <label *ngIf="isMcq" class="field field-span-2">
+            <span>Answer Mode</span>
+            <div class="selection-mode-toggle">
+              <input type="checkbox" formControlName="allowMultipleAnswers" />
+              <span>Allow multiple correct answers</span>
             </div>
-          </ng-template>
-        </label>
+            <small class="selection-mode-hint">
+              {{ allowMultipleAnswersControl.value ? 'Students will see checkboxes and can select all that apply.' : 'Students will see radio buttons and can select one option.' }}
+            </small>
+          </label>
+        </div>
+      </section>
 
+      <section class="editor-card">
+        <div class="section-title">Scoring</div>
+        <div class="form-grid form-grid-2">
+          <label class="field">
+            <span>Marks *</span>
+            <input type="number" min="0" step="0.01" formControlName="marks" />
+          </label>
+
+          <label class="field">
+            <span>Negative Marks *</span>
+            <input type="number" min="0" step="0.01" formControlName="negativeMarks" />
+          </label>
+        </div>
+      </section>
+
+      <section class="editor-card">
+        <div class="section-title">Question</div>
         <label class="field">
-          <span>Topic *</span>
-          <ng-container *ngIf="!isCustomTopic; else customTopicField">
-            <select [value]="topicSelection" (change)="onTopicSelectionChange($any($event.target).value)">
-              <option value="">Select topic</option>
-              <option *ngFor="let item of topicOptions" [value]="item">{{ item }}</option>
-              <option [value]="addNewOptionValue">Add new topic</option>
-            </select>
-          </ng-container>
-          <ng-template #customTopicField>
-            <div class="custom-entry-shell">
-              <input type="text" formControlName="topic" placeholder="Enter new topic" />
-              <button type="button" class="custom-entry-reset" (click)="resetTopicSelection()">Use existing</button>
-            </div>
-          </ng-template>
-        </label>
-
-        <label class="field">
-          <span>Difficulty Level *</span>
-          <select formControlName="difficultyLevel">
-            <option *ngFor="let option of difficultyOptions" [ngValue]="option.value">{{ option.label }}</option>
-          </select>
-        </label>
-
-        <label class="field field-span-2">
-          <span>Question Type *</span>
-          <select formControlName="questionType">
-            <option *ngFor="let option of questionTypeOptions" [ngValue]="option.value">{{ option.label }}</option>
-          </select>
-        </label>
-
-        <label *ngIf="isMcq" class="field field-span-2">
-          <span>Answer Mode</span>
-          <div class="selection-mode-toggle">
-            <input type="checkbox" formControlName="allowMultipleAnswers" />
-            <span>Allow multiple correct answers</span>
-          </div>
-          <small class="selection-mode-hint">
-            {{ allowMultipleAnswersControl.value ? 'Students will see checkboxes and can select all that apply.' : 'Students will see radio buttons and can select one option.' }}
+          <span>Question Text *</span>
+          <textarea rows="6" formControlName="questionText"></textarea>
+          <small *ngIf="questionTypeControl.value === 'fill in the blanks'">
+            Include a blank using underscore characters like <code>____</code> in the question text.
           </small>
         </label>
-      </div>
-    </section>
+      </section>
 
-    <section class="editor-card">
-      <div class="section-title">Scoring</div>
-      <div class="form-grid form-grid-2">
+      <section class="editor-card">
+        <div class="section-title">Options &amp; Correct Answer</div>
+        <p *ngIf="isMultiCorrectMcq" class="selection-mode-hint">Select all correct options. Students will see the same question with checkboxes and helper text.</p>
+        <div class="options-list">
+          <label *ngFor="let control of optionsArray.controls; let index = index" class="option-row">
+            <input
+              *ngIf="isMultiCorrectMcq; else singleCorrectOption"
+              type="checkbox"
+              [checked]="isCorrectAnswerOptionSelected(index)"
+              (change)="toggleCorrectAnswerOption(index, $any($event.target).checked)" />
+            <ng-template #singleCorrectOption>
+              <input type="radio" name="mcqAnswer" [value]="getOptionLabel(index)" [checked]="answerControl.value === getOptionLabel(index)" (change)="answerControl.setValue(getOptionLabel(index))" />
+            </ng-template>
+            <span class="option-badge">{{ getOptionLabel(index) }}</span>
+            <input type="text" [formControl]="control" [placeholder]="'Enter option ' + getOptionLabel(index)" />
+          </label>
+        </div>
+      </section>
+
+      <section class="editor-card">
+        <div class="section-title">Explanation</div>
         <label class="field">
-          <span>Marks *</span>
-          <input type="number" min="0" step="0.01" formControlName="marks" />
+          <span>Explanation</span>
+          <textarea rows="5" formControlName="explanation"></textarea>
         </label>
+      </section>
 
+      <section class="editor-card">
+        <div class="section-title">Discovery &amp; Tags</div>
         <label class="field">
-          <span>Negative Marks *</span>
-          <input type="number" min="0" step="0.01" formControlName="negativeMarks" />
+          <span>Topic Tag *</span>
+          <input type="text" formControlName="topicTag" placeholder="Arrays, loops, recursion" />
+          <small>Enter multiple topic tags separated by commas.</small>
         </label>
+      </section>
+    </ng-container>
+
+    <ng-template #codingEditorTemplate>
+      <div class="coding-layout">
+        <div class="coding-main-column">
+          <section class="editor-card">
+            <div class="section-title">Core Problem Details</div>
+            <div class="form-grid">
+              <label class="field">
+                <span>Question Title</span>
+                <input type="text" formControlName="questionTitle" placeholder="e.g. Optimized Pathfinding in Dynamic Grids" />
+              </label>
+
+              <label class="field">
+                <span>Problem Statement</span>
+                <textarea rows="4" formControlName="problemStatement" placeholder="Briefly summarize the objective of the problem..."></textarea>
+              </label>
+
+              <label class="field">
+                <span>Detailed Description</span>
+                <textarea rows="8" formControlName="detailedDescription" placeholder="Provide the full story and context..."></textarea>
+              </label>
+            </div>
+          </section>
+
+          <section class="editor-card">
+            <div class="section-title">Technical Specifications</div>
+            <div class="form-grid form-grid-2">
+              <label class="field">
+                <span>Input Format</span>
+                <textarea rows="4" formControlName="inputFormat" placeholder="Describe expected input structures..."></textarea>
+              </label>
+
+              <label class="field">
+                <span>Output Format</span>
+                <textarea rows="4" formControlName="outputFormat" placeholder="Describe the required return value..."></textarea>
+              </label>
+            </div>
+
+            <label class="field">
+              <span>Constraints</span>
+              <textarea rows="5" formControlName="constraintsText" placeholder="Time/space complexity, data range, etc."></textarea>
+            </label>
+          </section>
+
+          <section class="editor-card">
+            <div class="coding-section-header">
+              <div class="section-title">Test Cases &amp; Examples</div>
+              <div class="coding-inline-actions">
+                <button type="button" class="inline-action" (click)="addExample()">+ Add Example</button>
+                <button type="button" class="inline-action" (click)="addTestCase()">+ Add Test Case</button>
+              </div>
+            </div>
+
+            <div class="coding-block-list">
+              <article *ngFor="let example of examplesArray.controls; let index = index" class="coding-entry-card" [formGroup]="example">
+                <div class="coding-entry-header">
+                  <h4>Example {{ index + 1 }}</h4>
+                  <button type="button" class="entry-remove" (click)="removeExample(index)">Remove</button>
+                </div>
+                <div class="form-grid form-grid-2">
+                  <label class="field">
+                    <span>Input</span>
+                    <textarea rows="3" formControlName="input"></textarea>
+                  </label>
+                  <label class="field">
+                    <span>Output</span>
+                    <textarea rows="3" formControlName="output"></textarea>
+                  </label>
+                </div>
+                <label class="field">
+                  <span>Explanation</span>
+                  <textarea rows="3" formControlName="explanation"></textarea>
+                </label>
+              </article>
+
+              <article *ngFor="let testCase of testCasesArray.controls; let index = index" class="coding-entry-card" [formGroup]="testCase">
+                <div class="coding-entry-header">
+                  <h4>Test Case {{ index + 1 }}</h4>
+                  <button type="button" class="entry-remove" (click)="removeTestCase(index)" [disabled]="testCasesArray.length === 1">Remove</button>
+                </div>
+                <div class="form-grid form-grid-2">
+                  <label class="field">
+                    <span>Input Payload</span>
+                    <textarea rows="4" formControlName="inputData"></textarea>
+                  </label>
+                  <label class="field">
+                    <span>Expected Output</span>
+                    <textarea rows="4" formControlName="expectedOutput"></textarea>
+                  </label>
+                </div>
+                <div class="form-grid form-grid-4">
+                  <label class="field">
+                    <span>Input Mode</span>
+                    <select formControlName="inputFormat">
+                      <option value="stdin">stdin</option>
+                      <option value="json">json</option>
+                      <option value="function_args">function_args</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span>Comparison Mode</span>
+                    <select formControlName="comparisonMode">
+                      <option *ngFor="let option of comparisonModeOptions" [ngValue]="option.value">{{ option.label }}</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span>Time Limit (ms)</span>
+                    <input type="number" min="1" formControlName="timeLimitMs" />
+                  </label>
+
+                  <label class="field">
+                    <span>Memory Limit (kb)</span>
+                    <input type="number" min="1" formControlName="memoryLimitKb" />
+                  </label>
+                </div>
+                <div class="form-grid form-grid-3">
+                  <label class="field">
+                    <span>Numeric Tolerance</span>
+                    <input type="number" min="0" step="0.0001" formControlName="numericTolerance" />
+                  </label>
+                  <label class="checkbox-field">
+                    <input type="checkbox" formControlName="isSample" />
+                    <span>Show as sample</span>
+                  </label>
+                  <label class="checkbox-field">
+                    <input type="checkbox" formControlName="isHidden" />
+                    <span>Hidden test</span>
+                  </label>
+                </div>
+              </article>
+            </div>
+          </section>
+        </div>
+
+        <aside class="coding-side-column">
+          <section class="editor-card">
+            <div class="section-title">Classification</div>
+            <div class="difficulty-pill-group">
+              <button
+                *ngFor="let option of difficultyOptions"
+                type="button"
+                class="difficulty-choice"
+                [class.difficulty-choice-active]="difficultyLevelControl.value === option.value"
+                (click)="difficultyLevelControl.setValue(option.value)">
+                {{ option.label }}
+              </button>
+            </div>
+
+            <div class="coding-type-tile">
+              <span class="coding-type-label">Question Type</span>
+              <strong>Coding Challenge</strong>
+            </div>
+
+            <label class="field">
+              <span>Topic Tags</span>
+              <input type="text" formControlName="topicTag" placeholder="Algorithms, Data Structures" />
+            </label>
+          </section>
+
+          <section class="editor-card">
+            <div class="section-title">Execution Config</div>
+            <div class="form-grid">
+              <label class="field">
+                <span>Primary Language</span>
+                <select formControlName="defaultLanguageCode">
+                  <option *ngFor="let option of codingLanguageOptions" [value]="option.value">{{ option.label }}</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Time Limit (ms)</span>
+                <input type="number" min="1" formControlName="defaultTimeLimitMs" />
+              </label>
+
+              <label class="field">
+                <span>Memory Limit (kb)</span>
+                <input type="number" min="1" formControlName="defaultMemoryLimitKb" />
+              </label>
+
+              <label class="field">
+                <span>Max Code Size (kb)</span>
+                <input type="number" min="1" formControlName="defaultMaxCodeSizeKb" />
+              </label>
+
+              <label class="field">
+                <span>Marks</span>
+                <input type="number" min="0" step="0.01" formControlName="marks" />
+              </label>
+            </div>
+          </section>
+
+          <section class="editor-card">
+            <div class="section-title">Editorial Notes</div>
+            <label class="field">
+              <span>Explanation</span>
+              <textarea rows="6" formControlName="explanation" placeholder="Optional solution notes or reviewer guidance..."></textarea>
+            </label>
+          </section>
+        </aside>
       </div>
-    </section>
-
-    <section class="editor-card">
-      <div class="section-title">Question</div>
-      <label class="field">
-        <span>Question Text *</span>
-        <textarea rows="6" formControlName="questionText"></textarea>
-        <small *ngIf="questionTypeControl.value === 'fill in the blanks'">
-          Include a blank using underscore characters like <code>____</code> in the question text.
-        </small>
-      </label>
-    </section>
-
-    <section *ngIf="usesSelectableOptions" class="editor-card">
-      <div class="section-title">Options &amp; Correct Answer</div>
-      <p *ngIf="isMultiCorrectMcq" class="selection-mode-hint">Select all correct options. Students will see the same question with checkboxes and helper text.</p>
-      <div class="options-list">
-        <label *ngFor="let control of optionsArray.controls; let index = index" class="option-row">
-          <input
-            *ngIf="isMultiCorrectMcq; else singleCorrectOption"
-            type="checkbox"
-            [checked]="isCorrectAnswerOptionSelected(index)"
-            (change)="toggleCorrectAnswerOption(index, $any($event.target).checked)" />
-          <ng-template #singleCorrectOption>
-            <input type="radio" name="mcqAnswer" [value]="getOptionLabel(index)" [checked]="answerControl.value === getOptionLabel(index)" (change)="answerControl.setValue(getOptionLabel(index))" />
-          </ng-template>
-          <span class="option-badge">{{ getOptionLabel(index) }}</span>
-          <input type="text" [formControl]="control" [placeholder]="'Enter option ' + getOptionLabel(index)" />
-        </label>
-      </div>
-    </section>
-
-    <section *ngIf="!usesSelectableOptions" class="editor-card">
-      <div class="section-title">Correct Answer</div>
-      <label class="field">
-        <span>Answer *</span>
-        <input type="text" formControlName="answer" />
-      </label>
-    </section>
-
-    <section class="editor-card">
-      <div class="section-title">Explanation</div>
-      <label class="field">
-        <span>Explanation</span>
-        <textarea rows="5" formControlName="explanation"></textarea>
-      </label>
-    </section>
-
-    <section class="editor-card">
-      <div class="section-title">Discovery &amp; Tags</div>
-      <label class="field">
-        <span>Topic Tag *</span>
-        <input type="text" formControlName="topicTag" placeholder="Arrays, loops, recursion" />
-        <small>Enter multiple topic tags separated by commas.</small>
-      </label>
-    </section>
+    </ng-template>
 
     <div class="action-row">
-      <button type="button" class="secondary-action" (click)="cancel()">Discard Changes</button>
+      <button type="button" class="secondary-action" (click)="cancel()">Cancel</button>
       <button type="button" class="primary-action" [disabled]="isSaving || isLoading" (click)="saveToRepository()">{{ submitButtonLabel }}</button>
     </div>
   </form>

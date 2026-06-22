@@ -240,9 +240,10 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     const normalizedSearch = this.questionSearchTerm.trim().toLowerCase();
 
     return this.questions.filter(question => {
+      const previewText = (question.questionText ?? question.problemStatement ?? question.questionTitle ?? '').toLowerCase();
       const matchesSearch =
         normalizedSearch.length === 0 ||
-        question.questionText.toLowerCase().includes(normalizedSearch) ||
+        previewText.includes(normalizedSearch) ||
         (question.subject ?? '').toLowerCase().includes(normalizedSearch) ||
         (question.topic ?? '').toLowerCase().includes(normalizedSearch);
 

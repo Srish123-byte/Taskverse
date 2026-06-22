@@ -286,6 +286,70 @@ body .mat-mdc-snack-bar-container .mdc-button__ripple {
   display: none !important;
 }
 
+.cdk-overlay-container,
+.cdk-global-overlay-wrapper,
+.cdk-overlay-pane {
+  z-index: 4000 !important;
+}
+
+.question-bank-add-menu-overlay {
+  z-index: 4100 !important;
+}
+
+.question-bank-add-menu-overlay .mat-mdc-menu-panel,
+.question-bank-add-menu-overlay .mat-mdc-menu-content,
+.question-bank-add-menu-overlay .mdc-menu-surface,
+.question-bank-add-menu-panel,
+.question-bank-add-menu-panel.mat-mdc-menu-panel,
+.question-bank-add-menu-panel.mdc-menu-surface {
+  --mat-menu-container-color: #162742 !important;
+  --mdc-menu-container-color: #162742 !important;
+  min-width: 154px !important;
+  background-color: #162742 !important;
+  background-image: none !important;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 12px !important;
+  box-shadow: 0 14px 26px rgba(2, 8, 23, 0.26) !important;
+  backdrop-filter: none !important;
+  opacity: 1 !important;
+}
+
+.question-bank-add-menu-overlay .mat-mdc-menu-content,
+.question-bank-add-menu-panel .mat-mdc-menu-content {
+  background: #162742 !important;
+  padding: 4px !important;
+}
+
+.question-bank-add-menu-overlay .mat-mdc-menu-item,
+.question-bank-add-menu-panel .mat-mdc-menu-item {
+  min-height: 34px !important;
+  background: #162742 !important;
+  color: #e5eef9 !important;
+  font-weight: 700 !important;
+  font-size: 0.92rem !important;
+  line-height: 1.2 !important;
+  padding: 0 14px !important;
+  border-radius: 8px !important;
+  opacity: 1 !important;
+}
+
+.question-bank-add-menu-overlay .mat-mdc-menu-item + .mat-mdc-menu-item,
+.question-bank-add-menu-panel .mat-mdc-menu-item + .mat-mdc-menu-item {
+  margin-top: 2px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(125, 211, 252, 0.22);
+  border-radius: 0 0 8px 8px !important;
+}
+
+.question-bank-add-menu-overlay .mat-mdc-menu-item:hover,
+.question-bank-add-menu-overlay .mat-mdc-menu-item.cdk-program-focused,
+.question-bank-add-menu-overlay .mat-mdc-menu-item.cdk-keyboard-focused,
+.question-bank-add-menu-panel .mat-mdc-menu-item:hover,
+.question-bank-add-menu-panel .mat-mdc-menu-item.cdk-program-focused,
+.question-bank-add-menu-panel .mat-mdc-menu-item.cdk-keyboard-focused {
+  background: #1b2f4f !important;
+}
+
 .cdk-overlay-container .cdk-global-overlay-wrapper:has(.question-editor-success-snackbar) {
   align-items: flex-start;
   justify-content: center;

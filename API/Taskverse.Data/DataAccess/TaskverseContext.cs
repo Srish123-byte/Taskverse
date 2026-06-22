@@ -206,7 +206,7 @@ public class TaskverseContext : DbContext
             entity.Property(cq => cq.DefaultMaxCodeSizeKb).HasColumnName("default_max_code_size_kb").HasDefaultValue(512);
             entity.Property(cq => cq.Marks).HasColumnName("marks").HasColumnType("numeric(8,2)").HasDefaultValue(100m);
             entity.Property(cq => cq.IsActive).HasColumnName("is_active").HasDefaultValue(true);
-            entity.Property(cq => cq.CreatedBy).HasColumnName("created_by");
+            entity.Property(cq => cq.CreatedBy).HasColumnName("created_by").HasMaxLength(200);
             entity.Property(cq => cq.ModifiedBy).HasColumnName("modified_by");
             entity.Property(cq => cq.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(cq => cq.ModifiedAt).HasColumnName("modified_at");

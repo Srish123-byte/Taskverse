@@ -95,15 +95,15 @@ public class QuestionBankAssessmentResponseModel
 
 public class CreateQuestionRequestModel
 {
-    public string Stream { get; set; } = string.Empty;
+    public string? Stream { get; set; }
     public string? RequesterRole { get; set; }
     public Guid? SubjectId { get; set; }
     public string? Subject { get; set; }
     public Guid? TopicId { get; set; }
     public string? Topic { get; set; }
-    public List<string> TopicTag { get; set; } = [];
-    public string QuestionType { get; set; } = string.Empty;
-    public string QuestionText { get; set; } = string.Empty;
+    public List<string>? TopicTag { get; set; }
+    public string? QuestionType { get; set; }
+    public string? QuestionText { get; set; }
     public List<string>? Options { get; set; }
     public string? Answer { get; set; }
     public List<string>? CorrectAnswers { get; set; }
@@ -111,7 +111,39 @@ public class CreateQuestionRequestModel
     public decimal Marks { get; set; }
     public decimal NegativeMarks { get; set; }
     public int DifficultyLevel { get; set; }
+    public string? QuestionTitle { get; set; }
+    public string? ProblemStatement { get; set; }
+    public string? DetailedDescription { get; set; }
+    public string? InputFormat { get; set; }
+    public string? OutputFormat { get; set; }
+    public string? ConstraintsText { get; set; }
+    public string? DefaultLanguageCode { get; set; }
+    public int? DefaultTimeLimitMs { get; set; }
+    public int? DefaultMemoryLimitKb { get; set; }
+    public int? DefaultMaxCodeSizeKb { get; set; }
+    public List<CodingQuestionExampleRequestModel>? Examples { get; set; }
+    public List<CodingTestCaseRequestModel>? TestCases { get; set; }
     public int? SourceRowNumber { get; set; }
+}
+
+public class CodingQuestionExampleRequestModel
+{
+    public string? Input { get; set; }
+    public string? Output { get; set; }
+    public string? Explanation { get; set; }
+}
+
+public class CodingTestCaseRequestModel
+{
+    public string? InputFormat { get; set; }
+    public string? InputData { get; set; }
+    public string? ExpectedOutput { get; set; }
+    public int ComparisonMode { get; set; } = 2;
+    public decimal? NumericTolerance { get; set; }
+    public bool IsHidden { get; set; }
+    public bool IsSample { get; set; }
+    public int? TimeLimitMs { get; set; }
+    public int? MemoryLimitKb { get; set; }
 }
 
 public class DeleteQuestionsRequestModel
@@ -226,17 +258,50 @@ public class QuestionResponseModel
     public string? Topic { get; set; }
     public List<string>? TopicTag { get; set; }
     public string QuestionType { get; set; } = string.Empty;
-    public string QuestionText { get; set; } = string.Empty;
+    public string? QuestionText { get; set; }
     public List<string>? Options { get; set; }
     public string? Answer { get; set; }
     public string? Explanation { get; set; }
     public decimal Marks { get; set; }
     public decimal NegativeMarks { get; set; }
     public int DifficultyLevel { get; set; }
+    public string? QuestionTitle { get; set; }
+    public string? ProblemStatement { get; set; }
+    public string? DetailedDescription { get; set; }
+    public string? InputFormat { get; set; }
+    public string? OutputFormat { get; set; }
+    public string? ConstraintsText { get; set; }
+    public List<CodingQuestionExampleResponseModel>? Examples { get; set; }
+    public string? DefaultLanguageCode { get; set; }
+    public int? DefaultTimeLimitMs { get; set; }
+    public int? DefaultMemoryLimitKb { get; set; }
+    public int? DefaultMaxCodeSizeKb { get; set; }
+    public List<CodingTestCaseResponseModel>? TestCases { get; set; }
     public int Version { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public DateTime? ModifiedAt { get; set; }
+}
+
+public class CodingQuestionExampleResponseModel
+{
+    public string? Input { get; set; }
+    public string? Output { get; set; }
+    public string? Explanation { get; set; }
+}
+
+public class CodingTestCaseResponseModel
+{
+    public Guid TestCaseId { get; set; }
+    public string? InputFormat { get; set; }
+    public string? InputData { get; set; }
+    public string? ExpectedOutput { get; set; }
+    public int ComparisonMode { get; set; }
+    public decimal? NumericTolerance { get; set; }
+    public bool IsHidden { get; set; }
+    public bool IsSample { get; set; }
+    public int? TimeLimitMs { get; set; }
+    public int? MemoryLimitKb { get; set; }
 }
 
 public class AssessmentQuestionListRequestModel
