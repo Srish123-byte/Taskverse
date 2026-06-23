@@ -1,0 +1,32 @@
+using Taskverse.Data.DataAccess;
+using Taskverse.API.Reports.Service.Models;
+
+namespace Taskverse.API.Reports.Service.Managers;
+
+public interface IResultManager
+{
+    Task<bool> ResultExistsForAttemptAsync(Guid attemptId, CancellationToken cancellationToken = default);
+
+    Task<Attempt?> GetAttemptAsync(Guid attemptId, CancellationToken cancellationToken = default);
+
+    Task<Assessment?> GetAssessmentAsync(Guid assessmentId, CancellationToken cancellationToken = default);
+
+    Task<List<AttemptAnswer>> GetAttemptAnswersAsync(Guid attemptId, CancellationToken cancellationToken = default);
+
+    Task<List<AssessmentQuestionEvaluationContext>> GetAssessmentQuestionEvaluationContextsAsync(
+        Guid assessmentId,
+        CancellationToken cancellationToken = default);
+
+    Task PersistAttemptEvaluationAsync(
+        Attempt attempt,
+        Result result,
+        CancellationToken cancellationToken = default);
+
+    Task<List<StudentResultResponse>> GetStudentResultsAsync(
+        Guid studentId,
+        CancellationToken cancellationToken = default);
+
+    Task<StudentResultResponse> GetStudentAttemptResultAsync(
+        Guid attemptId,
+        CancellationToken cancellationToken = default);
+}

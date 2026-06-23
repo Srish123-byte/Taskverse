@@ -1,0 +1,128 @@
+@use '../../../common/styles/page' as *;
+
+// ── Layout ────────────────────────────────────────────────────────────────────
+
+.page-subtitle {
+  max-width: 560px;
+  margin: 0 auto 48px;
+  color: #9fb2c8;
+  font-size: 1rem;
+  line-height: 1.65;
+  text-align: center;
+}
+
+.page-title {
+  text-align: center;
+}
+
+.page-eyebrow {
+  text-align: center;
+}
+
+// ── Contact grid ──────────────────────────────────────────────────────────────
+
+.contact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  max-width: 860px;
+  margin: 0 auto;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ── Contact card ──────────────────────────────────────────────────────────────
+
+.contact-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 40px 32px 36px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 26px;
+  background:
+    linear-gradient(180deg, rgba(30, 41, 59, 0.96) 0%, rgba(15, 23, 42, 0.98) 100%),
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.14), transparent 42%);
+  box-shadow: 0 24px 56px rgba(2, 8, 23, 0.38);
+  text-align: center;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 32px 64px rgba(2, 8, 23, 0.48);
+  }
+}
+
+// ── Icon ──────────────────────────────────────────────────────────────────────
+
+.contact-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: rgba(56, 189, 248, 0.18);
+  color: #38bdf8;
+  flex-shrink: 0;
+}
+
+.contact-icon-wrap--email {
+  background: rgba(56, 189, 248, 0.18);
+  color: #38bdf8;
+}
+
+.contact-icon {
+  width: 30px;
+  height: 30px;
+}
+
+// ── Card body ─────────────────────────────────────────────────────────────────
+
+.contact-card-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.contact-label {
+  color: #f8fafc;
+  font-size: 1.08rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.contact-hours {
+  color: #9fb2c8;
+  font-size: 0.84rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.contact-value {
+  display: block;
+  margin-top: 10px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: opacity 0.18s ease;
+
+  &:hover { opacity: 0.8; }
+
+  &--phone { color: #38bdf8; }
+  &--email { color: #38bdf8; }
+}
+
+// ── Security note ─────────────────────────────────────────────────────────────
+
+.security-note {
+  margin-top: 40px;
+  color: #4b6480;
+  font-size: 0.82rem;
+  text-align: center;
+  letter-spacing: 0.01em;
+}

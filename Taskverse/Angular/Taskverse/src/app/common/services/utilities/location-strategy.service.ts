@@ -1,0 +1,1 @@
+export { LocationStrategyService } from './custom';

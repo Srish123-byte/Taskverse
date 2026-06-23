@@ -1,0 +1,211 @@
+<section #fullscreenShell class="assessment-runner-shell">
+  <div *ngIf="isBootstrapping" class="runner-state-card">
+    <span class="runner-eyebrow">Preparing Assessment</span>
+    <h1>Restoring your proctored assessment</h1>
+    <p>We are reconnecting your attempt, session status, and assessment state.</p>
+  </div>
+
+  <div *ngIf="!isBootstrapping && attemptErrorMessage && !attempt && !result" class="runner-state-card runner-state-card-error">
+    <span class="runner-eyebrow">Unable To Continue</span>
+    <h1>Assessment unavailable</h1>
+    <p>{{ attemptErrorMessage }}</p>
+    <button type="button" class="runner-button runner-button-primary" (click)="returnToAssessments()">
+      Back to Assessments
+    </button>
+  </div>
+
+  <ng-container *ngIf="!isBootstrapping && attempt && !result">
+    <section class="runner-gate-card" *ngIf="!isStartingAttempt && !isLoadingImmediateResult && !isFullscreenActive && !requiresFullscreenRecovery">
+      <span class="runner-eyebrow">Proctored Assessment</span>
+      <h1>{{ attempt.assessmentName }}</h1>
+      <p>This assessment must run in full screen. Leaving the tab, exiting full screen, opening restricted tools, or using blocked shortcuts will count as violations.</p>
+
+      <div class="runner-gate-grid">
+        <div>
+          <span>Tracked Rules</span>
+          <strong>{{ proctorRules.length }}</strong>
+        </div>
+        <div>
+          <span>Total Violations</span>
+          <strong>{{ violationCount }}</strong>
+        </div>
+        <div>
+          <span>Auto-Submit Rules</span>
+          <strong>{{ autoSubmitRuleCount }}</strong>
+        </div>
+        <div>
+          <span>Time Remaining</span>
+          <strong>{{ formattedCountdown }}</strong>
+        </div>
+        <div>
+          <span>Questions</span>
+          <strong>{{ attempt.questions.length }}</strong>
+        </div>
+      </div>
+
+      <button type="button" class="runner-button runner-button-primary" (click)="beginProctoredAttempt()">
+        Enter Full Screen and Continue
+      </button>
+    </section>
+
+    <div *ngIf="isStartingAttempt" class="runner-state-card">
+      <span class="runner-eyebrow">Entering Full Screen</span>
+      <h1>Preparing secure exam mode</h1>
+      <p>Please allow the browser to switch into full screen to continue.</p>
+    </div>
+
+    <section *ngIf="!isLoadingImmediateResult && (isFullscreenActive || requiresFullscreenRecovery)" class="assessment-player-shell">
+      <div *ngIf="requiresFullscreenRecovery" class="runner-overlay">
+        <div class="runner-overlay-card">
+          <span class="runner-eyebrow">Full Screen Required</span>
+          <h2>Return to full screen to continue</h2>
+          <p>{{ violationMessage || 'Full screen is required for this proctored assessment.' }}</p>
+          <button type="button" class="runner-button runner-button-primary" (click)="reEnterFullscreen()">
+            Re-enter Full Screen
+          </button>
+        </div>
+      </div>
+
+      <header class="assessment-player-topbar">
+        <div class="assessment-player-heading">
+          <span class="runner-eyebrow">Assessment In Progress</span>
+          <h2>{{ attempt.assessmentName }}</h2>
+        </div>
+
+        <div class="assessment-player-meta">
+          <div class="assessment-player-timer">
+            <span>Time Left</span>
+            <strong>{{ formattedCountdown }}</strong>
+          </div>
+          <div class="assessment-player-counter">
+            <span>Violations</span>
+            <strong>{{ violationCount }}</strong>
+          </div>
+        </div>
+      </header>
+
+      <div *ngIf="violationMessage" class="runner-alert runner-alert-warning">
+        {{ violationMessage }}
+      </div>
+
+      <div *ngIf="attemptErrorMessage && attempt" class="runner-alert runner-alert-error">
+        {{ attemptErrorMessage }}
+      </div>
+
+      <article *ngIf="currentQuestion as question" class="assessment-player-card">
+        <div class="assessment-question-meta">
+          <span>{{ getQuestionPositionLabel() }}</span>
+          <span>{{ question.marks }} marks</span>
+        </div>
+
+        <h3>{{ question.questionText }}</h3>
+        <p *ngIf="!isCodingQuestion(question) && isMultipleAnswerQuestion(question)" class="assessment-question-helper">Select all that apply.</p>
+
+        <app-coding
+          *ngIf="isCodingQuestion(question); else objectiveQuestionTemplate"
+          class="assessment-coding-editor"
+          title="Coding Workspace"
+          description="Write and refine your answer in the editor below."
+          helperText="Your code is saved as part of this assessment answer when you move to the next question or submit."
+          language="javascript"
+          theme="vs-dark"
+          [code]="question.selectedAnswer ?? ''"
+          [height]="'420px'"
+          (codeChange)="updateCodingAnswer(question, $event)">
+        </app-coding>
+
+        <ng-template #objectiveQuestionTemplate>
+          <div class="assessment-question-options">
+          <label
+            *ngFor="let option of question.options ?? []; trackBy: trackByQuestionOption"
+            class="assessment-option-button"
+            [class.assessment-option-button-selected]="isQuestionOptionSelected(question, option)">
+            <input
+              [type]="isMultipleAnswerQuestion(question) ? 'checkbox' : 'radio'"
+              class="assessment-option-radio"
+              [name]="'question-' + question.questionId"
+              [checked]="isQuestionOptionSelected(question, option)"
+              (change)="selectQuestionOption(question, option)" />
+            <span>{{ option }}</span>
+          </label>
+          </div>
+        </ng-template>
+      </article>
+
+      <div *ngIf="!currentQuestion" class="runner-alert">
+        No questions are available for this assessment attempt right now.
+      </div>
+
+      <footer class="assessment-player-actions">
+        <button
+          type="button"
+          class="runner-button runner-button-muted"
+          [disabled]="currentQuestionIndex === 0 || isSavingAnswer || isSubmittingAttempt"
+          (click)="showPreviousQuestion()">
+          Previous
+        </button>
+        <button
+          *ngIf="!isLastQuestion"
+          type="button"
+          class="runner-button runner-button-primary"
+          [disabled]="!attempt.questions.length || currentQuestionIndex >= attempt.questions.length - 1 || isSavingAnswer || isSubmittingAttempt"
+          (click)="showNextQuestion()">
+          {{ isSavingAnswer ? 'Saving...' : 'Next' }}
+        </button>
+        <button
+          *ngIf="isLastQuestion"
+          type="button"
+          class="runner-button runner-button-primary"
+          [disabled]="!attempt.questions.length || isSavingAnswer || isSubmittingAttempt"
+          (click)="submitCurrentAttempt()">
+          {{
+            isSubmittingAttempt
+              ? 'Submitting...'
+              : isSavingAnswer
+                ? 'Saving...'
+                : 'Submit'
+          }}
+        </button>
+      </footer>
+    </section>
+  </ng-container>
+
+  <section *ngIf="result" class="runner-result-shell">
+    <span class="runner-eyebrow">Assessment Result</span>
+    <h1>{{ result.assessmentName }}</h1>
+    <p>Submission completed successfully. Review the result details below.</p>
+
+    <div class="runner-result-grid">
+      <div class="runner-result-card">
+        <span>Score</span>
+        <strong>{{ result.obtainedMarks }} / {{ result.totalMarks }}</strong>
+      </div>
+      <div class="runner-result-card">
+        <span>Percentage</span>
+        <strong>{{ result.percentage }}%</strong>
+      </div>
+      <div class="runner-result-card">
+        <span>Rank</span>
+        <strong>{{ result.rank }}</strong>
+      </div>
+      <div class="runner-result-card">
+        <span>Status</span>
+        <strong>{{ result.resultStatus }}</strong>
+      </div>
+    </div>
+
+    <div class="runner-result-note" *ngIf="result.hasPendingCodingEvaluation">
+      Coding evaluation is still pending. The score shown may update once coding responses are evaluated.
+    </div>
+
+    <button type="button" class="runner-button runner-button-primary" (click)="returnToAssessments()">
+      Back to Assessments
+    </button>
+  </section>
+
+  <section *ngIf="isLoadingImmediateResult && !result" class="runner-state-card">
+    <span class="runner-eyebrow">Fetching Result</span>
+    <h1>Finalizing your submission</h1>
+    <p>We are checking whether results are available immediately for this assessment.</p>
+  </section>
+</section>

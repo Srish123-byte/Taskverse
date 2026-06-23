@@ -1,0 +1,11 @@
+<div
+  class="dashboard-loader"
+  [ngClass]="'dashboard-loader-' + tone"
+  aria-live="polite"
+  aria-busy="true">
+  <mat-spinner [diameter]="diameter"></mat-spinner>
+  <div>
+    <div class="dashboard-loader-title">{{ title }}</div>
+    <div class="dashboard-loader-copy">{{ copy }}</div>
+  </div>
+</div>

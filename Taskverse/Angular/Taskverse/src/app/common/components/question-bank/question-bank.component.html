@@ -1,0 +1,190 @@
+<div class="page-container">
+  <section class="questions-hero">
+    <div class="hero-copy">
+      <span class="hero-kicker">{{ heroKicker }}</span>
+      <h2 class="page-title">{{ pageTitle }}</h2>
+      <p class="page-welcome">{{ pageWelcome }}</p>
+    </div>
+
+    <div class="hero-actions">
+      <input
+        #bulkUploadInput
+        type="file"
+        class="bulk-upload-input"
+        accept=".csv,.xls,.xlsx"
+        (change)="onBulkUploadSelected($event)" />
+      <button type="button" class="secondary-action" [disabled]="isUploading" (click)="openBulkUpload(bulkUploadInput)">
+        <img src="assets/icons/shared/export.svg" alt="" class="action-icon" aria-hidden="true" />
+        <span>{{ isUploading ? 'Uploading...' : 'Bulk Upload' }}</span>
+      </button>
+      <div class="add-question-menu-shell">
+        <button
+          type="button"
+          class="primary-action"
+          [matMenuTriggerFor]="addQuestionMenu"
+          aria-label="Add new question">
+          <img src="assets/icons/shared/add.svg" alt="" class="action-icon" aria-hidden="true" />
+          <span>Add New Question</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <mat-menu
+    #addQuestionMenu="matMenu"
+    xPosition="before"
+    yPosition="below"
+    overlapTrigger="false"
+    class="question-bank-add-menu-panel"
+    overlayPanelClass="question-bank-add-menu-overlay">
+    <button mat-menu-item type="button" (click)="openNewQuestionEditor('coding')">Coding</button>
+    <button mat-menu-item type="button" (click)="openNewQuestionEditor('mcq')">Non-Coding</button>
+  </mat-menu>
+
+  <div class="page-content questions-page-shell">
+    <section *ngIf="uploadMessage || uploadErrorMessage" class="upload-state-shell">
+      <div *ngIf="uploadMessage" class="page-state page-state-success">{{ uploadMessage }}</div>
+      <div *ngIf="uploadErrorMessage" class="page-state page-state-error">{{ uploadErrorMessage }}</div>
+      <div class="upload-hint">
+        Import supports <strong>.csv</strong>, <strong>.xls</strong>, and <strong>.xlsx</strong>. Use the current API model fields as columns. For MCQ rows, the <strong>options</strong> cell must contain a JSON array such as <code>["A","B","C","D"]</code>.
+      </div>
+    </section>
+
+    <section class="filters-shell">
+      <label class="search-field" for="questionBankSearch">
+        <img src="assets/icons/shared/magnifier.svg" alt="" class="search-icon" aria-hidden="true" />
+        <input
+          id="questionBankSearch"
+          type="search"
+          [(ngModel)]="searchTerm"
+          (ngModelChange)="onClientFilterChange()"
+          placeholder="Search questions..." />
+      </label>
+
+      <div class="filter-grid">
+        <select [(ngModel)]="selectedSubject" (ngModelChange)="onServerFilterChange()" aria-label="Filter by subject">
+          <option *ngFor="let option of availableSubjects" [value]="option.value">{{ option.label }}</option>
+        </select>
+
+        <select [(ngModel)]="selectedTopic" (ngModelChange)="onServerFilterChange()" aria-label="Filter by topic">
+          <option *ngFor="let option of availableTopics" [value]="option.value">{{ option.label }}</option>
+        </select>
+
+        <select [(ngModel)]="selectedDifficulty" (ngModelChange)="onServerFilterChange()" aria-label="Filter by difficulty">
+          <option *ngFor="let option of difficultyOptions" [value]="option.value">{{ option.label }}</option>
+        </select>
+
+        <select [(ngModel)]="selectedType" (ngModelChange)="onClientFilterChange()" aria-label="Filter by question type">
+          <option *ngFor="let option of availableTypes" [value]="option.value">{{ option.label }}</option>
+        </select>
+
+        <button type="button" class="clear-button" (click)="resetFilters()">Clear Filters</button>
+      </div>
+    </section>
+
+    <div *ngIf="isLoading" class="page-loader" aria-live="polite" aria-busy="true">
+      <mat-spinner diameter="42"></mat-spinner>
+      <div>
+        <div class="page-loader-title">Loading question bank</div>
+        <div class="page-loader-copy">Fetching question records for your college.</div>
+      </div>
+    </div>
+
+    <div *ngIf="errorMessage" class="page-state page-state-error">{{ errorMessage }}</div>
+
+    <section *ngIf="!isLoading && !errorMessage" class="question-table-shell">
+      <div class="table-header-row" *ngIf="filteredQuestions.length > 0">
+        <span>Question Preview</span>
+        <span>Subject</span>
+        <span>Topic</span>
+        <span>Difficulty</span>
+        <span>Actions</span>
+      </div>
+
+      <div *ngIf="filteredQuestions.length === 0" class="empty-state">
+        <div class="empty-state-title">No questions to show</div>
+        <div class="empty-state-copy">{{ infoMessage }}</div>
+      </div>
+
+      <article *ngFor="let question of filteredQuestions; trackBy: trackByQuestionId" class="question-row">
+        <div class="question-preview-cell">
+          <span class="question-accent" [ngClass]="getDifficultyClass(question.difficultyLevel)"></span>
+          <div>
+            <div class="question-text">{{ question.questionText }}</div>
+            <div class="question-meta">{{ getQuestionTypeLabel(question.questionType) }}</div>
+          </div>
+        </div>
+
+        <div class="subject-cell">{{ question.subject || 'Unassigned' }}</div>
+        <div class="topic-cell">{{ question.topic || 'Unassigned' }}</div>
+
+        <div class="difficulty-cell">
+          <span class="difficulty-pill" [ngClass]="getDifficultyClass(question.difficultyLevel)">
+            {{ getDifficultyLabel(question.difficultyLevel) }}
+          </span>
+        </div>
+
+        <div class="actions-cell">
+          <button type="button" class="table-action" (click)="editQuestion(question.questionId)">Edit</button>
+          <button
+            type="button"
+            class="table-action table-action-ghost"
+            [disabled]="deletingQuestionId === question.questionId"
+            (click)="deleteQuestion(question)">
+            {{ deletingQuestionId === question.questionId ? 'Deleting...' : 'Delete' }}
+          </button>
+        </div>
+      </article>
+
+      <div *ngIf="totalCount > 0" class="pagination-shell">
+        <span class="pagination-info">
+          Showing {{ pageStart }}-{{ pageEnd }} of {{ totalCount }} questions
+        </span>
+
+        <div class="pagination-controls">
+          <button
+            type="button"
+            class="page-btn page-btn-nav"
+            [disabled]="currentPage === 1"
+            (click)="prevPage()"
+            aria-label="Previous page">
+            <mat-icon class="pagination-angle-icon" aria-hidden="true">&#8249;</mat-icon>
+          </button>
+
+          <button
+            *ngFor="let page of pageNumbers"
+            type="button"
+            class="page-btn"
+            [class.page-btn-active]="page === currentPage"
+            (click)="goToPage(page)">
+            {{ page }}
+          </button>
+
+          <button
+            type="button"
+            class="page-btn page-btn-nav"
+            [disabled]="currentPage === totalPages"
+            (click)="nextPage()"
+            aria-label="Next page">
+            <mat-icon class="pagination-angle-icon" aria-hidden="true">&#8250;</mat-icon>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="summary-grid">
+      <article class="summary-card">
+        <div class="summary-label">Total Questions</div>
+        <div class="summary-value">{{ totalCount }}</div>
+      </article>
+      <article class="summary-card">
+        <div class="summary-label">Visible On Page</div>
+        <div class="summary-value">{{ filteredQuestions.length }}</div>
+      </article>
+      <article class="summary-card">
+        <div class="summary-label">Current Page</div>
+        <div class="summary-value">{{ currentPage }}</div>
+      </article>
+    </section>
+  </div>
+</div>

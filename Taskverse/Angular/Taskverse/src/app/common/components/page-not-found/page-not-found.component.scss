@@ -1,0 +1,27 @@
+.not-found-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  gap: 16px;
+
+  h1 {
+    font-size: 6rem;
+    font-weight: 700;
+    color: var(--accent-cyan, #00BFFF);
+    margin: 0;
+  }
+
+  p {
+    font-size: 1.125rem;
+    color: var(--text-body, #9CA3AF);
+  }
+
+  a {
+    color: var(--accent-cyan, #00BFFF);
+    text-decoration: underline;
+    font-weight: 500;
+  }
+}

@@ -1,0 +1,164 @@
+<div class="approvals-page">
+
+  <!-- ── Page Header ─────────────────────────────────────── -->
+  <header class="page-header">
+    <div class="header-copy">
+      <span class="page-eyebrow">College Admin</span>
+      <h1 class="page-title">User Approvals</h1>
+      <p class="page-subtitle">Review and action incoming student and trainer registration requests.</p>
+    </div>
+    <div class="header-badge" *ngIf="!isLoading">
+      <span class="badge-icon material-icons">pending_actions</span>
+      <span class="badge-count">{{ pendingUsers.length }}</span>
+      <span class="badge-label">Pending</span>
+    </div>
+  </header>
+
+  <!-- ── Filter Tabs ─────────────────────────────────────── -->
+  <nav class="filter-tabs" role="tablist">
+    <button
+      role="tab"
+      class="filter-tab"
+      [class.filter-tab-active]="activeFilter === 'all'"
+      (click)="setFilter('all')">
+      All
+      <span class="tab-count">{{ pendingUsers.length }}</span>
+    </button>
+    <button
+      role="tab"
+      class="filter-tab"
+      [class.filter-tab-active]="activeFilter === 'student'"
+      (click)="setFilter('student')">
+      Students
+      <span class="tab-count tab-count-student">{{ studentCount }}</span>
+    </button>
+    <button
+      role="tab"
+      class="filter-tab"
+      [class.filter-tab-active]="activeFilter === 'trainer'"
+      (click)="setFilter('trainer')">
+      Trainers
+      <span class="tab-count tab-count-trainer">{{ trainerCount }}</span>
+    </button>
+  </nav>
+
+  <!-- ── Error Banner ────────────────────────────────────── -->
+  <div class="error-banner" *ngIf="errorMessage">
+    <span class="material-icons">error_outline</span>
+    {{ errorMessage }}
+  </div>
+
+  <!-- ── Loading Skeleton ────────────────────────────────── -->
+  <div class="skeleton-grid" *ngIf="isLoading">
+    <div class="skeleton-card" *ngFor="let i of [1,2,3,4]">
+      <div class="sk-avatar"></div>
+      <div class="sk-lines">
+        <div class="sk-line sk-line-lg"></div>
+        <div class="sk-line sk-line-md"></div>
+        <div class="sk-line sk-line-sm"></div>
+      </div>
+      <div class="sk-actions">
+        <div class="sk-btn"></div>
+        <div class="sk-btn"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Empty State ─────────────────────────────────────── -->
+  <div class="empty-state" *ngIf="!isLoading && filteredUsers.length === 0 && !errorMessage">
+    <div class="empty-icon-wrap">
+      <span class="material-icons empty-icon">how_to_reg</span>
+    </div>
+    <h2 class="empty-heading">All caught up!</h2>
+    <p class="empty-sub">No pending {{ activeFilter === 'all' ? 'user' : activeFilter }} approvals at the moment.</p>
+  </div>
+
+  <!-- ── User Cards Grid ─────────────────────────────────── -->
+  <div class="cards-grid" *ngIf="!isLoading && filteredUsers.length > 0">
+    <article
+      class="user-card"
+      *ngFor="let user of filteredUsers"
+      [class.user-card-actioning]="actionInProgress === user.userId">
+
+      <!-- Avatar -->
+      <div class="user-avatar" [class]="'avatar-' + user.role.toLowerCase()">
+        {{ getInitials(user.fullName) }}
+      </div>
+
+      <!-- User Info -->
+      <div class="user-info">
+        <span class="user-name">{{ user.fullName }}</span>
+        <span class="user-email">{{ user.email }}</span>
+        <div class="user-meta">
+          <span class="role-chip" [class]="getRoleClass(user.role)">
+            <span class="material-icons chip-icon">
+              {{ user.role.toLowerCase() === 'trainer' ? 'school' : 'person' }}
+            </span>
+            {{ user.role }}
+          </span>
+          <span class="registered-on">
+            <span class="material-icons meta-icon">schedule</span>
+            Registered {{ user.createdAt | date: 'dd MMM yyyy' }}
+          </span>
+        </div>
+        <span class="institution-name" *ngIf="user.institutionName">
+          <span class="material-icons meta-icon">account_balance</span>
+          {{ user.institutionName }}
+        </span>
+      </div>
+
+      <!-- Actions / Spinner -->
+      <div class="user-actions" *ngIf="actionInProgress !== user.userId">
+        <button
+          class="btn btn-approve"
+          (click)="promptAction(user, 'approve')"
+          aria-label="Approve {{ user.fullName }}">
+          <span class="material-icons">check_circle</span>
+          Approve
+        </button>
+        <button
+          class="btn btn-reject"
+          (click)="promptAction(user, 'reject')"
+          aria-label="Reject {{ user.fullName }}">
+          <span class="material-icons">cancel</span>
+          Reject
+        </button>
+      </div>
+      <div class="action-spinner" *ngIf="actionInProgress === user.userId">
+        <span class="spinner"></span>
+        <span class="spinner-label">Processing…</span>
+      </div>
+
+    </article>
+  </div>
+
+  <!-- ── Confirmation Overlay ───────────────────────────── -->
+  <div class="overlay-backdrop" *ngIf="confirm.active" (click)="cancelConfirm()">
+    <div class="confirm-modal" (click)="$event.stopPropagation()">
+      <div class="confirm-icon-wrap" [class.confirm-icon-approve]="confirm.action === 'approve'" [class.confirm-icon-reject]="confirm.action === 'reject'">
+        <span class="material-icons">{{ confirm.action === 'approve' ? 'verified_user' : 'person_remove' }}</span>
+      </div>
+      <h2 class="confirm-heading">
+        {{ confirm.action === 'approve' ? 'Approve' : 'Reject' }} User?
+      </h2>
+      <p class="confirm-body">
+        You are about to <strong>{{ confirm.action }}</strong>
+        <strong class="confirm-name"> {{ confirm.userName }}</strong>.
+        {{ confirm.action === 'approve'
+          ? 'They will gain access to the platform.'
+          : 'Their registration will be declined.' }}
+      </p>
+      <div class="confirm-actions">
+        <button class="btn btn-ghost" (click)="cancelConfirm()">Cancel</button>
+        <button
+          class="btn"
+          [class.btn-approve]="confirm.action === 'approve'"
+          [class.btn-reject]="confirm.action === 'reject'"
+          (click)="confirmAction()">
+          {{ confirm.action === 'approve' ? 'Yes, Approve' : 'Yes, Reject' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>

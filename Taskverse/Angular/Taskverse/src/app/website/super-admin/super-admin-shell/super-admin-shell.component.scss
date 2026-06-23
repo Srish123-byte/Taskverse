@@ -1,0 +1,19 @@
+@use '../../../common/styles/role-shell' as role-shell;
+
+@include role-shell.role-shell-theme(
+  '.super-admin-shell',
+  rgba(148, 210, 189, 0.28),
+  #f6fafc,
+  #0f2942,
+  #173d5f,
+  #94d2bd,
+  #ee9b00,
+  #0f2942,
+  #92abc2,
+  #d5e2ee,
+  #94d2bd,
+  rgba(148, 210, 189, 0.18),
+  #f7fffb,
+  rgba(238, 155, 0, 0.12),
+  rgba(238, 155, 0, 0.48)
+);

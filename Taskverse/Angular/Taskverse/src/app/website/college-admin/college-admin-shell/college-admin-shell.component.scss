@@ -1,0 +1,173 @@
+@use '../../../common/styles/role-shell' as role-shell;
+
+@include role-shell.role-shell-theme(
+  '.college-admin-shell',
+  rgba(148, 210, 189, 0.28),
+  #f6fafc,
+  #0f2942,
+  #173d5f,
+  #94d2bd,
+  #ee9b00,
+  #0f2942,
+  #92abc2,
+  #d5e2ee,
+  #94d2bd,
+  rgba(148, 210, 189, 0.18),
+  #f7fffb,
+  rgba(238, 155, 0, 0.12),
+  rgba(238, 155, 0, 0.48)
+);
+
+.shell-sidebar {
+  gap: 24px;
+}
+
+.shell-brand {
+  padding-inline: 8px;
+}
+
+.brand-mark {
+  font-size: 0;
+}
+
+.brand-mark mat-icon {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}
+
+.institution-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #152648;
+  box-shadow: inset 0 0 0 1px rgba(119, 145, 214, 0.18);
+}
+
+.institution-label {
+  color: #f5f7fb;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.institution-name {
+  color: #65c8ff;
+  font-size: 0.96rem;
+  line-height: 1.4;
+}
+
+.shell-nav {
+  display: grid;
+  gap: 8px;
+}
+
+.nav-link {
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: 14px;
+}
+
+.nav-link-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+}
+
+.nav-link-copy mat-icon {
+  flex-shrink: 0;
+}
+
+.nav-badge {
+  min-width: 22px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #b20d16;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.sidebar-footer {
+  display: grid;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid rgba(29, 44, 86, 0.2);
+}
+
+.shell-nav-support,
+.shell-nav-support .nav-link {
+  padding-block: 10px;
+}
+
+.shell-main {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  height: 100%;
+}
+
+.shell-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 24px;
+  background: rgba(255, 255, 255, 0.72);
+  border-bottom: 1px solid rgba(15, 41, 66, 0.08);
+}
+
+.search-shell {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: min(520px, 100%);
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #11192f;
+  color: #8ea0c8;
+}
+
+.search-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.search-shell input {
+  width: 100%;
+  padding: 12px 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #dfe7ff;
+  font: inherit;
+}
+
+.search-shell input::placeholder {
+  color: #7e92bd;
+}
+
+.shell-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 26px 24px 28px;
+  background: #101a31;
+  overflow-y: auto;
+}
+
+@media (max-width: 640px) {
+  .shell-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .shell-content {
+    padding-inline: 14px;
+  }
+}

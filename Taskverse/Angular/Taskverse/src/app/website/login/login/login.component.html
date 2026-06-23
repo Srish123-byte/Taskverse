@@ -1,0 +1,140 @@
+<div class="login-page">
+  <div class="login-card mat-elevation-z4">
+
+    <h1 class="login-title">Taskverse</h1>
+
+    <div class="auth-tabs">
+      <button type="button" class="tab-btn" [class.active]="mode === 'login'" (click)="switchMode('login')" id="tab-login">Sign In</button>
+      <button type="button" class="tab-btn" [class.active]="mode === 'register'" (click)="switchMode('register')" id="tab-register">Create Account</button>
+      <span class="tab-indicator" [class.right]="mode === 'register'"></span>
+    </div>
+
+    <p class="success-message" *ngIf="successMessage">{{ successMessage }}</p>
+    <p class="error-message" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+    <form *ngIf="mode === 'login'" [formGroup]="loginForm" (ngSubmit)="onLogin()" novalidate>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Email</mat-label>
+        <input matInput type="email" formControlName="email" autocomplete="email" id="login-email" />
+        <mat-error *ngIf="email?.hasError('required')">Email is required</mat-error>
+        <mat-error *ngIf="email?.hasError('email')">Enter a valid email address</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Password</mat-label>
+        <input matInput type="password" formControlName="password" autocomplete="current-password" id="login-password" />
+        <mat-error *ngIf="password?.hasError('required')">Password is required</mat-error>
+        <mat-error *ngIf="password?.hasError('minlength')">Minimum 8 characters</mat-error>
+      </mat-form-field>
+
+      <button mat-raised-button color="primary" type="submit" class="full-width submit-btn" [disabled]="isLoading" id="btn-login">
+        <mat-spinner *ngIf="isLoading" diameter="20" class="btn-spinner"></mat-spinner>
+        <span *ngIf="!isLoading">Sign In</span>
+      </button>
+    </form>
+
+    <form *ngIf="mode === 'register'" [formGroup]="registerForm" (ngSubmit)="onRegister()" novalidate>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Full Name</mat-label>
+        <input matInput formControlName="fullName" autocomplete="name" id="reg-full-name" maxlength="50" />
+        <mat-hint align="end">{{ rFullName?.value?.length ?? 0 }}/50</mat-hint>
+        <mat-error *ngIf="rFullName?.hasError('required')">Full name is required</mat-error>
+        <mat-error *ngIf="rFullName?.hasError('minlength')">Minimum 2 characters</mat-error>
+        <mat-error *ngIf="rFullName?.hasError('maxlength')">Full name must not exceed 50 characters</mat-error>
+        <mat-error *ngIf="rFullName?.hasError('specialChars')">Special characters are not allowed</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Email</mat-label>
+        <input matInput type="email" formControlName="email" autocomplete="email" id="reg-email" />
+        <mat-error *ngIf="rEmail?.hasError('required')">Email is required</mat-error>
+        <mat-error *ngIf="rEmail?.hasError('email') || rEmail?.hasError('strictEmail')">Enter a valid email address containing @ and ending with .com</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Phone</mat-label>
+        <input matInput type="tel" formControlName="phone" autocomplete="tel" id="reg-phone" maxlength="11" />
+        <mat-error *ngIf="rPhone?.hasError('required')">Phone number is required</mat-error>
+        <mat-error *ngIf="rPhone?.hasError('pattern')">Phone must be digits only, maximum 11 digits</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Role</mat-label>
+        <mat-select formControlName="role" id="reg-role">
+          <mat-option *ngFor="let r of roles" [value]="r.value">{{ r.label }}</mat-option>
+        </mat-select>
+        <mat-error *ngIf="rRole?.hasError('required')">Please select a role</mat-error>
+      </mat-form-field>
+
+      <mat-form-field *ngIf="requiresCollegeName" appearance="outline" class="full-width">
+        <mat-label>College Name</mat-label>
+        <input matInput formControlName="collegeName" autocomplete="organization" id="reg-college-name" />
+        <mat-error *ngIf="rCollegeName?.hasError('required')">College name is required</mat-error>
+        <mat-error *ngIf="rCollegeName?.hasError('minlength')">Minimum 2 characters</mat-error>
+      </mat-form-field>
+
+      <div *ngIf="requiresInstitutionSelection" class="registration-grid">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>College</mat-label>
+          <mat-select formControlName="collegeId" id="reg-college" [disabled]="isCollegeOptionsLoading || colleges.length === 0">
+            <mat-option *ngFor="let college of colleges" [value]="college.collegeId">
+              {{ college.name }}
+            </mat-option>
+          </mat-select>
+          <mat-hint *ngIf="isCollegeOptionsLoading">Loading approved colleges...</mat-hint>
+          <mat-hint *ngIf="!isCollegeOptionsLoading && colleges.length === 0">No colleges available.</mat-hint>
+          <mat-error *ngIf="rCollegeId?.hasError('required')">Please select a college</mat-error>
+        </mat-form-field>
+
+        <mat-form-field *ngIf="requiresClassSelection" appearance="outline" class="full-width">
+          <mat-label>Class</mat-label>
+          <mat-select formControlName="classId" id="reg-class" [disabled]="!rCollegeId?.value || isClassOptionsLoading || classes.length === 0">
+            <mat-option *ngFor="let classItem of classes" [value]="classItem.classId">
+              {{ classItem.name }}<span *ngIf="classItem.academicYear"> ({{ classItem.academicYear }})</span>
+            </mat-option>
+          </mat-select>
+          <mat-hint *ngIf="isClassOptionsLoading">Loading classes...</mat-hint>
+          <mat-hint *ngIf="!isClassOptionsLoading && rCollegeId?.value && classes.length === 0">No classes available.</mat-hint>
+          <mat-error *ngIf="rClassId?.hasError('required')">Please select a class</mat-error>
+        </mat-form-field>
+
+        <mat-form-field *ngIf="requiresBatchSelection" appearance="outline" class="full-width">
+          <mat-label>Batch</mat-label>
+          <mat-select formControlName="batchId" id="reg-batch" [disabled]="!rClassId?.value || isBatchOptionsLoading || batches.length === 0">
+            <mat-option *ngFor="let batch of batches" [value]="batch.batchId">
+              {{ batch.name }}
+            </mat-option>
+          </mat-select>
+          <mat-hint *ngIf="isBatchOptionsLoading">Loading batches...</mat-hint>
+          <mat-hint *ngIf="!isBatchOptionsLoading && rClassId?.value && batches.length === 0">No batches available.</mat-hint>
+          <mat-error *ngIf="rBatchId?.hasError('required')">Please select a batch</mat-error>
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Password</mat-label>
+        <input matInput type="password" formControlName="password" autocomplete="new-password" id="reg-password" />
+        <mat-error *ngIf="rPassword?.hasError('required')">Password is required</mat-error>
+        <mat-error *ngIf="rPassword?.hasError('minlength')">Minimum 8 characters</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Confirm Password</mat-label>
+        <input matInput type="password" formControlName="confirmPassword" autocomplete="new-password" id="reg-confirm-password" />
+        <mat-error *ngIf="rConfirmPassword?.hasError('required')">Please confirm your password</mat-error>
+        <mat-error *ngIf="passwordMismatch">Passwords do not match</mat-error>
+      </mat-form-field>
+
+      <p class="approval-hint">
+        <mat-icon class="hint-icon">info</mat-icon>
+        Accounts for Student, Trainer &amp; College Admin roles require admin approval before sign-in.
+      </p>
+
+      <button mat-raised-button color="primary" type="submit" class="full-width submit-btn" [disabled]="isLoading" id="btn-register">
+        <mat-spinner *ngIf="isLoading" diameter="20" class="btn-spinner"></mat-spinner>
+        <span *ngIf="!isLoading">Create Account</span>
+      </button>
+    </form>
+
+  </div>
+</div>

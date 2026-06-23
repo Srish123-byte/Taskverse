@@ -1,0 +1,12 @@
+<div class="page-container">
+  <h2 class="page-title">Trainer Dashboard</h2>
+  <p class="page-welcome">Welcome, {{ userName }}</p>
+  <app-dashboard-loader
+    *ngIf="isLoading"
+    title="Loading dashboard"
+    copy="Preparing the latest trainer dashboard.">
+  </app-dashboard-loader>
+  <div *ngIf="!isLoading" class="page-content">
+    <!-- Dashboard widgets go here -->
+  </div>
+</div>
