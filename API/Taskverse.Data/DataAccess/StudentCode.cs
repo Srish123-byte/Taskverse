@@ -26,6 +26,9 @@ public class StudentCode
     [Column("code")]
     public string Code { get; set; } = default!;
 
+    [Column("coding_question_id")]
+    public Guid? CodingQuestionId { get; set; }
+
     [Column("last_saved_at")]
     public DateTime LastSavedAt { get; set; } = DateTime.UtcNow;
 
@@ -40,4 +43,6 @@ public class StudentCode
     public Assessment Assessment { get; set; } = default!;
 
     public CodingLanguage CodingLanguage { get; set; } = default!;
+
+    public CodingQuestion? CodingQuestion { get; set; }
 }

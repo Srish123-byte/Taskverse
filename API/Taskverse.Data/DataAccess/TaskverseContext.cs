@@ -480,16 +480,24 @@ public class TaskverseContext : DbContext
             entity.Property(sc => sc.StarterCodeContent).HasColumnName("starter_code").IsRequired();
             entity.Property(sc => sc.SolutionTemplate).HasColumnName("solution_template");
             entity.Property(sc => sc.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(sc => sc.CodingQuestionId).HasColumnName("coding_question_id");
             entity.Property(sc => sc.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(sc => sc.ModifiedAt).HasColumnName("modified_at");
 
             entity.HasIndex(sc => sc.CodingLanguageId);
+            entity.HasIndex(sc => sc.CodingQuestionId);
 
             entity.HasOne(sc => sc.CodingLanguage)
                   .WithMany(cl => cl.StarterCodes)
                   .HasForeignKey(sc => sc.CodingLanguageId)
                   .OnDelete(DeleteBehavior.Restrict)
                   .HasConstraintName("fk_task_starter_code_coding_languages");
+
+            entity.HasOne(sc => sc.CodingQuestion)
+                  .WithMany(cq => cq.StarterCodes)
+                  .HasForeignKey(sc => sc.CodingQuestionId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("fk_starter_code_coding_questions");
         });
 
         // Configure StudentCode entity
@@ -502,6 +510,7 @@ public class TaskverseContext : DbContext
             entity.Property(sc => sc.AssessmentId).HasColumnName("assessment_id");
             entity.Property(sc => sc.CodingLanguageId).HasColumnName("coding_language_id");
             entity.Property(sc => sc.Code).HasColumnName("code").IsRequired();
+            entity.Property(sc => sc.CodingQuestionId).HasColumnName("coding_question_id");
             entity.Property(sc => sc.LastSavedAt).HasColumnName("last_saved_at").HasDefaultValueSql("now()");
             entity.Property(sc => sc.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(sc => sc.ModifiedAt).HasColumnName("modified_at");
@@ -509,6 +518,7 @@ public class TaskverseContext : DbContext
             entity.HasIndex(sc => sc.StudentId);
             entity.HasIndex(sc => sc.AssessmentId);
             entity.HasIndex(sc => sc.CodingLanguageId);
+            entity.HasIndex(sc => sc.CodingQuestionId);
 
             entity.HasOne(sc => sc.Student)
                   .WithMany(s => s.StudentCodes)
@@ -527,6 +537,12 @@ public class TaskverseContext : DbContext
                   .HasForeignKey(sc => sc.CodingLanguageId)
                   .OnDelete(DeleteBehavior.Restrict)
                   .HasConstraintName("fk_student_assessment_code_coding_languages");
+
+            entity.HasOne(sc => sc.CodingQuestion)
+                  .WithMany(cq => cq.StudentCodes)
+                  .HasForeignKey(sc => sc.CodingQuestionId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("fk_student_code_coding_questions");
         });
 
         // Configure SubjectBatch entity
