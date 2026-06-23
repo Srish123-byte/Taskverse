@@ -574,3 +574,23 @@ public record StudentAttemptRecoveryRecord(
     string? Instructions,
     [property: JsonPropertyName("questions")]
     List<StudentAttemptRecoveryQuestionRecord> Questions);
+
+public record CodingReadinessRecord(
+    [property: JsonPropertyName("is_ready")]
+    bool IsReady,
+    [property: JsonPropertyName("non_coding_completed")]
+    int NonCodingCompleted,
+    [property: JsonPropertyName("non_coding_total")]
+    int NonCodingTotal,
+    [property: JsonPropertyName("coding_questions")]
+    List<CodingQuestionItemRecord> CodingQuestions);
+
+public record CodingQuestionItemRecord(
+    [property: JsonPropertyName("coding_question_id")]
+    Guid CodingQuestionId,
+    [property: JsonPropertyName("title")]
+    string Title,
+    [property: JsonPropertyName("difficulty_level")]
+    int DifficultyLevel,
+    [property: JsonPropertyName("marks")]
+    decimal Marks);

@@ -12,6 +12,8 @@ public interface ICodingEngineManager
     Task<List<CodingLanguage>> GetAvailableLanguagesAsync();
     Task<Student?> GetStudentByUserIdAsync(Guid studentUserId);
     Task<Attempt?> GetAttemptForStudentAsync(Guid assessmentId, Guid studentId);
+    Task<int> GetNonCodingQuestionCountAsync(Guid assessmentId);
+    Task<int> GetAnsweredNonCodingQuestionCountAsync(Guid attemptId);
     void AddStudentCode(StudentCode studentCode);
     void AddCodeExecutionRequest(CodeExecutionRequest executionRequest);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);

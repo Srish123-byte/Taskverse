@@ -75,6 +75,21 @@ public class CodingEngineManager : ICodingEngineManager
                     a.StudentId == studentId),
             $"retrieving attempt for assessment '{assessmentId}' and student '{studentId}'.");
 
+    public async Task<int> GetNonCodingQuestionCountAsync(Guid assessmentId)
+        => await ExecuteQueryAsync(
+            () => _context.AssessmentQuestions
+                .CountAsync(aq => aq.AssessmentId == assessmentId),
+            $"counting non-coding questions for assessment '{assessmentId}'.");
+
+    public async Task<int> GetAnsweredNonCodingQuestionCountAsync(Guid attemptId)
+        => await ExecuteQueryAsync(
+            () => _context.AttemptAnswers
+                .CountAsync(aa =>
+                    aa.AttemptId == attemptId &&
+                    aa.SelectedAnswer != null &&
+                    aa.SelectedAnswer != string.Empty),
+            $"counting answered non-coding questions for attempt '{attemptId}'.");
+
     public void AddStudentCode(StudentCode studentCode)
         => ExecuteCommand(
             () => _context.StudentCodes.Add(studentCode),

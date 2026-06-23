@@ -131,4 +131,13 @@ public interface IAssessmentManager
     /// <param name="studentUserId">The student user identifier.</param>
     /// <returns>The submitted attempt summary.</returns>
     Task<StudentAttemptSubmitRecord> SubmitStudentAttempt(Guid attemptId, Guid studentUserId);
+
+    /// <summary>
+    /// Returns coding readiness for a student's attempt, indicating whether all
+    /// non-coding questions have been completed and listing available coding questions.
+    /// </summary>
+    /// <param name="attemptId">The attempt identifier.</param>
+    /// <param name="studentUserId">The student user identifier.</param>
+    /// <returns>The coding readiness state.</returns>
+    Task<CodingReadinessRecord> GetCodingReadinessAsync(Guid attemptId, Guid studentUserId);
 }

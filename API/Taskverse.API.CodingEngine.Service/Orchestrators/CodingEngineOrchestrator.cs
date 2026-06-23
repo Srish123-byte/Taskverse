@@ -31,6 +31,8 @@ public class CodingEngineOrchestrator : ICodingEngineOrchestrator
             var student = await GetStudentByUserIdAsync(studentUserId);
             var assessmentCodingQuestion = await GetAssessmentCodingQuestionAsync(assessmentId, codingQuestionId);
 
+            await EnsureAllNonCodingQuestionsCompletedAsync(assessmentId, student.StudentId);
+
             var codingQuestion = assessmentCodingQuestion.CodingQuestion;
 
             var settings = await _codingEngineManager.GetCodingSettingAsync(assessmentId);
@@ -118,6 +120,8 @@ public class CodingEngineOrchestrator : ICodingEngineOrchestrator
             var student = await GetStudentByUserIdAsync(studentUserId);
             await GetAssessmentCodingQuestionAsync(assessmentId, codingQuestionId);
 
+            await EnsureAllNonCodingQuestionsCompletedAsync(assessmentId, student.StudentId);
+
             var now = DateTime.UtcNow;
             var studentCode = new StudentCode
             {
@@ -150,6 +154,8 @@ public class CodingEngineOrchestrator : ICodingEngineOrchestrator
         {
             var student = await GetStudentByUserIdAsync(studentUserId);
             await GetAssessmentCodingQuestionAsync(assessmentId, codingQuestionId);
+
+            await EnsureAllNonCodingQuestionsCompletedAsync(assessmentId, student.StudentId);
 
             var now = DateTime.UtcNow;
 
@@ -247,6 +253,33 @@ public class CodingEngineOrchestrator : ICodingEngineOrchestrator
         var assessmentCodingQuestion = await _codingEngineManager.GetAssessmentCodingQuestionAsync(assessmentId, codingQuestionId);
         return assessmentCodingQuestion ?? throw new KeyNotFoundException(
             $"Coding question '{codingQuestionId}' is not linked to assessment '{assessmentId}'.");
+    }
+
+    private async Task EnsureAllNonCodingQuestionsCompletedAsync(Guid assessmentId, Guid studentId)
+    {
+        var attempt = await _codingEngineManager.GetAttemptForStudentAsync(assessmentId, studentId);
+        if (attempt is null)
+        {
+            throw new InvalidOperationException("No assessment attempt found. Please start the assessment first.");
+        }
+
+        var nonCodingCount = await _codingEngineManager.GetNonCodingQuestionCountAsync(assessmentId);
+        if (nonCodingCount == 0)
+        {
+            return;
+        }
+
+        var answeredCount = await _codingEngineManager.GetAnsweredNonCodingQuestionCountAsync(attempt.AttemptId);
+        if (answeredCount < nonCodingCount)
+        {
+            _logger.LogWarning(
+                "Student {StudentId} attempted coding questions before completing all non-coding questions " +
+                "for assessment {AssessmentId}. Answered {AnsweredCount}/{NonCodingCount}.",
+                studentId, assessmentId, answeredCount, nonCodingCount);
+
+            throw new InvalidOperationException(
+                "Please complete all non-coding questions before accessing coding questions.");
+        }
     }
 
     private async Task SaveChangesWithWrapAsync(string errorMessage)

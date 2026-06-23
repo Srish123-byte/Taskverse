@@ -236,6 +236,56 @@ public class StudentsController : ControllerBase
     }
 
     /// <summary>
+    /// Returns coding readiness for a student's attempt.
+    /// </summary>
+    /// <param name="attemptId">The attempt identifier.</param>
+    /// <param name="studentUserId">The student user identifier.</param>
+    /// <returns>The coding readiness state.</returns>
+    [HttpGet("attempts/{attemptId:guid}/coding-readiness")]
+    [ProducesResponseType(typeof(CodingReadinessRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<CodingReadinessRecord>> GetCodingReadiness(
+        Guid attemptId,
+        [FromQuery] Guid studentUserId)
+    {
+        try
+        {
+            var result = await _assessmentOrchestrator.GetCodingReadinessAsync(attemptId, studentUserId);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (DbUpdateException ex)
+        {
+            return _assessmentOrchestrator.BuildUnexpectedError(
+                ex,
+                "A database error occurred while checking coding readiness.",
+                "CodingReadinessDatabaseError");
+        }
+        catch (PostgresException ex)
+        {
+            return _assessmentOrchestrator.BuildUnexpectedError(
+                ex,
+                "A PostgreSQL error occurred while checking coding readiness.",
+                "CodingReadinessPostgresError");
+        }
+        catch (Exception ex)
+        {
+            return _assessmentOrchestrator.BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while checking coding readiness.");
+        }
+    }
+
+    /// <summary>
     /// Submits an assessment attempt for the supplied student.
     /// </summary>
     /// <param name="attemptId">The attempt identifier.</param>

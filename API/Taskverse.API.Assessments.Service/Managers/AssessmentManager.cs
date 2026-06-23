@@ -685,6 +685,8 @@ public class AssessmentManager : IAssessmentManager
 
             var assessment = await BuildStudentAssessmentQuery(student.CollegeId, student.BatchId.Value)
                 .Include(item => item.AssessmentQuestions)
+                .Include(item => item.AssessmentCodingQuestions)
+                    .ThenInclude(acq => acq.CodingQuestion)
                 .FirstOrDefaultAsync(item =>
                     item.AssessmentId == assessmentId &&
                     (item.AssessmentStatus == AssessmentStatus.Scheduled ||
@@ -696,7 +698,8 @@ public class AssessmentManager : IAssessmentManager
                 throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found for the current student.");
             }
 
-            return assessment.ToStudentAssessmentDetailRecord(assessment.AssessmentQuestions.Count);
+            var totalQuestionCount = assessment.AssessmentQuestions.Count + assessment.AssessmentCodingQuestions.Count;
+            return assessment.ToStudentAssessmentDetailRecord(totalQuestionCount);
         }, "retrieving student assessment detail");
     }
 
@@ -939,6 +942,47 @@ public class AssessmentManager : IAssessmentManager
             var finalizedAttempt = await FinalizeAttemptAsync(attempt, effectiveSubmittedAt, effectiveExpiresAt, finalStatus);
             return finalizedAttempt.ToStudentAttemptSubmitRecord();
         }, "submitting the student assessment attempt");
+    }
+
+    /// <inheritdoc />
+    public async Task<CodingReadinessRecord> GetCodingReadinessAsync(Guid attemptId, Guid studentUserId)
+    {
+        if (attemptId == Guid.Empty)
+        {
+            throw new ArgumentException("Attempt id is required.");
+        }
+
+        ValidateStudentAttemptRequest(Guid.Empty, studentUserId, validateAssessmentId: false);
+
+        return await ExecuteDbOperationAsync(async () =>
+        {
+            var student = await GetStudentByUserIdAsync(studentUserId);
+            var attempt = await GetAttemptForStudentAsync(attemptId, student.StudentId);
+            var assessment = await GetAssessmentForAttemptRecoveryAsync(attempt.AssessmentId, student);
+
+            await EnsureAttemptClosedIfExpiredAsync(attempt, assessment);
+
+            var nonCodingCount = assessment.AssessmentQuestions.Count;
+            var nonCodingAttempted = await _context.AttemptAnswers
+                .CountAsync(aa =>
+                    aa.AttemptId == attempt.AttemptId &&
+                    aa.SelectedAnswer != null &&
+                    aa.SelectedAnswer != string.Empty);
+
+            var codingQuestions = assessment.AssessmentCodingQuestions
+                .Select(acq => new CodingQuestionItemRecord(
+                    acq.CodingQuestion.CodingQuestionId,
+                    acq.CodingQuestion.QuestionTitle,
+                    acq.CodingQuestion.DifficultyLevel,
+                    acq.CodingQuestion.Marks))
+                .ToList();
+
+            return new CodingReadinessRecord(
+                IsReady: nonCodingCount == 0 || nonCodingAttempted >= nonCodingCount,
+                NonCodingCompleted: nonCodingAttempted,
+                NonCodingTotal: nonCodingCount,
+                CodingQuestions: codingQuestions);
+        }, "checking coding readiness");
     }
 
     private async Task<SubjectTopicResolver.Resolution> ResolveAssessmentClassificationAsync(Assessment assessment)
@@ -1693,6 +1737,8 @@ public class AssessmentManager : IAssessmentManager
 
         var assessment = await BuildStudentAssessmentQuery(student.CollegeId, student.BatchId.Value)
             .Include(item => item.AssessmentQuestions)
+            .Include(item => item.AssessmentCodingQuestions)
+                .ThenInclude(acq => acq.CodingQuestion)
             .FirstOrDefaultAsync(item =>
                 item.AssessmentId == assessmentId &&
                 (item.AssessmentStatus == AssessmentStatus.Scheduled ||
@@ -1715,6 +1761,8 @@ public class AssessmentManager : IAssessmentManager
 
         var assessment = await BuildStudentAssessmentQuery(student.CollegeId, student.BatchId.Value)
             .Include(item => item.AssessmentQuestions)
+            .Include(item => item.AssessmentCodingQuestions)
+                .ThenInclude(acq => acq.CodingQuestion)
             .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId);
 
         if (assessment is null)
@@ -1749,7 +1797,7 @@ public class AssessmentManager : IAssessmentManager
     private Attempt CreateInProgressAttempt(Guid studentId, Assessment assessment)
     {
         var startedAt = DateTime.UtcNow;
-        var totalQuestions = assessment.AssessmentQuestions.Count;
+        var totalQuestions = assessment.AssessmentQuestions.Count + assessment.AssessmentCodingQuestions.Count;
         var expiresAt = CalculateAttemptExpiresAt(startedAt, assessment);
 
         return new Attempt
