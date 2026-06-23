@@ -12,6 +12,11 @@ export class CanActivateRoleService {
   ) {}
 
   canActivate(route: ActivatedRouteSnapshot): boolean {
+    if (this.session.mustChangePassword) {
+      void this.router.navigateByUrl(`/${RouteAddress.ChangeTemporaryPassword}`);
+      return false;
+    }
+
     const expectedRole: RoleType = route.data?.['role'];
 
     if (!expectedRole) {

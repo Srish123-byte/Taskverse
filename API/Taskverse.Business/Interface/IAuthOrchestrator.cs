@@ -8,4 +8,5 @@ public interface IAuthOrchestrator
     Task<RefreshLoginResponseDto?> RefreshToken(RefreshTokenRequestDto request);
     Task Logout(LogoutRequestDto request);
     Task<ValidateTokenResponseDto?> ValidateToken(ValidateTokenRequestDto request);
+    Task ChangeTemporaryPassword(ChangeTemporaryPasswordRequestDto request);
 }

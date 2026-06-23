@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { College, CollegeActionRequest, CollegeSearchRequest, CollegeSearchResult, PagedUsersResult, PendingUser, SuperAdminDashboard, UserActionRequest, UserSearchRequest } from '../../models/super-admin.model';
+import { BulkStudentUploadRequest, BulkStudentUploadResult, College, CollegeActionRequest, CollegeSearchRequest, CollegeSearchResult, PagedUsersResult, PendingUser, SuperAdminDashboard, UserActionRequest, UserSearchRequest } from '../../models/super-admin.model';
 import { HttpClientService } from '../http/http-client.service';
 
 @Injectable({ providedIn: 'root' })
@@ -38,6 +38,10 @@ export class SuperAdminService {
 
   rejectUser(userId: string, request: UserActionRequest = {}): Observable<void> {
     return this.http.post<void>(`${this.url}/users/${userId}/reject`, request);
+  }
+
+  bulkUploadStudents(request: BulkStudentUploadRequest): Observable<BulkStudentUploadResult> {
+    return this.http.post<BulkStudentUploadResult>(`${this.url}/users/bulk-upload/students`, request);
   }
 
   approveCollege(collegeId: string, request: CollegeActionRequest = {}): Observable<College> {

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
-import { PendingUser, UserActionRequest } from '../../models/super-admin.model';
+import { BulkStudentUploadRequest, BulkStudentUploadResult, PendingUser, UserActionRequest } from '../../models/super-admin.model';
 import { HttpClientService } from '../http/http-client.service';
 
 export interface ClassConfigurationTotals {
@@ -172,6 +172,10 @@ export class CollegeAdminService {
     return this.http.post<void>(`${this.url}/users/${userId}/reject`, request).pipe(
       tap(() => this.removePendingUser(userId))
     );
+  }
+
+  bulkUploadStudents(request: BulkStudentUploadRequest): Observable<BulkStudentUploadResult> {
+    return this.http.post<BulkStudentUploadResult>(`${this.url}/users/bulk-upload/students`, request);
   }
 
   setPendingUsers(users: PendingUser[]): void {

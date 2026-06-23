@@ -1,10 +1,12 @@
 using CorrelationId.Abstractions;
 using log4net;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using System.Diagnostics;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using Taskverse.Api.MicroServices.Enums;
 using Taskverse.Api.MicroServices.Interfaces;
@@ -20,6 +22,7 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ICorrelationContextAccessor _correlationContextAccessor;
+    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILog _log;
 
     private readonly string _baseUrl;
@@ -30,10 +33,12 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
     public MicroServiceOrchestrator(
         IHttpClientFactory httpClientFactory,
         ICorrelationContextAccessor correlationContextAccessor,
+        IHttpContextAccessor httpContextAccessor,
         IOptions<MicroServiceSettings> microServiceSettings)
     {
         _httpClientFactory = httpClientFactory;
         _correlationContextAccessor = correlationContextAccessor;
+        _httpContextAccessor = httpContextAccessor;
         _log = LogManager.GetLogger(typeof(MicroServiceOrchestrator));
 
         var settings = microServiceSettings.Value ?? throw new InvalidOperationException("MicroServiceSettings are not configured.");
@@ -93,6 +98,23 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
         }
 
         client.DefaultRequestHeaders.Add(XCorrelationIdKey, correlationId);
+        ForwardAuthorizationHeader(client);
+    }
+
+    private void ForwardAuthorizationHeader(HttpClient client)
+    {
+        client.DefaultRequestHeaders.Authorization = null;
+
+        var authorizationHeader = _httpContextAccessor.HttpContext?.Request.Headers.Authorization.ToString();
+        if (string.IsNullOrWhiteSpace(authorizationHeader))
+        {
+            return;
+        }
+
+        if (AuthenticationHeaderValue.TryParse(authorizationHeader, out var headerValue))
+        {
+            client.DefaultRequestHeaders.Authorization = headerValue;
+        }
     }
 
     private string GetCorrelationId() =>

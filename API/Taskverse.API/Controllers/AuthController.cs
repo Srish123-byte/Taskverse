@@ -47,7 +47,8 @@ public class AuthController : Controller
                     CollegeName = result.CollegeName,
                     Role = result.Roles.FirstOrDefault() ?? string.Empty,
                     IsActive = true,
-                    Status = result.Status
+                    Status = result.Status,
+                    MustChangePassword = result.MustChangePassword
                 }
             });
         }
@@ -141,7 +142,33 @@ public class AuthController : Controller
             CollegeId = User.FindFirstValue("college_id"),
             CollegeName = User.FindFirstValue("college_name"),
             Role = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty,
-            IsActive = true
+            IsActive = true,
+            MustChangePassword = false
         });
+    }
+
+    [Authorize]
+    [HttpPost("change-temporary-password")]
+    [SwaggerResponse(204, "Temporary password changed successfully")]
+    [SwaggerResponse(400, "Invalid request")]
+    [SwaggerResponse(401, "Unauthorized")]
+    public async Task<IActionResult> ChangeTemporaryPassword([FromBody] ChangeTemporaryPasswordRequestModel model)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Unauthorized(new { message = "The current user could not be resolved." });
+        }
+
+        try
+        {
+            await _authOrchestrator.ChangeTemporaryPassword(
+                new ChangeTemporaryPasswordRequestDto(userId, model.CurrentPassword, model.NewPassword));
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }

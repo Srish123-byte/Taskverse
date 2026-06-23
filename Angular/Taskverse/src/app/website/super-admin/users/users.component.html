@@ -13,9 +13,10 @@
     </div>
 
     <div *ngIf="errorMessage" class="page-state page-state-error">{{ errorMessage }}</div>
-    <div *ngIf="actionMessage && !errorMessage" class="page-state">{{ actionMessage }}</div>
 
     <div class="users-page-shell">
+      <app-student-bulk-upload scope="super-admin"></app-student-bulk-upload>
+
       <!-- Filters -->
       <section class="filters-shell">
         <div class="filter-field">

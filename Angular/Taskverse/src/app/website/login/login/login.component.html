@@ -44,11 +44,11 @@
         <mat-error *ngIf="rFullName?.hasError('specialChars')">Special characters are not allowed</mat-error>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="full-width">
+        <mat-form-field appearance="outline" class="full-width">
         <mat-label>Email</mat-label>
         <input matInput type="email" formControlName="email" autocomplete="email" id="reg-email" />
         <mat-error *ngIf="rEmail?.hasError('required')">Email is required</mat-error>
-        <mat-error *ngIf="rEmail?.hasError('email') || rEmail?.hasError('strictEmail')">Enter a valid email address containing @ and ending with .com</mat-error>
+        <mat-error *ngIf="rEmail?.hasError('strictEmail')">Enter a valid email address containing @</mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="full-width">

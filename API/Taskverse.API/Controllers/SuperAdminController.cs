@@ -136,6 +136,33 @@ public class SuperAdminController : TaskverseBaseController
         }
     }
 
+    [HttpPost("users/bulk-upload/students")]
+    [SwaggerResponse(200, "Bulk student upload processed", typeof(BulkStudentUploadResultResponseModel))]
+    [SwaggerResponse(400, "Invalid request")]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> BulkUploadStudents([FromBody] BulkStudentUploadRequestModel model)
+    {
+        var roleCheck = EnsureSuperAdmin();
+        if (roleCheck is not null) return roleCheck;
+
+        var uploadedByUserId = GetRequiredPerformedByUserId();
+        if (uploadedByUserId is null)
+        {
+            return BadRequest(new { message = "The current user id could not be resolved." });
+        }
+
+        try
+        {
+            var result = await _superAdminOrchestrator.BulkUploadStudents(
+                model.ToDto(uploadedByUserId.Value, GetPerformedBy(), GetPerformedBy()));
+            return Ok(result.ToResponseModel());
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpPost("colleges/{collegeId}/approve")]
     [SwaggerResponse(200, "College approved", typeof(CollegeResponseModel))]
     [SwaggerResponse(403, "Forbidden")]
@@ -206,4 +233,6 @@ public class SuperAdminController : TaskverseBaseController
         var candidate = User.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.TryParse(candidate, out var userId) ? userId : null;
     }
+
+    private Guid? GetRequiredPerformedByUserId() => GetPerformedByUserId();
 }

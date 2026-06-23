@@ -13,7 +13,13 @@ public record LoginResponseDto(
     string? CollegeId,
     string? CollegeName,
     List<string> Roles,
-    string Status);
+    string Status,
+    bool MustChangePassword);
+
+public record ChangeTemporaryPasswordRequestDto(
+    string UserId,
+    string CurrentPassword,
+    string NewPassword);
 
 public record RefreshLoginResponseDto(
     string AccessToken,

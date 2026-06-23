@@ -16,4 +16,5 @@ public interface ISuperAdminOrchestrator
     Task<CollegeDto> ReactivateCollege(string collegeId, CollegeActionDto dto);
     Task ApproveUser(string userId, UserActionDto dto);
     Task RejectUser(string userId, UserActionDto dto);
+    Task<BulkStudentUploadResultDto> BulkUploadStudents(BulkStudentUploadRequestDto dto);
 }

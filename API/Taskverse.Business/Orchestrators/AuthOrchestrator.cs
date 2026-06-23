@@ -48,7 +48,8 @@ public class AuthOrchestrator : IAuthOrchestrator
             string.IsNullOrWhiteSpace(model.CollegeId) ? null : model.CollegeId,
             model.CollegeName,
             model.Roles,
-            model.Status);
+            model.Status,
+            model.MustChangePassword);
     }
 
     private static string? ExtractMessage(object? value)
@@ -115,5 +116,22 @@ public class AuthOrchestrator : IAuthOrchestrator
             model.UserId,
             model.Roles,
             model.ExpiresAt);
+    }
+
+    public async Task ChangeTemporaryPassword(ChangeTemporaryPasswordRequestDto request)
+    {
+        _log.Debug($"AuthOrchestrator.ChangeTemporaryPassword: userId={request.UserId}");
+
+        var result = await _microServiceOrchestrator.ChangeTemporaryPassword(
+            new ChangeTemporaryPasswordRequestModel(request.UserId, request.CurrentPassword, request.NewPassword));
+        if (!result.IsSuccess())
+        {
+            if (result.StatusCode == 400 || result.StatusCode == 401)
+            {
+                throw new InvalidOperationException(ExtractMessage(result.Value) ?? "Unable to change the temporary password.");
+            }
+
+            result.EnsureSuccess(nameof(ChangeTemporaryPassword));
+        }
     }
 }

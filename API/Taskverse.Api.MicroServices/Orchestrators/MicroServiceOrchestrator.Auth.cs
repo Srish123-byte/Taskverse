@@ -29,4 +29,10 @@ public partial class MicroServiceOrchestrator
         var url = $"{GetMicroServiceUrl(MicroService.Auth)}api/auth/validate";
         return await Post<ValidateTokenResponseModel>(url, model);
     }
+
+    public async Task<ObjectResult> ChangeTemporaryPassword(ChangeTemporaryPasswordRequestModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Auth)}api/auth/change-temporary-password";
+        return await Post<object>(url, model);
+    }
 }
