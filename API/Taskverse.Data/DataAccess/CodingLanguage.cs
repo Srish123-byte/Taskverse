@@ -37,6 +37,9 @@ public class CodingLanguage
     [Column("runtime_version")]
     public string? RuntimeVersion { get; set; }
 
+    [Column("judge0_language_id")]
+    public int? Judge0LanguageId { get; set; }
+
     [Column("is_active")]
     public bool IsActive { get; set; } = true;
 

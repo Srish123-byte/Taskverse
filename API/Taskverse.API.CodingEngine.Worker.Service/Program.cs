@@ -30,6 +30,18 @@ builder.Services.AddHttpClient<IReportsServiceClient, ReportsServiceClient>(clie
     client.Timeout = TimeSpan.FromSeconds(300);
 });
 
+builder.Services.AddHttpClient<IJudge0Client, Judge0Client>(client =>
+{
+    var baseUrl = builder.Configuration["Judge0:BaseUrl"];
+    if (string.IsNullOrWhiteSpace(baseUrl))
+    {
+        throw new InvalidOperationException("Judge0:BaseUrl is missing.");
+    }
+
+    client.BaseAddress = new Uri(baseUrl, UriKind.Absolute);
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
 builder.Services.AddHostedService<CodeExecutionWorker>();
 
 var app = builder.Build();

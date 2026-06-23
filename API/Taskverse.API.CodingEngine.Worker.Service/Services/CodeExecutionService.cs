@@ -1,8 +1,8 @@
-using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Taskverse.API.CodingEngine.Worker.Service.Clients;
+using Taskverse.API.CodingEngine.Worker.Service.Models;
 using Taskverse.Data.DataAccess;
 using Taskverse.Data.Enums;
 
@@ -10,17 +10,28 @@ namespace Taskverse.API.CodingEngine.Worker.Service.Services;
 
 public class CodeExecutionService : ICodeExecutionService
 {
+    private static readonly Dictionary<string, int> SupportedLanguages = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["c"] = 50,
+        ["cpp"] = 54,
+        ["java"] = 62,
+        ["python"] = 71,
+    };
+
     private readonly TaskverseContext _context;
     private readonly IReportsServiceClient _reportsServiceClient;
+    private readonly IJudge0Client _judge0Client;
     private readonly ILogger<CodeExecutionService> _logger;
 
     public CodeExecutionService(
         TaskverseContext context,
         IReportsServiceClient reportsServiceClient,
+        IJudge0Client judge0Client,
         ILogger<CodeExecutionService> logger)
     {
         _context = context;
         _reportsServiceClient = reportsServiceClient;
+        _judge0Client = judge0Client;
         _logger = logger;
     }
 
@@ -51,22 +62,33 @@ public class CodeExecutionService : ICodeExecutionService
             return;
         }
 
+        if (!SupportedLanguages.TryGetValue(codingLanguage.LanguageCode, out var judge0LanguageId))
+        {
+            _logger.LogError("Language '{LanguageCode}' is not supported for Judge0 execution.", codingLanguage.LanguageCode);
+
+            request.CodeExecutionStatusId = (short)CodeExecutionStatus.Failed;
+            request.CompletedAt = DateTime.UtcNow;
+            request.ModifiedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
         foreach (var testCase in testCases)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var sw = Stopwatch.StartNew();
-            var timeLimit = testCase.TimeLimitMs ?? 3000;
-            var (exitCode, stdout, stderr) = await ExecuteProcessAsync(
-                codingLanguage, request.Code, testCase.InputData, timeLimit,
-                cancellationToken);
-            sw.Stop();
+            var (exitCode, stdout, stderr, executionTimeMs) = await ExecuteViaJudge0Async(
+                judge0LanguageId, request.Code, testCase, codingLanguage, request, cancellationToken);
 
             var passed = CompareOutput(stdout, testCase.ExpectedOutput, testCase.ComparisonMode, testCase.NumericTolerance);
             if (passed)
             {
                 passedTestCases++;
             }
+
+            var status = exitCode == 0 ? "Completed" : "RuntimeError";
+            if (exitCode == -1) status = "Timeout";
+            if (exitCode == -2) status = "CompilationError";
 
             testCaseResults.Add(new TestCaseExecutionResult
             {
@@ -75,8 +97,8 @@ public class CodeExecutionService : ICodeExecutionService
                 Passed = passed,
                 ActualOutput = stdout,
                 ExpectedOutput = testCase.ExpectedOutput,
-                ExecutionTimeMs = (int)sw.ElapsedMilliseconds,
-                Status = exitCode == 0 ? "Completed" : "RuntimeError"
+                ExecutionTimeMs = executionTimeMs,
+                Status = status
             });
         }
 
@@ -89,7 +111,7 @@ public class CodeExecutionService : ICodeExecutionService
                 : CodeExecutionResultStatus.Failed),
             StandardOutput = string.Join("\n---\n", testCaseResults.Select(r => r.ActualOutput ?? "")),
             StandardError = null,
-            ExitCode = testCaseResults.Any(r => r.Status == "RuntimeError") ? 1 : 0,
+            ExitCode = testCaseResults.Any(r => r.Status is "RuntimeError" or "CompilationError") ? 1 : 0,
             ExecutionTimeMs = testCaseResults.Sum(r => r.ExecutionTimeMs),
             TotalTestCases = totalTestCases,
             PassedTestCases = passedTestCases,
@@ -120,6 +142,82 @@ public class CodeExecutionService : ICodeExecutionService
         {
             _logger.LogError(ex, "Failed to report coding evaluation for execution request '{RequestId}'.",
                 request.CodeExecutionRequestId);
+        }
+    }
+
+    private async Task<(int ExitCode, string Stdout, string Stderr, int ExecutionTimeMs)> ExecuteViaJudge0Async(
+        int judge0LanguageId,
+        string code,
+        TestCase testCase,
+        CodingLanguage codingLanguage,
+        CodeExecutionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var judge0Request = new Judge0CreateSubmissionRequest(
+            SourceCode: code,
+            LanguageId: judge0LanguageId,
+            Stdin: testCase.InputData,
+            ExpectedOutput: null,
+            CpuTimeLimit: (testCase.TimeLimitMs ?? 3000) / 1000f,
+            MemoryLimit: testCase.MemoryLimitKb);
+
+        var startTime = DateTime.UtcNow;
+
+        try
+        {
+            var judge0Result = await _judge0Client.CreateAndWaitAsync(judge0Request, 200, cancellationToken);
+
+            var executionTimeMs = 0;
+            decimal? timeSeconds = null;
+            if (judge0Result.Time is not null && float.TryParse(judge0Result.Time, out var timeSec))
+            {
+                executionTimeMs = (int)(timeSec * 1000);
+                timeSeconds = (decimal)timeSec;
+            }
+
+            var submission = new CodeExecutionSubmission
+            {
+                SubmissionId = Guid.NewGuid(),
+                CodeExecutionRequestId = request.CodeExecutionRequestId,
+                TestCaseId = testCase.TestCaseId,
+                CodingLanguageId = codingLanguage.CodingLanguageId,
+                Judge0Token = judge0Result.Token,
+                Judge0StatusId = (short?)judge0Result.Status?.Id,
+                Judge0StatusDescription = judge0Result.Status?.Description,
+                Judge0SubmittedAt = startTime,
+                Judge0CompletedAt = DateTime.UtcNow,
+                Stdout = judge0Result.Stdout,
+                Stderr = judge0Result.Stderr,
+                CompileOutput = judge0Result.CompileOutput,
+                ExitCode = judge0Result.ExitCode,
+                TimeSeconds = timeSeconds,
+                MemoryKilobytes = (int?)judge0Result.Memory,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.CodeExecutionSubmissions.Add(submission);
+
+            var exitCode = judge0Result.Status?.Id switch
+            {
+                Judge0StatusCodes.Accepted => 0,
+                Judge0StatusCodes.WrongAnswer => 1,
+                Judge0StatusCodes.TimeLimitExceeded => -1,
+                Judge0StatusCodes.CompilationError or Judge0StatusCodes.CompilationErrorOld => -2,
+                Judge0StatusCodes.InternalError => -3,
+                _ => judge0Result.ExitCode ?? 1
+            };
+
+            return (exitCode, judge0Result.Stdout ?? string.Empty, judge0Result.Stderr ?? string.Empty, executionTimeMs);
+        }
+        catch (TaskCanceledException)
+        {
+            _logger.LogWarning("Judge0 submission timed out for test case '{TestCaseId}'.", testCase.TestCaseId);
+            return (-1, string.Empty, "Timeout", 0);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Judge0 execution failed for test case '{TestCaseId}'.", testCase.TestCaseId);
+            return (-3, string.Empty, $"Execution error: {ex.Message}", 0);
         }
     }
 
@@ -184,109 +282,6 @@ public class CodeExecutionService : ICodeExecutionService
         }
 
         return string.Equals(actual.Trim(), expected.Trim(), StringComparison.OrdinalIgnoreCase);
-    }
-
-    private async Task<(int ExitCode, string Stdout, string Stderr)> ExecuteProcessAsync(
-        CodingLanguage language,
-        string code,
-        string? inputData,
-        int timeLimitMs,
-        CancellationToken cancellationToken)
-    {
-        var (fileName, arguments, tempFile) = PrepareProcessArguments(language, code);
-
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = fileName,
-                Arguments = arguments,
-                RedirectStandardInput = !string.IsNullOrEmpty(inputData),
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = new Process { StartInfo = psi };
-            process.Start();
-
-            if (!string.IsNullOrEmpty(inputData))
-            {
-                await process.StandardInput.WriteAsync(inputData);
-                process.StandardInput.Close();
-            }
-
-            var stdoutTask = process.StandardOutput.ReadToEndAsync();
-            var stderrTask = process.StandardError.ReadToEndAsync();
-
-            var completed = process.WaitForExit(timeLimitMs > 0 ? timeLimitMs : 3000);
-
-            if (!completed)
-            {
-                process.Kill(entireProcessTree: true);
-                return (ExitCode: -1, Stdout: string.Empty, Stderr: "Timeout");
-            }
-
-            var stdout = await stdoutTask;
-            var stderr = await stderrTask;
-
-            return (process.ExitCode, stdout ?? string.Empty, stderr ?? string.Empty);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to execute process for language '{LanguageCode}'.", language.LanguageCode);
-            return (-1, string.Empty, $"Execution error: {ex.Message}");
-        }
-        finally
-        {
-            if (!string.IsNullOrEmpty(tempFile))
-            {
-                try { File.Delete(tempFile); } catch { /* best effort cleanup */ }
-            }
-        }
-    }
-
-    private static (string FileName, string Arguments, string? TempFile) PrepareProcessArguments(CodingLanguage language, string code)
-    {
-        var tempDir = Path.GetTempPath();
-        var tempFile = Path.Combine(tempDir, $"code_{Guid.NewGuid()}{language.FileExtension ?? ".txt"}");
-
-        File.WriteAllText(tempFile, code);
-
-        return language.LanguageCode.ToLowerInvariant() switch
-        {
-            "python" => ("python", $"\"{tempFile}\"", tempFile),
-            "javascript" => ("node", $"\"{tempFile}\"", tempFile),
-            "typescript" => ("npx", $"ts-node \"{tempFile}\"", tempFile),
-            "java" => ("java", $"-cp \"{tempDir}\" \"{Path.GetFileNameWithoutExtension(tempFile)}\"", tempFile),
-            "csharp" => ("dotnet", $"script \"{tempFile}\"", tempFile),
-            "cpp" => (FindExecutable("g++"), $"-o \"{tempFile}.exe\" \"{tempFile}\" && \"{tempFile}.exe\"", tempFile),
-            "c" => (FindExecutable("gcc"), $"-o \"{tempFile}.exe\" \"{tempFile}\" && \"{tempFile}.exe\"", tempFile),
-            _ => ("python", $"\"{tempFile}\"", tempFile)
-        };
-    }
-
-    private static string FindExecutable(string name)
-    {
-        try
-        {
-            var psi = new ProcessStartInfo("where", name)
-            {
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            using var process = new Process { StartInfo = psi };
-            process.Start();
-            var path = process.StandardOutput.ReadLine();
-            process.WaitForExit();
-            return path ?? name;
-        }
-        catch
-        {
-            return name;
-        }
     }
 }
 

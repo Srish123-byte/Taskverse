@@ -26,6 +26,7 @@ public class TaskverseContext : DbContext
     public DbSet<StudentCode> StudentCodes { get; set; }
     public DbSet<CodeExecutionRequest> CodeExecutionRequests { get; set; }
     public DbSet<CodeExecutionResult> CodeExecutionResults { get; set; }
+    public DbSet<CodeExecutionSubmission> CodeExecutionSubmissions { get; set; }
     public DbSet<TestCase> TestCases { get; set; }
     public DbSet<SubjectBatch> SubjectBatches { get; set; }
     public DbSet<Topic> Topics { get; set; }
@@ -180,6 +181,54 @@ public class TaskverseContext : DbContext
                   .WithMany(lcers => lcers.CodeExecutionResults)
                   .HasForeignKey(cer => cer.CodeExecutionResultStatusId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Configure CodeExecutionSubmission entity
+        modelBuilder.Entity<CodeExecutionSubmission>(entity =>
+        {
+            entity.ToTable("code_execution_submissions");
+            entity.HasKey(ces => ces.SubmissionId);
+            entity.Property(ces => ces.SubmissionId).HasColumnName("submission_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(ces => ces.CodeExecutionRequestId).HasColumnName("code_execution_request_id");
+            entity.Property(ces => ces.TestCaseId).HasColumnName("test_case_id");
+            entity.Property(ces => ces.CodingLanguageId).HasColumnName("coding_language_id");
+            entity.Property(ces => ces.Judge0Token).HasColumnName("judge0_token").HasMaxLength(100);
+            entity.Property(ces => ces.Judge0StatusId).HasColumnName("judge0_status_id");
+            entity.Property(ces => ces.Judge0StatusDescription).HasColumnName("judge0_status_description").HasMaxLength(50);
+            entity.Property(ces => ces.Judge0SubmittedAt).HasColumnName("judge0_submitted_at");
+            entity.Property(ces => ces.Judge0CompletedAt).HasColumnName("judge0_completed_at");
+            entity.Property(ces => ces.Stdout).HasColumnName("stdout");
+            entity.Property(ces => ces.Stderr).HasColumnName("stderr");
+            entity.Property(ces => ces.CompileOutput).HasColumnName("compile_output");
+            entity.Property(ces => ces.ExitCode).HasColumnName("exit_code");
+            entity.Property(ces => ces.TimeSeconds).HasColumnName("time_seconds").HasColumnType("numeric(10,4)");
+            entity.Property(ces => ces.MemoryKilobytes).HasColumnName("memory_kilobytes");
+            entity.Property(ces => ces.Passed).HasColumnName("passed").HasDefaultValue(false);
+            entity.Property(ces => ces.ActualOutput).HasColumnName("actual_output");
+            entity.Property(ces => ces.ExecutionTimeMs).HasColumnName("execution_time_ms");
+            entity.Property(ces => ces.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(ces => ces.ModifiedAt).HasColumnName("modified_at");
+
+            entity.HasIndex(ces => ces.CodeExecutionRequestId);
+            entity.HasIndex(ces => ces.Judge0Token);
+
+            entity.HasOne(ces => ces.CodeExecutionRequest)
+                  .WithMany()
+                  .HasForeignKey(ces => ces.CodeExecutionRequestId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("fk_submissions_request");
+
+            entity.HasOne(ces => ces.TestCase)
+                  .WithMany()
+                  .HasForeignKey(ces => ces.TestCaseId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("fk_submissions_test_case");
+
+            entity.HasOne(ces => ces.CodingLanguage)
+                  .WithMany()
+                  .HasForeignKey(ces => ces.CodingLanguageId)
+                  .OnDelete(DeleteBehavior.SetNull)
+                  .HasConstraintName("fk_submissions_language");
         });
 
         // Configure CodingQuestion entity
@@ -436,6 +485,7 @@ public class TaskverseContext : DbContext
             entity.Property(cl => cl.FileExtension).HasColumnName("file_extension").HasMaxLength(20);
             entity.Property(cl => cl.RuntimeName).HasColumnName("runtime_name").HasMaxLength(100);
             entity.Property(cl => cl.RuntimeVersion).HasColumnName("runtime_version").HasMaxLength(50);
+            entity.Property(cl => cl.Judge0LanguageId).HasColumnName("judge0_language_id");
             entity.Property(cl => cl.IsActive).HasColumnName("is_active").HasDefaultValue(true);
             entity.Property(cl => cl.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(cl => cl.ModifiedAt).HasColumnName("modified_at");
