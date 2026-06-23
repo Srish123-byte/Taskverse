@@ -92,4 +92,8 @@ public class CodingQuestion
     public ICollection<TestCase> TestCases { get; set; } = [];
 
     public ICollection<AssessmentCodingQuestion> AssessmentCodingQuestions { get; set; } = [];
+
+    public ICollection<StarterCode> StarterCodes { get; set; } = [];
+
+    public ICollection<StudentCode> StudentCodes { get; set; } = [];
 }
