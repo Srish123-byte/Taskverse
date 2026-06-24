@@ -535,6 +535,14 @@
 
 .trainer-assignment-modal {
   width: min(100%, 680px);
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+}
+
+.trainer-assignment-modal .modal-body {
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .success-dialog {

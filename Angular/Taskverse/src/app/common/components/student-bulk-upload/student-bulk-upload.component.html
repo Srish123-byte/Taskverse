@@ -4,7 +4,7 @@
     <h3>Import students from Excel or CSV</h3>
     <p>
       Required columns: <strong>fullName</strong>, <strong>email</strong>, <strong>phone</strong>,
-      <strong>collegeId</strong>, <strong>classId</strong>, and <strong>batchId</strong>.
+      <strong>collegeId</strong>. Optional columns: <strong>classId</strong> and <strong>batchId</strong>.
     </p>
   </div>
 
@@ -44,8 +44,8 @@
         <span>{{ row.email }}</span>
         <span>{{ row.phone }}</span>
         <span>{{ row.collegeId }}</span>
-        <span>{{ row.classId }}</span>
-        <span>{{ row.batchId }}</span>
+        <span>{{ row.classId || '-' }}</span>
+        <span>{{ row.batchId || '-' }}</span>
       </article>
     </div>
 

@@ -66,6 +66,12 @@ public partial class MicroServiceOrchestrator
         return await Get<List<ApprovedTrainerModel>>(url);
     }
 
+    public async Task<ObjectResult> GetApprovedUnassignedCollegeStudents(string collegeId)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/students/approved-unassigned";
+        return await Get<List<ApprovedStudentModel>>(url);
+    }
+
     public async Task<ObjectResult> GetCollegeSubjects()
     {
         var url = $"{GetMicroServiceUrl(MicroService.College)}api/subjects";
@@ -99,6 +105,12 @@ public partial class MicroServiceOrchestrator
     public async Task<ObjectResult> AssignCollegeBatchTrainers(string collegeId, string classId, string batchId, AssignBatchTrainersModel model)
     {
         var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/classes/{classId}/batches/{batchId}/trainers";
+        return await Post<CollegeBatchSummaryModel>(url, model);
+    }
+
+    public async Task<ObjectResult> AssignCollegeBatchStudent(string collegeId, string classId, string batchId, AssignStudentToBatchModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/classes/{classId}/batches/{batchId}/students";
         return await Post<CollegeBatchSummaryModel>(url, model);
     }
 

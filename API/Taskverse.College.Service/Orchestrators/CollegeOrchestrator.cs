@@ -50,6 +50,25 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             })
             .ToListAsync();
 
+    public Task<List<ApprovedStudentDto>> GetApprovedUnassignedStudentsByCollege(Guid collegeId) =>
+        _context.Students
+            .AsNoTracking()
+            .Where(student =>
+                student.CollegeId == collegeId &&
+                student.Status == UserStatus.APPROVED &&
+                !student.ClassId.HasValue &&
+                !student.BatchId.HasValue)
+            .OrderBy(student => student.FullName)
+            .ThenBy(student => student.Email)
+            .Select(student => new ApprovedStudentDto
+            {
+                StudentId = student.StudentId.ToString(),
+                UserId = student.UserId.ToString(),
+                FullName = student.FullName,
+                Email = student.Email
+            })
+            .ToListAsync();
+
     public Task<List<SubjectOptionDto>> GetSubjects() =>
         _context.Subjects
             .AsNoTracking()
@@ -449,6 +468,150 @@ public class CollegeOrchestrator : ICollegeOrchestrator
         return await BuildBatchSummary(batch);
     }
 
+    public async Task<CollegeBatchSummaryDto> AssignStudentToBatch(Guid collegeId, Guid classId, Guid batchId, AssignStudentToBatchDto dto)
+    {
+        var batch = await _context.Batches
+            .FirstOrDefaultAsync(item =>
+                item.BatchId == batchId &&
+                item.ClassId == classId &&
+                item.CollegeId == collegeId);
+
+        if (batch is null)
+        {
+            throw new KeyNotFoundException($"Batch '{batchId}' was not found for class '{classId}' in this college.");
+        }
+
+        var requestedStudentIds = (dto.StudentIds ?? [])
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id =>
+            {
+                if (!Guid.TryParse(id, out var parsedId))
+                {
+                    throw new InvalidOperationException($"Student id '{id}' is invalid.");
+                }
+
+                return parsedId;
+            })
+            .Distinct()
+            .ToList();
+
+        var requestedStudentIdSet = requestedStudentIds.ToHashSet();
+
+        var existingBatchStudents = await _context.Students
+            .Where(item =>
+                item.CollegeId == collegeId &&
+                item.ClassId == classId &&
+                item.BatchId == batchId)
+            .ToListAsync();
+
+        var existingBatchStudentIds = existingBatchStudents
+            .Select(item => item.StudentId)
+            .ToHashSet();
+
+        var studentsToAssignIds = requestedStudentIds
+            .Where(studentId => !existingBatchStudentIds.Contains(studentId))
+            .ToList();
+
+        var studentsToUnassign = existingBatchStudents
+            .Where(item => !requestedStudentIdSet.Contains(item.StudentId))
+            .ToList();
+
+        var studentsToAssign = studentsToAssignIds.Count == 0
+            ? []
+            : await _context.Students
+                .Where(item => item.CollegeId == collegeId && studentsToAssignIds.Contains(item.StudentId))
+                .ToListAsync();
+
+        if (studentsToAssign.Count != studentsToAssignIds.Count)
+        {
+            var foundStudentIds = studentsToAssign.Select(item => item.StudentId).ToHashSet();
+            var missingStudentIds = studentsToAssignIds
+                .Where(studentId => !foundStudentIds.Contains(studentId))
+                .Select(studentId => studentId.ToString())
+                .ToList();
+
+            throw new KeyNotFoundException($"Some selected students were not found for this college: {string.Join(", ", missingStudentIds)}.");
+        }
+
+        var unapprovedStudentIds = studentsToAssign
+            .Where(item => item.Status != UserStatus.APPROVED)
+            .Select(item => item.StudentId.ToString())
+            .ToList();
+
+        if (unapprovedStudentIds.Count > 0)
+        {
+            throw new InvalidOperationException($"Only approved students can be assigned. Invalid student ids: {string.Join(", ", unapprovedStudentIds)}.");
+        }
+
+        var conflictingStudents = studentsToAssign
+            .Where(item =>
+                (item.ClassId.HasValue || item.BatchId.HasValue) &&
+                (item.ClassId != classId || item.BatchId != batchId))
+            .Select(item => item.StudentId.ToString())
+            .ToList();
+
+        if (conflictingStudents.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Some selected students are already assigned to another class or batch: {string.Join(", ", conflictingStudents)}.");
+        }
+
+        var affectedUserIds = studentsToAssign
+            .Select(item => item.UserId)
+            .Concat(studentsToUnassign.Select(item => item.UserId))
+            .Distinct()
+            .ToList();
+
+        var usersById = affectedUserIds.Count == 0
+            ? new Dictionary<Guid, User>()
+            : await _context.Users
+                .Where(item => item.CollegeId == collegeId && affectedUserIds.Contains(item.Id))
+                .ToDictionaryAsync(item => item.Id);
+
+        foreach (var student in studentsToAssign)
+        {
+            if (!usersById.TryGetValue(student.UserId, out var user))
+            {
+                throw new KeyNotFoundException($"User record was not found for student '{student.StudentId}'.");
+            }
+
+            if ((user.ClassId.HasValue || user.BatchId.HasValue) &&
+                (user.ClassId != classId || user.BatchId != batchId))
+            {
+                throw new InvalidOperationException($"Student '{student.StudentId}' is already assigned to another class or batch.");
+            }
+
+            student.ClassId = classId;
+            student.BatchId = batchId;
+            student.ModifiedAt = DateTime.UtcNow;
+
+            user.ClassId = classId;
+            user.BatchId = batchId;
+            user.ModifiedAt = DateTime.UtcNow;
+        }
+
+        foreach (var student in studentsToUnassign)
+        {
+            if (!usersById.TryGetValue(student.UserId, out var user))
+            {
+                throw new KeyNotFoundException($"User record was not found for student '{student.StudentId}'.");
+            }
+
+            student.ClassId = null;
+            student.BatchId = null;
+            student.ModifiedAt = DateTime.UtcNow;
+
+            user.ClassId = null;
+            user.BatchId = null;
+            user.ModifiedAt = DateTime.UtcNow;
+        }
+
+        batch.ModifiedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return await BuildBatchSummary(batch);
+    }
+
     public async Task DeleteClass(Guid collegeId, Guid classId)
     {
         await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -784,6 +947,7 @@ public class CollegeOrchestrator : ICollegeOrchestrator
                 student.Status == UserStatus.APPROVED);
 
         var assignedTrainers = await GetAssignedTrainersByBatch([batch.BatchId]);
+        var assignedStudents = await GetAssignedStudentsByBatch([batch.BatchId]);
         var subject = await _context.SubjectBatches
             .AsNoTracking()
             .Where(item => item.BatchId == batch.BatchId)
@@ -809,6 +973,9 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             CreatedAt = batch.CreatedAt,
             AssignedTrainers = assignedTrainers.TryGetValue(batch.BatchId, out var trainers)
                 ? trainers
+                : [],
+            AssignedStudents = assignedStudents.TryGetValue(batch.BatchId, out var students)
+                ? students
                 : []
         };
     }
@@ -907,6 +1074,47 @@ public class CollegeOrchestrator : ICollegeOrchestrator
                     .Select(item => new ApprovedTrainerDto
                     {
                         TrainerId = item.TrainerId.ToString(),
+                        UserId = item.UserId.ToString(),
+                        FullName = item.FullName,
+                        Email = item.Email
+                    })
+                    .ToList());
+    }
+
+    private async Task<Dictionary<Guid, List<ApprovedStudentDto>>> GetAssignedStudentsByBatch(IEnumerable<Guid> batchIds)
+    {
+        var batchIdList = batchIds.Distinct().ToList();
+        if (batchIdList.Count == 0)
+        {
+            return [];
+        }
+
+        var assignments = await _context.Students
+            .AsNoTracking()
+            .Where(item =>
+                item.BatchId.HasValue &&
+                batchIdList.Contains(item.BatchId.Value) &&
+                item.Status == UserStatus.APPROVED)
+            .Select(item => new
+            {
+                BatchId = item.BatchId!.Value,
+                item.StudentId,
+                item.UserId,
+                item.FullName,
+                item.Email
+            })
+            .ToListAsync();
+
+        return assignments
+            .GroupBy(item => item.BatchId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderBy(item => item.FullName)
+                    .ThenBy(item => item.Email)
+                    .Select(item => new ApprovedStudentDto
+                    {
+                        StudentId = item.StudentId.ToString(),
                         UserId = item.UserId.ToString(),
                         FullName = item.FullName,
                         Email = item.Email

@@ -268,6 +268,15 @@ export class LoginComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const selectedRole = this.rRole?.value;
+    const classId = this.rClassId?.value?.trim?.() || '';
+    const batchId = this.rBatchId?.value?.trim?.() || '';
+    if (selectedRole === RoleType.Student && ((classId && !batchId) || (!classId && batchId))) {
+      this.batchControl?.markAsTouched();
+      this.errorMessage = 'Class and batch must either both be selected or both be left empty.';
+      return;
+    }
+
     this.isLoading = true;
     this.errorMessage = '';
     this.successMessage = '';
@@ -275,6 +284,9 @@ export class LoginComponent implements OnInit, OnDestroy {
     const { confirmPassword, collegeName, ...formValue } = this.registerForm.value;
     const request: RegisterRequest = {
       ...formValue,
+      collegeId: formValue.collegeId || undefined,
+      classId: formValue.classId || undefined,
+      batchId: formValue.batchId || undefined,
       collegeName: collegeName || undefined
     };
 
@@ -423,8 +435,8 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   private applyInstitutionValidators(role: string | null | undefined): void {
     this.collegeControl?.setValidators([Validators.required]);
-    this.classControl?.setValidators(role === RoleType.Student ? [Validators.required] : []);
-    this.batchControl?.setValidators(role === RoleType.Student ? [Validators.required] : []);
+    this.classControl?.setValidators([]);
+    this.batchControl?.setValidators([]);
 
     if (role !== RoleType.Student) {
       this.registerForm.patchValue({

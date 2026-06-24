@@ -52,8 +52,8 @@ export interface BulkStudentUploadRow {
   email: string;
   phone: string;
   collegeId: string;
-  classId: string;
-  batchId: string;
+  classId?: string;
+  batchId?: string;
 }
 
 export interface BulkStudentUploadRequest {

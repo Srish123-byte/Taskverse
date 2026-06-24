@@ -23,6 +23,7 @@ export interface CollegeBatchSummary {
   studentCount: number;
   createdAt: string;
   assignedTrainers: ApprovedTrainer[];
+  assignedStudents: ApprovedStudent[];
 }
 
 export interface SubjectOption {
@@ -32,6 +33,13 @@ export interface SubjectOption {
 
 export interface ApprovedTrainer {
   trainerId: string;
+  userId: string;
+  fullName: string;
+  email: string;
+}
+
+export interface ApprovedStudent {
+  studentId: string;
   userId: string;
   fullName: string;
   email: string;
@@ -84,6 +92,10 @@ export interface UpdateCollegeBatchRequest {
 
 export interface AssignBatchTrainersRequest {
   trainerIds: string[];
+}
+
+export interface AssignStudentToBatchRequest {
+  studentIds: string[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -139,6 +151,12 @@ export class CollegeAdminService {
       .pipe(map(items => (items ?? []).map(item => this.mapTrainer(item))));
   }
 
+  getApprovedUnassignedStudents(): Observable<ApprovedStudent[]> {
+    return this.http
+      .get<any[]>(`${this.url}/students/approved-unassigned`)
+      .pipe(map(items => (items ?? []).map(item => this.mapStudent(item))));
+  }
+
   getSubjects(): Observable<SubjectOption[]> {
     return this.http
       .get<any[]>(`${this.url}/subjects`)
@@ -152,6 +170,16 @@ export class CollegeAdminService {
   ): Observable<CollegeBatchSummary> {
     return this.http
       .post<any>(`${this.url}/classes/${classId}/batches/${batchId}/trainers`, request)
+      .pipe(map(item => this.mapBatch(item)));
+  }
+
+  assignStudentToBatch(
+    classId: string,
+    batchId: string,
+    request: AssignStudentToBatchRequest
+  ): Observable<CollegeBatchSummary> {
+    return this.http
+      .post<any>(`${this.url}/classes/${classId}/batches/${batchId}/students`, request)
       .pipe(map(item => this.mapBatch(item)));
   }
 
@@ -220,13 +248,23 @@ export class CollegeAdminService {
       capacity: item?.capacity ?? item?.Capacity ?? 0,
       studentCount: item?.studentCount ?? item?.StudentCount ?? 0,
       createdAt: item?.createdAt ?? item?.CreatedAt ?? '',
-      assignedTrainers: (item?.assignedTrainers ?? item?.AssignedTrainers ?? []).map((trainer: any) => this.mapTrainer(trainer))
+      assignedTrainers: (item?.assignedTrainers ?? item?.AssignedTrainers ?? []).map((trainer: any) => this.mapTrainer(trainer)),
+      assignedStudents: (item?.assignedStudents ?? item?.AssignedStudents ?? []).map((student: any) => this.mapStudent(student))
     };
   }
 
   private mapTrainer(item: any): ApprovedTrainer {
     return {
       trainerId: item?.trainerId ?? item?.TrainerId ?? '',
+      userId: item?.userId ?? item?.UserId ?? '',
+      fullName: item?.fullName ?? item?.FullName ?? '',
+      email: item?.email ?? item?.Email ?? ''
+    };
+  }
+
+  private mapStudent(item: any): ApprovedStudent {
+    return {
+      studentId: item?.studentId ?? item?.StudentId ?? '',
       userId: item?.userId ?? item?.UserId ?? '',
       fullName: item?.fullName ?? item?.FullName ?? '',
       email: item?.email ?? item?.Email ?? ''

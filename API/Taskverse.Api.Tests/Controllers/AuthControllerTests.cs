@@ -38,11 +38,12 @@ public class AuthControllerTests
             UserId: "user-123",
             Email: "john.doe@example.com",
             FirstName: "John",
-            CollegeName: "Test University",
-            CollegeId: "college-456",
             LastName: "Doe",
+            CollegeId: "college-456",
+            CollegeName: "Test University",
             Roles: ["Student"],
-            Status: "APPROVED");
+            Status: "APPROVED",
+            MustChangePassword: false);
 
         _mockOrchestrator
             .Setup(o => o.Login(It.IsAny<LoginRequestDto>()))

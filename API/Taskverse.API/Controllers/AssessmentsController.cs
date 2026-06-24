@@ -76,7 +76,7 @@ public class AssessmentsController : TaskverseBaseController
             var trainerBatchAccessCheck = await EnsureTrainerCanAssignRequestedBatches(
                 collegeId,
                 model.AssignedBatchIds,
-                requireAtLeastOneBatch: false);
+                requireAtLeastOneBatch: !model.IsDraftSave);
             if (trainerBatchAccessCheck is not null) return trainerBatchAccessCheck;
 
             var dto = await _assessmentOrchestrator.CreateAssessment(
@@ -275,11 +275,14 @@ public class AssessmentsController : TaskverseBaseController
         var accessCheck = EnsureCollegeAdminOrTrainerAccess();
         if (accessCheck is not null) return accessCheck;
 
-        var tenantCheck = TryGetCollegeId(out _);
+        var tenantCheck = TryGetCollegeId(out var collegeId);
         if (tenantCheck is not null) return tenantCheck;
 
         try
         {
+            var trainerBatchAccessCheck = await EnsureTrainerCanPublishExistingAssessment(collegeId, id);
+            if (trainerBatchAccessCheck is not null) return trainerBatchAccessCheck;
+
             var dto = await _assessmentOrchestrator.PublishAssessment(new Taskverse.Business.DTOs.PublishQuestionBankAssessmentDto
             {
                 AssessmentId = id
@@ -619,8 +622,7 @@ public class AssessmentsController : TaskverseBaseController
 
         try
         {
-            var requestedBatchIds = model.AssessmentId.HasValue ? [] : model.AssignedBatchIds;
-            var trainerBatchAccessCheck = await EnsureTrainerCanAssignRequestedBatches(collegeId, requestedBatchIds);
+            var trainerBatchAccessCheck = await EnsureTrainerCanAssignRequestedBatches(collegeId, model.AssignedBatchIds);
             if (trainerBatchAccessCheck is not null) return trainerBatchAccessCheck;
 
             var dto = await _assessmentOrchestrator.PublishAssessment(
@@ -1503,6 +1505,31 @@ public class AssessmentsController : TaskverseBaseController
         }
 
         return null;
+    }
+
+    private async Task<IActionResult?> EnsureTrainerCanPublishExistingAssessment(Guid collegeId, Guid assessmentId)
+    {
+        if (!User.IsInRole(TrainerRole))
+        {
+            return null;
+        }
+
+        await using var context = await _dbContextFactory.CreateDbContextAsync();
+        var assessment = await context.Assessments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId && item.CollegeId == collegeId);
+
+        if (assessment is null)
+        {
+            return null;
+        }
+
+        return assessment.AssignedBatchIds.Length == 0
+            ? StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Trainer assessments must be assigned to at least one batch."
+            })
+            : null;
     }
 
     private Guid? GetCurrentUserId()
