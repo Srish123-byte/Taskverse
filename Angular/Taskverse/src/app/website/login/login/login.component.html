@@ -87,7 +87,7 @@
         </mat-form-field>
 
         <mat-form-field *ngIf="requiresClassSelection" appearance="outline" class="full-width">
-          <mat-label>Class</mat-label>
+          <mat-label>Class (Optional)</mat-label>
           <mat-select formControlName="classId" id="reg-class" [disabled]="!rCollegeId?.value || isClassOptionsLoading || classes.length === 0">
             <mat-option *ngFor="let classItem of classes" [value]="classItem.classId">
               {{ classItem.name }}<span *ngIf="classItem.academicYear"> ({{ classItem.academicYear }})</span>
@@ -95,11 +95,11 @@
           </mat-select>
           <mat-hint *ngIf="isClassOptionsLoading">Loading classes...</mat-hint>
           <mat-hint *ngIf="!isClassOptionsLoading && rCollegeId?.value && classes.length === 0">No classes available.</mat-hint>
-          <mat-error *ngIf="rClassId?.hasError('required')">Please select a class</mat-error>
+          <mat-hint *ngIf="!isClassOptionsLoading && classes.length > 0">Leave blank to register without a class assignment.</mat-hint>
         </mat-form-field>
 
         <mat-form-field *ngIf="requiresBatchSelection" appearance="outline" class="full-width">
-          <mat-label>Batch</mat-label>
+          <mat-label>Batch (Optional)</mat-label>
           <mat-select formControlName="batchId" id="reg-batch" [disabled]="!rClassId?.value || isBatchOptionsLoading || batches.length === 0">
             <mat-option *ngFor="let batch of batches" [value]="batch.batchId">
               {{ batch.name }}
@@ -107,7 +107,7 @@
           </mat-select>
           <mat-hint *ngIf="isBatchOptionsLoading">Loading batches...</mat-hint>
           <mat-hint *ngIf="!isBatchOptionsLoading && rClassId?.value && batches.length === 0">No batches available.</mat-hint>
-          <mat-error *ngIf="rBatchId?.hasError('required')">Please select a batch</mat-error>
+          <mat-hint *ngIf="rClassId?.value">If you choose a class, choose a batch from that class too.</mat-hint>
         </mat-form-field>
       </div>
 

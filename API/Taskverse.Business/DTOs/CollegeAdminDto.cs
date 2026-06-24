@@ -57,6 +57,7 @@ public class CollegeBatchSummaryDto
     public int StudentCount { get; set; }
     public DateTime CreatedAt { get; set; }
     public List<ApprovedTrainerDto> AssignedTrainers { get; set; } = [];
+    public List<ApprovedStudentDto> AssignedStudents { get; set; } = [];
 }
 
 public class SubjectOptionDto
@@ -73,9 +74,22 @@ public class ApprovedTrainerDto
     public string Email { get; set; } = string.Empty;
 }
 
+public class ApprovedStudentDto
+{
+    public string StudentId { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+}
+
 public class AssignBatchTrainersDto
 {
     public List<string> TrainerIds { get; set; } = [];
+}
+
+public class AssignStudentToBatchDto
+{
+    public List<string> StudentIds { get; set; } = [];
 }
 
 public class CreateCollegeClassDto

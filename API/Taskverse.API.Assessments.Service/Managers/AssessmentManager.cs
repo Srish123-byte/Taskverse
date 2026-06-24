@@ -643,14 +643,9 @@ public class AssessmentManager : IAssessmentManager
                 throw new KeyNotFoundException($"Student profile was not found for user '{studentUserId}'.");
             }
 
-            if (!student.BatchId.HasValue || student.BatchId.Value == Guid.Empty)
-            {
-                return [];
-            }
-
             return normalizedStatuses.Contains(nameof(AssessmentStatus.Completed))
-                ? await GetCompletedStudentAssessmentsAsync(student, student.BatchId.Value)
-                : await GetActiveStudentAssessmentsAsync(student, student.BatchId.Value, normalizedStatuses);
+                ? await GetCompletedStudentAssessmentsAsync(student, student.BatchId)
+                : await GetActiveStudentAssessmentsAsync(student, student.BatchId, normalizedStatuses);
         }, "retrieving student assessments");
     }
 
@@ -678,12 +673,7 @@ public class AssessmentManager : IAssessmentManager
                 throw new KeyNotFoundException($"Student profile was not found for user '{studentUserId}'.");
             }
 
-            if (!student.BatchId.HasValue || student.BatchId.Value == Guid.Empty)
-            {
-                throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found for the current student.");
-            }
-
-            var assessment = await BuildStudentAssessmentQuery(student.CollegeId, student.BatchId.Value)
+            var assessment = await BuildStudentAssessmentQuery(student.CollegeId, student.BatchId)
                 .Include(item => item.AssessmentQuestions)
                 .FirstOrDefaultAsync(item =>
                     item.AssessmentId == assessmentId &&
@@ -1566,7 +1556,7 @@ public class AssessmentManager : IAssessmentManager
             .ToList();
     }
 
-    private async Task<List<StudentAssessmentListItemRecord>> GetCompletedStudentAssessmentsAsync(Student student, Guid batchId)
+    private async Task<List<StudentAssessmentListItemRecord>> GetCompletedStudentAssessmentsAsync(Student student, Guid? batchId)
     {
         var assessmentQuery = BuildStudentAssessmentQuery(student.CollegeId, batchId);
 
@@ -1598,7 +1588,7 @@ public class AssessmentManager : IAssessmentManager
 
     private async Task<List<StudentAssessmentListItemRecord>> GetActiveStudentAssessmentsAsync(
         Student student,
-        Guid batchId,
+        Guid? batchId,
         IReadOnlySet<string> normalizedStatuses)
     {
         var includeLive = normalizedStatuses.Contains(nameof(AssessmentStatus.Live));
@@ -1628,7 +1618,7 @@ public class AssessmentManager : IAssessmentManager
             .ToList();
     }
 
-    private IQueryable<Assessment> BuildStudentAssessmentQuery(Guid collegeId, Guid batchId)
+    private IQueryable<Assessment> BuildStudentAssessmentQuery(Guid collegeId, Guid? batchId)
     {
         return _context.Assessments
             .AsNoTracking()
@@ -1637,7 +1627,8 @@ public class AssessmentManager : IAssessmentManager
             .Where(assessment =>
                 assessment.CollegeId == collegeId &&
                 assessment.AssessmentStatus != AssessmentStatus.Soft_Deleted &&
-                assessment.AssignedBatchIds.Contains(batchId));
+                (assessment.AssignedBatchIds.Length == 0 ||
+                 (batchId.HasValue && assessment.AssignedBatchIds.Contains(batchId.Value))));
     }
 
     private static StudentAssessmentListItemRecord ToStudentAssessmentListItem(Assessment assessment, string assessmentStatus)
@@ -1686,12 +1677,7 @@ public class AssessmentManager : IAssessmentManager
 
     private async Task<Assessment> GetStudentAssessmentForAttemptAsync(Guid assessmentId, Student student)
     {
-        if (!student.BatchId.HasValue || student.BatchId.Value == Guid.Empty)
-        {
-            throw new KeyNotFoundException($"Assessment '{assessmentId}' was not found for the current student.");
-        }
-
-        var assessment = await BuildStudentAssessmentQuery(student.CollegeId, student.BatchId.Value)
+        var assessment = await BuildStudentAssessmentQuery(student.CollegeId, student.BatchId)
             .Include(item => item.AssessmentQuestions)
             .FirstOrDefaultAsync(item =>
                 item.AssessmentId == assessmentId &&
@@ -1708,12 +1694,7 @@ public class AssessmentManager : IAssessmentManager
 
     private async Task<Assessment> GetAssessmentForAttemptRecoveryAsync(Guid assessmentId, Student student)
     {
-        if (!student.BatchId.HasValue || student.BatchId.Value == Guid.Empty)
-        {
-            throw new KeyNotFoundException($"Attempt for assessment '{assessmentId}' was not found for the current student.");
-        }
-
-        var assessment = await BuildStudentAssessmentQuery(student.CollegeId, student.BatchId.Value)
+        var assessment = await BuildStudentAssessmentQuery(student.CollegeId, student.BatchId)
             .Include(item => item.AssessmentQuestions)
             .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId);
 

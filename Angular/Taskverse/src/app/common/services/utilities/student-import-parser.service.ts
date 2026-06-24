@@ -80,8 +80,8 @@ export class StudentImportParserService {
       email: this.requireValue(valueFor('email'), 'Email', rowNumber),
       phone: this.requireValue(valueFor('phone'), 'Phone', rowNumber),
       collegeId: this.requireValue(valueFor('collegeId'), 'CollegeId', rowNumber),
-      classId: this.requireValue(valueFor('classId'), 'ClassId', rowNumber),
-      batchId: this.requireValue(valueFor('batchId'), 'BatchId', rowNumber)
+      classId: valueFor('classId').trim(),
+      batchId: valueFor('batchId').trim()
     };
   }
 

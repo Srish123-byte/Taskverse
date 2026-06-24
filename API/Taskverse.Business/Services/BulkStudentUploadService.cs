@@ -213,12 +213,12 @@ public class BulkStudentUploadService : IBulkStudentUploadService
         IReadOnlyDictionary<Guid, Batch> batches,
         out string validationMessage,
         out Guid collegeId,
-        out Guid classId,
-        out Guid batchId)
+        out Guid? classId,
+        out Guid? batchId)
     {
         collegeId = Guid.Empty;
-        classId = Guid.Empty;
-        batchId = Guid.Empty;
+        classId = null;
+        batchId = null;
 
         if (string.IsNullOrWhiteSpace(context.Row.FullName))
         {
@@ -244,16 +244,35 @@ public class BulkStudentUploadService : IBulkStudentUploadService
             return false;
         }
 
-        if (!Guid.TryParse(context.Row.ClassId, out classId))
+        var rawClassId = context.Row.ClassId?.Trim() ?? string.Empty;
+        var rawBatchId = context.Row.BatchId?.Trim() ?? string.Empty;
+        var hasClassId = !string.IsNullOrWhiteSpace(rawClassId);
+        var hasBatchId = !string.IsNullOrWhiteSpace(rawBatchId);
+        Guid parsedClassId = Guid.Empty;
+        Guid parsedBatchId = Guid.Empty;
+
+        if (hasClassId != hasBatchId)
+        {
+            validationMessage = "ClassId and BatchId must either both be provided or both be left empty.";
+            return false;
+        }
+
+        if (hasClassId && !Guid.TryParse(rawClassId, out parsedClassId))
         {
             validationMessage = "ClassId is invalid.";
             return false;
         }
 
-        if (!Guid.TryParse(context.Row.BatchId, out batchId))
+        if (hasBatchId && !Guid.TryParse(rawBatchId, out parsedBatchId))
         {
             validationMessage = "BatchId is invalid.";
             return false;
+        }
+
+        if (hasClassId)
+        {
+            classId = parsedClassId;
+            batchId = parsedBatchId;
         }
 
         if (restrictedCollegeId.HasValue && restrictedCollegeId.Value != collegeId)
@@ -268,13 +287,19 @@ public class BulkStudentUploadService : IBulkStudentUploadService
             return false;
         }
 
-        if (!classes.TryGetValue(classId, out var classEntity) || classEntity.CollegeId != collegeId)
+        if (!hasClassId)
+        {
+            validationMessage = string.Empty;
+            return true;
+        }
+
+        if (!classes.TryGetValue(classId!.Value, out var classEntity) || classEntity.CollegeId != collegeId)
         {
             validationMessage = "ClassId does not belong to the selected college.";
             return false;
         }
 
-        if (!batches.TryGetValue(batchId, out var batchEntity) || batchEntity.ClassId != classId || batchEntity.CollegeId != collegeId)
+        if (!batches.TryGetValue(batchId!.Value, out var batchEntity) || batchEntity.ClassId != classId.Value || batchEntity.CollegeId != collegeId)
         {
             validationMessage = "BatchId does not belong to the selected class and college.";
             return false;

@@ -57,6 +57,7 @@ public class CollegeBatchSummaryResponseModel
     public int StudentCount { get; set; }
     public DateTime CreatedAt { get; set; }
     public List<ApprovedTrainerResponseModel> AssignedTrainers { get; set; } = [];
+    public List<ApprovedStudentResponseModel> AssignedStudents { get; set; } = [];
 }
 
 public class SubjectOptionResponseModel
@@ -68,6 +69,14 @@ public class SubjectOptionResponseModel
 public class ApprovedTrainerResponseModel
 {
     public string TrainerId { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+}
+
+public class ApprovedStudentResponseModel
+{
+    public string StudentId { get; set; } = string.Empty;
     public string UserId { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
@@ -108,4 +117,9 @@ public class UpdateCollegeBatchRequestModel
 public class AssignBatchTrainersRequestModel
 {
     public List<string> TrainerIds { get; set; } = [];
+}
+
+public class AssignStudentToBatchRequestModel
+{
+    public List<string> StudentIds { get; set; } = [];
 }

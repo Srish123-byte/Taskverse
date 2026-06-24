@@ -73,7 +73,8 @@ public static class MockData
         CollegeName: "TestCollege",
         CollegeId: "college-123",
         Roles: ["Student"],
-        Status: "APPROVED");
+        Status: "APPROVED",
+        MustChangePassword: false);
 
     public static ValidateTokenResponseModel GetValidateTokenResponseModel() => new(
         IsValid: true,

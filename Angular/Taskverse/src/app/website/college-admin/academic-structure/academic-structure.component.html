@@ -146,6 +146,14 @@
                     <img src="assets/icons/nav/assign-trainer.svg" alt="" class="mini-action-icon" aria-hidden="true">
                     <span>Assign Trainer</span>
                   </button>
+                  <button
+                    type="button"
+                    class="mini-action mini-action-muted"
+                    [disabled]="isDeletingBatch(batchCard.batch!.batchId)"
+                    (click)="$event.stopPropagation(); openAssignStudentModal(classItem, batchCard.batch!)">
+                    <img src="assets/icons/nav/students.svg" alt="" class="mini-action-icon" aria-hidden="true">
+                    <span>Assign Student</span>
+                  </button>
                 </div>
               </ng-container>
 
@@ -476,6 +484,114 @@
           [disabled]="isSubmittingTrainerAssignment || isLoadingApprovedTrainers || !hasTrainerSelectionChanges()"
           (click)="submitTrainerAssignment()">
           {{ isSubmittingTrainerAssignment ? 'Saving...' : 'Save Changes' }}
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <div *ngIf="isStudentAssignmentOpen && !isSuccessDialogOpen" class="modal-backdrop" (click)="!isSubmittingStudentAssignment && closeStudentAssignmentModal()">
+    <section class="create-class-modal trainer-assignment-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-title-icon">
+            <img src="assets/icons/nav/students.svg" alt="" class="modal-title-icon-image" aria-hidden="true">
+          </div>
+          <div>
+            <h3>Assign Student</h3>
+            <p>Manage students for {{ activeStudentAssignmentBatchName }} in {{ activeStudentAssignmentClassName }}.</p>
+          </div>
+        </div>
+        <button type="button" class="close-button" [disabled]="isSubmittingStudentAssignment" (click)="closeStudentAssignmentModal()" aria-label="Close student assignment form">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div *ngIf="studentAssignmentErrorMessage" class="form-error-banner">
+          {{ studentAssignmentErrorMessage }}
+        </div>
+
+        <div class="assignment-summary-card">
+          <span class="assignment-summary-kicker">{{ activeStudentAssignmentClassName }}</span>
+          <strong>{{ activeStudentAssignmentBatchName }}</strong>
+          <p>Choose the full student list for this batch. Already assigned students can be deselected to unassign, and approved unassigned students can be selected to assign.</p>
+        </div>
+
+        <div *ngIf="getAssignedStudentsForActiveBatch().length > 0" class="selected-trainers-shell">
+          <span class="selected-trainers-label">Assigned students</span>
+          <div class="trainer-dropdown-panel">
+            <button
+              *ngFor="let student of getAssignedStudentsForActiveBatch(); trackBy: trackByStudentId"
+              type="button"
+              class="trainer-option"
+              [class.trainer-option-selected]="isStudentSelected(student.studentId)"
+              [disabled]="isSubmittingStudentAssignment"
+              (click)="selectStudent(student.studentId)">
+              <div class="trainer-option-copy">
+                <strong>{{ student.fullName }}</strong>
+                <span>{{ student.email }}</span>
+              </div>
+              <span class="trainer-option-action">{{ isStudentSelected(student.studentId) ? 'Keep Assigned' : 'Unassign' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="getSelectedStudentCount() > 0" class="selected-trainers-shell">
+          <span class="selected-trainers-label">Selected students</span>
+          <div class="selected-trainers-list">
+            <button
+              *ngFor="let student of getSelectedStudents(); trackBy: trackByStudentId"
+              type="button"
+              class="selected-trainer-chip"
+              [disabled]="isSubmittingStudentAssignment"
+              (click)="selectStudent(student.studentId)">
+              <span>{{ student.fullName }}</span>
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        <div class="trainer-dropdown-shell">
+          <div class="trainer-dropdown-trigger" [attr.aria-disabled]="true">
+            <span>{{ getStudentAssignmentLabel() }}</span>
+            <mat-icon>person_add</mat-icon>
+          </div>
+
+          <div class="trainer-dropdown-panel">
+            <div *ngIf="isLoadingApprovedStudents" class="trainer-dropdown-empty">
+              Loading approved students...
+            </div>
+
+            <div *ngIf="!isLoadingApprovedStudents && approvedStudents.length === 0" class="trainer-dropdown-empty">
+              No approved unassigned students are available for this college yet.
+            </div>
+
+            <button
+              *ngFor="let student of approvedStudents; trackBy: trackByStudentId"
+              type="button"
+              class="trainer-option"
+              [class.trainer-option-selected]="isStudentSelected(student.studentId)"
+              (click)="selectStudent(student.studentId)">
+              <div class="trainer-option-copy">
+                <strong>{{ student.fullName }}</strong>
+                <span>{{ student.email }}</span>
+              </div>
+              <span class="trainer-option-action">
+                {{ isStudentSelected(student.studentId) ? 'Selected' : 'Select' }}
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="footer-action footer-action-muted" [disabled]="isSubmittingStudentAssignment" (click)="closeStudentAssignmentModal()">Cancel</button>
+        <button
+          type="button"
+          class="footer-action footer-action-primary"
+          [disabled]="isSubmittingStudentAssignment || isLoadingApprovedStudents || !hasStudentSelectionChanges()"
+          (click)="submitStudentAssignment()">
+          {{ isSubmittingStudentAssignment ? 'Saving...' : 'Save Changes' }}
         </button>
       </div>
     </section>

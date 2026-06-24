@@ -346,9 +346,9 @@ public class AuthenticationService : IAuthenticationService
 
     private async Task EnsureStudentRecordAsync(User user)
     {
-        if (!user.CollegeId.HasValue || !user.ClassId.HasValue || !user.BatchId.HasValue)
+        if (!user.CollegeId.HasValue)
         {
-            throw new InvalidOperationException("Bulk uploaded students must have college, class, and batch values before activation.");
+            throw new InvalidOperationException("Bulk uploaded students must have a college value before activation.");
         }
 
         var existingStudent = await _context.Students.FirstOrDefaultAsync(student => student.UserId == user.Id);
