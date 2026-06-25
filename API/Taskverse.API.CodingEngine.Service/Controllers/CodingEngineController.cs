@@ -114,4 +114,33 @@ public class CodingEngineController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.GetBaseException().Message });
         }
     }
+
+    [HttpGet("assessments/{assessmentId:guid}/executions/{executionRequestId:guid}")]
+    [ProducesResponseType(typeof(RunCodeResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<RunCodeResponse>> GetExecutionStatus(
+        Guid assessmentId,
+        Guid executionRequestId,
+        [FromQuery] Guid studentUserId)
+    {
+        try
+        {
+            var result = await _codingEngineOrchestrator.GetExecutionStatusAsync(assessmentId, executionRequestId, studentUserId);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.GetBaseException().Message });
+        }
+    }
 }

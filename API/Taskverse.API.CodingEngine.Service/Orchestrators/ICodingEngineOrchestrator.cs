@@ -7,4 +7,5 @@ public interface ICodingEngineOrchestrator
     Task<EditorStateResponse> GetEditorStateAsync(Guid assessmentId, Guid codingQuestionId, Guid studentUserId);
     Task<SaveCodeResponse> SaveCodeAsync(Guid assessmentId, Guid codingQuestionId, Guid studentUserId, SaveCodeRequest request);
     Task<RunCodeQueuedResponse> RunCodeAsync(Guid assessmentId, Guid codingQuestionId, Guid studentUserId, RunCodeRequest request);
+    Task<RunCodeResponse> GetExecutionStatusAsync(Guid assessmentId, Guid executionRequestId, Guid studentUserId);
 }

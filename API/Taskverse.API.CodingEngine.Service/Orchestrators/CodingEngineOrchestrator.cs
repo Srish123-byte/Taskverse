@@ -192,6 +192,74 @@ public class CodingEngineOrchestrator : ICodingEngineOrchestrator
         }, "queuing the code execution");
     }
 
+    public async Task<RunCodeResponse> GetExecutionStatusAsync(Guid assessmentId, Guid executionRequestId, Guid studentUserId)
+    {
+        ValidateGuid(assessmentId, nameof(assessmentId));
+        ValidateGuid(executionRequestId, nameof(executionRequestId));
+        ValidateGuid(studentUserId, nameof(studentUserId));
+
+        return await ExecuteDbOperationAsync(async () =>
+        {
+            var student = await GetStudentByUserIdAsync(studentUserId);
+
+            var executionRequest = await _codingEngineManager.GetCodeExecutionRequestAsync(executionRequestId);
+            if (executionRequest is null || executionRequest.AssessmentId != assessmentId || executionRequest.StudentId != student.StudentId)
+            {
+                throw new KeyNotFoundException($"Code execution '{executionRequestId}' was not found for this assessment.");
+            }
+
+            var status = ((CodeExecutionStatus)executionRequest.CodeExecutionStatusId).ToString();
+
+            if (!IsTerminalStatus(executionRequest.CodeExecutionStatusId))
+            {
+                return new RunCodeResponse(executionRequest.CodeExecutionRequestId, status, null, 0, 0, null);
+            }
+
+            var result = await _codingEngineManager.GetCodeExecutionResultAsync(executionRequestId);
+            var submissions = await _codingEngineManager.GetCodeExecutionSubmissionsAsync(executionRequestId);
+
+            List<TestCaseResult>? testCaseResults = null;
+            if (submissions.Count > 0)
+            {
+                var testCases = await _codingEngineManager.GetTestCasesByIdsAsync(
+                    submissions.Select(s => s.TestCaseId).Distinct().ToList());
+                var testCasesById = testCases.ToDictionary(tc => tc.TestCaseId);
+
+                testCaseResults = submissions
+                    .Select(submission =>
+                    {
+                        testCasesById.TryGetValue(submission.TestCaseId, out var testCase);
+                        return new TestCaseResult(
+                            submission.TestCaseId,
+                            testCase?.IsSample ?? false,
+                            submission.Passed,
+                            submission.ActualOutput,
+                            testCase?.ExpectedOutput,
+                            submission.ExecutionTimeMs,
+                            submission.Judge0StatusDescription ?? (submission.Passed ? "Passed" : "Failed"));
+                    })
+                    .ToList();
+            }
+
+            return new RunCodeResponse(
+                executionRequest.CodeExecutionRequestId,
+                status,
+                testCaseResults,
+                result?.TotalTestCases ?? testCaseResults?.Count ?? 0,
+                result?.PassedTestCases ?? testCaseResults?.Count(r => r.Passed) ?? 0,
+                result?.CodingScore);
+        }, "retrieving the code execution status");
+    }
+
+    private static bool IsTerminalStatus(short statusId)
+    {
+        var status = (CodeExecutionStatus)statusId;
+        return status is CodeExecutionStatus.Completed
+            or CodeExecutionStatus.Failed
+            or CodeExecutionStatus.Cancelled
+            or CodeExecutionStatus.Timeout;
+    }
+
     private static void ValidateGuid(Guid id, string paramName)
     {
         if (id == Guid.Empty)

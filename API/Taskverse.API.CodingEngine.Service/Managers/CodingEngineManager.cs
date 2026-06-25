@@ -75,6 +75,32 @@ public class CodingEngineManager : ICodingEngineManager
                     a.StudentId == studentId),
             $"retrieving attempt for assessment '{assessmentId}' and student '{studentId}'.");
 
+    public async Task<CodeExecutionRequest?> GetCodeExecutionRequestAsync(Guid codeExecutionRequestId)
+        => await ExecuteQueryAsync(
+            () => _context.CodeExecutionRequests
+                .FirstOrDefaultAsync(cer => cer.CodeExecutionRequestId == codeExecutionRequestId),
+            $"retrieving code execution request '{codeExecutionRequestId}'.");
+
+    public async Task<CodeExecutionResult?> GetCodeExecutionResultAsync(Guid codeExecutionRequestId)
+        => await ExecuteQueryAsync(
+            () => _context.CodeExecutionResults
+                .FirstOrDefaultAsync(cer => cer.CodeExecutionRequestId == codeExecutionRequestId),
+            $"retrieving code execution result for request '{codeExecutionRequestId}'.");
+
+    public async Task<List<CodeExecutionSubmission>> GetCodeExecutionSubmissionsAsync(Guid codeExecutionRequestId)
+        => await ExecuteQueryAsync(
+            () => _context.CodeExecutionSubmissions
+                .Where(ces => ces.CodeExecutionRequestId == codeExecutionRequestId)
+                .ToListAsync(),
+            $"retrieving code execution submissions for request '{codeExecutionRequestId}'.");
+
+    public async Task<List<TestCase>> GetTestCasesByIdsAsync(List<Guid> testCaseIds)
+        => await ExecuteQueryAsync(
+            () => _context.TestCases
+                .Where(tc => testCaseIds.Contains(tc.TestCaseId))
+                .ToListAsync(),
+            "retrieving test cases by id.");
+
     public void AddStudentCode(StudentCode studentCode)
         => ExecuteCommand(
             () => _context.StudentCodes.Add(studentCode),
