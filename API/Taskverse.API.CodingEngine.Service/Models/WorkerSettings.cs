@@ -8,6 +8,7 @@ public class WorkerSettings
     public int MaxConcurrentExecutions { get; set; } = 3;
     public int BatchSize { get; set; } = 5;
     public int RateLimitPerMinute { get; set; } = 60;
+    public int LeaseDurationSeconds { get; set; } = 60;
 }
 
 public class CodingEngineWorkerOptions

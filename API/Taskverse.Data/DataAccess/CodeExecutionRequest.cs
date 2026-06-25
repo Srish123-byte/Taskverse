@@ -49,6 +49,16 @@ public class CodeExecutionRequest
     [Column("judge0_batch_token")]
     public string? Judge0BatchToken { get; set; }
 
+    [Column("lease_expires_at")]
+    public DateTime? LeaseExpiresAt { get; set; }
+
+    [MaxLength(100)]
+    [Column("claimed_by_instance")]
+    public string? ClaimedByInstance { get; set; }
+
+    [Column("lease_heartbeat_at")]
+    public DateTime? LeaseHeartbeatAt { get; set; }
+
     [Column("correlation_id")]
     public Guid CorrelationId { get; set; } = Guid.NewGuid();
 

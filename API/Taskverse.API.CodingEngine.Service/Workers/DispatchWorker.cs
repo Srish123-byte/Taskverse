@@ -15,6 +15,7 @@ public class DispatchWorker : BackgroundService
     private readonly WorkerSettings _settings;
     private readonly SemaphoreSlim _concurrencySemaphore;
     private readonly IRateLimiter _rateLimiter;
+    private readonly string _instanceId;
 
     public DispatchWorker(
         IServiceProvider serviceProvider,
@@ -41,13 +42,14 @@ public class DispatchWorker : BackgroundService
 
         _concurrencySemaphore = new SemaphoreSlim(_settings.MaxConcurrentExecutions, _settings.MaxConcurrentExecutions);
         _rateLimiter = rateLimiterFactory.GetOrCreate(workerId, _settings.RateLimitPerMinute);
+        _instanceId = $"{Environment.MachineName}:{Environment.ProcessId}:{Guid.NewGuid():N}";
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation(
-            "DispatchWorker '{WorkerId}' started. Polling every {Interval}s, max {Concurrent} concurrent, batch {Batch}.",
-            _settings.WorkerId, _settings.PollingIntervalSeconds, _settings.MaxConcurrentExecutions, _settings.BatchSize);
+            "DispatchWorker '{WorkerId}' (instance '{InstanceId}') started. Polling every {Interval}s, max {Concurrent} concurrent, batch {Batch}.",
+            _settings.WorkerId, _instanceId, _settings.PollingIntervalSeconds, _settings.MaxConcurrentExecutions, _settings.BatchSize);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -69,41 +71,75 @@ public class DispatchWorker : BackgroundService
 
     private async Task DispatchQueuedRequestsAsync(CancellationToken cancellationToken)
     {
-        using var scope = _serviceProvider.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<TaskverseContext>();
-        var dispatchService = scope.ServiceProvider.GetRequiredService<IDispatchService>();
+        List<CodeExecutionRequest> claimed;
 
-        var queued = await context.CodeExecutionRequests
-            .Where(cer => cer.CodeExecutionStatusId == (short)CodeExecutionStatus.Queued)
-            .OrderBy(cer => cer.RequestedAt)
-            .Take(_settings.BatchSize)
-            .ToListAsync(cancellationToken);
-
-        if (queued.Count == 0) return;
-
-        var tasks = queued.Select(async request =>
+        using (var claimScope = _serviceProvider.CreateScope())
         {
-            await _concurrencySemaphore.WaitAsync(cancellationToken);
-            try
-            {
-                await _rateLimiter.WaitAsync(cancellationToken);
+            var claimContext = claimScope.ServiceProvider.GetRequiredService<TaskverseContext>();
+            claimed = await ClaimRequestsAsync(claimContext, cancellationToken);
+        }
 
-                request.CodeExecutionStatusId = (short)CodeExecutionStatus.Running;
-                request.WorkerId = _settings.WorkerId;
-                request.ModifiedAt = DateTime.UtcNow;
-                await context.SaveChangesAsync(cancellationToken);
+        if (claimed.Count == 0)
+        {
+            return;
+        }
 
-                await dispatchService.DispatchAsync(request, _settings.WorkerId, cancellationToken);
-            }
-            catch (OperationCanceledException) { throw; }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "DispatchWorker '{WorkerId}' failed request '{RequestId}'.",
-                    _settings.WorkerId, request.CodeExecutionRequestId);
-            }
-            finally { _concurrencySemaphore.Release(); }
-        });
-
+        var tasks = claimed.Select(request => DispatchClaimedRequestAsync(request, cancellationToken));
         await Task.WhenAll(tasks);
+    }
+
+    private async Task<List<CodeExecutionRequest>> ClaimRequestsAsync(TaskverseContext context, CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        var leaseExpiresAt = now.AddSeconds(_settings.LeaseDurationSeconds);
+
+        // Atomic claim: FOR UPDATE SKIP LOCKED in the subquery means two dispatcher
+        // instances can never claim the same row, even across separate processes.
+        // Eligible rows are freshly Queued, or Running with an expired lease and no
+        // Judge0 token yet (i.e. the worker that claimed them crashed before dispatching).
+        return await context.CodeExecutionRequests
+            .FromSqlInterpolated($@"
+                UPDATE code_execution_requests
+                SET code_execution_status = {(short)CodeExecutionStatus.Running},
+                    worker_id = {_settings.WorkerId},
+                    claimed_by_instance = {_instanceId},
+                    lease_expires_at = {leaseExpiresAt},
+                    lease_heartbeat_at = {now},
+                    started_at = {now},
+                    modified_at = {now}
+                WHERE code_execution_request_id IN (
+                    SELECT code_execution_request_id
+                    FROM code_execution_requests
+                    WHERE (code_execution_status = {(short)CodeExecutionStatus.Queued})
+                       OR (code_execution_status = {(short)CodeExecutionStatus.Running}
+                           AND judge0_batch_token IS NULL
+                           AND lease_expires_at < {now})
+                    ORDER BY requested_at
+                    LIMIT {_settings.BatchSize}
+                    FOR UPDATE SKIP LOCKED
+                )
+                RETURNING *")
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+    }
+
+    private async Task DispatchClaimedRequestAsync(CodeExecutionRequest claimedRequest, CancellationToken cancellationToken)
+    {
+        await _concurrencySemaphore.WaitAsync(cancellationToken);
+        try
+        {
+            await _rateLimiter.WaitAsync(cancellationToken);
+
+            using var scope = _serviceProvider.CreateScope();
+            var dispatchService = scope.ServiceProvider.GetRequiredService<IDispatchService>();
+            await dispatchService.DispatchAsync(claimedRequest, _settings.WorkerId, cancellationToken);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "DispatchWorker '{WorkerId}' failed request '{RequestId}'.",
+                _settings.WorkerId, claimedRequest.CodeExecutionRequestId);
+        }
+        finally { _concurrencySemaphore.Release(); }
     }
 }

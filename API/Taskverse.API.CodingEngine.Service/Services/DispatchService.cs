@@ -25,6 +25,8 @@ public class DispatchService : IDispatchService
 
     public async Task DispatchAsync(CodeExecutionRequest request, string workerId, CancellationToken cancellationToken)
     {
+        _context.Attach(request);
+
         var now = DateTime.UtcNow;
 
         var codingLanguage = await _context.CodingLanguages
