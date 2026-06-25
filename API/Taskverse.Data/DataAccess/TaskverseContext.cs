@@ -28,6 +28,7 @@ public class TaskverseContext : DbContext
     public DbSet<CodeExecutionResult> CodeExecutionResults { get; set; }
     public DbSet<CodeExecutionSubmission> CodeExecutionSubmissions { get; set; }
     public DbSet<Judge0Node> Judge0Nodes { get; set; }
+    public DbSet<CodingEngineCounter> CodingEngineCounters { get; set; }
     public DbSet<TestCase> TestCases { get; set; }
     public DbSet<SubjectBatch> SubjectBatches { get; set; }
     public DbSet<Topic> Topics { get; set; }
@@ -95,6 +96,17 @@ public class TaskverseContext : DbContext
             entity.Property(lcers => lcers.CodeExecutionResultStatus).HasColumnName("code_execution_result_status").IsRequired().HasMaxLength(30);
 
             entity.HasIndex(lcers => lcers.CodeExecutionResultStatus).IsUnique();
+        });
+
+        // Configure CodingEngineCounter entity
+        modelBuilder.Entity<CodingEngineCounter>(entity =>
+        {
+            entity.ToTable("coding_engine_counters");
+            entity.HasKey(cec => cec.CounterKey);
+            entity.Property(cec => cec.CounterKey).HasColumnName("counter_key").IsRequired().HasMaxLength(30);
+            entity.Property(cec => cec.ActiveCount).HasColumnName("active_count").HasDefaultValue(0);
+            entity.Property(cec => cec.MaxActive).HasColumnName("max_active").HasDefaultValue(0);
+            entity.Property(cec => cec.ModifiedAt).HasColumnName("modified_at");
         });
 
         // Configure Judge0Node entity

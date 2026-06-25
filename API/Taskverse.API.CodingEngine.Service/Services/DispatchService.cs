@@ -11,15 +11,18 @@ public class DispatchService : IDispatchService
 {
     private readonly TaskverseContext _context;
     private readonly IJudge0Client _judge0Client;
+    private readonly IExecutionLifecycleService _executionLifecycle;
     private readonly ILogger<DispatchService> _logger;
 
     public DispatchService(
         TaskverseContext context,
         IJudge0Client judge0Client,
+        IExecutionLifecycleService executionLifecycle,
         ILogger<DispatchService> logger)
     {
         _context = context;
         _judge0Client = judge0Client;
+        _executionLifecycle = executionLifecycle;
         _logger = logger;
     }
 
@@ -35,9 +38,7 @@ public class DispatchService : IDispatchService
         if (codingLanguage is null || codingLanguage.Judge0LanguageId is null or 0)
         {
             _logger.LogError("Language not found or has no Judge0 mapping for request '{RequestId}'.", request.CodeExecutionRequestId);
-            request.CodeExecutionStatusId = (short)CodeExecutionStatus.Failed;
-            request.CompletedAt = now;
-            request.ModifiedAt = now;
+            await _executionLifecycle.MarkTerminalAsync(request, CodeExecutionStatus.Failed, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
             return;
         }
@@ -53,6 +54,8 @@ public class DispatchService : IDispatchService
             await _context.SaveChangesAsync(cancellationToken);
             return;
         }
+
+        request.Judge0NodeId = node.Id;
 
         var judge0Request = new Judge0CreateSubmissionRequest(
             SourceCode: request.Code,
@@ -71,17 +74,13 @@ public class DispatchService : IDispatchService
         {
             _logger.LogError(ex, "Failed to create Judge0 submission for request '{RequestId}' on node '{NodeId}'.",
                 request.CodeExecutionRequestId, node.Id);
-            await ReleaseNodeSlotAsync(node.Id, cancellationToken);
-            request.CodeExecutionStatusId = (short)CodeExecutionStatus.Failed;
-            request.CompletedAt = now;
-            request.ModifiedAt = now;
+            await _executionLifecycle.MarkTerminalAsync(request, CodeExecutionStatus.Failed, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
             return;
         }
 
         request.CodeExecutionStatusId = (short)CodeExecutionStatus.Running;
         request.Judge0BatchToken = judge0Token;
-        request.Judge0NodeId = node.Id;
         request.StartedAt = now;
         request.WorkerId = workerId;
         request.ModifiedAt = now;
@@ -118,14 +117,5 @@ public class DispatchService : IDispatchService
             .ToListAsync(cancellationToken);
 
         return claimed.FirstOrDefault();
-    }
-
-    private async Task ReleaseNodeSlotAsync(Guid nodeId, CancellationToken cancellationToken)
-    {
-        await _context.Database.ExecuteSqlInterpolatedAsync($@"
-            UPDATE judge0_nodes
-            SET active_slots = active_slots + 1,
-                modified_at = {DateTime.UtcNow}
-            WHERE id = {nodeId}", cancellationToken);
     }
 }

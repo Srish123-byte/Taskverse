@@ -81,15 +81,16 @@ public class CodingEngineController : ControllerBase
     }
 
     [HttpPut("assessments/{assessmentId:guid}/coding-questions/{codingQuestionId:guid}/run")]
-    [ProducesResponseType(typeof(RunCodeQueuedResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(RunCodeResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<RunCodeQueuedResponse>> RunCode(
+    public async Task<ActionResult<RunCodeResponse>> RunCode(
         Guid assessmentId,
         Guid codingQuestionId,
         [FromQuery] Guid studentUserId,
-        [FromBody] RunCodeRequest request)
+        [FromBody] RunCodeRequest request,
+        CancellationToken cancellationToken)
     {
         if (request is null)
         {
@@ -98,7 +99,7 @@ public class CodingEngineController : ControllerBase
 
         try
         {
-            var result = await _codingEngineOrchestrator.RunCodeAsync(assessmentId, codingQuestionId, studentUserId, request);
+            var result = await _codingEngineOrchestrator.RunCodeAsync(assessmentId, codingQuestionId, studentUserId, request, cancellationToken);
             return Ok(result);
         }
         catch (ArgumentException ex)

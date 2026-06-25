@@ -6,7 +6,9 @@ public record RunCodeRequest(
     [property: JsonPropertyName("code")]
     string Code,
     [property: JsonPropertyName("coding_language_id")]
-    Guid CodingLanguageId);
+    Guid CodingLanguageId,
+    [property: JsonPropertyName("mode")]
+    string Mode = "Run");
 
 public record RunCodeResponse(
     [property: JsonPropertyName("execution_request_id")]
@@ -20,7 +22,9 @@ public record RunCodeResponse(
     [property: JsonPropertyName("passed_test_cases")]
     int PassedTestCases,
     [property: JsonPropertyName("score")]
-    decimal? Score);
+    decimal? Score,
+    [property: JsonPropertyName("reason")]
+    string? Reason = null);
 
 public record TestCaseResult(
     [property: JsonPropertyName("test_case_id")]
@@ -37,11 +41,3 @@ public record TestCaseResult(
     int? ExecutionTimeMs,
     [property: JsonPropertyName("status")]
     string Status);
-
-public record RunCodeQueuedResponse(
-    [property: JsonPropertyName("execution_request_id")]
-    Guid ExecutionRequestId,
-    [property: JsonPropertyName("status")]
-    string Status,
-    [property: JsonPropertyName("message")]
-    string Message);

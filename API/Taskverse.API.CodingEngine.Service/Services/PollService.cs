@@ -14,17 +14,20 @@ public class PollService : IPollService
     private readonly TaskverseContext _context;
     private readonly IJudge0Client _judge0Client;
     private readonly IReportsServiceClient _reportsServiceClient;
+    private readonly IExecutionLifecycleService _executionLifecycle;
     private readonly ILogger<PollService> _logger;
 
     public PollService(
         TaskverseContext context,
         IJudge0Client judge0Client,
         IReportsServiceClient reportsServiceClient,
+        IExecutionLifecycleService executionLifecycle,
         ILogger<PollService> logger)
     {
         _context = context;
         _judge0Client = judge0Client;
         _reportsServiceClient = reportsServiceClient;
+        _executionLifecycle = executionLifecycle;
         _logger = logger;
     }
 
@@ -35,9 +38,7 @@ public class PollService : IPollService
         if (string.IsNullOrWhiteSpace(request.Judge0BatchToken) || request.Judge0NodeId is null)
         {
             _logger.LogError("Request '{RequestId}' has no Judge0 batch token or node.", request.CodeExecutionRequestId);
-            request.CodeExecutionStatusId = (short)CodeExecutionStatus.Failed;
-            request.CompletedAt = DateTime.UtcNow;
-            request.ModifiedAt = DateTime.UtcNow;
+            await _executionLifecycle.MarkTerminalAsync(request, CodeExecutionStatus.Failed, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
             return;
         }
@@ -50,9 +51,7 @@ public class PollService : IPollService
         {
             _logger.LogError("Request '{RequestId}' references Judge0 node '{NodeId}' which no longer exists.",
                 request.CodeExecutionRequestId, request.Judge0NodeId);
-            request.CodeExecutionStatusId = (short)CodeExecutionStatus.Failed;
-            request.CompletedAt = DateTime.UtcNow;
-            request.ModifiedAt = DateTime.UtcNow;
+            await _executionLifecycle.MarkTerminalAsync(request, CodeExecutionStatus.Failed, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
             return;
         }
@@ -148,12 +147,8 @@ public class PollService : IPollService
 
         _context.CodeExecutionResults.Add(executionResult);
 
-        request.CodeExecutionStatusId = (short)CodeExecutionStatus.Completed;
-        request.CompletedAt = now;
-        request.ModifiedAt = now;
+        await _executionLifecycle.MarkTerminalAsync(request, CodeExecutionStatus.Completed, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
-
-        await ReleaseNodeSlotAsync(node.Id, cancellationToken);
 
         try
         {
@@ -169,15 +164,6 @@ public class PollService : IPollService
         {
             _logger.LogError(ex, "Failed to report coding evaluation for request '{RequestId}'.", request.CodeExecutionRequestId);
         }
-    }
-
-    private async Task ReleaseNodeSlotAsync(Guid nodeId, CancellationToken cancellationToken)
-    {
-        await _context.Database.ExecuteSqlInterpolatedAsync($@"
-            UPDATE judge0_nodes
-            SET active_slots = active_slots + 1,
-                modified_at = {DateTime.UtcNow}
-            WHERE id = {nodeId}", cancellationToken);
     }
 
     private static TestCaseExecutionResult EvaluateSingleTestCase(Judge0SubmissionResponse judge0Result, TestCase testCase)

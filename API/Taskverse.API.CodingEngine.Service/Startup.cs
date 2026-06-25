@@ -92,6 +92,7 @@ public class Startup
         services.AddScoped<ICodingEngineManager, CodingEngineManager>();
         services.AddScoped<IDispatchService, DispatchService>();
         services.AddScoped<IPollService, PollService>();
+        services.AddScoped<IExecutionLifecycleService, ExecutionLifecycleService>();
         services.AddSingleton<RateLimiterFactory>();
         services.AddHttpClient<IReportsServiceClient, ReportsServiceClient>((serviceProvider, client) =>
         {

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Taskverse.API.CodingEngine.Service.Managers;
 using Taskverse.API.CodingEngine.Service.Models;
+using Taskverse.API.CodingEngine.Service.Services;
 using Taskverse.Data.DataAccess;
 using Taskverse.Data.Enums;
 
@@ -9,14 +10,26 @@ namespace Taskverse.API.CodingEngine.Service.Orchestrators;
 
 public class CodingEngineOrchestrator : ICodingEngineOrchestrator
 {
+    private static readonly TimeSpan InlineWaitBudget = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan InlineWaitPollInterval = TimeSpan.FromMilliseconds(250);
+
     private readonly ICodingEngineManager _codingEngineManager;
+    private readonly IDispatchService _dispatchService;
+    private readonly IPollService _pollService;
+    private readonly IExecutionLifecycleService _executionLifecycle;
     private readonly ILogger<CodingEngineOrchestrator> _logger;
 
     public CodingEngineOrchestrator(
         ICodingEngineManager codingEngineManager,
+        IDispatchService dispatchService,
+        IPollService pollService,
+        IExecutionLifecycleService executionLifecycle,
         ILogger<CodingEngineOrchestrator> logger)
     {
         _codingEngineManager = codingEngineManager;
+        _dispatchService = dispatchService;
+        _pollService = pollService;
+        _executionLifecycle = executionLifecycle;
         _logger = logger;
     }
 
@@ -139,7 +152,8 @@ public class CodingEngineOrchestrator : ICodingEngineOrchestrator
         }, "saving the student code");
     }
 
-    public async Task<RunCodeQueuedResponse> RunCodeAsync(Guid assessmentId, Guid codingQuestionId, Guid studentUserId, RunCodeRequest request)
+    public async Task<RunCodeResponse> RunCodeAsync(
+        Guid assessmentId, Guid codingQuestionId, Guid studentUserId, RunCodeRequest request, CancellationToken cancellationToken = default)
     {
         ValidateGuid(assessmentId, nameof(assessmentId));
         ValidateGuid(codingQuestionId, nameof(codingQuestionId));
@@ -152,6 +166,7 @@ public class CodingEngineOrchestrator : ICodingEngineOrchestrator
             await GetAssessmentCodingQuestionAsync(assessmentId, codingQuestionId);
 
             var now = DateTime.UtcNow;
+            var executionMode = NormalizeMode(request.Mode);
 
             var studentCode = new StudentCode
             {
@@ -176,6 +191,7 @@ public class CodingEngineOrchestrator : ICodingEngineOrchestrator
                 CodingLanguageId = request.CodingLanguageId,
                 Code = request.Code,
                 InputPayload = null,
+                ExecutionMode = executionMode,
                 CodeExecutionStatusId = (short)CodeExecutionStatus.Queued,
                 RequestedAt = now,
                 CreatedAt = now,
@@ -185,10 +201,31 @@ public class CodingEngineOrchestrator : ICodingEngineOrchestrator
             _codingEngineManager.AddCodeExecutionRequest(executionRequest);
             await SaveChangesWithWrapAsync("Unable to queue the code execution.");
 
-            return new RunCodeQueuedResponse(
-                executionRequest.CodeExecutionRequestId,
-                "Queued",
-                "Code execution has been queued and will be processed shortly.");
+            var canAttemptInline = await _executionLifecycle.RegisterAndCheckCapacityAsync(executionMode, cancellationToken);
+            if (!canAttemptInline)
+            {
+                return new RunCodeResponse(
+                    executionRequest.CodeExecutionRequestId, "Queued", null, 0, 0, null, "too_many_active");
+            }
+
+            await _dispatchService.DispatchAsync(executionRequest, "inline", cancellationToken);
+
+            var deadline = DateTime.UtcNow.Add(InlineWaitBudget);
+            while (!IsTerminalStatus(executionRequest.CodeExecutionStatusId) && DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(InlineWaitPollInterval, cancellationToken);
+                await _pollService.CollectResultAsync(executionRequest, cancellationToken);
+            }
+
+            if (!IsTerminalStatus(executionRequest.CodeExecutionStatusId))
+            {
+                return new RunCodeResponse(
+                    executionRequest.CodeExecutionRequestId,
+                    ((CodeExecutionStatus)executionRequest.CodeExecutionStatusId).ToString(),
+                    null, 0, 0, null);
+            }
+
+            return await BuildRunCodeResponseAsync(executionRequest);
         }, "queuing the code execution");
     }
 
@@ -208,47 +245,55 @@ public class CodingEngineOrchestrator : ICodingEngineOrchestrator
                 throw new KeyNotFoundException($"Code execution '{executionRequestId}' was not found for this assessment.");
             }
 
-            var status = ((CodeExecutionStatus)executionRequest.CodeExecutionStatusId).ToString();
-
             if (!IsTerminalStatus(executionRequest.CodeExecutionStatusId))
             {
-                return new RunCodeResponse(executionRequest.CodeExecutionRequestId, status, null, 0, 0, null);
+                return new RunCodeResponse(
+                    executionRequest.CodeExecutionRequestId,
+                    ((CodeExecutionStatus)executionRequest.CodeExecutionStatusId).ToString(),
+                    null, 0, 0, null);
             }
 
-            var result = await _codingEngineManager.GetCodeExecutionResultAsync(executionRequestId);
-            var submissions = await _codingEngineManager.GetCodeExecutionSubmissionsAsync(executionRequestId);
-
-            List<TestCaseResult>? testCaseResults = null;
-            if (submissions.Count > 0)
-            {
-                var testCases = await _codingEngineManager.GetTestCasesByIdsAsync(
-                    submissions.Select(s => s.TestCaseId).Distinct().ToList());
-                var testCasesById = testCases.ToDictionary(tc => tc.TestCaseId);
-
-                testCaseResults = submissions
-                    .Select(submission =>
-                    {
-                        testCasesById.TryGetValue(submission.TestCaseId, out var testCase);
-                        return new TestCaseResult(
-                            submission.TestCaseId,
-                            testCase?.IsSample ?? false,
-                            submission.Passed,
-                            submission.ActualOutput,
-                            testCase?.ExpectedOutput,
-                            submission.ExecutionTimeMs,
-                            submission.Judge0StatusDescription ?? (submission.Passed ? "Passed" : "Failed"));
-                    })
-                    .ToList();
-            }
-
-            return new RunCodeResponse(
-                executionRequest.CodeExecutionRequestId,
-                status,
-                testCaseResults,
-                result?.TotalTestCases ?? testCaseResults?.Count ?? 0,
-                result?.PassedTestCases ?? testCaseResults?.Count(r => r.Passed) ?? 0,
-                result?.CodingScore);
+            return await BuildRunCodeResponseAsync(executionRequest);
         }, "retrieving the code execution status");
+    }
+
+    private async Task<RunCodeResponse> BuildRunCodeResponseAsync(CodeExecutionRequest executionRequest)
+    {
+        var status = ((CodeExecutionStatus)executionRequest.CodeExecutionStatusId).ToString();
+
+        var result = await _codingEngineManager.GetCodeExecutionResultAsync(executionRequest.CodeExecutionRequestId);
+        var submissions = await _codingEngineManager.GetCodeExecutionSubmissionsAsync(executionRequest.CodeExecutionRequestId);
+
+        List<TestCaseResult>? testCaseResults = null;
+        if (submissions.Count > 0)
+        {
+            var testCases = await _codingEngineManager.GetTestCasesByIdsAsync(
+                submissions.Select(s => s.TestCaseId).Distinct().ToList());
+            var testCasesById = testCases.ToDictionary(tc => tc.TestCaseId);
+
+            testCaseResults = submissions
+                .Select(submission =>
+                {
+                    testCasesById.TryGetValue(submission.TestCaseId, out var testCase);
+                    return new TestCaseResult(
+                        submission.TestCaseId,
+                        testCase?.IsSample ?? false,
+                        submission.Passed,
+                        submission.ActualOutput,
+                        testCase?.ExpectedOutput,
+                        submission.ExecutionTimeMs,
+                        submission.Judge0StatusDescription ?? (submission.Passed ? "Passed" : "Failed"));
+                })
+                .ToList();
+        }
+
+        return new RunCodeResponse(
+            executionRequest.CodeExecutionRequestId,
+            status,
+            testCaseResults,
+            result?.TotalTestCases ?? testCaseResults?.Count ?? 0,
+            result?.PassedTestCases ?? testCaseResults?.Count(r => r.Passed) ?? 0,
+            result?.CodingScore);
     }
 
     private static bool IsTerminalStatus(short statusId)
@@ -303,6 +348,9 @@ public class CodingEngineOrchestrator : ICodingEngineOrchestrator
             throw new ArgumentException("Coding language id is required.");
         }
     }
+
+    private static string NormalizeMode(string? mode)
+        => string.Equals(mode, "Submit", StringComparison.OrdinalIgnoreCase) ? "Submit" : "Run";
 
     private async Task<Student> GetStudentByUserIdAsync(Guid studentUserId)
     {

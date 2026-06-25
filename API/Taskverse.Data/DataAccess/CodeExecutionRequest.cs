@@ -29,6 +29,11 @@ public class CodeExecutionRequest
     [Column("input_payload")]
     public string? InputPayload { get; set; }
 
+    [Required]
+    [MaxLength(20)]
+    [Column("execution_mode")]
+    public string ExecutionMode { get; set; } = "Run";
+
     [Column("code_execution_status")]
     public short CodeExecutionStatusId { get; set; } = 1;
 
