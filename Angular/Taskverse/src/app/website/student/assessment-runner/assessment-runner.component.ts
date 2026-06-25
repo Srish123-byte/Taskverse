@@ -186,6 +186,14 @@ export class AssessmentRunnerComponent implements OnInit, OnDestroy {
     question.selectedAnswers = code ? [code] : [];
   }
 
+  updateCodingLanguage(question: StudentAttemptRecoveryQuestion, language: string): void {
+    question.codingLanguage = language;
+  }
+
+  markCodingSubmitted(question: StudentAttemptRecoveryQuestion): void {
+    question.isCodingSubmitted = true;
+  }
+
   trackByQuestionOption(_: number, option: string): string {
     return option;
   }

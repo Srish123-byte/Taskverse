@@ -106,12 +106,17 @@
           class="assessment-coding-editor"
           title="Coding Workspace"
           description="Write and refine your answer in the editor below."
-          helperText="Your code is saved as part of this assessment answer when you move to the next question or submit."
-          language="javascript"
+          helperText="Run your code to test it, then submit when you're ready. You can't resubmit after submitting."
+          [attemptId]="attempt.attemptId"
+          [questionId]="question.questionId"
+          [language]="question.codingLanguage ?? 'python'"
           theme="vs-dark"
           [code]="question.selectedAnswer ?? ''"
+          [isSubmitted]="!!question.isCodingSubmitted"
           [height]="'420px'"
-          (codeChange)="updateCodingAnswer(question, $event)">
+          (codeChange)="updateCodingAnswer(question, $event)"
+          (languageChange)="updateCodingLanguage(question, $event)"
+          (submitted)="markCodingSubmitted(question)">
         </app-coding>
 
         <ng-template #objectiveQuestionTemplate>

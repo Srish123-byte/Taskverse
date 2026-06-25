@@ -39,6 +39,25 @@ export interface StudentAttemptRecoveryQuestion {
   selectedAnswer?: string | null;
   selectedAnswers?: string[] | null;
   answeredAt?: string | null;
+  codingLanguage?: string | null;
+  isCodingSubmitted?: boolean;
+}
+
+export type CodingExecutionMode = 'run' | 'submit';
+
+export interface CodingExecutionRequest {
+  language: string;
+  code: string;
+  mode: CodingExecutionMode;
+}
+
+export interface CodingExecutionResponse {
+  id: string;
+  status: string;
+  stdout?: string | null;
+  stderr?: string | null;
+  exitCode?: number | null;
+  message?: string | null;
 }
 
 export interface SaveStudentAttemptAnswerRequest {
@@ -323,5 +342,17 @@ export class StudentAssessmentsService {
 
   getStudentResults(studentId: string): Observable<StudentResult[]> {
     return this.http.get<StudentResult[]>(`results/students/${studentId}`);
+  }
+
+  executeCode(
+    attemptId: string,
+    questionId: string,
+    request: CodingExecutionRequest
+  ): Observable<CodingExecutionResponse> {
+    return this.http.post<CodingExecutionResponse>(`students/attempts/${attemptId}/${questionId}/coding/execute`, request);
+  }
+
+  getCodeExecution(attemptId: string, questionId: string, executionId: string): Observable<CodingExecutionResponse> {
+    return this.http.get<CodingExecutionResponse>(`students/attempts/${attemptId}/${questionId}/coding/execute/${executionId}`);
   }
 }

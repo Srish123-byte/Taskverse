@@ -5,18 +5,65 @@
       <h3 class="coding-title">{{ title }}</h3>
       <p class="coding-description">{{ description }}</p>
     </div>
-    <span class="coding-language">{{ language }}</span>
+
+    <div class="coding-toolbar" *ngIf="canExecute; else languageBadge">
+      <label class="coding-language-select">
+        <span>Language</span>
+        <select
+          [value]="language"
+          [disabled]="isSubmitted || isBusy"
+          (change)="onLanguageSelect($any($event.target).value)">
+          <option *ngFor="let option of languageOptions" [value]="option.code">{{ option.label }}</option>
+        </select>
+      </label>
+    </div>
+    <ng-template #languageBadge>
+      <span class="coding-language">{{ selectedLanguageLabel }}</span>
+    </ng-template>
   </header>
 
   <app-monaco-editor
     [value]="code"
     [language]="language"
     [theme]="theme"
-    [readOnly]="readOnly"
+    [readOnly]="readOnly || isSubmitted"
     [height]="height"
     [options]="editorOptions"
     (valueChange)="onCodeChange($event)">
   </app-monaco-editor>
+
+  <div class="coding-actions" *ngIf="canExecute">
+    <button
+      type="button"
+      class="coding-action-button coding-action-run"
+      [disabled]="isSubmitted || isBusy"
+      (click)="runCode()">
+      {{ isRunning ? 'Running...' : 'Run' }}
+    </button>
+    <button
+      type="button"
+      class="coding-action-button coding-action-submit"
+      [disabled]="isSubmitted || isBusy"
+      (click)="submitCode()">
+      {{ isSubmitted ? 'Submitted' : isSubmitting ? 'Submitting...' : 'Submit' }}
+    </button>
+  </div>
+
+  <div class="coding-output" *ngIf="executionStatus || executionError">
+    <div class="coding-output-header">
+      <span>Output</span>
+      <span
+        *ngIf="executionStatus"
+        class="coding-output-status"
+        [class.coding-output-status-error]="isFailureStatus">
+        {{ executionStatus }}
+      </span>
+    </div>
+
+    <pre class="coding-output-block" *ngIf="stdout">{{ stdout }}</pre>
+    <pre class="coding-output-block coding-output-stderr" *ngIf="stderr">{{ stderr }}</pre>
+    <p class="coding-output-error" *ngIf="executionError">{{ executionError }}</p>
+  </div>
 
   <p class="coding-helper">{{ helperText }}</p>
 </section>
