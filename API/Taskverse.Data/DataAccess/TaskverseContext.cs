@@ -27,6 +27,7 @@ public class TaskverseContext : DbContext
     public DbSet<CodeExecutionRequest> CodeExecutionRequests { get; set; }
     public DbSet<CodeExecutionResult> CodeExecutionResults { get; set; }
     public DbSet<CodeExecutionSubmission> CodeExecutionSubmissions { get; set; }
+    public DbSet<Judge0Node> Judge0Nodes { get; set; }
     public DbSet<TestCase> TestCases { get; set; }
     public DbSet<SubjectBatch> SubjectBatches { get; set; }
     public DbSet<Topic> Topics { get; set; }
@@ -96,6 +97,25 @@ public class TaskverseContext : DbContext
             entity.HasIndex(lcers => lcers.CodeExecutionResultStatus).IsUnique();
         });
 
+        // Configure Judge0Node entity
+        modelBuilder.Entity<Judge0Node>(entity =>
+        {
+            entity.ToTable("judge0_nodes");
+            entity.HasKey(jn => jn.Id);
+            entity.Property(jn => jn.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(jn => jn.BaseUrl).HasColumnName("base_url").IsRequired().HasMaxLength(500);
+            entity.Property(jn => jn.Enabled).HasColumnName("enabled").HasDefaultValue(true);
+            entity.Property(jn => jn.HealthStatus).HasColumnName("health_status").IsRequired().HasMaxLength(30).HasDefaultValue("Unknown");
+            entity.Property(jn => jn.ActiveSlots).HasColumnName("active_slots").HasDefaultValue(0);
+            entity.Property(jn => jn.ReservedFinalSlots).HasColumnName("reserved_final_slots").HasDefaultValue(0);
+            entity.Property(jn => jn.LastHealthCheckAt).HasColumnName("last_health_check_at");
+            entity.Property(jn => jn.CooldownUntil).HasColumnName("cooldown_until");
+            entity.Property(jn => jn.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(jn => jn.ModifiedAt).HasColumnName("modified_at");
+
+            entity.HasIndex(jn => jn.BaseUrl).IsUnique().HasDatabaseName("uq_judge0_nodes_base_url");
+        });
+
         // Configure CodeExecutionRequest entity
         modelBuilder.Entity<CodeExecutionRequest>(entity =>
         {
@@ -112,6 +132,7 @@ public class TaskverseContext : DbContext
             entity.Property(cer => cer.StartedAt).HasColumnName("started_at");
             entity.Property(cer => cer.CompletedAt).HasColumnName("completed_at");
             entity.Property(cer => cer.WorkerId).HasColumnName("worker_id").HasMaxLength(100);
+            entity.Property(cer => cer.Judge0NodeId).HasColumnName("judge0_node_id");
             entity.Property(cer => cer.CorrelationId).HasColumnName("correlation_id").HasDefaultValueSql("gen_random_uuid()");
             entity.Property(cer => cer.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(cer => cer.ModifiedAt).HasColumnName("modified_at");
@@ -144,6 +165,12 @@ public class TaskverseContext : DbContext
                   .WithMany(lces => lces.CodeExecutionRequests)
                   .HasForeignKey(cer => cer.CodeExecutionStatusId)
                   .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(cer => cer.Judge0Node)
+                  .WithMany(jn => jn.CodeExecutionRequests)
+                  .HasForeignKey(cer => cer.Judge0NodeId)
+                  .OnDelete(DeleteBehavior.SetNull)
+                  .HasConstraintName("fk_code_execution_requests_judge0_node");
         });
 
         // Configure CodeExecutionResult entity

@@ -51,6 +51,7 @@ public class Startup
         ConfigureSwagger(services);
         ConfigureCors(services);
         ConfigureWorkers(services);
+        services.AddHostedService<NodeHealthCheckWorker>();
         services.AddHealthChecks();
     }
 
@@ -107,13 +108,6 @@ public class Startup
         services.AddHttpClient<IJudge0Client, Judge0Client>((serviceProvider, client) =>
         {
             var settings = serviceProvider.GetRequiredService<IOptions<Judge0Settings>>().Value;
-
-            if (string.IsNullOrWhiteSpace(settings.BaseUrl))
-            {
-                throw new InvalidOperationException("Judge0:BaseUrl is missing.");
-            }
-
-            client.BaseAddress = new Uri(settings.BaseUrl, UriKind.Absolute);
             client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds > 0 ? settings.TimeoutSeconds : 30);
         });
     }
@@ -123,6 +117,7 @@ public class Startup
         services.Configure<ReportsServiceSettings>(Configuration.GetSection("ReportsService"));
         services.Configure<Judge0Settings>(Configuration.GetSection("Judge0"));
         services.Configure<CodingEngineWorkerOptions>(Configuration.GetSection("CodingEngineWorkers"));
+        services.Configure<NodeHealthCheckSettings>(Configuration.GetSection("NodeHealthCheck"));
     }
 
     private void ConfigureWorkers(IServiceCollection services)

@@ -69,38 +69,47 @@ public class PollWorker : BackgroundService
 
     private async Task PollRunningRequestsAsync(CancellationToken cancellationToken)
     {
-        using var scope = _serviceProvider.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<TaskverseContext>();
-        var pollService = scope.ServiceProvider.GetRequiredService<IPollService>();
+        List<CodeExecutionRequest> running;
 
-        var running = await context.CodeExecutionRequests
-            .Where(cer =>
-                cer.CodeExecutionStatusId == (short)CodeExecutionStatus.Running &&
-                cer.Judge0BatchToken != null)
-            .OrderBy(cer => cer.StartedAt)
-            .Take(_settings.BatchSize)
-            .ToListAsync(cancellationToken);
-
-        if (running.Count == 0) return;
-
-        var tasks = running.Select(async request =>
+        using (var queryScope = _serviceProvider.CreateScope())
         {
-            await _concurrencySemaphore.WaitAsync(cancellationToken);
-            try
-            {
-                await _rateLimiter.WaitAsync(cancellationToken);
+            var queryContext = queryScope.ServiceProvider.GetRequiredService<TaskverseContext>();
+            running = await queryContext.CodeExecutionRequests
+                .Where(cer =>
+                    cer.CodeExecutionStatusId == (short)CodeExecutionStatus.Running &&
+                    cer.Judge0BatchToken != null)
+                .OrderBy(cer => cer.StartedAt)
+                .Take(_settings.BatchSize)
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+        }
 
-                await pollService.CollectResultAsync(request, cancellationToken);
-            }
-            catch (OperationCanceledException) { throw; }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "PollWorker '{WorkerId}' failed request '{RequestId}'.",
-                    _settings.WorkerId, request.CodeExecutionRequestId);
-            }
-            finally { _concurrencySemaphore.Release(); }
-        });
+        if (running.Count == 0)
+        {
+            return;
+        }
 
+        var tasks = running.Select(request => CollectResultForRequestAsync(request, cancellationToken));
         await Task.WhenAll(tasks);
+    }
+
+    private async Task CollectResultForRequestAsync(CodeExecutionRequest request, CancellationToken cancellationToken)
+    {
+        await _concurrencySemaphore.WaitAsync(cancellationToken);
+        try
+        {
+            await _rateLimiter.WaitAsync(cancellationToken);
+
+            using var scope = _serviceProvider.CreateScope();
+            var pollService = scope.ServiceProvider.GetRequiredService<IPollService>();
+            await pollService.CollectResultAsync(request, cancellationToken);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "PollWorker '{WorkerId}' failed request '{RequestId}'.",
+                _settings.WorkerId, request.CodeExecutionRequestId);
+        }
+        finally { _concurrencySemaphore.Release(); }
     }
 }

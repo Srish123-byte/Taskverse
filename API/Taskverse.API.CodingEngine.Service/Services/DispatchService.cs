@@ -42,6 +42,18 @@ public class DispatchService : IDispatchService
             return;
         }
 
+        var node = await ClaimHealthyNodeAsync(cancellationToken);
+        if (node is null)
+        {
+            _logger.LogWarning(
+                "No healthy Judge0 node with available capacity for request '{RequestId}'. Re-queuing.",
+                request.CodeExecutionRequestId);
+            request.CodeExecutionStatusId = (short)CodeExecutionStatus.Queued;
+            request.ModifiedAt = now;
+            await _context.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
         var judge0Request = new Judge0CreateSubmissionRequest(
             SourceCode: request.Code,
             LanguageId: codingLanguage.Judge0LanguageId.Value,
@@ -53,11 +65,13 @@ public class DispatchService : IDispatchService
         string judge0Token;
         try
         {
-            judge0Token = await _judge0Client.CreateSubmissionAsync(judge0Request, cancellationToken);
+            judge0Token = await _judge0Client.CreateSubmissionAsync(node.BaseUrl, judge0Request, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create Judge0 submission for request '{RequestId}'.", request.CodeExecutionRequestId);
+            _logger.LogError(ex, "Failed to create Judge0 submission for request '{RequestId}' on node '{NodeId}'.",
+                request.CodeExecutionRequestId, node.Id);
+            await ReleaseNodeSlotAsync(node.Id, cancellationToken);
             request.CodeExecutionStatusId = (short)CodeExecutionStatus.Failed;
             request.CompletedAt = now;
             request.ModifiedAt = now;
@@ -67,6 +81,7 @@ public class DispatchService : IDispatchService
 
         request.CodeExecutionStatusId = (short)CodeExecutionStatus.Running;
         request.Judge0BatchToken = judge0Token;
+        request.Judge0NodeId = node.Id;
         request.StartedAt = now;
         request.WorkerId = workerId;
         request.ModifiedAt = now;
@@ -74,7 +89,43 @@ public class DispatchService : IDispatchService
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
-            "Dispatched request '{RequestId}' to Judge0 with token '{Token}'.",
-            request.CodeExecutionRequestId, judge0Token);
+            "Dispatched request '{RequestId}' to Judge0 node '{NodeId}' with token '{Token}'.",
+            request.CodeExecutionRequestId, node.Id, judge0Token);
+    }
+
+    private async Task<Judge0Node?> ClaimHealthyNodeAsync(CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+
+        var claimed = await _context.Judge0Nodes
+            .FromSqlInterpolated($@"
+                UPDATE judge0_nodes
+                SET active_slots = active_slots - 1,
+                    modified_at = {now}
+                WHERE id = (
+                    SELECT id
+                    FROM judge0_nodes
+                    WHERE enabled = true
+                      AND health_status = 'Healthy'
+                      AND (cooldown_until IS NULL OR cooldown_until <= {now})
+                      AND active_slots > reserved_final_slots
+                    ORDER BY active_slots DESC
+                    LIMIT 1
+                    FOR UPDATE SKIP LOCKED
+                )
+                RETURNING *")
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return claimed.FirstOrDefault();
+    }
+
+    private async Task ReleaseNodeSlotAsync(Guid nodeId, CancellationToken cancellationToken)
+    {
+        await _context.Database.ExecuteSqlInterpolatedAsync($@"
+            UPDATE judge0_nodes
+            SET active_slots = active_slots + 1,
+                modified_at = {DateTime.UtcNow}
+            WHERE id = {nodeId}", cancellationToken);
     }
 }

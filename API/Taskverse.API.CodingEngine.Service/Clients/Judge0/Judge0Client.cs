@@ -15,10 +15,10 @@ public class Judge0Client : IJudge0Client
         _logger = logger;
     }
 
-    public async Task<string> CreateSubmissionAsync(Judge0CreateSubmissionRequest request, CancellationToken cancellationToken = default)
+    public async Task<string> CreateSubmissionAsync(string baseUrl, Judge0CreateSubmissionRequest request, CancellationToken cancellationToken = default)
     {
         var response = await _httpClient.PostAsJsonAsync(
-            "submissions?base64_encoded=false&wait=false", request, cancellationToken);
+            BuildUri(baseUrl, "submissions?base64_encoded=false&wait=false"), request, cancellationToken);
 
         response.EnsureSuccessStatusCode();
 
@@ -34,10 +34,10 @@ public class Judge0Client : IJudge0Client
         return token;
     }
 
-    public async Task<Judge0SubmissionResponse> GetSubmissionAsync(string token, CancellationToken cancellationToken = default)
+    public async Task<Judge0SubmissionResponse> GetSubmissionAsync(string baseUrl, string token, CancellationToken cancellationToken = default)
     {
         var response = await _httpClient.GetAsync(
-            $"submissions/{token}?base64_encoded=false&fields=*", cancellationToken);
+            BuildUri(baseUrl, $"submissions/{token}?base64_encoded=false&fields=*"), cancellationToken);
 
         response.EnsureSuccessStatusCode();
 
@@ -46,15 +46,16 @@ public class Judge0Client : IJudge0Client
     }
 
     public async Task<Judge0SubmissionResponse> CreateAndWaitAsync(
+        string baseUrl,
         Judge0CreateSubmissionRequest request,
         int pollIntervalMs = 200,
         CancellationToken cancellationToken = default)
     {
-        var token = await CreateSubmissionAsync(request, cancellationToken);
+        var token = await CreateSubmissionAsync(baseUrl, request, cancellationToken);
 
         while (!cancellationToken.IsCancellationRequested)
         {
-            var result = await GetSubmissionAsync(token, cancellationToken);
+            var result = await GetSubmissionAsync(baseUrl, token, cancellationToken);
 
             if (result.Status is null)
             {
@@ -76,5 +77,25 @@ public class Judge0Client : IJudge0Client
 
         cancellationToken.ThrowIfCancellationRequested();
         throw new TimeoutException($"Judge0 submission '{token}' did not complete before cancellation.");
+    }
+
+    public async Task<bool> PingAsync(string baseUrl, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync(BuildUri(baseUrl, "languages"), cancellationToken);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Judge0 health ping failed for '{BaseUrl}'.", baseUrl);
+            return false;
+        }
+    }
+
+    private static Uri BuildUri(string baseUrl, string relativePath)
+    {
+        var normalizedBase = baseUrl.EndsWith('/') ? baseUrl : baseUrl + "/";
+        return new Uri(new Uri(normalizedBase, UriKind.Absolute), relativePath);
     }
 }

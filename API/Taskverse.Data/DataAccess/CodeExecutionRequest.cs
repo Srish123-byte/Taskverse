@@ -59,6 +59,9 @@ public class CodeExecutionRequest
     [Column("lease_heartbeat_at")]
     public DateTime? LeaseHeartbeatAt { get; set; }
 
+    [Column("judge0_node_id")]
+    public Guid? Judge0NodeId { get; set; }
+
     [Column("correlation_id")]
     public Guid CorrelationId { get; set; } = Guid.NewGuid();
 
@@ -77,4 +80,6 @@ public class CodeExecutionRequest
     public LookupCodeExecutionStatus CodeExecutionStatus { get; set; } = default!;
 
     public CodeExecutionResult? CodeExecutionResult { get; set; }
+
+    public Judge0Node? Judge0Node { get; set; }
 }

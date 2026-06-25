@@ -30,9 +30,26 @@ public class PollService : IPollService
 
     public async Task CollectResultAsync(CodeExecutionRequest request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Judge0BatchToken))
+        _context.Attach(request);
+
+        if (string.IsNullOrWhiteSpace(request.Judge0BatchToken) || request.Judge0NodeId is null)
         {
-            _logger.LogError("Request '{RequestId}' has no Judge0 batch token.", request.CodeExecutionRequestId);
+            _logger.LogError("Request '{RequestId}' has no Judge0 batch token or node.", request.CodeExecutionRequestId);
+            request.CodeExecutionStatusId = (short)CodeExecutionStatus.Failed;
+            request.CompletedAt = DateTime.UtcNow;
+            request.ModifiedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        var node = await _context.Judge0Nodes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(jn => jn.Id == request.Judge0NodeId.Value, cancellationToken);
+
+        if (node is null)
+        {
+            _logger.LogError("Request '{RequestId}' references Judge0 node '{NodeId}' which no longer exists.",
+                request.CodeExecutionRequestId, request.Judge0NodeId);
             request.CodeExecutionStatusId = (short)CodeExecutionStatus.Failed;
             request.CompletedAt = DateTime.UtcNow;
             request.ModifiedAt = DateTime.UtcNow;
@@ -43,7 +60,7 @@ public class PollService : IPollService
         Judge0SubmissionResponse judge0Result;
         try
         {
-            judge0Result = await _judge0Client.GetSubmissionAsync(request.Judge0BatchToken, cancellationToken);
+            judge0Result = await _judge0Client.GetSubmissionAsync(node.BaseUrl, request.Judge0BatchToken, cancellationToken);
 
             if (judge0Result.Status is null ||
                 judge0Result.Status.Id == Judge0StatusCodes.InQueue ||
@@ -54,7 +71,8 @@ public class PollService : IPollService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Judge0 poll failed for request '{RequestId}', will retry.", request.CodeExecutionRequestId);
+            _logger.LogWarning(ex, "Judge0 poll failed for request '{RequestId}' on node '{NodeId}', will retry.",
+                request.CodeExecutionRequestId, node.Id);
             return;
         }
 
@@ -135,6 +153,8 @@ public class PollService : IPollService
         request.ModifiedAt = now;
         await _context.SaveChangesAsync(cancellationToken);
 
+        await ReleaseNodeSlotAsync(node.Id, cancellationToken);
+
         try
         {
             await _reportsServiceClient.EvaluateCodingAsync(
@@ -149,6 +169,15 @@ public class PollService : IPollService
         {
             _logger.LogError(ex, "Failed to report coding evaluation for request '{RequestId}'.", request.CodeExecutionRequestId);
         }
+    }
+
+    private async Task ReleaseNodeSlotAsync(Guid nodeId, CancellationToken cancellationToken)
+    {
+        await _context.Database.ExecuteSqlInterpolatedAsync($@"
+            UPDATE judge0_nodes
+            SET active_slots = active_slots + 1,
+                modified_at = {DateTime.UtcNow}
+            WHERE id = {nodeId}", cancellationToken);
     }
 
     private static TestCaseExecutionResult EvaluateSingleTestCase(Judge0SubmissionResponse judge0Result, TestCase testCase)
