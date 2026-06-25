@@ -1,8 +1,8 @@
 using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
-using Taskverse.API.CodingEngine.Worker.Service.Models;
+using Taskverse.API.CodingEngine.Service.Models;
 
-namespace Taskverse.API.CodingEngine.Worker.Service.Services;
+namespace Taskverse.API.CodingEngine.Service.Clients.Judge0;
 
 public class Judge0Client : IJudge0Client
 {

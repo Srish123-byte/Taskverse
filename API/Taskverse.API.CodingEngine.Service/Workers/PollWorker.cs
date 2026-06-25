@@ -1,0 +1,101 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Taskverse.API.CodingEngine.Service.Models;
+using Taskverse.API.CodingEngine.Service.Services;
+using Taskverse.Data.DataAccess;
+using Taskverse.Data.Enums;
+
+namespace Taskverse.API.CodingEngine.Service.Workers;
+
+public class PollWorker : BackgroundService
+{
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<PollWorker> _logger;
+    private readonly WorkerSettings _settings;
+    private readonly SemaphoreSlim _concurrencySemaphore;
+
+    public PollWorker(
+        IServiceProvider serviceProvider,
+        ILogger<PollWorker> logger,
+        IOptionsSnapshot<CodingEngineWorkerOptions> workerOptions,
+        IConfiguration configuration)
+    {
+        _serviceProvider = serviceProvider;
+        _logger = logger;
+
+        var workerId = configuration["WorkerId"] ?? "poll-default";
+        var workers = workerOptions.Value.Workers;
+        _settings = workers.FirstOrDefault(w => w.WorkerId == workerId)
+            ?? workers.FirstOrDefault()
+            ?? new WorkerSettings
+            {
+                WorkerId = workerId,
+                PollingIntervalSeconds = 3,
+                MaxConcurrentExecutions = 10,
+                BatchSize = 20,
+                RateLimitPerMinute = 200
+            };
+
+        _concurrencySemaphore = new SemaphoreSlim(_settings.MaxConcurrentExecutions, _settings.MaxConcurrentExecutions);
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation(
+            "PollWorker '{WorkerId}' started. Polling every {Interval}s, max {Concurrent} concurrent, batch {Batch}.",
+            _settings.WorkerId, _settings.PollingIntervalSeconds, _settings.MaxConcurrentExecutions, _settings.BatchSize);
+
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await PollRunningRequestsAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) { break; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "PollWorker '{WorkerId}' error.", _settings.WorkerId);
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(_settings.PollingIntervalSeconds), stoppingToken);
+        }
+
+        _logger.LogInformation("PollWorker '{WorkerId}' stopped.", _settings.WorkerId);
+    }
+
+    private async Task PollRunningRequestsAsync(CancellationToken cancellationToken)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<TaskverseContext>();
+        var pollService = scope.ServiceProvider.GetRequiredService<IPollService>();
+
+        var running = await context.CodeExecutionRequests
+            .Where(cer =>
+                cer.CodeExecutionStatusId == (short)CodeExecutionStatus.Running &&
+                cer.Judge0BatchToken != null)
+            .OrderBy(cer => cer.StartedAt)
+            .Take(_settings.BatchSize)
+            .ToListAsync(cancellationToken);
+
+        if (running.Count == 0) return;
+
+        var tasks = running.Select(async request =>
+        {
+            await _concurrencySemaphore.WaitAsync(cancellationToken);
+            try
+            {
+                await pollService.CollectResultAsync(request, cancellationToken);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "PollWorker '{WorkerId}' failed request '{RequestId}'.",
+                    _settings.WorkerId, request.CodeExecutionRequestId);
+            }
+            finally { _concurrencySemaphore.Release(); }
+        });
+
+        await Task.WhenAll(tasks);
+    }
+}

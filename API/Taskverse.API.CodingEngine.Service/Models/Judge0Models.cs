@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Taskverse.API.CodingEngine.Worker.Service.Models;
+namespace Taskverse.API.CodingEngine.Service.Models;
 
 public record Judge0CreateSubmissionRequest(
     [property: JsonPropertyName("source_code")]

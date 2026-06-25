@@ -1,6 +1,6 @@
-using Taskverse.API.CodingEngine.Worker.Service.Models;
+using Taskverse.API.CodingEngine.Service.Models;
 
-namespace Taskverse.API.CodingEngine.Worker.Service.Services;
+namespace Taskverse.API.CodingEngine.Service.Clients.Judge0;
 
 public interface IJudge0Client
 {
