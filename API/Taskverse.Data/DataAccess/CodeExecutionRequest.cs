@@ -45,6 +45,10 @@ public class CodeExecutionRequest
     [Column("worker_id")]
     public string? WorkerId { get; set; }
 
+    [MaxLength(500)]
+    [Column("judge0_batch_token")]
+    public string? Judge0BatchToken { get; set; }
+
     [Column("correlation_id")]
     public Guid CorrelationId { get; set; } = Guid.NewGuid();
 

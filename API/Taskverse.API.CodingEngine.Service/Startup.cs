@@ -91,6 +91,7 @@ public class Startup
         services.AddScoped<ICodingEngineManager, CodingEngineManager>();
         services.AddScoped<IDispatchService, DispatchService>();
         services.AddScoped<IPollService, PollService>();
+        services.AddSingleton<RateLimiterFactory>();
         services.AddHttpClient<IReportsServiceClient, ReportsServiceClient>((serviceProvider, client) =>
         {
             var settings = serviceProvider.GetRequiredService<IOptions<ReportsServiceSettings>>().Value;
@@ -168,10 +169,11 @@ public class Startup
                     {
                         var logger = sp.GetRequiredService<ILogger<PollWorker>>();
                         var optionsSnapshot = sp.GetRequiredService<IOptionsSnapshot<CodingEngineWorkerOptions>>();
+                        var rateLimiterFactory = sp.GetRequiredService<RateLimiterFactory>();
                         var config = new ConfigurationBuilder()
                             .AddInMemoryCollection(new Dictionary<string, string?> { ["WorkerId"] = capturedWorker.WorkerId })
                             .Build();
-                        return new PollWorker(sp, logger, optionsSnapshot, config);
+                        return new PollWorker(sp, logger, optionsSnapshot, config, rateLimiterFactory);
                     });
                     break;
 
@@ -180,10 +182,11 @@ public class Startup
                     {
                         var logger = sp.GetRequiredService<ILogger<DispatchWorker>>();
                         var optionsSnapshot = sp.GetRequiredService<IOptionsSnapshot<CodingEngineWorkerOptions>>();
+                        var rateLimiterFactory = sp.GetRequiredService<RateLimiterFactory>();
                         var config = new ConfigurationBuilder()
                             .AddInMemoryCollection(new Dictionary<string, string?> { ["WorkerId"] = capturedWorker.WorkerId })
                             .Build();
-                        return new DispatchWorker(sp, logger, optionsSnapshot, config);
+                        return new DispatchWorker(sp, logger, optionsSnapshot, config, rateLimiterFactory);
                     });
                     break;
             }

@@ -14,12 +14,14 @@ public class PollWorker : BackgroundService
     private readonly ILogger<PollWorker> _logger;
     private readonly WorkerSettings _settings;
     private readonly SemaphoreSlim _concurrencySemaphore;
+    private readonly IRateLimiter _rateLimiter;
 
     public PollWorker(
         IServiceProvider serviceProvider,
         ILogger<PollWorker> logger,
         IOptionsSnapshot<CodingEngineWorkerOptions> workerOptions,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        RateLimiterFactory rateLimiterFactory)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -38,6 +40,7 @@ public class PollWorker : BackgroundService
             };
 
         _concurrencySemaphore = new SemaphoreSlim(_settings.MaxConcurrentExecutions, _settings.MaxConcurrentExecutions);
+        _rateLimiter = rateLimiterFactory.GetOrCreate(workerId, _settings.RateLimitPerMinute);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -85,6 +88,8 @@ public class PollWorker : BackgroundService
             await _concurrencySemaphore.WaitAsync(cancellationToken);
             try
             {
+                await _rateLimiter.WaitAsync(cancellationToken);
+
                 await pollService.CollectResultAsync(request, cancellationToken);
             }
             catch (OperationCanceledException) { throw; }

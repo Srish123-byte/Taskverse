@@ -14,12 +14,14 @@ public class DispatchWorker : BackgroundService
     private readonly ILogger<DispatchWorker> _logger;
     private readonly WorkerSettings _settings;
     private readonly SemaphoreSlim _concurrencySemaphore;
+    private readonly IRateLimiter _rateLimiter;
 
     public DispatchWorker(
         IServiceProvider serviceProvider,
         ILogger<DispatchWorker> logger,
         IOptionsSnapshot<CodingEngineWorkerOptions> workerOptions,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        RateLimiterFactory rateLimiterFactory)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -38,6 +40,7 @@ public class DispatchWorker : BackgroundService
             };
 
         _concurrencySemaphore = new SemaphoreSlim(_settings.MaxConcurrentExecutions, _settings.MaxConcurrentExecutions);
+        _rateLimiter = rateLimiterFactory.GetOrCreate(workerId, _settings.RateLimitPerMinute);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -83,6 +86,8 @@ public class DispatchWorker : BackgroundService
             await _concurrencySemaphore.WaitAsync(cancellationToken);
             try
             {
+                await _rateLimiter.WaitAsync(cancellationToken);
+
                 request.CodeExecutionStatusId = (short)CodeExecutionStatus.Running;
                 request.WorkerId = _settings.WorkerId;
                 request.ModifiedAt = DateTime.UtcNow;
