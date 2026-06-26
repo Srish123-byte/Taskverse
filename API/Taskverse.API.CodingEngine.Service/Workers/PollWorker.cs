@@ -19,7 +19,7 @@ public class PollWorker : BackgroundService
     public PollWorker(
         IServiceProvider serviceProvider,
         ILogger<PollWorker> logger,
-        IOptionsSnapshot<CodingEngineWorkerOptions> workerOptions,
+        IOptionsMonitor<CodingEngineWorkerOptions> workerOptions,
         IConfiguration configuration,
         RateLimiterFactory rateLimiterFactory)
     {
@@ -27,7 +27,7 @@ public class PollWorker : BackgroundService
         _logger = logger;
 
         var workerId = configuration["WorkerId"] ?? "poll-default";
-        var workers = workerOptions.Value.Workers;
+        var workers = workerOptions.CurrentValue.Workers;
         _settings = workers.FirstOrDefault(w => w.WorkerId == workerId)
             ?? workers.FirstOrDefault()
             ?? new WorkerSettings

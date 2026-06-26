@@ -20,7 +20,7 @@ public class DispatchWorker : BackgroundService
     public DispatchWorker(
         IServiceProvider serviceProvider,
         ILogger<DispatchWorker> logger,
-        IOptionsSnapshot<CodingEngineWorkerOptions> workerOptions,
+        IOptionsMonitor<CodingEngineWorkerOptions> workerOptions,
         IConfiguration configuration,
         RateLimiterFactory rateLimiterFactory)
     {
@@ -28,7 +28,7 @@ public class DispatchWorker : BackgroundService
         _logger = logger;
 
         var workerId = configuration["WorkerId"] ?? "dispatch-default";
-        var workers = workerOptions.Value.Workers;
+        var workers = workerOptions.CurrentValue.Workers;
         _settings = workers.FirstOrDefault(w => w.WorkerId == workerId)
             ?? workers.FirstOrDefault()
             ?? new WorkerSettings

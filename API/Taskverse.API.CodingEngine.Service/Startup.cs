@@ -164,12 +164,12 @@ public class Startup
                     services.AddHostedService(sp =>
                     {
                         var logger = sp.GetRequiredService<ILogger<PollWorker>>();
-                        var optionsSnapshot = sp.GetRequiredService<IOptionsSnapshot<CodingEngineWorkerOptions>>();
+                        var optionsMonitor = sp.GetRequiredService<IOptionsMonitor<CodingEngineWorkerOptions>>();
                         var rateLimiterFactory = sp.GetRequiredService<RateLimiterFactory>();
                         var config = new ConfigurationBuilder()
                             .AddInMemoryCollection(new Dictionary<string, string?> { ["WorkerId"] = capturedWorker.WorkerId })
                             .Build();
-                        return new PollWorker(sp, logger, optionsSnapshot, config, rateLimiterFactory);
+                        return new PollWorker(sp, logger, optionsMonitor, config, rateLimiterFactory);
                     });
                     break;
 
@@ -177,12 +177,12 @@ public class Startup
                     services.AddHostedService(sp =>
                     {
                         var logger = sp.GetRequiredService<ILogger<DispatchWorker>>();
-                        var optionsSnapshot = sp.GetRequiredService<IOptionsSnapshot<CodingEngineWorkerOptions>>();
+                        var optionsMonitor = sp.GetRequiredService<IOptionsMonitor<CodingEngineWorkerOptions>>();
                         var rateLimiterFactory = sp.GetRequiredService<RateLimiterFactory>();
                         var config = new ConfigurationBuilder()
                             .AddInMemoryCollection(new Dictionary<string, string?> { ["WorkerId"] = capturedWorker.WorkerId })
                             .Build();
-                        return new DispatchWorker(sp, logger, optionsSnapshot, config, rateLimiterFactory);
+                        return new DispatchWorker(sp, logger, optionsMonitor, config, rateLimiterFactory);
                     });
                     break;
             }
