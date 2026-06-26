@@ -1,0 +1,46 @@
+<div class="page-container">
+  <div class="page-eyebrow">Support</div>
+  <h1 class="page-title">Help Center</h1>
+  <p class="page-subtitle">
+    Need assistance? Our support team is here to help you manage your
+    assessments and resolve any technical issues efficiently.
+  </p>
+
+  <div class="contact-grid">
+    <!-- Phone card -->
+    <div class="contact-card">
+      <div class="contact-icon-wrap contact-icon-wrap--phone">
+        <svg class="contact-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1C10.61 21 3 13.39 3 4c0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.24 1.02l-2.21 2.2z"/>
+        </svg>
+      </div>
+      <div class="contact-card-body">
+        <div class="contact-label">Phone Support</div>
+        <div class="contact-hours">Available Mon–Fri, 9AM – 6PM EST</div>
+        <a class="contact-value contact-value--phone" [href]="'tel:' + supportPhone">
+          {{ supportPhone }}
+        </a>
+      </div>
+    </div>
+
+    <!-- Email card -->
+    <div class="contact-card">
+      <div class="contact-icon-wrap contact-icon-wrap--email">
+        <svg class="contact-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+        </svg>
+      </div>
+      <div class="contact-card-body">
+        <div class="contact-label">Email Support</div>
+        <div class="contact-hours">Response within 2 hours</div>
+        <a class="contact-value contact-value--email" [href]="'mailto:' + supportEmail">
+          {{ supportEmail }}
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <p class="security-note">
+    Your security and privacy are our top priorities. All communications are encrypted.
+  </p>
+</div>

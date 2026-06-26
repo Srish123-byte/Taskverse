@@ -1,0 +1,27 @@
+namespace Taskverse.Data.Enums;
+
+/// <summary>
+/// Mirrors the PostgreSQL lookup_event_type table.
+/// </summary>
+public enum EventType
+{
+    ASSESSMENT_STARTED = 1,
+    FULLSCREEN_ENTERED = 2,
+    FULLSCREEN_EXITED = 3,
+    FULLSCREEN_REENTERED = 4,
+    TAB_SWITCHED = 5,
+    WINDOW_BLURRED = 6,
+    WINDOW_FOCUSED = 7,
+    COPY_ATTEMPTED = 8,
+    PASTE_ATTEMPTED = 9,
+    CUT_ATTEMPTED = 10,
+    CONTEXT_MENU_ATTEMPTED = 11,
+    BLOCKED_KEYBOARD_SHORTCUT = 12,
+    POSSIBLE_DEVTOOLS_OPENED = 13,
+    NETWORK_DISCONNECTED = 14,
+    NETWORK_RECONNECTED = 15,
+    WARNING_SHOWN = 16,
+    ASSESSMENT_LOCKED = 17,
+    ASSESSMENT_AUTO_SUBMITTED = 18,
+    ASSESSMENT_SUBMITTED = 19
+}

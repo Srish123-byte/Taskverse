@@ -1,0 +1,599 @@
+<div class="page-container">
+  <div class="page-eyebrow">College Admin</div>
+  <h2 class="page-title">Class &amp; Batch Configuration</h2>
+  <p class="page-welcome">Manage institutional hierarchy and capacity mapping with live class data from the college admin service.</p>
+
+  <div class="page-content classes-management-page">
+    <section class="hero-shell">
+      <div class="hero-copy">
+        <span class="hero-kicker">Classes Management</span>
+        <h3>Organize classes, batches, and seat utilization from one dashboard.</h3>
+        <p>Use the live create flows to add classes, create batches, and keep seat utilization updated in one place.</p>
+      </div>
+
+      <div class="hero-actions">
+        <button type="button" class="primary-action" (click)="openCreateClassForm()">
+          <img src="assets/icons/shared/add.svg" alt="" class="hero-action-icon" aria-hidden="true">
+          <span>Create Class</span>
+        </button>
+      </div>
+    </section>
+
+    <div *ngIf="errorMessage && !isLoading" class="page-alert page-alert-error">{{ errorMessage }}</div>
+
+    <section class="table-shell">
+      <div class="table-header">
+        <div class="section-title">
+          <h3>Active Classes</h3>
+          <p>Live classes returned by the current CollegeAdminController and MS-backed flow.</p>
+        </div>
+      </div>
+
+      <app-dashboard-loader
+        *ngIf="isLoading"
+        class="classes-loader"
+        tone="dark"
+        title="Loading classes"
+        copy="Preparing your live class management workspace.">
+      </app-dashboard-loader>
+
+      <ng-container *ngIf="!isLoading">
+        <div *ngIf="classes.length > 0" class="table-head">
+          <span>Class Name &amp; Year</span>
+          <span>Description</span>
+          <span>Batches</span>
+          <span>Student Capacity</span>
+          <span>Actions</span>
+        </div>
+
+        <article *ngFor="let classItem of classes; trackBy: trackByClassId" #classBlock class="class-block">
+          <div class="class-row">
+            <div class="class-cell class-title-cell">
+              <div class="class-icon">{{ getBadge(classItem) }}</div>
+              <div>
+                <strong>{{ classItem.name }}</strong>
+                <span>{{ classItem.academicYear || 'Academic year not set' }}</span>
+              </div>
+            </div>
+
+            <div class="class-cell">
+              <span class="department-pill">{{ classItem.department || 'No description added' }}</span>
+            </div>
+
+            <div class="class-cell batch-pill-group">
+              <span *ngFor="let batch of getBatchTokens(classItem)" class="batch-pill">{{ batch }}</span>
+              <span *ngIf="classItem.batches.length === 0" class="empty-inline-copy">No batches yet</span>
+            </div>
+
+            <div class="class-cell capacity-cell">
+              <strong>{{ getCapacitySummary(classItem) }}</strong>
+              <span>{{ getCapacityPercent(classItem) }}%</span>
+              <div class="progress-track">
+                <span class="progress-bar" [style.width.%]="getCapacityPercent(classItem)"></span>
+              </div>
+            </div>
+
+            <div class="class-cell class-actions-cell">
+              <button
+                type="button"
+                class="mini-action mini-action-muted"
+                [disabled]="isDeletingClass(classItem.classId)"
+                (click)="openEditClassForm(classItem)">
+                <img src="assets/icons/nav/settings.svg" alt="" class="mini-action-icon" aria-hidden="true">
+                <span>Edit</span>
+              </button>
+              <app-delete-action-button
+                appearance="icon"
+                [ariaLabel]="'Delete class ' + classItem.name"
+                [disabled]="isDeletingClass(classItem.classId)"
+                [loading]="isDeletingClass(classItem.classId)"
+                (deleteClick)="promptDeleteClass(classItem)">
+              </app-delete-action-button>
+            </div>
+          </div>
+
+          <div class="batch-cards">
+            <article
+              *ngFor="let batchCard of getBatchCards(classItem)"
+              class="batch-card"
+              [ngClass]="'batch-card-' + batchCard.variant"
+              [class.batch-card-clickable]="batchCard.variant === 'draft'"
+              (click)="batchCard.variant === 'draft' ? openCreateBatchForm(classItem.classId) : null">
+              <ng-container *ngIf="batchCard.variant === 'live'; else draftBatch">
+                <div class="batch-card-top">
+                  <div>
+                    <strong>{{ batchCard.name }}</strong>
+                    <small class="batch-card-subject">Subject: {{ batchCard.subjectName }}</small>
+                    <span>{{ batchCard.subtitle }}</span>
+                    <small class="batch-card-trainer-copy">Trainer: {{ batchCard.assignedTrainerSummary }}</small>
+                  </div>
+                  <div class="batch-card-top-actions">
+                    <app-delete-action-button
+                      appearance="icon"
+                      [ariaLabel]="'Delete batch ' + batchCard.batch!.name"
+                      [disabled]="isDeletingBatch(batchCard.batch!.batchId)"
+                      [loading]="isDeletingBatch(batchCard.batch!.batchId)"
+                      (deleteClick)="$event.stopPropagation(); promptDeleteBatch(classItem, batchCard.batch!)">
+                    </app-delete-action-button>
+                  </div>
+                </div>
+
+                <div class="batch-metrics">
+                  <div>
+                    <label>Students</label>
+                    <strong>{{ batchCard.students }}</strong>
+                  </div>
+                  <div>
+                    <label>Status</label>
+                    <strong class="status-live">{{ batchCard.status }}</strong>
+                  </div>
+                </div>
+
+                <div class="batch-actions">
+                  <button
+                    type="button"
+                    class="mini-action mini-action-muted"
+                    [disabled]="isDeletingBatch(batchCard.batch!.batchId)"
+                    (click)="$event.stopPropagation(); openEditBatchForm(classItem, batchCard.batch!)">
+                    <img src="assets/icons/nav/settings.svg" alt="" class="mini-action-icon" aria-hidden="true">
+                    <span>Modify</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="mini-action mini-action-primary"
+                    [disabled]="isDeletingBatch(batchCard.batch!.batchId)"
+                    (click)="$event.stopPropagation(); openAssignTrainerModal(classItem, batchCard.batch!)">
+                    <img src="assets/icons/nav/assign-trainer.svg" alt="" class="mini-action-icon" aria-hidden="true">
+                    <span>Assign Trainer</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="mini-action mini-action-muted"
+                    [disabled]="isDeletingBatch(batchCard.batch!.batchId)"
+                    (click)="$event.stopPropagation(); openAssignStudentModal(classItem, batchCard.batch!)">
+                    <img src="assets/icons/nav/students.svg" alt="" class="mini-action-icon" aria-hidden="true">
+                    <span>Assign Student</span>
+                  </button>
+                </div>
+              </ng-container>
+
+              <ng-template #draftBatch>
+                <div class="draft-batch-copy">
+                  <div class="draft-badge">
+                    <mat-icon>add</mat-icon>
+                  </div>
+                  <strong>{{ batchCard.name }}</strong>
+                  <span>{{ batchCard.subtitle }}</span>
+                </div>
+              </ng-template>
+            </article>
+          </div>
+        </article>
+
+        <div *ngIf="classes.length === 0" class="empty-state">
+          <mat-icon>school</mat-icon>
+          <strong>No classes found</strong>
+          <p>Create your first class to begin using the live college admin flow.</p>
+        </div>
+      </ng-container>
+    </section>
+  </div>
+
+  <div *ngIf="isCreateClassOpen && !isSuccessDialogOpen" class="modal-backdrop" (click)="closeCreateClassForm()">
+    <section class="create-class-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>{{ isEditClassMode ? 'Edit Class' : 'Create New Class' }}</h3>
+          <p>{{ isEditClassMode ? 'Review and update the class details.' : 'Configure structural details for the new academic batch.' }}</p>
+        </div>
+        <button type="button" class="close-button" (click)="closeCreateClassForm()" aria-label="Close create class form">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <form [formGroup]="createClassForm" (ngSubmit)="submitCreateClass()">
+        <div class="modal-body">
+          <div *ngIf="createClassErrorMessage" class="form-error-banner">
+            {{ createClassErrorMessage }}
+          </div>
+
+          <label class="form-field">
+            <span>Class Name</span>
+            <input
+              type="text"
+              formControlName="name"
+              [attr.maxlength]="classNameMaxLength"
+              placeholder="e.g. CSE-AI/ML">
+            <small class="field-hint">
+              {{ classNameHint }}
+            </small>
+            <small *ngIf="createClassForm.controls.name.touched && createClassForm.controls.name.errors?.['required']">
+              Class name is required.
+            </small>
+            <small *ngIf="createClassForm.controls.name.touched && createClassForm.controls.name.errors?.['minlength']">
+              Class name must be at least 2 characters.
+            </small>
+            <small *ngIf="createClassForm.controls.name.touched && createClassForm.controls.name.errors?.['restrictedNameLength']">
+              Class name can be at most {{ classNameMaxLength }} characters.
+            </small>
+            <small *ngIf="createClassForm.controls.name.touched && createClassForm.controls.name.errors?.['restrictedNamePattern']">
+              Only letters, numbers, spaces, "/" and "-" are allowed.
+            </small>
+          </label>
+
+          <label class="form-field">
+            <span>Academic Year</span>
+            <select formControlName="academicYear">
+              <option value="" disabled>Select academic year</option>
+              <option *ngFor="let year of yearOptions" [value]="year">{{ year }}</option>
+            </select>
+            <small *ngIf="createClassForm.controls.academicYear.touched && createClassForm.controls.academicYear.invalid">
+              Academic year is required.
+            </small>
+          </label>
+
+          <label class="form-field">
+            <span>Description (Optional)</span>
+            <textarea
+              rows="4"
+              formControlName="description"
+              placeholder="Brief details about the class curriculum or specific requirements..."></textarea>
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="footer-action footer-action-muted" (click)="closeCreateClassForm()">Cancel</button>
+          <button type="submit" class="footer-action footer-action-primary" [disabled]="isSubmittingClass">
+            {{ isSubmittingClass ? (isEditClassMode ? 'Updating...' : 'Submitting...') : (isEditClassMode ? 'Update Class' : 'Create Class') }}
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div *ngIf="isCreateBatchOpen && !isSuccessDialogOpen" class="modal-backdrop" (click)="closeCreateBatchForm()">
+    <section class="create-class-modal create-batch-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-title-icon">
+            <mat-icon>groups_2</mat-icon>
+          </div>
+          <div>
+            <h3>{{ isEditBatchMode ? 'Modify Batch' : 'Create New Batch' }}</h3>
+            <p>{{ isEditBatchMode ? 'Review and update the current batch configuration.' : 'Configure a new group of students for proctored assessments.' }}</p>
+          </div>
+        </div>
+        <button type="button" class="close-button" (click)="closeCreateBatchForm()" aria-label="Close create batch form">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <form [formGroup]="createBatchForm" (ngSubmit)="submitCreateBatch()">
+        <div class="modal-body">
+          <div *ngIf="createBatchErrorMessage" class="form-error-banner">
+            {{ createBatchErrorMessage }}
+          </div>
+
+          <div class="form-field">
+            <span>Linked Class</span>
+            <div class="department-pill">{{ getActiveBatchClassLabel() }}</div>
+          </div>
+
+          <label class="form-field form-field-half">
+            <span>Batch Name</span>
+            <input
+              type="text"
+              formControlName="name"
+              [attr.maxlength]="batchNameMaxLength"
+              placeholder="Batch A">
+            <small class="field-hint">
+              {{ batchNameHint }}
+            </small>
+            <small *ngIf="createBatchForm.controls.name.touched && createBatchForm.controls.name.errors?.['required']">
+              Batch name is required.
+            </small>
+            <small *ngIf="createBatchForm.controls.name.touched && createBatchForm.controls.name.errors?.['minlength']">
+              Batch name must be at least 2 characters.
+            </small>
+            <small *ngIf="createBatchForm.controls.name.touched && createBatchForm.controls.name.errors?.['restrictedNameLength']">
+              Batch name can be at most {{ batchNameMaxLength }} characters.
+            </small>
+            <small *ngIf="createBatchForm.controls.name.touched && createBatchForm.controls.name.errors?.['restrictedNamePattern']">
+              Only letters, numbers, spaces, "/" and "-" are allowed.
+            </small>
+          </label>
+
+          <label class="form-field form-field-half">
+            <span>Subject</span>
+            <select formControlName="subjectId" [disabled]="isLoadingSubjects">
+              <option value="">Select existing subject...</option>
+              <option *ngFor="let subject of subjects" [value]="subject.subjectId">
+                {{ subject.subjectName }}
+              </option>
+            </select>
+            <small *ngIf="isLoadingSubjects">Loading available subjects...</small>
+            <small *ngIf="!isLoadingSubjects && subjects.length === 0">
+              No existing subjects found. Add a new subject below.
+            </small>
+          </label>
+
+          <label class="form-field">
+            <span>New Subject (Optional)</span>
+            <input
+              type="text"
+              formControlName="newSubjectName"
+              placeholder="Enter a new subject if it is not listed">
+          </label>
+
+          <label class="form-field">
+            <span>Description</span>
+            <textarea
+              rows="4"
+              formControlName="description"
+              placeholder="Detailed description of the batch..."></textarea>
+          </label>
+
+          <label class="form-field form-field-half">
+            <span>Student Capacity</span>
+            <input
+              type="number"
+              min="1"
+              formControlName="capacity"
+              placeholder="40">
+            <small *ngIf="createBatchForm.controls.capacity.touched && createBatchForm.controls.capacity.errors?.['required']">
+              Capacity is required.
+            </small>
+            <small *ngIf="createBatchForm.controls.capacity.touched && createBatchForm.controls.capacity.errors?.['min']">
+              Capacity must be at least 1.
+            </small>
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="footer-action footer-action-muted" (click)="closeCreateBatchForm()">Cancel</button>
+          <button type="submit" class="footer-action footer-action-primary" [disabled]="isSubmittingBatch">
+            {{ isSubmittingBatch ? (isEditBatchMode ? 'Updating...' : 'Submitting...') : (isEditBatchMode ? 'Update Batch' : 'Create Batch') }}
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div *ngIf="isSuccessDialogOpen" class="modal-backdrop success-backdrop" (click)="closeSuccessDialog()">
+    <section class="success-dialog" (click)="$event.stopPropagation()">
+      <h3>Saved Successfully</h3>
+      <p>{{ successMessage }}</p>
+      <button type="button" class="footer-action footer-action-primary success-dialog-action" (click)="closeSuccessDialog()">
+        Continue
+      </button>
+    </section>
+  </div>
+
+  <div *ngIf="deleteConfirmationState && !isDeleteProcessing" class="modal-backdrop success-backdrop" (click)="closeDeleteConfirmation()">
+    <section class="success-dialog delete-confirmation-dialog" (click)="$event.stopPropagation()">
+      <div class="delete-confirmation-icon">
+        <mat-icon>warning_amber</mat-icon>
+      </div>
+      <h3>{{ deleteConfirmationState.title }}</h3>
+      <p class="delete-confirmation-copy">This action is irreversible, are you sure want to delete?</p>
+      <p>{{ deleteConfirmationState.detail }}</p>
+      <div class="delete-confirmation-actions">
+        <button type="button" class="footer-action footer-action-muted" (click)="closeDeleteConfirmation()">
+          Cancel
+        </button>
+        <app-delete-action-button
+          label="Delete"
+          ariaLabel="Confirm delete"
+          (deleteClick)="confirmDelete()">
+        </app-delete-action-button>
+      </div>
+    </section>
+  </div>
+
+  <app-processing-overlay
+    *ngIf="isDeleteProcessing"
+    title="Deleting record"
+    copy="Please wait while we remove the selected item and update the related mappings.">
+  </app-processing-overlay>
+
+  <div *ngIf="isTrainerAssignmentOpen && !isSuccessDialogOpen" class="modal-backdrop" (click)="!isSubmittingTrainerAssignment && closeTrainerAssignmentModal()">
+    <section class="create-class-modal trainer-assignment-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-title-icon">
+            <img src="assets/icons/nav/assign-trainer.svg" alt="" class="modal-title-icon-image" aria-hidden="true">
+          </div>
+          <div>
+            <h3>Assign Trainers</h3>
+            <p>Select one or more approved trainers for {{ activeTrainerAssignmentBatchName }} in {{ activeTrainerAssignmentClassName }}.</p>
+          </div>
+        </div>
+        <button type="button" class="close-button" [disabled]="isSubmittingTrainerAssignment" (click)="closeTrainerAssignmentModal()" aria-label="Close trainer assignment form">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div *ngIf="trainerAssignmentErrorMessage" class="form-error-banner">
+          {{ trainerAssignmentErrorMessage }}
+        </div>
+
+        <div class="assignment-summary-card">
+          <span class="assignment-summary-kicker">{{ activeTrainerAssignmentClassName }}</span>
+          <strong>{{ activeTrainerAssignmentBatchName }}</strong>
+          <p>Assign or unassign approved trainers here. Saving will sync the selection to both the batch-level and class-level trainer mapping tables for this class.</p>
+        </div>
+
+        <div class="trainer-dropdown-shell">
+          <button
+            type="button"
+            class="trainer-dropdown-trigger"
+            [disabled]="isLoadingApprovedTrainers || approvedTrainers.length === 0"
+            (click)="toggleTrainerDropdown()">
+            <span>{{ getTrainerDropdownLabel() }}</span>
+            <mat-icon>{{ isTrainerDropdownOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+          </button>
+
+          <div *ngIf="isTrainerDropdownOpen" class="trainer-dropdown-panel">
+            <div *ngIf="isLoadingApprovedTrainers" class="trainer-dropdown-empty">
+              Loading approved trainers...
+            </div>
+
+            <div *ngIf="!isLoadingApprovedTrainers && approvedTrainers.length === 0" class="trainer-dropdown-empty">
+              No approved trainers are available for this college yet.
+            </div>
+
+            <button
+              *ngFor="let trainer of approvedTrainers; trackBy: trackByTrainerId"
+              type="button"
+              class="trainer-option"
+              [class.trainer-option-selected]="isTrainerSelected(trainer.trainerId)"
+              (click)="toggleTrainerSelection(trainer.trainerId)">
+              <div class="trainer-option-copy">
+                <strong>{{ trainer.fullName }}</strong>
+                <span>{{ trainer.email }}</span>
+              </div>
+              <span class="trainer-option-action">
+                {{ isTrainerSelected(trainer.trainerId) ? 'Unassign' : 'Assign' }}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="getSelectedTrainerCount() > 0" class="selected-trainers-shell">
+          <span class="selected-trainers-label">Selected trainers</span>
+          <div class="selected-trainers-list">
+            <button
+              *ngFor="let trainer of getSelectedTrainers(); trackBy: trackByTrainerId"
+              type="button"
+              class="selected-trainer-chip"
+              [disabled]="isSubmittingTrainerAssignment"
+              (click)="toggleTrainerSelection(trainer.trainerId)">
+              <span>{{ trainer.fullName }}</span>
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="footer-action footer-action-muted" [disabled]="isSubmittingTrainerAssignment" (click)="closeTrainerAssignmentModal()">Cancel</button>
+        <button
+          type="button"
+          class="footer-action footer-action-primary"
+          [disabled]="isSubmittingTrainerAssignment || isLoadingApprovedTrainers || !hasTrainerSelectionChanges()"
+          (click)="submitTrainerAssignment()">
+          {{ isSubmittingTrainerAssignment ? 'Saving...' : 'Save Changes' }}
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <div *ngIf="isStudentAssignmentOpen && !isSuccessDialogOpen" class="modal-backdrop" (click)="!isSubmittingStudentAssignment && closeStudentAssignmentModal()">
+    <section class="create-class-modal trainer-assignment-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-title-icon">
+            <img src="assets/icons/nav/students.svg" alt="" class="modal-title-icon-image" aria-hidden="true">
+          </div>
+          <div>
+            <h3>Assign Student</h3>
+            <p>Manage students for {{ activeStudentAssignmentBatchName }} in {{ activeStudentAssignmentClassName }}.</p>
+          </div>
+        </div>
+        <button type="button" class="close-button" [disabled]="isSubmittingStudentAssignment" (click)="closeStudentAssignmentModal()" aria-label="Close student assignment form">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div *ngIf="studentAssignmentErrorMessage" class="form-error-banner">
+          {{ studentAssignmentErrorMessage }}
+        </div>
+
+        <div class="assignment-summary-card">
+          <span class="assignment-summary-kicker">{{ activeStudentAssignmentClassName }}</span>
+          <strong>{{ activeStudentAssignmentBatchName }}</strong>
+          <p>Choose the full student list for this batch. Already assigned students can be deselected to unassign, and approved unassigned students can be selected to assign.</p>
+        </div>
+
+        <div *ngIf="getAssignedStudentsForActiveBatch().length > 0" class="selected-trainers-shell">
+          <span class="selected-trainers-label">Assigned students</span>
+          <div class="trainer-dropdown-panel">
+            <button
+              *ngFor="let student of getAssignedStudentsForActiveBatch(); trackBy: trackByStudentId"
+              type="button"
+              class="trainer-option"
+              [class.trainer-option-selected]="isStudentSelected(student.studentId)"
+              [disabled]="isSubmittingStudentAssignment"
+              (click)="selectStudent(student.studentId)">
+              <div class="trainer-option-copy">
+                <strong>{{ student.fullName }}</strong>
+                <span>{{ student.email }}</span>
+              </div>
+              <span class="trainer-option-action">{{ isStudentSelected(student.studentId) ? 'Keep Assigned' : 'Unassign' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="getSelectedStudentCount() > 0" class="selected-trainers-shell">
+          <span class="selected-trainers-label">Selected students</span>
+          <div class="selected-trainers-list">
+            <button
+              *ngFor="let student of getSelectedStudents(); trackBy: trackByStudentId"
+              type="button"
+              class="selected-trainer-chip"
+              [disabled]="isSubmittingStudentAssignment"
+              (click)="selectStudent(student.studentId)">
+              <span>{{ student.fullName }}</span>
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        <div class="trainer-dropdown-shell">
+          <div class="trainer-dropdown-trigger" [attr.aria-disabled]="true">
+            <span>{{ getStudentAssignmentLabel() }}</span>
+            <mat-icon>person_add</mat-icon>
+          </div>
+
+          <div class="trainer-dropdown-panel">
+            <div *ngIf="isLoadingApprovedStudents" class="trainer-dropdown-empty">
+              Loading approved students...
+            </div>
+
+            <div *ngIf="!isLoadingApprovedStudents && approvedStudents.length === 0" class="trainer-dropdown-empty">
+              No approved unassigned students are available for this college yet.
+            </div>
+
+            <button
+              *ngFor="let student of approvedStudents; trackBy: trackByStudentId"
+              type="button"
+              class="trainer-option"
+              [class.trainer-option-selected]="isStudentSelected(student.studentId)"
+              (click)="selectStudent(student.studentId)">
+              <div class="trainer-option-copy">
+                <strong>{{ student.fullName }}</strong>
+                <span>{{ student.email }}</span>
+              </div>
+              <span class="trainer-option-action">
+                {{ isStudentSelected(student.studentId) ? 'Selected' : 'Select' }}
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="footer-action footer-action-muted" [disabled]="isSubmittingStudentAssignment" (click)="closeStudentAssignmentModal()">Cancel</button>
+        <button
+          type="button"
+          class="footer-action footer-action-primary"
+          [disabled]="isSubmittingStudentAssignment || isLoadingApprovedStudents || !hasStudentSelectionChanges()"
+          (click)="submitStudentAssignment()">
+          {{ isSubmittingStudentAssignment ? 'Saving...' : 'Save Changes' }}
+        </button>
+      </div>
+    </section>
+  </div>
+</div>

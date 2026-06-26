@@ -1,0 +1,31 @@
+<div class="role-shell">
+  <aside class="shell-sidebar">
+    <div class="shell-brand">
+      <div class="brand-mark">TV</div>
+      <div>
+        <div class="brand-eyebrow">Learning Hub</div>
+        <div class="brand-title">Trainer</div>
+      </div>
+    </div>
+
+    <nav class="shell-nav" aria-label="Trainer navigation">
+      <a
+        *ngFor="let item of navItems"
+        class="nav-link"
+        [routerLink]="item.route"
+        routerLinkActive="nav-link-active">
+        <img [src]="item.iconPath" [alt]="item.label" class="nav-icon" aria-hidden="true" />
+        <span>{{ item.label }}</span>
+      </a>
+    </nav>
+
+    <button type="button" class="logout-button" (click)="logout()">
+      <img src="assets/icons/nav/logout.svg" alt="Logout" class="nav-icon" aria-hidden="true" />
+      <span>Logout</span>
+    </button>
+  </aside>
+
+  <main class="shell-main">
+    <router-outlet></router-outlet>
+  </main>
+</div>

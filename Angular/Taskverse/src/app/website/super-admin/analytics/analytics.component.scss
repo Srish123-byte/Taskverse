@@ -1,0 +1,159 @@
+@use '../../../common/styles/page' as *;
+
+.analytics-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.page-loader {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 24px;
+  border: 1px solid #dce7ef;
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f7fafc 100%),
+    radial-gradient(circle at top right, rgba(21, 94, 117, 0.12), transparent 36%);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+}
+
+.page-loader-title {
+  color: #16314a;
+  font-weight: 700;
+}
+
+.page-loader-copy {
+  margin-top: 4px;
+  color: #617589;
+}
+
+.hero-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.content-grid {
+  margin-top: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.analytics-card,
+.analytics-panel {
+  border: 1px solid #dce5ee;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fafc 100%);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+}
+
+.analytics-card {
+  padding: 24px;
+}
+
+.highlight-card {
+  background: linear-gradient(135deg, #0f766e 0%, #155e75 100%);
+  color: #ffffff;
+}
+
+.highlight-card .card-label,
+.highlight-card .card-copy,
+.highlight-card .card-value {
+  color: inherit;
+}
+
+.analytics-panel {
+  padding: 24px;
+}
+
+.card-label,
+.trend-meta,
+.page-state {
+  color: #617589;
+}
+
+.card-value {
+  display: block;
+  margin-top: 10px;
+  color: #16314a;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.card-copy {
+  margin: 10px 0 0;
+}
+
+.panel-header,
+.trend-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.panel-header {
+  margin-bottom: 18px;
+}
+
+.panel-header h3,
+.trend-date {
+  margin: 0;
+  color: #16314a;
+  font-weight: 700;
+}
+
+.panel-tag,
+.trend-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.panel-tag {
+  background: #e6f4ea;
+  color: #17663c;
+}
+
+.trend-pill {
+  min-width: 118px;
+  background: #fff3cd;
+  color: #8a5a00;
+}
+
+.trend-pill-blue {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.trend-row {
+  padding: 14px 0;
+  border-top: 1px solid #e7edf3;
+}
+
+.trend-row:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.panel-empty {
+  color: #617589;
+}
+
+.page-state-error {
+  color: #b42318;
+}
+
+@media (max-width: 768px) {
+  .page-loader {
+    align-items: flex-start;
+  }
+
+  .panel-header,
+  .trend-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

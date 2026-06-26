@@ -1,0 +1,362 @@
+/* ============================================================
+   TASKVERSE — Global Design System
+   Dark editorial theme
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   Design Tokens
+   ------------------------------------------------------------ */
+:root {
+  /* Backgrounds */
+  --bg-page:        #0a0a0a;
+  --bg-section-alt: #111111;
+  --bg-card:        #111111;
+  --bg-badge:       #1F2937;
+
+  /* Borders */
+  --border-subtle:  #1F2937;
+
+  /* Typography */
+  --text-primary:   #FFFFFF;
+  --text-body:      #9CA3AF;
+  --text-muted:     #6B7280;
+  --text-nav:       #D1D5DB;
+
+  /* Accents */
+  --accent-cyan:    #00BFFF;
+  --accent-amber:   #F59E0B;
+  --accent-red:     #EF4444;
+  --accent-purple:  #7C3AED;
+
+  /* Fonts */
+  --font-display:   'Inter', sans-serif;
+  --font-serif:     'Playfair Display', serif;
+  --font-body:      'Inter', sans-serif;
+
+  /* Shape */
+  --radius-card:    12px;
+  --radius-badge:   9999px;
+
+  /* Gradients */
+  --gradient-cta:   linear-gradient(to right, #F59E0B, #EF4444);
+}
+
+/* ------------------------------------------------------------
+   Global Reset
+   ------------------------------------------------------------ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ------------------------------------------------------------
+   Base
+   ------------------------------------------------------------ */
+html,
+body {
+  height: 100%;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-body);
+  background-color: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ------------------------------------------------------------
+   Scrollbar
+   ------------------------------------------------------------ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-page);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: var(--radius-badge);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* ------------------------------------------------------------
+   Selection
+   ------------------------------------------------------------ */
+::selection {
+  background-color: var(--accent-cyan);
+  color: var(--bg-page);
+}
+
+/* ------------------------------------------------------------
+   Focus
+   ------------------------------------------------------------ */
+:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------
+   Placeholder
+   ------------------------------------------------------------ */
+::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+/* ============================================================
+   Angular Material — Dark Theme Overrides
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   Form Field wrapper
+   ------------------------------------------------------------ */
+.mat-mdc-form-field {
+  width: 100%;
+
+  .mdc-text-field {
+    background-color: var(--bg-card) !important;
+  }
+}
+
+/* ------------------------------------------------------------
+   Outlined notch borders
+   ------------------------------------------------------------ */
+.mdc-text-field--outlined {
+  .mdc-notched-outline__leading,
+  .mdc-notched-outline__notch,
+  .mdc-notched-outline__trailing {
+    border-color: var(--border-subtle) !important;
+    transition: border-color 0.2s ease;
+  }
+
+  &.mdc-text-field--focused {
+    .mdc-notched-outline__leading,
+    .mdc-notched-outline__notch,
+    .mdc-notched-outline__trailing {
+      border-color: var(--accent-cyan) !important;
+    }
+  }
+}
+
+/* ------------------------------------------------------------
+   Input element
+   ------------------------------------------------------------ */
+.mat-mdc-input-element {
+  color: var(--text-primary) !important;
+  caret-color: var(--accent-cyan) !important;
+}
+
+.mat-mdc-select-value,
+.mat-mdc-select-arrow,
+.mat-mdc-select-min-line {
+  color: var(--text-primary) !important;
+}
+
+.mat-mdc-select-panel,
+.mat-mdc-option .mdc-list-item,
+.mat-mdc-option,
+.cdk-overlay-pane .mat-mdc-select-panel {
+  background-color: var(--bg-card) !important;
+}
+
+.mat-mdc-option.mdc-list-item--selected,
+.mat-mdc-option.mat-mdc-option-active,
+.mat-mdc-option:hover:not(.mdc-list-item--disabled) {
+  background-color: var(--bg-section-alt) !important;
+}
+
+.mat-mdc-option .mdc-list-item__primary-text {
+  color: var(--text-primary) !important;
+}
+
+select,
+option {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
+
+/* ------------------------------------------------------------
+   Floating label
+   ------------------------------------------------------------ */
+.mat-mdc-form-field-label,
+.mdc-floating-label {
+  color: var(--text-muted) !important;
+  transition: color 0.2s ease;
+}
+
+.mdc-text-field--focused {
+  .mat-mdc-form-field-label,
+  .mdc-floating-label {
+    color: var(--accent-cyan) !important;
+  }
+}
+
+/* ------------------------------------------------------------
+   Error message
+   ------------------------------------------------------------ */
+.mat-mdc-form-field-error {
+  color: var(--accent-red) !important;
+}
+
+/* ------------------------------------------------------------
+   Raised / primary button
+   ------------------------------------------------------------ */
+.mat-mdc-raised-button.mat-primary {
+  background: var(--gradient-cta) !important;
+  color: var(--text-primary) !important;
+  border-radius: var(--radius-badge) !important;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: none;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+/* ------------------------------------------------------------
+   Progress spinner
+   ------------------------------------------------------------ */
+.mat-mdc-progress-spinner circle {
+  stroke: var(--accent-cyan) !important;
+}
+
+/* ------------------------------------------------------------
+   Snack bar
+   ------------------------------------------------------------ */
+.mat-mdc-snack-bar-container {
+  --mdc-snackbar-container-color: #1F2937;
+  --mdc-snackbar-supporting-text-color: var(--text-primary);
+  --mat-snack-bar-button-color: var(--accent-cyan);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card) !important;
+  opacity: 1 !important;
+}
+
+.mat-mdc-snack-bar-container .mat-mdc-snackbar-surface {
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+}
+
+body .mat-mdc-snack-bar-container .mat-mdc-snack-bar-action {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body .mat-mdc-snack-bar-container .mat-mdc-snack-bar-action:hover,
+body .mat-mdc-snack-bar-container .mat-mdc-snack-bar-action:focus,
+body .mat-mdc-snack-bar-container .mat-mdc-snack-bar-action:active,
+body .mat-mdc-snack-bar-container .mat-mdc-snack-bar-action:focus-visible {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body .mat-mdc-snack-bar-container .mat-mdc-button-persistent-ripple,
+body .mat-mdc-snack-bar-container .mat-mdc-button-ripple,
+body .mat-mdc-snack-bar-container .mdc-button__ripple {
+  display: none !important;
+}
+
+.cdk-overlay-container .cdk-global-overlay-wrapper:has(.question-editor-success-snackbar) {
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 0;
+}
+
+body .question-editor-success-snackbar.mat-mdc-snack-bar-container {
+  margin-top: calc(50vh - 40px);
+  min-width: min(460px, calc(100vw - 32px));
+  max-width: min(560px, calc(100vw - 32px));
+  border-color: rgba(0, 191, 255, 0.35);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  z-index: 1200;
+}
+
+body .question-editor-success-snackbar .mat-mdc-snackbar-surface {
+  background-color: #1f2937 !important;
+  justify-content: center;
+  padding: 20px 24px;
+}
+
+body .question-editor-success-snackbar .mdc-snackbar__label {
+  text-align: center;
+  font-weight: 600;
+}
+
+.cdk-overlay-container .cdk-global-overlay-wrapper:has(.question-bank-restriction-snackbar) {
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 0;
+}
+
+body .question-bank-restriction-snackbar.mat-mdc-snack-bar-container {
+  --mdc-snackbar-container-color: #dff6ea;
+  --mdc-snackbar-supporting-text-color: #1f5f46;
+  --mat-snack-bar-button-color: #127a55;
+  margin-top: calc(50vh - 40px);
+  min-width: min(460px, calc(100vw - 32px));
+  max-width: min(560px, calc(100vw - 32px));
+  border-color: rgba(60, 148, 107, 0.35);
+  box-shadow: 0 24px 80px rgba(20, 63, 44, 0.24);
+  z-index: 1200;
+}
+
+body .question-bank-restriction-snackbar .mat-mdc-snackbar-surface {
+  background-color: #dff6ea !important;
+  justify-content: center;
+  padding: 20px 24px;
+}
+
+body .question-bank-restriction-snackbar .mdc-snackbar__label {
+  text-align: center;
+  font-weight: 600;
+  color: #1f5f46;
+}
+
+body .question-bank-restriction-snackbar .mat-mdc-snack-bar-action {
+  color: #127a55 !important;
+}
+body .logout-confirmation-backdrop {
+  background: rgba(3, 8, 20, 0.76);
+  backdrop-filter: blur(10px);
+}
+
+body .logout-confirmation-overlay .mat-mdc-dialog-surface {
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+body .logout-confirmation-overlay .mat-mdc-dialog-container .mdc-dialog__surface {
+  background: transparent;
+  box-shadow: none;
+}

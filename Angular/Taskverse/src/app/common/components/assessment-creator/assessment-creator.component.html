@@ -1,0 +1,449 @@
+<div class="creator-page">
+  <section *ngIf="isInitialPageLoading" class="state-shell assessment-page-loader">
+    <app-dashboard-loader
+      title="Preparing assessment workspace"
+      copy="Loading classes, batches, subjects and questions for assessment setup."
+      tone="dark"
+      [diameter]="42">
+    </app-dashboard-loader>
+  </section>
+
+  <div class="builder-scroll-shell">
+    <section class="page-head">
+      <div class="head-copy">
+        <span class="head-kicker">{{ pageKicker }}</span>
+        <h2>{{ pageTitle }}</h2>
+        <p>{{ pageDescription }}</p>
+      </div>
+
+      <a class="back-link" [routerLink]="['/', ...backRouteSegments]">
+        <img src="assets/icons/shared/back-arrow.svg" alt="" class="back-link-icon" aria-hidden="true" />
+        <span>Back to Assessments</span>
+      </a>
+    </section>
+
+    <section *ngIf="hasBlockingLoadError" class="state-shell">
+      <div class="inline-error-state">{{ assessmentLoadErrorMessage }}</div>
+    </section>
+
+    <section *ngIf="!hasBlockingLoadError" class="builder-layout">
+      <div class="builder-main">
+        <article class="surface-card" *ngIf="!isInitialPageLoading">
+          <div class="card-title-row">
+            <h3>Assessment Details</h3>
+          </div>
+
+          <div class="form-grid">
+            <label class="field field-full">
+              <span>Assessment Name</span>
+              <input type="text" [(ngModel)]="assessmentName" placeholder="Senior Backend Engineer - Module 2" />
+            </label>
+
+            <label class="field">
+              <span>Subject</span>
+              <select [(ngModel)]="selectedSubjectId" (ngModelChange)="onSubjectChange()">
+                <option value="">Select subject</option>
+                <option *ngFor="let subject of visibleSubjects; trackBy: trackBySubjectId" [value]="subject.subjectId">
+                  {{ subject.subjectName }}
+                </option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Topic</span>
+              <select [(ngModel)]="selectedTopicId">
+                <option value="">Select topic</option>
+                <option *ngFor="let topic of visibleTopics" [value]="topic.topicId">
+                  {{ topic.topicName }}
+              </option>
+            </select>
+            </label>
+
+            <label class="field">
+              <span>Duration (minutes)</span>
+              <input type="number" min="0" [(ngModel)]="durationMinutes" placeholder="60" />
+            </label>
+
+            <label class="field">
+              <span>Passing Percentage</span>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                [(ngModel)]="passingPercentage"
+                (ngModelChange)="enforcePassingPercentageRange()"
+                placeholder="50" />
+            </label>
+
+            <label class="field">
+              <span>Total Marks</span>
+              <input
+                type="text"
+                [value]="totalMarksDisplay"
+                readonly
+                aria-readonly="true"
+                class="readonly-value" />
+              <small class="field-help">Auto-calculated from the questions selected in Question Hub.</small>
+            </label>
+          </div>
+        </article>
+
+        <article class="surface-card" *ngIf="!isInitialPageLoading">
+          <div class="card-title-row">
+            <h3>Instructions</h3>
+          </div>
+
+          <label class="field field-full">
+            <span>Candidate Instructions</span>
+            <textarea [(ngModel)]="instructions" rows="6" placeholder="Enter detailed candidate instructions here..."></textarea>
+            <small class="field-help">{{ instructionWordCount }}/1000 words</small>
+          </label>
+        </article>
+
+        <article class="surface-card question-hub-card" *ngIf="!isInitialPageLoading">
+          <div class="card-title-row">
+            <div>
+              <h3>Question Hub</h3>
+              <p>Select questions from the college question bank.</p>
+            </div>
+
+            <div class="hub-actions">
+              <button type="button" class="secondary-action" (click)="openAddQuestionPlaceholder()">Add New Question</button>
+              <span class="selection-pill">{{ selectedQuestionCount }} selected</span>
+            </div>
+          </div>
+
+          <div class="hub-filters">
+            <select [(ngModel)]="selectedDifficulty" (ngModelChange)="onQuestionBankFilterChange()">
+              <option *ngFor="let option of difficultyOptions" [value]="option.value">{{ option.label }}</option>
+            </select>
+
+            <select [(ngModel)]="selectedQuestionBankSubjectId" (ngModelChange)="onQuestionBankFilterChange()">
+              <option value="">All subjects</option>
+              <option *ngFor="let subject of questionBankSubjects; trackBy: trackBySubjectId" [value]="subject.subjectId">
+                {{ subject.subjectName }}
+              </option>
+            </select>
+
+            <select [(ngModel)]="selectedQuestionBankTopicId" (ngModelChange)="onQuestionBankFilterChange()">
+              <option value="">All topics</option>
+              <option *ngFor="let topic of questionBankTopics" [value]="topic.topicId">
+                {{ topic.topicName }}
+              </option>
+            </select>
+
+            <label class="search-field">
+              <img src="assets/icons/shared/magnifier.svg" alt="" class="search-icon" aria-hidden="true" />
+              <input
+                type="search"
+                [(ngModel)]="questionSearchTerm"
+                placeholder="Search questions, subject or topic..." />
+            </label>
+          </div>
+
+          <app-dashboard-loader
+            *ngIf="isQuestionBankLoading"
+            title="Loading question bank"
+            copy="Fetching question records for your college."
+            tone="dark"
+            [diameter]="38">
+          </app-dashboard-loader>
+
+          <div *ngIf="!isQuestionBankLoading && questionBankErrorMessage" class="inline-error-state">
+            {{ questionBankErrorMessage }}
+          </div>
+
+          <div *ngIf="!isQuestionBankLoading && !questionBankErrorMessage" class="question-grid">
+            <div class="question-grid-head">
+              <span>Question Overview</span>
+              <span>Type</span>
+              <span>Difficulty</span>
+              <span>Marks</span>
+              <span>Action</span>
+            </div>
+
+            <div class="question-grid-body">
+              <article class="question-row" *ngFor="let question of filteredQuestions; trackBy: trackByQuestionId">
+                <div class="question-copy">
+                  <div class="question-text">{{ question.questionText }}</div>
+                  <div class="question-meta">{{ question.subject || 'No subject' }} | {{ question.topic || 'No topic' }}</div>
+                </div>
+
+                <div class="question-type">{{ question.questionType }}</div>
+
+                <div class="question-difficulty">
+                  <span class="difficulty-pill" [ngClass]="getDifficultyClass(question.difficultyLevel)">
+                    {{ getDifficultyLabel(question.difficultyLevel) }}
+                  </span>
+                </div>
+
+                <div class="question-marks">{{ question.marks }} Marks</div>
+
+                <div class="question-action">
+                  <button
+                    type="button"
+                    class="select-action"
+                    [class.is-selected]="isQuestionSelected(question.questionId)"
+                    (click)="toggleQuestionSelection(question.questionId)">
+                    {{ isQuestionSelected(question.questionId) ? 'Selected' : 'Select' }}
+                  </button>
+                </div>
+              </article>
+
+              <div *ngIf="filteredQuestions.length === 0" class="empty-state">
+                No questions on this page match the current filters.
+              </div>
+            </div>
+
+            <div *ngIf="questionBankTotalCount > 0" class="pagination-shell">
+              <span class="pagination-info">
+                Showing {{ questionBankPageStart }}-{{ questionBankPageEnd }} of {{ questionBankTotalCount }} questions
+              </span>
+
+              <div class="pagination-controls">
+                <button
+                  type="button"
+                  class="page-btn page-btn-nav"
+                  [disabled]="questionBankCurrentPage === 1"
+                  (click)="previousQuestionBankPage()"
+                  aria-label="Previous question bank page">
+                  &#8249;
+                </button>
+
+                <button
+                  *ngFor="let page of questionBankPageNumbers"
+                  type="button"
+                  class="page-btn"
+                  [class.page-btn-active]="page === questionBankCurrentPage"
+                  (click)="goToQuestionBankPage(page)">
+                  {{ page }}
+                </button>
+
+                <button
+                  type="button"
+                  class="page-btn page-btn-nav"
+                  [disabled]="questionBankCurrentPage === totalQuestionBankPages"
+                  (click)="nextQuestionBankPage()"
+                  aria-label="Next question bank page">
+                  &#8250;
+                </button>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <aside class="builder-sidebar">
+        <article class="surface-card" *ngIf="!isInitialPageLoading">
+          <div class="card-title-row">
+            <h3>Scheduling</h3>
+          </div>
+
+          <label class="field field-full">
+            <span>Start Time</span>
+            <input type="datetime-local" [(ngModel)]="startDate" [attr.min]="scheduleInputMin" />
+          </label>
+
+          <label class="field field-full">
+            <span>End Time</span>
+            <input type="datetime-local" [(ngModel)]="endDate" [attr.min]="scheduleInputMin" />
+          </label>
+        </article>
+
+        <article class="surface-card" *ngIf="!isInitialPageLoading">
+          <div class="card-title-row">
+            <h3>Advanced Rules</h3>
+          </div>
+
+          <div class="toggle-list">
+            <div class="toggle-row">
+              <div class="toggle-copy">
+                <span>Allow Late Entry</span>
+                <small>Permit access for candidates who join after the start time.</small>
+              </div>
+              <button
+                type="button"
+                class="rule-switch"
+                [class.rule-switch-on]="allowLateEntry"
+                [attr.aria-pressed]="allowLateEntry"
+                aria-label="Toggle allow late entry"
+                (click)="allowLateEntry = !allowLateEntry">
+                <span class="rule-switch-thumb"></span>
+              </button>
+            </div>
+
+            <div class="toggle-row">
+              <div class="toggle-copy">
+                <span>Show Results Immediately</span>
+                <small>Display candidate scores as soon as the assessment is submitted.</small>
+              </div>
+              <button
+                type="button"
+                class="rule-switch"
+                [class.rule-switch-on]="showResultsImmediately"
+                [attr.aria-pressed]="showResultsImmediately"
+                aria-label="Toggle show results immediately"
+                (click)="showResultsImmediately = !showResultsImmediately">
+                <span class="rule-switch-thumb"></span>
+              </button>
+            </div>
+
+            <div class="toggle-row">
+              <div class="toggle-copy">
+                <span>Question Review</span>
+                <small>Allow candidates to revisit earlier questions before they finish.</small>
+              </div>
+              <button
+                type="button"
+                class="rule-switch"
+                [class.rule-switch-on]="allowQuestionReview"
+                [attr.aria-pressed]="allowQuestionReview"
+                aria-label="Toggle question review"
+                (click)="allowQuestionReview = !allowQuestionReview">
+                <span class="rule-switch-thumb"></span>
+              </button>
+            </div>
+
+            <div class="toggle-row">
+              <div class="toggle-copy">
+                <span>Negative Marking</span>
+                <small>Deduct marks automatically for incorrect responses.</small>
+              </div>
+              <button
+                type="button"
+                class="rule-switch"
+                [class.rule-switch-on]="negativeMarking"
+                [attr.aria-pressed]="negativeMarking"
+                aria-label="Toggle negative marking"
+                (click)="negativeMarking = !negativeMarking">
+                <span class="rule-switch-thumb"></span>
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <article class="surface-card assignment-surface-card" *ngIf="!isInitialPageLoading">
+          <app-dashboard-loader
+            *ngIf="isAssignmentLoading"
+            title="Loading classes and batches"
+            copy="Preparing assignment options for this assessment."
+            tone="dark"
+            [diameter]="34">
+          </app-dashboard-loader>
+
+          <div *ngIf="!isAssignmentLoading && assignmentErrorMessage" class="inline-error-state">
+            {{ assignmentErrorMessage }}
+          </div>
+
+          <div *ngIf="!isAssignmentLoading && !assignmentErrorMessage" class="assignment-panel">
+            <div class="assignment-intro">
+              <h3>Select Classes and Batches</h3>
+              <p>Choose the batches that should receive this assessment.</p>
+            </div>
+
+            <div class="assignment-overview">
+              <div class="assignment-overview-item">
+                <span class="summary-line">Selected Classes</span>
+                <strong>{{ selectedClassCount }}</strong>
+              </div>
+
+              <div class="assignment-overview-item">
+                <span class="summary-line">Selected Batches</span>
+                <strong>{{ selectedBatchCount }}</strong>
+              </div>
+            </div>
+
+            <div class="assignment-scroll-body">
+              <div class="assignment-summary-block">
+                <div class="summary-line">Classes in Scope</div>
+                <div class="assignment-chip-row" *ngIf="selectedAssignmentClasses.length > 0; else noClassesSelected">
+                  <span class="assignment-chip" *ngFor="let classItem of selectedAssignmentClasses; trackBy: trackByAssignmentClassId">
+                    {{ classItem.name }}
+                  </span>
+                </div>
+                <ng-template #noClassesSelected>
+                  <div class="assignment-empty-copy">Select one or more batches to assign classes.</div>
+                </ng-template>
+              </div>
+
+              <div class="assignment-summary-block">
+                <div class="summary-line">Batches in Scope</div>
+                <div class="assignment-chip-row" *ngIf="selectedAssignmentBatches.length > 0; else noBatchesSelected">
+                  <span class="assignment-chip" *ngFor="let batch of selectedAssignmentBatches; trackBy: trackByAssignmentBatchId">
+                    {{ batch.name }}
+                  </span>
+                </div>
+                <ng-template #noBatchesSelected>
+                  <div class="assignment-empty-copy">No batches selected yet.</div>
+                </ng-template>
+              </div>
+
+              <div class="empty-state" *ngIf="assignmentClasses.length === 0">
+                No classes or batches are available for assignment.
+              </div>
+
+              <div class="assignment-class-list" *ngIf="assignmentClasses.length > 0">
+                <section class="assignment-class-card" *ngFor="let classItem of assignmentClasses; trackBy: trackByAssignmentClassId">
+                  <div class="assignment-class-head">
+                    <div class="assignment-class-copy">
+                      <div class="assignment-class-title">{{ classItem.name }}</div>
+                      <div class="assignment-class-meta" *ngIf="classItem.academicYear">Academic Year {{ classItem.academicYear }}</div>
+                    </div>
+
+                    <div class="assignment-class-count">
+                      {{ classItem.batches.length }} {{ classItem.batches.length === 1 ? 'batch' : 'batches' }}
+                    </div>
+                  </div>
+
+                  <div class="empty-state assignment-inline-empty" *ngIf="classItem.batches.length === 0">
+                    No batches available for this class yet.
+                  </div>
+
+                  <div class="batch-list" *ngIf="classItem.batches.length > 0">
+                    <label class="batch-option" *ngFor="let batch of classItem.batches; trackBy: trackByAssignmentBatchId">
+                      <div class="batch-copy">
+                        <span>{{ batch.name }}</span>
+                        <small>{{ classItem.name }}</small>
+                      </div>
+
+                      <span class="batch-toggle-shell" [class.is-selected]="isBatchSelected(batch.batchId)">
+                        <input
+                          type="checkbox"
+                          [checked]="isBatchSelected(batch.batchId)"
+                          (change)="toggleBatchSelection(batch.batchId)" />
+                      </span>
+                    </label>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+        </article>
+      </aside>
+    </section>
+  </div>
+
+  <div
+    *ngIf="!isInitialPageLoading && !hasBlockingLoadError && submissionErrorMessage"
+    class="validation-popup-backdrop"
+    (click)="closeSubmissionError()">
+    <section class="validation-popup" (click)="$event.stopPropagation()">
+      <h3>Validation Required</h3>
+      <p>{{ submissionErrorMessage }}</p>
+    </section>
+  </div>
+
+  <div class="builder-footer-shell" *ngIf="!isInitialPageLoading && !hasBlockingLoadError">
+    <a class="builder-footer-cancel" [routerLink]="['/', ...backRouteSegments]">Cancel</a>
+
+    <div class="footer-actions">
+      <button *ngIf="!isEditMode || isDraftAssessment" type="button" class="secondary-action" [disabled]="isSubmitting" (click)="saveDraft()">
+        {{ saveDraftButtonLabel }}
+      </button>
+      <button type="button" class="primary-action" [disabled]="isSubmitting" (click)="scheduleAssessment()">
+        {{ primaryActionLabel }}
+      </button>
+    </div>
+  </div>
+</div>

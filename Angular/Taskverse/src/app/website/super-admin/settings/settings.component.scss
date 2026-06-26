@@ -1,0 +1,36 @@
+@use '../../../common/styles/page' as *;
+
+.settings-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.settings-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px;
+  border: 1px solid #dae5ef;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #ffffff 0%, #f6fafc 100%);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+}
+
+.settings-card h3 {
+  margin: 0 0 8px;
+  color: #16314a;
+}
+
+.settings-card p {
+  margin: 0;
+  color: #617589;
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .settings-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

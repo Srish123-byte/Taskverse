@@ -1,0 +1,190 @@
+<section class="student-page attempt-results-page">
+  <section *ngIf="isLoading" class="state-panel">
+    <span class="page-eyebrow">Fetching Result</span>
+    <h1>Preparing your assessment report</h1>
+    <p>We are pulling the latest result summary and question-wise analysis for this attempt.</p>
+  </section>
+
+  <section *ngIf="!isLoading && errorMessage" class="state-panel state-panel-error">
+    <span class="page-eyebrow">Result Unavailable</span>
+    <h1>We could not load this result yet</h1>
+    <p>{{ errorMessage }}</p>
+
+    <div class="state-actions">
+      <button type="button" class="page-button page-button-primary" (click)="returnToAssessments()">
+        Back to Assessments
+      </button>
+      <button type="button" class="page-button page-button-secondary" (click)="returnToDashboard()">
+        Back to Dashboard
+      </button>
+    </div>
+  </section>
+
+  <!-- Pending notification panel: shown when showResultsImmediately = false -->
+  <ng-container *ngIf="!isLoading && !errorMessage && result && isPendingNotification">
+    <section class="pending-notification-panel">
+      <div class="pending-icon-ring">
+        <svg class="pending-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="24" cy="24" r="23" stroke="currentColor" stroke-width="2"/>
+          <path d="M14 24.5l7 7 13-14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+
+      <div class="pending-copy">
+        <span class="page-eyebrow">Assessment Submitted</span>
+        <h1>{{ result.assessmentName }}</h1>
+        <p class="pending-headline">You'll be notified when the result is ready!</p>
+        <p class="pending-subtext">
+          Your responses have been recorded. The result will be released by your instructor
+          once all submissions have been reviewed.
+        </p>
+      </div>
+
+      <div class="pending-actions">
+        <button
+          id="pending-back-to-assessments-btn"
+          type="button"
+          class="page-button page-button-primary"
+          (click)="returnToAssessments()">
+          Back to Assessments
+        </button>
+        <button
+          id="pending-back-to-dashboard-btn"
+          type="button"
+          class="page-button page-button-secondary"
+          (click)="returnToDashboard()">
+          Back to Dashboard
+        </button>
+      </div>
+    </section>
+  </ng-container>
+
+  <!-- Full results view: shown when showResultsImmediately = true -->
+  <ng-container *ngIf="!isLoading && !errorMessage && result && !isPendingNotification">
+    <header class="results-hero">
+      <div class="hero-copy">
+        <span class="page-eyebrow">Assessment Result</span>
+        <h1>{{ result.assessmentName }}</h1>
+        <p>{{ completedOnLabel }} · {{ durationLabel }}</p>
+      </div>
+
+      <button type="button" class="page-button page-button-secondary" (click)="returnToDashboard()">
+        Back to Dashboard
+      </button>
+    </header>
+
+    <section class="summary-grid">
+      <article class="summary-card">
+        <span class="summary-label">Class Rank</span>
+        <strong>{{ rankSummary }}</strong>
+        <p>{{ percentileSummary }}</p>
+      </article>
+
+      <article class="summary-card">
+        <span class="summary-label">Total Score</span>
+        <strong>{{ result.obtainedMarks }} / {{ result.totalMarks }}</strong>
+        <div class="score-track">
+          <div class="score-fill" [style.width.%]="scoreProgress"></div>
+        </div>
+        <p>{{ result.percentage }}%</p>
+      </article>
+
+      <article class="summary-card">
+        <span class="summary-label">Question Breakdown</span>
+        <div class="breakdown-list">
+          <div>
+            <span class="dot dot-correct"></span>
+            <span>Correct</span>
+            <strong>{{ result.correctAnswers }}</strong>
+          </div>
+          <div>
+            <span class="dot dot-incorrect"></span>
+            <span>Incorrect</span>
+            <strong>{{ result.wrongAnswers }}</strong>
+          </div>
+          <div>
+            <span class="dot dot-unanswered"></span>
+            <span>Unanswered</span>
+            <strong>{{ result.unansweredQuestions }}</strong>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <div *ngIf="result.hasPendingCodingEvaluation" class="status-banner">
+      Coding evaluation is still pending. Some answers may update after automated coding checks finish.
+    </div>
+
+    <section class="analysis-shell">
+      <div class="analysis-header">
+        <div>
+          <span class="section-eyebrow">Review</span>
+          <h2>Question-wise Analysis</h2>
+        </div>
+
+        <div class="filter-chip-row">
+          <button
+            type="button"
+            class="filter-chip"
+            [class.filter-chip-active]="activeFilter === 'ALL'"
+            (click)="setFilter('ALL')">
+            All
+          </button>
+          <button
+            type="button"
+            class="filter-chip filter-chip-correct"
+            [class.filter-chip-active]="activeFilter === 'CORRECT'"
+            (click)="setFilter('CORRECT')">
+            Correct
+          </button>
+          <button
+            type="button"
+            class="filter-chip filter-chip-incorrect"
+            [class.filter-chip-active]="activeFilter === 'INCORRECT'"
+            (click)="setFilter('INCORRECT')">
+            Incorrect
+          </button>
+          <button
+            type="button"
+            class="filter-chip filter-chip-muted"
+            [class.filter-chip-active]="activeFilter === 'UNANSWERED'"
+            (click)="setFilter('UNANSWERED')">
+            Unanswered
+          </button>
+        </div>
+      </div>
+
+      <article *ngFor="let question of filteredQuestionResults; trackBy: trackByQuestionId" class="question-card">
+        <div class="question-card-header">
+          <span class="question-tag">Question {{ question.displayOrder }} · {{ question.marks }} Marks</span>
+          <span class="question-status" [class]="'question-status status-' + question.status.toLowerCase()">
+            {{ getStatusLabel(question.status) }}
+          </span>
+        </div>
+
+        <h3>{{ question.questionText }}</h3>
+
+        <div class="answer-grid">
+          <div class="answer-box">
+            <span>Your Answer</span>
+            <strong>{{ getJoinedAnswers(question.userAnswers) }}</strong>
+          </div>
+          <div class="answer-box answer-box-correct">
+            <span>Correct Answer</span>
+            <strong>{{ getJoinedAnswers(question.correctAnswers, 'Not available') }}</strong>
+          </div>
+        </div>
+
+        <div class="meta-row">
+          <span>Awarded Marks: {{ question.awardedMarks }}</span>
+          <span>Type: {{ question.questionType }}</span>
+        </div>
+
+        <div *ngIf="question.explanation" class="explanation-panel">
+          <span>Explanation</span>
+          <p>{{ question.explanation }}</p>
+        </div>
+      </article>
+    </section>
+  </ng-container>
+</section>
