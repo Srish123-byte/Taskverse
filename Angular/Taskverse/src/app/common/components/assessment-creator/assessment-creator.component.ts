@@ -836,10 +836,6 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       return 'End time must be later than the current time.';
     }
 
-    if (this.selectedBatchIds.size === 0) {
-      return 'Select at least one batch before saving this assessment.';
-    }
-
     if (this.selectedQuestionIds.size === 0) {
       return 'Select at least one question before saving this assessment.';
     }

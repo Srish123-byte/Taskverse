@@ -308,6 +308,7 @@ public class TaskverseContext : DbContext
             entity.Property(u => u.FullName).HasColumnName("full_name").IsRequired();
             entity.Property(u => u.Email).HasColumnName("email").IsRequired();
             entity.Property(u => u.Phone).HasColumnName("phone");
+            entity.Property(u => u.EnrollmentNumber).HasColumnName("enrollment_number").HasMaxLength(50);
             entity.Property(u => u.CollegeId).HasColumnName("college_id");
             entity.Property(u => u.CollegeName).HasColumnName("college_name");
             entity.Property(u => u.Role).HasColumnName("role").IsRequired();

@@ -100,6 +100,7 @@ export class LoginComponent implements OnInit, OnDestroy {
         Validators.required,
         phoneValidator
       ]],
+      enrollmentNumber: ['', [Validators.maxLength(50)]],
       role: ['Student', Validators.required],
       collegeId: [''],
       collegeName: [''],
@@ -268,6 +269,15 @@ export class LoginComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const selectedRole = this.rRole?.value;
+    const classId = this.rClassId?.value?.trim?.() || '';
+    const batchId = this.rBatchId?.value?.trim?.() || '';
+    if (selectedRole === RoleType.Student && ((classId && !batchId) || (!classId && batchId))) {
+      this.batchControl?.markAsTouched();
+      this.errorMessage = 'Class and batch must either both be selected or both be left empty.';
+      return;
+    }
+
     this.isLoading = true;
     this.errorMessage = '';
     this.successMessage = '';
@@ -275,6 +285,10 @@ export class LoginComponent implements OnInit, OnDestroy {
     const { confirmPassword, collegeName, ...formValue } = this.registerForm.value;
     const request: RegisterRequest = {
       ...formValue,
+      enrollmentNumber: formValue.enrollmentNumber || undefined,
+      collegeId: formValue.collegeId || undefined,
+      classId: formValue.classId || undefined,
+      batchId: formValue.batchId || undefined,
       collegeName: collegeName || undefined
     };
 
@@ -423,8 +437,8 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   private applyInstitutionValidators(role: string | null | undefined): void {
     this.collegeControl?.setValidators([Validators.required]);
-    this.classControl?.setValidators(role === RoleType.Student ? [Validators.required] : []);
-    this.batchControl?.setValidators(role === RoleType.Student ? [Validators.required] : []);
+    this.classControl?.setValidators([]);
+    this.batchControl?.setValidators([]);
 
     if (role !== RoleType.Student) {
       this.registerForm.patchValue({
@@ -510,6 +524,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   get rFullName()        { return this.registerForm.get('fullName'); }
   get rEmail()           { return this.registerForm.get('email'); }
   get rPhone()           { return this.registerForm.get('phone'); }
+  get rEnrollmentNumber(){ return this.registerForm.get('enrollmentNumber'); }
   get rRole()            { return this.registerForm.get('role'); }
   get rCollegeId()       { return this.registerForm.get('collegeId'); }
   get rCollegeName()     { return this.registerForm.get('collegeName'); }

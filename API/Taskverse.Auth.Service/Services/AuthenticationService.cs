@@ -65,6 +65,12 @@ public class AuthenticationService : IAuthenticationService
                 return null;
             }
 
+            if (ShouldSyncStudentRecordOnLogin(user))
+            {
+                await EnsureStudentRecordAsync(user);
+                await _context.SaveChangesAsync();
+            }
+
             _logger.LogInformation($"[Login] Password verified. Generating tokens for user: {normalizedEmail}");
             var (firstName, lastName) = SplitName(user.FullName);
             var authSession = new AuthSession
@@ -344,11 +350,16 @@ public class AuthenticationService : IAuthenticationService
         user.IsBulkUploaded &&
         string.Equals(user.Role, "Student", StringComparison.OrdinalIgnoreCase);
 
+    private static bool ShouldSyncStudentRecordOnLogin(User user) =>
+        string.Equals(user.Role, "Student", StringComparison.OrdinalIgnoreCase) &&
+        user.Status == UserStatus.APPROVED &&
+        user.CollegeId.HasValue;
+
     private async Task EnsureStudentRecordAsync(User user)
     {
-        if (!user.CollegeId.HasValue || !user.ClassId.HasValue || !user.BatchId.HasValue)
+        if (!user.CollegeId.HasValue)
         {
-            throw new InvalidOperationException("Bulk uploaded students must have college, class, and batch values before activation.");
+            throw new InvalidOperationException("Bulk uploaded students must have a college value before activation.");
         }
 
         var existingStudent = await _context.Students.FirstOrDefaultAsync(student => student.UserId == user.Id);
@@ -357,6 +368,7 @@ public class AuthenticationService : IAuthenticationService
             existingStudent.FullName = user.FullName;
             existingStudent.Email = user.Email;
             existingStudent.Phone = user.Phone;
+            existingStudent.EnrollmentNumber = string.IsNullOrWhiteSpace(user.EnrollmentNumber) ? null : user.EnrollmentNumber.Trim();
             existingStudent.CollegeId = user.CollegeId.Value;
             existingStudent.ClassId = user.ClassId;
             existingStudent.BatchId = user.BatchId;
@@ -373,6 +385,7 @@ public class AuthenticationService : IAuthenticationService
             CollegeId = user.CollegeId.Value,
             ClassId = user.ClassId,
             BatchId = user.BatchId,
+            EnrollmentNumber = string.IsNullOrWhiteSpace(user.EnrollmentNumber) ? null : user.EnrollmentNumber.Trim(),
             FullName = user.FullName,
             Email = user.Email,
             Phone = user.Phone,

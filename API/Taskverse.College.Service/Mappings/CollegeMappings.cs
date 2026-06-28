@@ -66,7 +66,8 @@ public static class CollegeMappings
         dto.Capacity,
         dto.StudentCount,
         dto.CreatedAt,
-        dto.AssignedTrainers.Select(trainer => trainer.ToModel()).ToList());
+        dto.AssignedTrainers.Select(trainer => trainer.ToModel()).ToList(),
+        dto.AssignedStudents.Select(student => student.ToModel()).ToList());
 
     public static SubjectOptionRecord ToModel(this SubjectOptionDto dto) => new(
         dto.SubjectId,
@@ -78,9 +79,20 @@ public static class CollegeMappings
         dto.FullName,
         dto.Email);
 
+    public static ApprovedStudentRecord ToModel(this ApprovedStudentDto dto) => new(
+        dto.StudentId,
+        dto.UserId,
+        dto.FullName,
+        dto.Email);
+
     public static AssignBatchTrainersDto ToDto(this AssignBatchTrainersRequest model) => new()
     {
         TrainerIds = model.TrainerIds ?? []
+    };
+
+    public static AssignStudentToBatchDto ToDto(this AssignStudentToBatchRequest model) => new()
+    {
+        StudentIds = model.StudentIds ?? []
     };
 
     public static PendingUserRecord ToModel(this PendingUserDto dto) => new(

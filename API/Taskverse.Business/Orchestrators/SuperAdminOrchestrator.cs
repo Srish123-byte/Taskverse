@@ -307,17 +307,14 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 
         await EnsureUserCollegeName(context, user);
 
-        if (!user.BatchId.HasValue)
-        {
-            throw new InvalidOperationException($"Student user '{user.Id}' cannot be approved without a batch.");
-        }
-
         var existingStudent = await context.Students
             .FirstOrDefaultAsync(student => student.UserId == user.Id);
 
         if (existingStudent is not null)
         {
             existingStudent.ClassId = user.ClassId;
+            existingStudent.BatchId = user.BatchId;
+            existingStudent.EnrollmentNumber = string.IsNullOrWhiteSpace(user.EnrollmentNumber) ? null : user.EnrollmentNumber.Trim();
             existingStudent.Status = UserStatus.APPROVED;
             existingStudent.ModifiedAt = DateTime.UtcNow;
             existingStudent.ApprovedBy = approvedByUserId;
@@ -330,7 +327,8 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             UserId = user.Id,
             CollegeId = user.CollegeId.Value,
             ClassId = user.ClassId,
-            BatchId = user.BatchId.Value,
+            BatchId = user.BatchId,
+            EnrollmentNumber = string.IsNullOrWhiteSpace(user.EnrollmentNumber) ? null : user.EnrollmentNumber.Trim(),
             FullName = user.FullName,
             Email = user.Email,
             Status = UserStatus.APPROVED,

@@ -8,6 +8,7 @@ public class UserDto
     public string FullName { get; set; } = default!;
     public string Email { get; set; } = default!;
     public string? Phone { get; set; }
+    public string? EnrollmentNumber { get; set; }
     public Guid? CollegeId { get; set; }
     public string? CollegeName { get; set; }
     public Guid? ClassId { get; set; }
@@ -23,6 +24,7 @@ public class CreateUserDto
     public string FullName { get; set; } = default!;
     public string Email { get; set; } = default!;
     public string? Phone { get; set; }
+    public string? EnrollmentNumber { get; set; }
     public Guid? CollegeId { get; set; }
     public string? CollegeName { get; set; }
     public string Role { get; set; } = default!;
