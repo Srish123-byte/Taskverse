@@ -109,6 +109,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  overflow: visible;
 }
 
 .metric-icon {
@@ -116,9 +117,11 @@
   place-items: center;
   width: 44px;
   height: 44px;
+  min-width: 44px;
   border-radius: 12px;
   background: rgba(83, 157, 228, 0.16);
   color: #65c8ff;
+  flex-shrink: 0;
 }
 
 .metric-card-action .metric-icon {
@@ -130,16 +133,27 @@
   color: #76d0ff;
   font-size: 0.94rem;
   font-weight: 700;
+  text-align: right;
+  word-break: break-word;
 }
 
 .metric-caption-action {
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #ba1114;
-  color: #ffffff;
-  font-size: 0.72rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(153, 0, 0, 0.2);
+  border: 1px solid rgba(200, 0, 0, 0.4);
+  color: #cc0000;
+  font-size: 0.68rem;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  text-align: left;
+  white-space: normal;
+  line-height: 1.4;
+  box-shadow: 0 0 10px rgba(180, 0, 0, 0.35), 0 0 20px rgba(180, 0, 0, 0.15);
+  text-shadow: 0 0 8px rgba(200, 0, 0, 0.6);
 }
 
 .metric-copy {
@@ -362,10 +376,18 @@
 }
 
 .ranking-card mat-icon {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  flex-shrink: 0;
   color: #72cbff;
 }
 
 .ranking-card-alert mat-icon {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  flex-shrink: 0;
   color: #ff928b;
 }
 

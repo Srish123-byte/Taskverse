@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -34,8 +34,12 @@ import {
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'
 })
-export class LoginComponent implements OnInit, OnDestroy {
+export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   mode: AuthMode = 'login';
+  currentYear = new Date().getFullYear();
+
+  @ViewChild('bgCanvas') private canvasRef!: ElementRef<HTMLCanvasElement>;
+  private animFrame = 0;
 
   loginForm!: FormGroup;
   registerForm!: FormGroup;
@@ -128,8 +132,66 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.handleRegistrationRoleChange(this.rRole?.value);
   }
 
+  ngAfterViewInit(): void {
+    this.startCanvas();
+  }
+
   ngOnDestroy(): void {
     this.subscriptions.unsubscribe();
+    cancelAnimationFrame(this.animFrame);
+  }
+
+  private startCanvas(): void {
+    const canvas = this.canvasRef?.nativeElement;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const stars = Array.from({ length: 120 }, () => ({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: Math.random() * 1.5 + 0.3,
+      a: Math.random(),
+      speed: Math.random() * 0.004 + 0.001,
+      phase: Math.random() * Math.PI * 2
+    }));
+
+    const draw = (t: number) => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      stars.forEach(s => {
+        s.a = 0.3 + 0.5 * Math.sin(t * s.speed + s.phase);
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0, 191, 255, ${s.a})`;
+        ctx.fill();
+      });
+
+      for (let i = 0; i < stars.length; i++) {
+        for (let j = i + 1; j < stars.length; j++) {
+          const dx = stars[i].x - stars[j].x;
+          const dy = stars[i].y - stars[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 120) {
+            ctx.beginPath();
+            ctx.moveTo(stars[i].x, stars[i].y);
+            ctx.lineTo(stars[j].x, stars[j].y);
+            ctx.strokeStyle = `rgba(0, 191, 255, ${0.06 * (1 - dist / 120)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+
+      this.animFrame = requestAnimationFrame(draw);
+    };
+    this.animFrame = requestAnimationFrame(draw);
   }
 
   switchMode(mode: AuthMode): void {

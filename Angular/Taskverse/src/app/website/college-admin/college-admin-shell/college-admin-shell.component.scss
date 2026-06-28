@@ -18,6 +18,10 @@
   rgba(238, 155, 0, 0.48)
 );
 
+.college-admin-shell {
+  background: #101a31;
+}
+
 .shell-sidebar {
   gap: 24px;
 }
@@ -112,54 +116,13 @@
   height: 100%;
 }
 
-.shell-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 14px 24px;
-  background: rgba(255, 255, 255, 0.72);
-  border-bottom: 1px solid rgba(15, 41, 66, 0.08);
-}
-
-.search-shell {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-width: min(520px, 100%);
-  padding: 0 14px;
-  border-radius: 999px;
-  background: #11192f;
-  color: #8ea0c8;
-}
-
-.search-icon {
-  width: 18px;
-  height: 18px;
-  flex: 0 0 auto;
-}
-
-.search-shell input {
-  width: 100%;
-  padding: 12px 0;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: #dfe7ff;
-  font: inherit;
-}
-
-.search-shell input::placeholder {
-  color: #7e92bd;
-}
-
 .shell-content {
   flex: 1;
   min-width: 0;
   min-height: 0;
   padding: 26px 24px 28px;
   background: #101a31;
-  overflow-y: auto;
+  scroll-behavior: smooth;
 }
 
 @media (max-width: 640px) {

@@ -18,7 +18,7 @@
   #{$root-selector} {
     display: grid;
     grid-template-columns: 280px minmax(0, 1fr);
-    height: 100dvh;
+    height: 100%;
     overflow: hidden;
     background:
       radial-gradient(circle at top left, $background-start, transparent 26%),
@@ -28,10 +28,11 @@
   #{$root-selector} .shell-sidebar {
     display: flex;
     flex-direction: column;
-    gap: 28px;
+    gap: 20px;
     height: 100%;
-    padding: 28px 22px;
+    padding: 24px 18px;
     overflow-y: auto;
+    overflow-x: hidden;
     background: linear-gradient(180deg, $sidebar-start 0%, $sidebar-end 100%);
     box-shadow: 10px 0 30px rgba(15, 23, 42, 0.14);
   }
@@ -47,11 +48,17 @@
     place-items: center;
     width: 50px;
     height: 50px;
-    border-radius: 16px;
+    border-radius: 12px;
     background: linear-gradient(135deg, $brand-start 0%, $brand-end 100%);
     color: $brand-foreground;
     font-weight: 800;
     letter-spacing: 0.06em;
+  }
+
+  #{$root-selector} .brand-mark mat-icon {
+    width: 26px;
+    height: 26px;
+    font-size: 26px;
   }
 
   #{$root-selector} .brand-eyebrow {
@@ -79,9 +86,9 @@
     align-items: center;
     gap: 12px;
     width: 100%;
-    padding: 14px 16px;
+    padding: 10px 14px;
     border: 1px solid transparent;
-    border-radius: 16px;
+    border-radius: 10px;
     color: $nav-color;
     background: transparent;
     text-decoration: none;
@@ -116,6 +123,9 @@
     min-width: 0;
     height: 100%;
     overflow-y: auto;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
     padding: 18px 0 36px;
   }
 
