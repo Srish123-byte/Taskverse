@@ -12,7 +12,7 @@ phases:
       - echo "===== INSTALL PHASE ====="
       - cd Angular/Taskverse
       - echo "Installing npm dependencies..."
-      - npm install
+      - npm ci --legacy-peer-deps
 
   build:
     commands:

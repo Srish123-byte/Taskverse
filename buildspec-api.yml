@@ -29,9 +29,6 @@ phases:
 
       - dotnet publish Taskverse.API/Taskverse.API.csproj -c Release --no-build -o output/Taskverse.API
 
-      - dotnet publish Taskverse.API.Users.Service/Taskverse.API.Users.Service.csproj -c Release --no-build -o output/Users
-
-      - dotnet publish Taskverse.API.Authentication.Service/Taskverse.API.Authentication.Service.csproj -c Release --no-build -o output/Authentication
 
       - dotnet publish Taskverse.API.Assessments.Service/Taskverse.API.Assessments.Service.csproj -c Release --no-build -o output/Assessments
 
