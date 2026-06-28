@@ -38,7 +38,6 @@ phases:
 
       - dotnet publish Taskverse.API.CodingEngine.Service/Taskverse.API.CodingEngine.Service.csproj -c Release --no-build -o output/CodingEngine
 
-      - dotnet publish Taskverse.API.ExamEngine.Service/Taskverse.API.ExamEngine.Service.csproj -c Release --no-build -o output/ExamEngine
 
       - dotnet publish Taskverse.Auth.Service/Taskverse.API.Auth.Service.csproj -c Release --no-build -o output/Auth
 
