@@ -58,6 +58,13 @@
         <mat-error *ngIf="rPhone?.hasError('pattern')">Phone must be digits only, maximum 11 digits</mat-error>
       </mat-form-field>
 
+      <mat-form-field *ngIf="rRole?.value === 'Student'" appearance="outline" class="full-width">
+        <mat-label>Enrollment Number</mat-label>
+        <input matInput formControlName="enrollmentNumber" id="reg-enrollment-number" maxlength="50" />
+        <mat-hint align="end">{{ rEnrollmentNumber?.value?.length ?? 0 }}/50</mat-hint>
+        <mat-error *ngIf="rEnrollmentNumber?.hasError('maxlength')">Enrollment number must not exceed 50 characters</mat-error>
+      </mat-form-field>
+
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Role</mat-label>
         <mat-select formControlName="role" id="reg-role">
