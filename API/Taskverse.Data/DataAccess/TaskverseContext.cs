@@ -262,8 +262,8 @@ public class TaskverseContext : DbContext
             entity.HasKey(a => a.AssessmentId);
             entity.Property(a => a.AssessmentId).HasColumnName("assessment_id").HasDefaultValueSql("gen_random_uuid()");
             entity.Property(a => a.CollegeId).HasColumnName("college_id");
-            entity.Property(a => a.SubjectId).HasColumnName("subject_id");
-            entity.Property(a => a.TopicId).HasColumnName("topic_id");
+            entity.Property(a => a.SubjectIds).HasColumnName("subject_id").HasColumnType("uuid[]");
+            entity.Property(a => a.TopicIds).HasColumnName("topic_id").HasColumnType("uuid[]");
             entity.Property(a => a.AssessmentName).HasColumnName("assessment_name").IsRequired().HasMaxLength(120);
             entity.Property(a => a.AssessmentType).HasColumnName("assessment_type").HasConversion<int>();
             entity.Property(a => a.AssessmentStatus).HasColumnName("assessment_status").HasConversion<int>();
@@ -288,20 +288,6 @@ public class TaskverseContext : DbContext
             entity.Property(a => a.SoftDeletedBy).HasColumnName("soft_deleted_by").HasMaxLength(200);
             entity.HasQueryFilter(a => a.AssessmentStatus != AssessmentStatus.Soft_Deleted);
 
-            entity.HasIndex(a => a.SubjectId);
-            entity.HasIndex(a => a.TopicId);
-
-            entity.HasOne(a => a.Subject)
-                .WithMany(s => s.Assessments)
-                .HasForeignKey(a => a.SubjectId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("fk_assessments_subject");
-
-            entity.HasOne(a => a.Topic)
-                .WithMany(t => t.Assessments)
-                .HasForeignKey(a => a.TopicId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("fk_assessments_topic");
         });
 
         // Configure AssessmentQuestion entity

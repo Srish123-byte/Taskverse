@@ -79,6 +79,19 @@ export interface QuestionClassificationCatalog {
   subjects: QuestionSubjectCatalogItem[];
 }
 
+export interface CreateQuestionClassificationEntryRequest {
+  subjectId?: string;
+  subjectName?: string;
+  topicName?: string;
+}
+
+export interface QuestionClassificationEntry {
+  subjectId: string;
+  subjectName: string;
+  topicId?: string | null;
+  topicName?: string | null;
+}
+
 export interface AssessmentAssignmentBatch {
   batchId: string;
   classId: string;
@@ -100,10 +113,8 @@ export interface AssessmentAssignmentCatalog {
 
 export interface CreateAssessmentRequest {
   assessmentName: string;
-  subjectId?: string | null;
-  subjectName?: string | null;
-  topicId?: string | null;
-  topicName?: string | null;
+  subjectIds: string[];
+  topicIds: string[];
   instructions?: string | null;
   allowLateEntry: boolean;
   allowQuestionReview: boolean;
@@ -125,10 +136,14 @@ export interface PublishAssessmentRequest extends CreateAssessmentRequest {
 export interface AssessmentRecord {
   assessmentId: string;
   collegeId: string;
-  subjectId?: string | null;
+  subjectIds: string[];
+  subjectNames: string[];
   subjectName?: string | null;
-  topicId?: string | null;
+  subjectDisplayLabel?: string | null;
+  topicIds: string[];
+  topicNames: string[];
   topicName?: string | null;
+  topicDisplayLabel?: string | null;
   assessmentName: string;
   assessmentType: string;
   assessmentStatus: string;
@@ -162,8 +177,14 @@ export interface AssessmentManagementSearchRequest {
 export interface AssessmentManagementItem {
   assessmentId: string;
   assessmentName: string;
+  subjectIds: string[];
+  subjectNames: string[];
   subjectName?: string | null;
+  subjectDisplayLabel?: string | null;
+  topicIds: string[];
+  topicNames: string[];
   topicName?: string | null;
+  topicDisplayLabel?: string | null;
   assessmentStatus: string;
   assessmentDate?: string | null;
   startDateTime?: string | null;
@@ -206,8 +227,16 @@ export class AssessmentAdminService {
     return this.http.get<QuestionClassificationCatalog>(`${this.url}/questions/catalog`);
   }
 
+  createQuestionClassificationEntry(request: CreateQuestionClassificationEntryRequest): Observable<QuestionClassificationEntry> {
+    return this.http
+      .post<any>(`${this.url}/questions/catalog/items`, request)
+      .pipe(map((item: any) => this.mapQuestionClassificationEntry(item)));
+  }
+
   searchAssessments(request: AssessmentManagementSearchRequest): Observable<PagedAssessmentManagementResult> {
-    return this.http.post<PagedAssessmentManagementResult>(`${this.url}/search`, request);
+    return this.http
+      .post<any>(`${this.url}/search`, request)
+      .pipe(map((result: any) => this.mapAssessmentManagementResult(result)));
   }
 
   createQuestions(request: CreateQuestionRequest[]): Observable<QuestionBankItem[]> {
@@ -290,10 +319,18 @@ export class AssessmentAdminService {
     return {
       assessmentId: record?.assessmentId ?? record?.assessment_id ?? record?.AssessmentId ?? '',
       collegeId: record?.collegeId ?? record?.college_id ?? record?.CollegeId ?? '',
-      subjectId: record?.subjectId ?? record?.subject_id ?? record?.SubjectId ?? null,
+      subjectIds: record?.subjectIds ?? record?.subject_ids ?? record?.SubjectIds ?? [],
+      subjectNames: record?.subjectNames ?? record?.subject_names ?? record?.SubjectNames ?? [],
       subjectName: record?.subjectName ?? record?.subject_name ?? record?.SubjectName ?? null,
-      topicId: record?.topicId ?? record?.topic_id ?? record?.TopicId ?? null,
+      subjectDisplayLabel:
+        record?.subjectDisplayLabel ?? record?.subject_display_label ?? record?.SubjectDisplayLabel ??
+        record?.subjectName ?? record?.subject_name ?? record?.SubjectName ?? null,
+      topicIds: record?.topicIds ?? record?.topic_ids ?? record?.TopicIds ?? [],
+      topicNames: record?.topicNames ?? record?.topic_names ?? record?.TopicNames ?? [],
       topicName: record?.topicName ?? record?.topic_name ?? record?.TopicName ?? null,
+      topicDisplayLabel:
+        record?.topicDisplayLabel ?? record?.topic_display_label ?? record?.TopicDisplayLabel ??
+        record?.topicName ?? record?.topic_name ?? record?.TopicName ?? null,
       assessmentName: record?.assessmentName ?? record?.assessment_name ?? record?.AssessmentName ?? '',
       assessmentType: record?.assessmentType ?? record?.assessment_type ?? record?.AssessmentType ?? '',
       assessmentStatus: record?.assessmentStatus ?? record?.assessment_status ?? record?.AssessmentStatus ?? '',
@@ -315,6 +352,50 @@ export class AssessmentAdminService {
       createdAt: record?.createdAt ?? record?.created_at ?? record?.CreatedAt ?? '',
       modifiedAt: record?.modifiedAt ?? record?.modified_at ?? record?.ModifiedAt ?? null,
       questionIds: record?.questionIds ?? record?.question_ids ?? record?.QuestionIds ?? []
+    };
+  }
+
+  private mapAssessmentManagementResult(result: any): PagedAssessmentManagementResult {
+    return {
+      items: (result?.items ?? result?.Items ?? []).map((item: any) => this.mapAssessmentManagementItem(item)),
+      totalCount: result?.totalCount ?? result?.TotalCount ?? 0,
+      activeCount: result?.activeCount ?? result?.ActiveCount ?? 0,
+      completedCount: result?.completedCount ?? result?.CompletedCount ?? 0,
+      pageNumber: result?.pageNumber ?? result?.PageNumber ?? 1,
+      pageSize: result?.pageSize ?? result?.PageSize ?? 10
+    };
+  }
+
+  private mapAssessmentManagementItem(item: any): AssessmentManagementItem {
+    return {
+      assessmentId: item?.assessmentId ?? item?.assessment_id ?? item?.AssessmentId ?? '',
+      assessmentName: item?.assessmentName ?? item?.assessment_name ?? item?.AssessmentName ?? '',
+      subjectIds: item?.subjectIds ?? item?.subject_ids ?? item?.SubjectIds ?? [],
+      subjectNames: item?.subjectNames ?? item?.subject_names ?? item?.SubjectNames ?? [],
+      subjectName: item?.subjectName ?? item?.subject_name ?? item?.SubjectName ?? null,
+      subjectDisplayLabel:
+        item?.subjectDisplayLabel ?? item?.subject_display_label ?? item?.SubjectDisplayLabel ??
+        item?.subjectName ?? item?.subject_name ?? item?.SubjectName ?? null,
+      topicIds: item?.topicIds ?? item?.topic_ids ?? item?.TopicIds ?? [],
+      topicNames: item?.topicNames ?? item?.topic_names ?? item?.TopicNames ?? [],
+      topicName: item?.topicName ?? item?.topic_name ?? item?.TopicName ?? null,
+      topicDisplayLabel:
+        item?.topicDisplayLabel ?? item?.topic_display_label ?? item?.TopicDisplayLabel ??
+        item?.topicName ?? item?.topic_name ?? item?.TopicName ?? null,
+      assessmentStatus: item?.assessmentStatus ?? item?.assessment_status ?? item?.AssessmentStatus ?? '',
+      assessmentDate: item?.assessmentDate ?? item?.assessment_date ?? item?.AssessmentDate ?? null,
+      startDateTime: item?.startDateTime ?? item?.start_datetime ?? item?.StartDateTime ?? null,
+      totalMarks: item?.totalMarks ?? item?.total_marks ?? item?.TotalMarks ?? 0,
+      difficultyLevel: item?.difficultyLevel ?? item?.difficulty_level ?? item?.DifficultyLevel ?? 0
+    };
+  }
+
+  private mapQuestionClassificationEntry(item: any): QuestionClassificationEntry {
+    return {
+      subjectId: item?.subjectId ?? item?.subject_id ?? item?.SubjectId ?? '',
+      subjectName: item?.subjectName ?? item?.subject_name ?? item?.SubjectName ?? '',
+      topicId: item?.topicId ?? item?.topic_id ?? item?.TopicId ?? null,
+      topicName: item?.topicName ?? item?.topic_name ?? item?.TopicName ?? null
     };
   }
 }

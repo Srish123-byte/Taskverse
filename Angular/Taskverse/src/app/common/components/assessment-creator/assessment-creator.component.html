@@ -30,7 +30,13 @@
       <div class="builder-main">
         <article class="surface-card" *ngIf="!isInitialPageLoading">
           <div class="card-title-row">
-            <h3>Assessment Details</h3>
+            <div>
+              <h3>Assessment Details</h3>
+              <p *ngIf="isEditMode">
+                {{ selectedSubjectSummary }} |
+                {{ selectedTopicSummary }}
+              </p>
+            </div>
           </div>
 
           <div class="form-grid">
@@ -39,25 +45,107 @@
               <input type="text" [(ngModel)]="assessmentName" placeholder="Senior Backend Engineer - Module 2" />
             </label>
 
-            <label class="field">
+            <div class="field">
               <span>Subject</span>
-              <select [(ngModel)]="selectedSubjectId" (ngModelChange)="onSubjectChange()">
-                <option value="">Select subject</option>
-                <option *ngFor="let subject of visibleSubjects; trackBy: trackBySubjectId" [value]="subject.subjectId">
-                  {{ subject.subjectName }}
-                </option>
-              </select>
-            </label>
+              <div class="filter-dropdown">
+                <button
+                  type="button"
+                  class="filter-dropdown-trigger"
+                  [class.is-open]="isSubjectFilterMenuOpen"
+                  (click)="toggleSubjectFilterMenu()">
+                  <span>{{ subjectFilterButtonLabel }}</span>
+                  <span class="filter-dropdown-caret">▾</span>
+                </button>
 
-            <label class="field">
+                <div class="filter-dropdown-menu" *ngIf="isSubjectFilterMenuOpen">
+                  <label class="filter-dropdown-option" *ngFor="let subject of visibleSubjects; trackBy: trackBySubjectId">
+                    <input
+                      type="checkbox"
+                      [checked]="isSubjectSelected(subject.subjectId)"
+                      (change)="toggleSubjectSelection(subject.subjectId)" />
+                    <span>{{ subject.subjectName }}</span>
+                  </label>
+
+                  <button type="button" class="filter-dropdown-create" (click)="showSubjectCreationForm()">
+                    + Create New Subject
+                  </button>
+
+                  <div class="filter-dropdown-create-panel" *ngIf="isSubjectCreationFormVisible">
+                    <input
+                      type="text"
+                      [(ngModel)]="newSubjectName"
+                      placeholder="Enter new subject name"
+                      [disabled]="isCreatingSubject" />
+                    <div class="filter-dropdown-inline-actions">
+                      <button type="button" class="filter-dropdown-inline-btn is-muted" (click)="cancelSubjectCreation()">Cancel</button>
+                      <button type="button" class="filter-dropdown-inline-btn" (click)="createSubject()" [disabled]="isCreatingSubject">
+                        {{ isCreatingSubject ? 'Creating...' : 'Create' }}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="filter-dropdown-actions">
+                    <button type="button" class="filter-dropdown-link" (click)="clearSubjectSelections()">Clear</button>
+                    <button type="button" class="filter-dropdown-link" (click)="closeFilterMenus()">Done</button>
+                  </div>
+                </div>
+              </div>
+              <small class="field-help">Optional. Selected subjects are stored on the assessment even if no chosen question matches them.</small>
+            </div>
+
+            <div class="field">
               <span>Topic</span>
-              <select [(ngModel)]="selectedTopicId">
-                <option value="">Select topic</option>
-                <option *ngFor="let topic of visibleTopics" [value]="topic.topicId">
-                  {{ topic.topicName }}
-              </option>
-            </select>
-            </label>
+              <div class="filter-dropdown">
+                <button
+                  type="button"
+                  class="filter-dropdown-trigger"
+                  [class.is-open]="isTopicFilterMenuOpen"
+                  (click)="toggleTopicFilterMenu()">
+                  <span>{{ topicFilterButtonLabel }}</span>
+                  <span class="filter-dropdown-caret">▾</span>
+                </button>
+
+                <div class="filter-dropdown-menu" *ngIf="isTopicFilterMenuOpen">
+                  <label class="filter-dropdown-option" *ngFor="let topic of visibleTopics; trackBy: trackByTopicId">
+                    <input
+                      type="checkbox"
+                      [checked]="isTopicSelected(topic.topicId)"
+                      (change)="toggleTopicSelection(topic.topicId)" />
+                    <span>{{ topic.topicName }}</span>
+                  </label>
+
+                  <button type="button" class="filter-dropdown-create" (click)="showTopicCreationForm()">
+                    + Create New Topic
+                  </button>
+
+                  <div class="filter-dropdown-create-panel" *ngIf="isTopicCreationFormVisible">
+                    <select [(ngModel)]="newTopicSubjectId" [disabled]="isCreatingTopic">
+                      <option value="">Select subject</option>
+                      <option *ngFor="let subject of topicCreationSubjects; trackBy: trackBySubjectId" [value]="subject.subjectId">
+                        {{ subject.subjectName }}
+                      </option>
+                    </select>
+                    <input
+                      type="text"
+                      [(ngModel)]="newTopicName"
+                      placeholder="Enter new topic name"
+                      [disabled]="isCreatingTopic" />
+                    <div class="filter-dropdown-inline-actions">
+                      <button type="button" class="filter-dropdown-inline-btn is-muted" (click)="cancelTopicCreation()">Cancel</button>
+                      <button type="button" class="filter-dropdown-inline-btn" (click)="createTopic()" [disabled]="isCreatingTopic">
+                        {{ isCreatingTopic ? 'Creating...' : 'Create' }}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="filter-dropdown-actions">
+                    <button type="button" class="filter-dropdown-link" (click)="clearTopicSelections()">Clear</button>
+                    <button type="button" class="filter-dropdown-link" (click)="closeFilterMenus()">Done</button>
+                  </div>
+                </div>
+              </div>
+              <small class="field-help">Optional. Topics are available across the currently selected subjects. Leave empty to derive topics from selected questions only.</small>
+            </div>
 
             <label class="field">
               <span>Duration (minutes)</span>

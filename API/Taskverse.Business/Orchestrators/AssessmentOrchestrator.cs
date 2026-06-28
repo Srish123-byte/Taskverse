@@ -275,6 +275,32 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         };
     }
 
+    public async Task<QuestionClassificationEntryDto> CreateQuestionClassificationEntry(CreateQuestionClassificationEntryDto dto)
+    {
+        _log.Debug($"AssessmentOrchestrator.CreateQuestionClassificationEntry: subjectId={dto.SubjectId}, subjectName={dto.SubjectName}, topicName={dto.TopicName}");
+
+        var result = await _microServiceOrchestrator.CreateQuestionClassificationEntry(dto.ToMicroServiceModel());
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<QuestionClassificationEntryModel>()
+                ?? throw new InvalidOperationException("CreateQuestionClassificationEntry returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"CreateQuestionClassificationEntry failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status404NotFound => new KeyNotFoundException(message),
+            StatusCodes.Status409Conflict => new InvalidOperationException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new Exception(message)
+        };
+    }
+
     public async Task<AssessmentQuestionDto> GetQuestion(Guid questionId, Guid collegeId)
     {
         _log.Debug($"AssessmentOrchestrator.GetQuestion: questionId={questionId}, collegeId={collegeId}");
