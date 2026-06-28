@@ -10,6 +10,7 @@ public class User
         public string FullName { get; set; } = null!;
         public string Email { get; set; } = null!;
         public string? Phone { get; set; }
+        public string? EnrollmentNumber { get; set; }
 
         public Guid? CollegeId { get; set; }
         public string? CollegeName { get; set; }

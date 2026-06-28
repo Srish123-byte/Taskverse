@@ -855,6 +855,7 @@ public class CollegeOrchestrator : ICollegeOrchestrator
         {
             existingStudent.ClassId = user.ClassId;
             existingStudent.BatchId = user.BatchId;
+            existingStudent.EnrollmentNumber = string.IsNullOrWhiteSpace(user.EnrollmentNumber) ? null : user.EnrollmentNumber.Trim();
             existingStudent.Status = UserStatus.APPROVED;
             existingStudent.ModifiedAt = DateTime.UtcNow;
             existingStudent.ApprovedBy = approvedByUserId;
@@ -868,6 +869,7 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             CollegeId = user.CollegeId.Value,
             ClassId = user.ClassId,
             BatchId = user.BatchId,       // nullable – allowed to be null
+            EnrollmentNumber = string.IsNullOrWhiteSpace(user.EnrollmentNumber) ? null : user.EnrollmentNumber.Trim(),
             FullName = user.FullName,
             Email = user.Email,
             Phone = user.Phone,

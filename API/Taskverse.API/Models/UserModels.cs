@@ -8,6 +8,7 @@ public class UserResponseModel
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string? Phone { get; set; }
+    public string? EnrollmentNumber { get; set; }
     public Guid? CollegeId { get; set; }
     [JsonProperty("collegeName")]
     public string? CollegeName { get; set; }
@@ -24,6 +25,7 @@ public class CreateUserRequestModel
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string? Phone { get; set; }
+    public string? EnrollmentNumber { get; set; }
     public Guid? CollegeId { get; set; }
     [JsonProperty("collegeName")]
     public string? CollegeName { get; set; }
