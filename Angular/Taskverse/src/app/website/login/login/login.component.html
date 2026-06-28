@@ -1,7 +1,17 @@
 <div class="login-page">
+  <div class="login-page-logo">
+    <img src="assets/taskverse-logo.svg" alt="Taskverse" class="login-logo-img" />
+  </div>
+  <div class="login-page-footer">
+    &copy; {{ currentYear }} Taskverse. All rights reserved.
+  </div>
+  <canvas class="login-bg-canvas" #bgCanvas></canvas>
+  <div class="login-glow-1"></div>
+  <div class="login-glow-2"></div>
   <div class="login-card mat-elevation-z4">
 
     <h1 class="login-title">Taskverse</h1>
+    <p class="login-subtitle">Assessment Platform</p>
 
     <div class="auth-tabs">
       <button type="button" class="tab-btn" [class.active]="mode === 'login'" (click)="switchMode('login')" id="tab-login">Sign In</button>

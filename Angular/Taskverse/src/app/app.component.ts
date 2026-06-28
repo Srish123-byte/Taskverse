@@ -1,4 +1,5 @@
 import { Component, OnInit, Renderer2, Inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { AppConfig } from './app.config';
 import { Meta } from '@angular/platform-browser';
 import { DOCUMENT } from '@angular/common';
@@ -20,8 +21,13 @@ export class AppComponent implements OnInit {
     private readonly renderer: Renderer2,
     @Inject(DOCUMENT) private readonly document: Document,
     private readonly locationStrategyService: LocationStrategyService,
-    private readonly sessionActivityService: SessionActivityService
+    private readonly sessionActivityService: SessionActivityService,
+    private readonly router: Router
   ) {}
+
+  get isLoginPage(): boolean {
+    return this.router.url === '/login' || this.router.url === '/';
+  }
 
   ngOnInit(): void {
     this.locationStrategyService.init();

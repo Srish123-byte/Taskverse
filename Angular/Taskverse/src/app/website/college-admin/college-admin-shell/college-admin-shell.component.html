@@ -2,11 +2,9 @@
   <aside class="shell-sidebar">
     <div class="shell-brand">
       <div class="brand-mark">
-        <mat-icon>school</mat-icon>
+        <mat-icon>account_balance</mat-icon>
       </div>
-      <div>
-        <div class="brand-title">TASKVERSE</div>
-      </div>
+      <div class="brand-title">College Admin</div>
     </div>
 
     <section class="institution-card" aria-label="Institution summary">
@@ -50,13 +48,6 @@
   </aside>
 
   <main class="shell-main">
-    <header *ngIf="showHeaderSearch" class="shell-header">
-      <label class="search-shell" for="collegeAdminSearch">
-        <img src="assets/icons/shared/magnifier.svg" alt="" class="search-icon" aria-hidden="true" />
-        <input id="collegeAdminSearch" type="search" placeholder="Search assessments, students, or batches..." />
-      </label>
-    </header>
-
     <section class="shell-content">
       <router-outlet></router-outlet>
     </section>
