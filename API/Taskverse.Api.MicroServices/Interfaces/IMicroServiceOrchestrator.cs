@@ -61,6 +61,24 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> GetStudentResults(Guid studentId);
     Task<ObjectResult> GetStudentAttemptResult(Guid attemptId);
 
+    // Enterprise Reports
+    Task<ObjectResult> GetCollegeWiseReport(Guid? collegeId, DateTime? dateFrom, DateTime? dateTo, string? academicYear);
+    Task<byte[]> ExportCollegeWisePdf(Guid? collegeId, DateTime? dateFrom, DateTime? dateTo, string? academicYear);
+    Task<byte[]> ExportCollegeWiseExcel(Guid? collegeId, DateTime? dateFrom, DateTime? dateTo, string? academicYear);
+
+    Task<ObjectResult> GetBranchWiseReport(Guid? collegeId, Guid? classId, Guid? batchId, DateTime? dateFrom, DateTime? dateTo);
+    Task<byte[]> ExportBranchWisePdf(Guid? collegeId, Guid? classId, Guid? batchId, DateTime? dateFrom, DateTime? dateTo);
+    Task<byte[]> ExportBranchWiseExcel(Guid? collegeId, Guid? classId, Guid? batchId, DateTime? dateFrom, DateTime? dateTo);
+
+    Task<ObjectResult> GetStudentPerformanceReport(Guid? collegeId, Guid? classId, Guid? batchId, Guid? studentId, Guid? trainerId, Guid? assessmentId, DateTime? dateFrom, DateTime? dateTo, string? performanceLevel);
+    Task<byte[]> ExportStudentPerformancePdf(Guid? collegeId, Guid? classId, Guid? batchId, Guid? studentId, Guid? trainerId, Guid? assessmentId, DateTime? dateFrom, DateTime? dateTo, string? performanceLevel);
+    Task<byte[]> ExportStudentPerformanceExcel(Guid? collegeId, Guid? classId, Guid? batchId, Guid? studentId, Guid? trainerId, Guid? assessmentId, DateTime? dateFrom, DateTime? dateTo, string? performanceLevel);
+
+    Task<ObjectResult> GetCollegesFilter();
+    Task<ObjectResult> GetBranchesFilter(Guid? collegeId);
+    Task<ObjectResult> GetBatchesFilter(Guid? classId);
+    Task<ObjectResult> GetTrainersFilter(Guid? collegeId);
+
     // Proctor
     Task<ObjectResult> StartProctorSession(Guid attemptId, Guid studentUserId, StartProctorSessionModel model);
     Task<ObjectResult> HeartbeatProctorSession(Guid sessionId, Guid studentUserId, SessionHeartbeatModel model);

@@ -1,0 +1,135 @@
+<div class="page-container reports-page">
+  <div class="page-header">
+    <h2 class="page-title">Reports</h2>
+    <div class="header-actions">
+      <button type="button" class="btn btn-primary" (click)="exportPdf()">
+        <span class="btn-icon">📄</span> Export PDF
+      </button>
+      <button type="button" class="btn btn-success" (click)="exportExcel()">
+        <span class="btn-icon">📊</span> Export Excel
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter Panel -->
+  <div class="card filter-card">
+    <div class="filter-header">
+      <h3>Filters</h3>
+      <button type="button" class="btn btn-text" (click)="clearFilters()">Clear All</button>
+    </div>
+    <div class="filters">
+      <div class="filter-group">
+        <label for="saCollegeFilter">College</label>
+        <select id="saCollegeFilter" [(ngModel)]="selectedCollegeId" (change)="applyFilters()">
+          <option value="">All Colleges</option>
+          <option *ngFor="let c of colleges" [value]="c.id">{{ c.name }}</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="saDateFrom">From Date</label>
+        <input id="saDateFrom" type="date" [(ngModel)]="dateFrom" (change)="applyFilters()" />
+      </div>
+      <div class="filter-group">
+        <label for="saDateTo">To Date</label>
+        <input id="saDateTo" type="date" [(ngModel)]="dateTo" (change)="applyFilters()" />
+      </div>
+      <div class="filter-group">
+        <label for="saAcademicYear">Academic Year</label>
+        <input id="saAcademicYear" type="text" [(ngModel)]="academicYear" placeholder="e.g. 2025-26" (change)="applyFilters()" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Loading report data...</p>
+  </div>
+
+  <!-- Error -->
+  <div class="error-state" *ngIf="error">
+    <p>{{ error }}</p>
+    <button type="button" class="btn btn-primary" (click)="loadReport()">Retry</button>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="summary-cards" *ngIf="report && !loading">
+    <div class="summary-card">
+      <div class="card-icon">🏛️</div>
+      <div class="card-value">{{ report.summary.totalColleges }}</div>
+      <div class="card-label">Total Colleges</div>
+    </div>
+    <div class="summary-card">
+      <div class="card-icon">👨‍🎓</div>
+      <div class="card-value">{{ report.summary.totalStudents }}</div>
+      <div class="card-label">Total Students</div>
+    </div>
+    <div class="summary-card">
+      <div class="card-icon">👨‍🏫</div>
+      <div class="card-value">{{ report.summary.totalTrainers }}</div>
+      <div class="card-label">Total Trainers</div>
+    </div>
+    <div class="summary-card">
+      <div class="card-icon">📝</div>
+      <div class="card-value">{{ report.summary.totalAssessments }}</div>
+      <div class="card-label">Total Assessments</div>
+    </div>
+    <div class="summary-card highlight">
+      <div class="card-icon">📈</div>
+      <div class="card-value">{{ report.summary.averageScore }}%</div>
+      <div class="card-label">Average Score</div>
+    </div>
+    <div class="summary-card highlight">
+      <div class="card-icon">✅</div>
+      <div class="card-value">{{ report.summary.overallPassPercentage }}%</div>
+      <div class="card-label">Pass Percentage</div>
+    </div>
+  </div>
+
+  <!-- Data Table -->
+  <div class="card data-table-card" *ngIf="report && !loading">
+    <h3>College Wise Performance</h3>
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>College Name</th>
+            <th>Students</th>
+            <th>Trainers</th>
+            <th>Assessments</th>
+            <th>Completed</th>
+            <th>Avg Score</th>
+            <th>Highest</th>
+            <th>Lowest</th>
+            <th>Pass %</th>
+            <th>Active</th>
+            <th>Grade</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of report.rows; let i = index" [class.alt-row]="i % 2 === 1">
+            <td class="college-name">{{ row.collegeName }}</td>
+            <td>{{ row.totalStudents }}</td>
+            <td>{{ row.totalTrainers }}</td>
+            <td>{{ row.totalAssessments }}</td>
+            <td>{{ row.assessmentsCompleted }}</td>
+            <td><strong>{{ row.averageScore }}%</strong></td>
+            <td class="score-high">{{ row.highestScore }}%</td>
+            <td class="score-low">{{ row.lowestScore }}%</td>
+            <td>{{ row.passPercentage }}%</td>
+            <td>{{ row.activeStudents }}</td>
+            <td><span class="grade-badge" [ngClass]="getGradeClass(row.performanceGrade)">{{ row.performanceGrade }}</span></td>
+          </tr>
+          <tr *ngIf="report.rows.length === 0">
+            <td colspan="11" class="no-data">No data available for the selected filters.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Report Metadata -->
+  <div class="report-meta" *ngIf="report && !loading">
+    <p>Report: {{ report.metadata.reportTitle }} | Generated: {{ report.metadata.generatedDate }} {{ report.metadata.generatedTime }} UTC | By: {{ report.metadata.generatedBy }}</p>
+  </div>
+</div>

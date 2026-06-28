@@ -82,6 +82,10 @@ public class Startup
         services.AddScoped<IResultEvaluationStrategyFactory, ResultEvaluationStrategyFactory>();
         services.AddScoped<IResultEvaluationStrategy, McqResultEvaluationStrategy>();
         services.AddScoped<IResultEvaluationStrategy, CodingResultEvaluationStrategy>();
+
+        // Enterprise Reports
+        services.AddScoped<IEnterpriseReportsManager, EnterpriseReportsManager>();
+        services.AddScoped<IEnterpriseReportsOrchestrator, EnterpriseReportsOrchestrator>();
     }
 
     private static void ConfigureSwagger(IServiceCollection services)

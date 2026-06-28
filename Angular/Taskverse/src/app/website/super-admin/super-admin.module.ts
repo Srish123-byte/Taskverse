@@ -9,6 +9,7 @@ import { UsersComponent } from './users/users.component';
 import { AnalyticsComponent } from './analytics/analytics.component';
 import { AssessmentsComponent } from './assessments/assessments.component';
 import { SettingsComponent } from './settings/settings.component';
+import { ReportsComponent } from './reports/reports.component';
 
 @NgModule({
   declarations: [
@@ -18,7 +19,8 @@ import { SettingsComponent } from './settings/settings.component';
     UsersComponent,
     AnalyticsComponent,
     AssessmentsComponent,
-    SettingsComponent
+    SettingsComponent,
+    ReportsComponent
   ],
   imports: [
     CommonModule,

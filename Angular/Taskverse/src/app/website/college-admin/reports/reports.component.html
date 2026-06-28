@@ -1,6 +1,86 @@
-<div class="page-container">
-  <h2 class="page-title">Reports</h2>
-  <div class="page-content">
-    Institutional summaries, batch performance, and outcome exports will live here.
+<div class="page-container reports-page">
+  <div class="page-header">
+    <h2 class="page-title">Reports</h2>
+    <div class="header-actions">
+      <button type="button" class="btn btn-primary" (click)="exportPdf()"><span class="btn-icon">📄</span> Export PDF</button>
+      <button type="button" class="btn btn-success" (click)="exportExcel()"><span class="btn-icon">📊</span> Export Excel</button>
+    </div>
+  </div>
+
+  <div class="card filter-card">
+    <div class="filter-header">
+      <h3>Filters</h3>
+      <button type="button" class="btn btn-text" (click)="clearFilters()">Clear All</button>
+    </div>
+    <div class="filters">
+      <div class="filter-group">
+        <label for="caBranchFilter">Branch</label>
+        <select id="caBranchFilter" [(ngModel)]="selectedBranchId" (change)="applyFilters()">
+          <option value="">All Branches</option>
+          <option *ngFor="let b of branches" [value]="b.id">{{ b.name }}</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="caBatchFilter">Batch</label>
+        <select id="caBatchFilter" [(ngModel)]="selectedBatchId" (change)="applyFilters()">
+          <option value="">All Batches</option>
+          <option *ngFor="let b of batches" [value]="b.id">{{ b.name }}</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="caDateFrom">From Date</label>
+        <input id="caDateFrom" type="date" [(ngModel)]="dateFrom" (change)="applyFilters()" />
+      </div>
+      <div class="filter-group">
+        <label for="caDateTo">To Date</label>
+        <input id="caDateTo" type="date" [(ngModel)]="dateTo" (change)="applyFilters()" />
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="loading"><div class="spinner"></div><p>Loading report data...</p></div>
+  <div class="error-state" *ngIf="error"><p>{{ error }}</p><button type="button" class="btn btn-primary" (click)="loadReport()">Retry</button></div>
+
+  <div class="summary-cards" *ngIf="report && !loading">
+    <div class="summary-card"><div class="card-icon">🏢</div><div class="card-value">{{ report.summary.totalBranches }}</div><div class="card-label">Total Branches</div></div>
+    <div class="summary-card"><div class="card-icon">👨‍🎓</div><div class="card-value">{{ report.summary.totalStudents }}</div><div class="card-label">Total Students</div></div>
+    <div class="summary-card"><div class="card-icon">👨‍🏫</div><div class="card-value">{{ report.summary.totalTrainers }}</div><div class="card-label">Total Trainers</div></div>
+    <div class="summary-card"><div class="card-icon">📝</div><div class="card-value">{{ report.summary.totalAssessments }}</div><div class="card-label">Total Assessments</div></div>
+    <div class="summary-card highlight"><div class="card-icon">📈</div><div class="card-value">{{ report.summary.averageMarks }}%</div><div class="card-label">Average Marks</div></div>
+    <div class="summary-card highlight"><div class="card-icon">✅</div><div class="card-value">{{ report.summary.overallPassPercentage }}%</div><div class="card-label">Pass Percentage</div></div>
+  </div>
+
+  <div class="card data-table-card" *ngIf="report && !loading">
+    <h3>Branch Wise Performance</h3>
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Branch Name</th><th>Students</th><th>Trainers</th><th>Assessments</th>
+            <th>Avg Marks</th><th>Highest</th><th>Lowest</th><th>Pass %</th>
+            <th>Strongest Topics</th><th>Weakest Topics</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of report.rows; let i = index" [class.alt-row]="i % 2 === 1">
+            <td class="branch-name">{{ row.branchName }}</td>
+            <td>{{ row.totalStudents }}</td>
+            <td>{{ row.totalTrainers }}</td>
+            <td>{{ row.totalAssessments }}</td>
+            <td><strong>{{ row.averageMarks }}%</strong></td>
+            <td class="score-high">{{ row.highestMarks }}%</td>
+            <td class="score-low">{{ row.lowestMarks }}%</td>
+            <td>{{ row.passPercentage }}%</td>
+            <td class="topics-cell"><span class="topic-tag strong" *ngFor="let t of row.strongestTopics">{{ t }}</span></td>
+            <td class="topics-cell"><span class="topic-tag weak" *ngFor="let t of row.weakestTopics">{{ t }}</span></td>
+          </tr>
+          <tr *ngIf="report.rows.length === 0"><td colspan="10" class="no-data">No data available for the selected filters.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="report-meta" *ngIf="report && !loading">
+    <p>Report: {{ report.metadata.reportTitle }} | Generated: {{ report.metadata.generatedDate }} {{ report.metadata.generatedTime }} UTC</p>
   </div>
 </div>
