@@ -52,15 +52,34 @@ public static class AssessmentMappings
             Subjects = model.Subjects.Select(item => item.ToDto()).ToList()
         };
 
+    public static CreateQuestionClassificationEntryModel ToMicroServiceModel(this CreateQuestionClassificationEntryDto dto)
+        => new(
+            dto.SubjectId,
+            dto.SubjectName,
+            dto.TopicName);
+
+    public static QuestionClassificationEntryDto ToDto(this QuestionClassificationEntryModel model)
+        => new()
+        {
+            SubjectId = model.SubjectId,
+            SubjectName = model.SubjectName,
+            TopicId = model.TopicId,
+            TopicName = model.TopicName
+        };
+
     public static QuestionBankAssessmentDto ToDto(this QuestionBankAssessmentModel model)
         => new()
         {
             AssessmentId = model.AssessmentId,
             CollegeId = model.CollegeId,
-            SubjectId = model.SubjectId,
+            SubjectIds = model.SubjectIds,
+            SubjectNames = model.SubjectNames,
             SubjectName = model.SubjectName,
-            TopicId = model.TopicId,
+            SubjectDisplayLabel = model.SubjectDisplayLabel,
+            TopicIds = model.TopicIds,
+            TopicNames = model.TopicNames,
             TopicName = model.TopicName,
+            TopicDisplayLabel = model.TopicDisplayLabel,
             AssessmentName = model.AssessmentName,
             AssessmentType = model.AssessmentType,
             AssessmentStatus = model.AssessmentStatus,
@@ -97,8 +116,14 @@ public static class AssessmentMappings
         {
             AssessmentId = model.AssessmentId,
             AssessmentName = model.AssessmentName,
+            SubjectIds = model.SubjectIds,
+            SubjectNames = model.SubjectNames,
             SubjectName = model.SubjectName,
+            SubjectDisplayLabel = model.SubjectDisplayLabel,
+            TopicIds = model.TopicIds,
+            TopicNames = model.TopicNames,
             TopicName = model.TopicName,
+            TopicDisplayLabel = model.TopicDisplayLabel,
             AssessmentStatus = model.AssessmentStatus,
             AssessmentDate = UtcDateTime.Normalize(model.AssessmentDate),
             StartDateTime = UtcDateTime.Normalize(model.StartDateTime),
@@ -147,10 +172,8 @@ public static class AssessmentMappings
             dto.CollegeId,
             dto.CreatedBy,
             dto.AssessmentName,
-            dto.SubjectId,
-            dto.SubjectName,
-            dto.TopicId,
-            dto.TopicName,
+            dto.SubjectIds,
+            dto.TopicIds,
             dto.Instructions,
             dto.AllowLateEntry,
             dto.AllowQuestionReview,
@@ -169,10 +192,8 @@ public static class AssessmentMappings
             dto.CollegeId,
             dto.CreatedBy,
             dto.AssessmentName,
-            dto.SubjectId,
-            dto.SubjectName,
-            dto.TopicId,
-            dto.TopicName,
+            dto.SubjectIds,
+            dto.TopicIds,
             dto.Instructions,
             dto.AllowLateEntry,
             dto.AllowQuestionReview,
@@ -192,10 +213,8 @@ public static class AssessmentMappings
             dto.UpdatedBy,
             dto.RequesterRole,
             dto.AssessmentName,
-            dto.SubjectId,
-            dto.SubjectName,
-            dto.TopicId,
-            dto.TopicName,
+            dto.SubjectIds,
+            dto.TopicIds,
             dto.Instructions,
             dto.AllowLateEntry,
             dto.AllowQuestionReview,
