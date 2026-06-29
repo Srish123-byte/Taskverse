@@ -482,6 +482,16 @@ public static class AssessmentMappings
         };
     }
 
+    public static StudentStreakResponseModel ToResponseModel(this StudentStreakDto dto)
+    {
+        return new StudentStreakResponseModel
+        {
+            CurrentStreak = dto.CurrentStreak,
+            LongestStreak = dto.LongestStreak,
+            TotalAssessmentsTaken = dto.TotalAssessmentsTaken
+        };
+    }
+
     public static StudentAttemptRecoveryQuestionResponseModel ToResponseModel(
         this StudentAttemptRecoveryQuestionDto dto)
     {
@@ -549,6 +559,7 @@ public static class AssessmentMappings
             UnansweredQuestions = dto.UnansweredQuestions,
             ParticipantCount = dto.ParticipantCount,
             HasPendingCodingEvaluation = dto.HasPendingCodingEvaluation,
+            ShowResultsImmediately = dto.ShowResultsImmediately,
             QuestionResults = dto.QuestionResults.Select(item => item.ToResponseModel()).ToList(),
             QuestionExplanations = dto.QuestionExplanations.Select(item => item.ToResponseModel()).ToList()
         };

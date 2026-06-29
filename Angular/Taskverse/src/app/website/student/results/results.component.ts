@@ -2,6 +2,7 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { finalize, Subscription } from 'rxjs';
 import { RouteAddress } from '../../../common/constants/routes.constants';
+import { Session } from '../../../common/services/session/session.service';
 import {
   StudentAssessmentsService,
   StudentResult,
@@ -25,6 +26,8 @@ export class ResultsComponent implements OnInit, OnDestroy {
   isLoading = false;
   errorMessage = '';
   activeFilter: ResultFilter = 'ALL';
+  isListMode = false;
+  resultsList: StudentResult[] = [];
   private attemptId: string | null = null;
   private readonly subscriptions = new Subscription();
 
@@ -32,13 +35,14 @@ export class ResultsComponent implements OnInit, OnDestroy {
     private readonly activatedRoute: ActivatedRoute,
     private readonly router: Router,
     private readonly studentAssessmentsService: StudentAssessmentsService,
-    private readonly changeDetectorRef: ChangeDetectorRef
+    private readonly changeDetectorRef: ChangeDetectorRef,
+    private readonly session: Session
   ) {}
 
   ngOnInit(): void {
     this.attemptId = this.activatedRoute.snapshot.paramMap.get('attemptId');
     if (!this.attemptId) {
-      this.errorMessage = 'Choose an assessment attempt to review its result.';
+      this.loadStudentResultsList();
       return;
     }
 
@@ -124,6 +128,36 @@ export class ResultsComponent implements OnInit, OnDestroy {
     return item.questionId;
   }
 
+  trackByResultId(_: number, item: StudentResult): string {
+    return item.resultId;
+  }
+
+  getCompletedLabel(item: StudentResult): string {
+    const completedAt = item.submittedAt ?? item.generatedAt;
+    return new Date(completedAt).toLocaleDateString(undefined, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  }
+
+  getResultStatusBadgeClass(status: string): string {
+    const normalized = status?.toUpperCase();
+    if (normalized === 'PASS') {
+      return 'status-completed';
+    }
+
+    if (normalized === 'FAIL') {
+      return 'status-failed';
+    }
+
+    return 'status-pending';
+  }
+
+  viewResultDetail(attemptId: string): void {
+    void this.router.navigateByUrl(`/${RouteAddress.Student.AttemptResults}/${attemptId}`);
+  }
+
   getStatusLabel(status: string): string {
     return status.replace(/_/g, ' ');
   }
@@ -142,6 +176,39 @@ export class ResultsComponent implements OnInit, OnDestroy {
 
   returnToAssessments(): void {
     void this.router.navigateByUrl(`/${RouteAddress.Student.MyAssessments}`);
+  }
+
+  private loadStudentResultsList(): void {
+    this.isListMode = true;
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    const studentId = this.session.userId;
+    if (!studentId) {
+      this.isLoading = false;
+      this.errorMessage = 'Unable to determine your student account. Please log in again.';
+      return;
+    }
+
+    const listSubscription = this.studentAssessmentsService
+      .getStudentResults(studentId)
+      .pipe(finalize(() => {
+        this.isLoading = false;
+        this.changeDetectorRef.detectChanges();
+      }))
+      .subscribe({
+        next: results => {
+          this.resultsList = results ?? [];
+          this.changeDetectorRef.detectChanges();
+        },
+        error: error => {
+          console.error('Failed to load student results list.', error);
+          this.errorMessage = error?.error?.message || 'Unable to load your results right now.';
+          this.changeDetectorRef.detectChanges();
+        }
+      });
+
+    this.subscriptions.add(listSubscription);
   }
 
   private loadAttemptResult(remainingPolls: number): void {

@@ -183,6 +183,26 @@ option {
 }
 
 /* ------------------------------------------------------------
+   Create assessment menu (dark navy theme, matches the
+   Assessments Management page it drops down from)
+   ------------------------------------------------------------ */
+.create-assessment-menu.mat-mdc-menu-panel {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(24, 35, 60, 0.98) 0%, rgba(16, 24, 41, 0.98) 100%) !important;
+  box-shadow: 0 24px 54px rgba(2, 8, 23, 0.32);
+}
+
+.create-assessment-menu .mat-mdc-menu-item,
+.create-assessment-menu .mat-mdc-menu-item .mdc-list-item__primary-text {
+  color: #e5eef9;
+}
+
+.create-assessment-menu .mat-mdc-menu-item:hover:not([disabled]) {
+  background: rgba(56, 189, 248, 0.12);
+}
+
+/* ------------------------------------------------------------
    Floating label
    ------------------------------------------------------------ */
 .mat-mdc-form-field-label,

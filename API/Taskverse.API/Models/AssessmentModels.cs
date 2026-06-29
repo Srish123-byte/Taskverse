@@ -338,6 +338,13 @@ public class StudentAttemptSubmitResponseModel
     public DateTime? SubmittedAt { get; set; }
 }
 
+public class StudentStreakResponseModel
+{
+    public int CurrentStreak { get; set; }
+    public int LongestStreak { get; set; }
+    public int TotalAssessmentsTaken { get; set; }
+}
+
 public class StudentAttemptRecoveryQuestionResponseModel
 {
     public Guid QuestionId { get; set; }
@@ -395,6 +402,7 @@ public class StudentResultResponseModel
     public int UnansweredQuestions { get; set; }
     public int ParticipantCount { get; set; }
     public bool HasPendingCodingEvaluation { get; set; }
+    public bool ShowResultsImmediately { get; set; }
     public List<StudentResultQuestionResultResponseModel> QuestionResults { get; set; } = [];
     public List<StudentResultQuestionExplanationResponseModel> QuestionExplanations { get; set; } = [];
 }

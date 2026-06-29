@@ -1,29 +1,14 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 import { RouteAddress } from '../../../common/constants/routes.constants';
+import {
+  StudentAssessmentItem,
+  StudentAssessmentsService,
+  StudentStreak
+} from '../../../common/services/api/student-assessments.service';
 import { Session } from '../../../common/services/session/session.service';
-
-interface UpcomingAssessment {
-  title: string;
-  subtitle: string;
-  schedule: string;
-  duration: string;
-  accent: 'blue' | 'gold' | 'cyan';
-  countdown?: string;
-  ctaLabel: string;
-  ctaState: 'disabled' | 'ready';
-}
-
-interface RecentResult {
-  name: string;
-  date: string;
-  score: string;
-  rank: string;
-}
-
-interface TrendBar {
-  value: number;
-  active?: boolean;
-}
 
 @Component({
   selector: 'app-student-dashboard',
@@ -31,61 +16,129 @@ interface TrendBar {
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
+  private static readonly accents: ReadonlyArray<'blue' | 'gold' | 'cyan'> = ['blue', 'gold', 'cyan'];
+
   userName = '';
   firstName = '';
   readonly routeAddress = RouteAddress;
-  readonly upcomingAssessments: UpcomingAssessment[] = [
-    {
-      title: 'Python Basics',
-      subtitle: 'Computer Science Dept • Final Assessment',
-      schedule: 'Starts 10:00 AM',
-      duration: '60 mins duration',
-      accent: 'blue',
-      countdown: '02h 15m 26s',
-      ctaLabel: 'Start Assessment',
-      ctaState: 'disabled'
-    },
-    {
-      title: 'Data Structures Midterm',
-      subtitle: 'Engineering Faculty • Midterm Exam',
-      schedule: 'Oct 24, 2:00 PM',
-      duration: '90 mins duration',
-      accent: 'gold',
-      ctaLabel: 'Start Assessment',
-      ctaState: 'ready'
-    },
-    {
-      title: 'Advanced Mathematics',
-      subtitle: 'Math Lab • Weekly Quiz',
-      schedule: 'Oct 26, 9:00 AM',
-      duration: '45 mins duration',
-      accent: 'cyan',
-      ctaLabel: 'Start Assessment',
-      ctaState: 'ready'
-    }
-  ];
-  readonly recentResults: RecentResult[] = [
-    { name: 'SQL Queries Expert', date: 'Oct 18, 2023', score: '92 / 100', rank: '2nd / 42' },
-    { name: 'Operating Systems', date: 'Oct 15, 2023', score: '88 / 100', rank: '5th / 42' },
-    { name: 'Statistics Checkpoint', date: 'Oct 12, 2023', score: '95 / 100', rank: '1st / 42' }
-  ];
-  readonly performanceTrend: TrendBar[] = [
-    { value: 42 },
-    { value: 58 },
-    { value: 54 },
-    { value: 72 },
-    { value: 84, active: true },
-    { value: 79 }
-  ];
+  upcomingAssessments: StudentAssessmentItem[] = [];
+  streak: StudentStreak | null = null;
+  isLoadingAssessments = false;
+  private readonly subscriptions = new Subscription();
 
-  constructor(private readonly session: Session) {}
+  constructor(
+    private readonly session: Session,
+    private readonly studentAssessmentsService: StudentAssessmentsService,
+    private readonly router: Router,
+    private readonly changeDetectorRef: ChangeDetectorRef
+  ) {}
 
   ngOnInit(): void {
     const user = this.session.user;
     const claimName = this.resolveNameFromTokenClaims();
     this.userName = claimName || (user ? `${user.firstName} ${user.lastName}`.trim() : '');
     this.firstName = this.userName.split(' ')[0] ?? '';
+
+    this.loadUpcomingAssessments();
+    this.loadStreak();
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
+  }
+
+  get currentStreakDays(): number {
+    return this.streak?.currentStreak ?? 0;
+  }
+
+  trackByAssessmentId(_: number, assessment: StudentAssessmentItem): string {
+    return assessment.assessmentId;
+  }
+
+  getAccentClass(index: number): string {
+    return `assessment-item-${DashboardComponent.accents[index % DashboardComponent.accents.length]}`;
+  }
+
+  getAssessmentContext(assessment: StudentAssessmentItem): string {
+    const context = [assessment.subjectName, assessment.topicName]
+      .map(value => value?.trim())
+      .filter((value): value is string => !!value)
+      .join(' - ');
+
+    return context || this.getStatusLabel(assessment.assessmentStatus);
+  }
+
+  getStatusLabel(status: string): string {
+    switch (status?.toUpperCase()) {
+      case 'LIVE':
+        return 'Live Now';
+      case 'SCHEDULED':
+        return 'Upcoming';
+      default:
+        return status;
+    }
+  }
+
+  getScheduleLabel(assessment: StudentAssessmentItem): string {
+    if (!assessment.startDateTime) {
+      return 'Schedule unavailable';
+    }
+
+    return new Date(assessment.startDateTime).toLocaleString(undefined, {
+      day: 'numeric',
+      month: 'short',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  }
+
+  getDurationLabel(assessment: StudentAssessmentItem): string {
+    return `${assessment.durationMinutes} mins duration`;
+  }
+
+  getActionLabel(status: string): string {
+    return status?.toUpperCase() === 'LIVE' ? 'Start Assessment' : 'View Details';
+  }
+
+  goToAssessments(): void {
+    void this.router.navigateByUrl(`/${RouteAddress.Student.MyAssessments}`);
+  }
+
+  private loadUpcomingAssessments(): void {
+    this.isLoadingAssessments = true;
+
+    const subscription = this.studentAssessmentsService
+      .getAssessments(['LIVE', 'SCHEDULED'])
+      .pipe(finalize(() => {
+        this.isLoadingAssessments = false;
+        this.changeDetectorRef.detectChanges();
+      }))
+      .subscribe({
+        next: assessments => {
+          this.upcomingAssessments = assessments;
+          this.changeDetectorRef.detectChanges();
+        },
+        error: error => {
+          console.error('Failed to load upcoming assessments for the dashboard.', error);
+        }
+      });
+
+    this.subscriptions.add(subscription);
+  }
+
+  private loadStreak(): void {
+    const subscription = this.studentAssessmentsService.getStudentStreak().subscribe({
+      next: streak => {
+        this.streak = streak;
+        this.changeDetectorRef.detectChanges();
+      },
+      error: error => {
+        console.error('Failed to load student streak for the dashboard.', error);
+      }
+    });
+
+    this.subscriptions.add(subscription);
   }
 
   private resolveNameFromTokenClaims(): string {

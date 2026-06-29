@@ -688,6 +688,31 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
         };
     }
 
+    public async Task<StudentStreakDto> GetStudentStreak(Guid studentUserId)
+    {
+        _log.Debug($"AssessmentOrchestrator.GetStudentStreak: studentUserId={studentUserId}");
+
+        var result = await _microServiceOrchestrator.GetStudentStreak(studentUserId);
+
+        if (result.IsSuccess())
+        {
+            var model = result.DeserializeValue<StudentStreakModel>()
+                ?? throw new InvalidOperationException("GetStudentStreak returned an empty response.");
+
+            return model.ToDto();
+        }
+
+        var message = ExtractMessage(result.Value) ?? $"GetStudentStreak failed with status {result.StatusCode}.";
+
+        throw result.StatusCode switch
+        {
+            StatusCodes.Status400BadRequest => new ArgumentException(message),
+            StatusCodes.Status404NotFound => new KeyNotFoundException(message),
+            StatusCodes.Status503ServiceUnavailable => new HttpRequestException(message),
+            _ => new InvalidOperationException(message)
+        };
+    }
+
     private static string? ExtractDetail(object? value)
     {
         if (value is null)
