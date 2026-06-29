@@ -2,16 +2,25 @@ using Microsoft.EntityFrameworkCore;
 using Taskverse.Data.Enums;
 using Taskverse.API.College.Service.DTOs;
 using Taskverse.Data.DataAccess;
+using Taskverse.API.College.Service.Services;
 
 namespace Taskverse.API.College.Service.Orchestrators;
 
 public class CollegeOrchestrator : ICollegeOrchestrator
 {
+    private const int AttendanceEditWindowMinutes = 30;
+    private const string CollegeAdminAttendanceSubmitterName = "College Admin";
     private readonly TaskverseContext _context;
+    private readonly IAttendanceExportService _attendanceExportService;
 
-    public CollegeOrchestrator(TaskverseContext context)
+    private sealed record AttendanceAccessContext(
+        bool IsCollegeAdmin,
+        Guid? TrainerId);
+
+    public CollegeOrchestrator(TaskverseContext context, IAttendanceExportService attendanceExportService)
     {
         _context = context;
+        _attendanceExportService = attendanceExportService;
     }
 
     public Task<List<PendingUserDto>> GetPendingUsersByCollege(Guid collegeId) =>
@@ -80,6 +89,344 @@ public class CollegeOrchestrator : ICollegeOrchestrator
                 SubjectName = subject.SubjectName
             })
             .ToListAsync();
+
+    public async Task<List<AttendanceBatchGroupDto>> GetAttendanceBatchGroups(Guid collegeId, Guid requesterUserId)
+    {
+        var accessContext = await EnsureAttendanceAccess(collegeId, requesterUserId);
+
+        var batches = await _context.Batches
+            .AsNoTracking()
+            .Where(item =>
+                item.CollegeId == collegeId &&
+                (accessContext.IsCollegeAdmin ||
+                 item.TrainerBatches.Any(trainerBatch => trainerBatch.TrainerId == accessContext.TrainerId)))
+            .OrderBy(item => item.Class.Name)
+            .ThenBy(item => item.Class.AcademicYear)
+            .ThenBy(item => item.Name)
+            .Select(item => new
+            {
+                item.BatchId,
+                item.Name,
+                item.ClassId,
+                ClassName = item.Class.Name,
+                item.Class.AcademicYear
+            })
+            .ToListAsync();
+
+        var ownerNames = await GetCurrentBatchOwnerNames(batches.Select(item => item.BatchId));
+
+        return batches
+            .GroupBy(item => new { item.ClassId, item.ClassName, item.AcademicYear })
+            .Select(group => new AttendanceBatchGroupDto
+            {
+                ClassId = group.Key.ClassId.ToString(),
+                ClassName = group.Key.ClassName,
+                AcademicYear = group.Key.AcademicYear,
+                Batches = group
+                    .Select(item => new AttendanceBatchOptionDto
+                    {
+                        BatchId = item.BatchId.ToString(),
+                        BatchName = item.Name,
+                        BatchOwnerTrainerName = ownerNames.TryGetValue(item.BatchId, out var ownerName)
+                            ? ownerName
+                            : null
+                    })
+                    .ToList()
+            })
+            .ToList();
+    }
+
+    public async Task<AttendanceRosterDto> GetAttendanceRoster(AttendanceRosterRequestDto dto)
+    {
+        ValidateAttendanceSession(dto.AttendanceSession);
+
+        var accessContext = await EnsureAttendanceAccess(dto.CollegeId, dto.RequesterUserId);
+        var normalizedDate = dto.AttendanceDate.Date;
+
+        var batch = await _context.Batches
+            .AsNoTracking()
+            .Where(item => item.BatchId == dto.BatchId && item.CollegeId == dto.CollegeId)
+            .Select(item => new
+            {
+                item.BatchId,
+                item.Name,
+                item.ClassId,
+                ClassName = item.Class.Name,
+                item.Class.AcademicYear
+            })
+            .FirstOrDefaultAsync()
+            ?? throw new KeyNotFoundException("Selected batch was not found for this college.");
+
+        await EnsureAttendanceBatchAccess(accessContext, dto.BatchId);
+
+        var students = await _context.Students
+            .AsNoTracking()
+            .Where(item =>
+                item.CollegeId == dto.CollegeId &&
+                item.BatchId == dto.BatchId &&
+                item.Status == UserStatus.APPROVED)
+            .OrderBy(item => item.FullName)
+            .ThenBy(item => item.Email)
+            .Select(item => new AttendanceStudentDto
+            {
+                StudentId = item.StudentId.ToString(),
+                UserId = item.UserId.ToString(),
+                FullName = item.FullName,
+                Email = item.Email,
+                EnrollmentNumber = item.EnrollmentNumber
+            })
+            .ToListAsync();
+
+        var existingSession = await _context.AttendanceSessions
+            .AsNoTracking()
+            .Include(item => item.Entries)
+            .Include(item => item.SubmittedByTrainer)
+            .Include(item => item.BatchOwnerTrainer)
+            .FirstOrDefaultAsync(item =>
+                item.BatchId == dto.BatchId &&
+                item.AttendanceDate == normalizedDate &&
+                item.AttendanceSessionType == dto.AttendanceSession);
+
+        Dictionary<Guid, AttendanceEntryType> savedEntries = [];
+        if (existingSession is not null)
+        {
+            savedEntries = existingSession.Entries
+                .Where(item => item.StudentId.HasValue)
+                .ToDictionary(item => item.StudentId!.Value, item => item.AttendanceEntryType);
+        }
+
+        foreach (var student in students)
+        {
+            if (Guid.TryParse(student.StudentId, out var studentId) &&
+                savedEntries.TryGetValue(studentId, out var attendanceEntry))
+            {
+                student.AttendanceEntry = attendanceEntry;
+            }
+        }
+
+        var presentCount = students.Count(item => item.AttendanceEntry == AttendanceEntryType.Present);
+        var absentCount = students.Count(item => item.AttendanceEntry == AttendanceEntryType.Absent);
+        var totalStudents = students.Count;
+        var isLocked = existingSession is not null && IsAttendanceLocked(existingSession.SubmittedAt);
+        var canEdit = existingSession is null ||
+                      (!isLocked && (accessContext.IsCollegeAdmin || existingSession.SubmittedByTrainerId == accessContext.TrainerId));
+
+        string? currentBatchOwnerName = null;
+        var ownerNames = await GetCurrentBatchOwnerNames([batch.BatchId]);
+        if (ownerNames.TryGetValue(batch.BatchId, out var ownerName))
+        {
+            currentBatchOwnerName = ownerName;
+        }
+
+        return new AttendanceRosterDto
+        {
+            ClassId = batch.ClassId.ToString(),
+            ClassName = batch.ClassName,
+            AcademicYear = batch.AcademicYear,
+            BatchId = batch.BatchId.ToString(),
+            BatchName = batch.Name,
+            AttendanceDate = normalizedDate,
+            AttendanceSession = dto.AttendanceSession,
+            IsSubmitted = existingSession is not null,
+            IsLocked = isLocked,
+            CanEdit = canEdit,
+            SubmittedByTrainerName = ResolveAttendanceSubmitterName(existingSession?.SubmittedByTrainer?.FullName),
+            BatchOwnerTrainerName = existingSession?.BatchOwnerTrainer?.FullName ?? currentBatchOwnerName,
+            SubmittedAt = existingSession?.SubmittedAt,
+            LastModifiedAt = existingSession?.LastModifiedAt,
+            TotalStudents = totalStudents,
+            PresentCount = presentCount,
+            AbsentCount = absentCount,
+            AttendancePercentage = totalStudents == 0
+                ? 0
+                : Math.Round(presentCount * 100m / totalStudents, 2),
+            Students = students
+        };
+    }
+
+    public async Task<AttendanceRosterDto> SubmitAttendance(SubmitAttendanceDto dto)
+    {
+        ValidateAttendanceSession(dto.AttendanceSession);
+        ValidateAttendanceEntries(dto.Entries);
+
+        var accessContext = await EnsureAttendanceAccess(dto.CollegeId, dto.RequesterUserId);
+        var normalizedDate = dto.AttendanceDate.Date;
+
+        var batch = await _context.Batches
+            .AsNoTracking()
+            .Where(item => item.BatchId == dto.BatchId && item.CollegeId == dto.CollegeId)
+            .Select(item => new { item.BatchId, item.ClassId })
+            .FirstOrDefaultAsync()
+            ?? throw new KeyNotFoundException("Selected batch was not found for this college.");
+
+        await EnsureAttendanceBatchAccess(accessContext, dto.BatchId);
+
+        var activeStudents = await _context.Students
+            .Where(item =>
+                item.CollegeId == dto.CollegeId &&
+                item.BatchId == dto.BatchId &&
+                item.Status == UserStatus.APPROVED)
+            .Select(item => item.StudentId)
+            .ToListAsync();
+
+        var activeStudentIds = activeStudents.ToHashSet();
+        var submittedStudentIds = dto.Entries.Select(item => item.StudentId).ToList();
+
+        if (submittedStudentIds.Count != submittedStudentIds.Distinct().Count())
+        {
+            throw new InvalidOperationException("Duplicate students were submitted in the attendance payload.");
+        }
+
+        if (submittedStudentIds.Count != activeStudentIds.Count || submittedStudentIds.Any(id => !activeStudentIds.Contains(id)))
+        {
+            throw new InvalidOperationException("Attendance can only be submitted for the current live batch roster.");
+        }
+
+        var existingSession = await _context.AttendanceSessions
+            .Include(item => item.Entries)
+            .FirstOrDefaultAsync(item =>
+                item.BatchId == dto.BatchId &&
+                item.AttendanceDate == normalizedDate &&
+                item.AttendanceSessionType == dto.AttendanceSession);
+
+        var now = DateTime.UtcNow;
+        if (existingSession is null)
+        {
+            existingSession = new AttendanceSession
+            {
+                AttendanceSessionId = Guid.NewGuid(),
+                CollegeId = dto.CollegeId,
+                ClassId = batch.ClassId,
+                BatchId = dto.BatchId,
+                AttendanceDate = normalizedDate,
+                AttendanceSessionType = dto.AttendanceSession,
+                SubmittedByTrainerId = accessContext.TrainerId,
+                BatchOwnerTrainerId = await ResolveBatchOwnerTrainerId(dto.BatchId),
+                SubmittedAt = now,
+                LastModifiedAt = now,
+                Entries = dto.Entries.Select(item => new AttendanceEntryRecord
+                {
+                    AttendanceEntryId = Guid.NewGuid(),
+                    StudentId = item.StudentId,
+                    AttendanceEntryType = item.AttendanceEntry
+                }).ToList()
+            };
+
+            _context.AttendanceSessions.Add(existingSession);
+        }
+        else
+        {
+            if (!accessContext.IsCollegeAdmin && existingSession.SubmittedByTrainerId != accessContext.TrainerId)
+            {
+                throw new InvalidOperationException("This attendance session was already submitted by another trainer.");
+            }
+
+            if (IsAttendanceLocked(existingSession.SubmittedAt))
+            {
+                throw new InvalidOperationException("This attendance session is locked and can no longer be edited.");
+            }
+
+            existingSession.LastModifiedAt = now;
+            existingSession.BatchOwnerTrainerId ??= await ResolveBatchOwnerTrainerId(dto.BatchId);
+
+            var entryLookup = existingSession.Entries
+                .Where(item => item.StudentId.HasValue)
+                .ToDictionary(item => item.StudentId!.Value);
+            foreach (var item in dto.Entries)
+            {
+                if (entryLookup.TryGetValue(item.StudentId, out var existingEntry))
+                {
+                    existingEntry.AttendanceEntryType = item.AttendanceEntry;
+                }
+                else
+                {
+                    existingSession.Entries.Add(new AttendanceEntryRecord
+                    {
+                        AttendanceEntryId = Guid.NewGuid(),
+                        AttendanceSessionId = existingSession.AttendanceSessionId,
+                        StudentId = item.StudentId,
+                        AttendanceEntryType = item.AttendanceEntry
+                    });
+                }
+            }
+
+            var entriesToRemove = existingSession.Entries
+                .Where(item => !item.StudentId.HasValue || !activeStudentIds.Contains(item.StudentId.Value))
+                .ToList();
+            if (entriesToRemove.Count > 0)
+            {
+                _context.AttendanceEntries.RemoveRange(entriesToRemove);
+            }
+        }
+
+        await _context.SaveChangesAsync();
+
+        return await GetAttendanceRoster(new AttendanceRosterRequestDto
+        {
+            CollegeId = dto.CollegeId,
+            RequesterUserId = dto.RequesterUserId,
+            BatchId = dto.BatchId,
+            AttendanceDate = normalizedDate,
+            AttendanceSession = dto.AttendanceSession
+        });
+    }
+
+    public async Task<AttendanceHistoryDto> GetAttendanceHistory(AttendanceHistoryRequestDto dto)
+    {
+        var accessContext = await EnsureAttendanceAccess(dto.CollegeId, dto.RequesterUserId);
+        ValidateDateRange(dto.FromDate, dto.ToDate);
+
+        var batch = await _context.Batches
+            .AsNoTracking()
+            .Where(item => item.BatchId == dto.BatchId && item.CollegeId == dto.CollegeId)
+            .Select(item => new { item.BatchId, item.Name })
+            .FirstOrDefaultAsync()
+            ?? throw new KeyNotFoundException("Selected batch was not found for this college.");
+
+        await EnsureAttendanceBatchAccess(accessContext, dto.BatchId);
+
+        var items = await BuildHistoryItems(dto.BatchId, dto.FromDate.Date, dto.ToDate.Date, useLiveRecalculatedTotals: false);
+
+        return new AttendanceHistoryDto
+        {
+            BatchId = batch.BatchId.ToString(),
+            BatchName = batch.Name,
+            FromDate = dto.FromDate.Date,
+            ToDate = dto.ToDate.Date,
+            Items = items
+        };
+    }
+
+    public async Task<AttendanceExportDto> ExportAttendance(AttendanceHistoryRequestDto dto)
+    {
+        var accessContext = await EnsureAttendanceAccess(dto.CollegeId, dto.RequesterUserId);
+        ValidateDateRange(dto.FromDate, dto.ToDate);
+
+        var batch = await _context.Batches
+            .AsNoTracking()
+            .Where(item => item.BatchId == dto.BatchId && item.CollegeId == dto.CollegeId)
+            .Select(item => new { item.BatchId, item.Name })
+            .FirstOrDefaultAsync()
+            ?? throw new KeyNotFoundException("Selected batch was not found for this college.");
+
+        await EnsureAttendanceBatchAccess(accessContext, dto.BatchId);
+
+        var summaryItems = await BuildHistoryItems(dto.BatchId, dto.FromDate.Date, dto.ToDate.Date, useLiveRecalculatedTotals: true);
+        var entryItems = await BuildExportEntries(dto.BatchId, dto.FromDate.Date, dto.ToDate.Date);
+        var exportArtifact = _attendanceExportService.BuildWorkbook(batch.Name, dto.FromDate.Date, dto.ToDate.Date, summaryItems, entryItems);
+
+        return new AttendanceExportDto
+        {
+            FileName = exportArtifact.FileName,
+            ContentType = exportArtifact.ContentType,
+            ContentBase64 = Convert.ToBase64String(exportArtifact.Content),
+            BatchId = batch.BatchId.ToString(),
+            BatchName = batch.Name,
+            FromDate = dto.FromDate.Date,
+            ToDate = dto.ToDate.Date,
+            Entries = entryItems
+        };
+    }
 
     public async Task<List<PendingUserDto>> GetPendingUsersForCollegeAdmin(Guid collegeAdminUserId)
     {
@@ -1122,6 +1469,265 @@ public class CollegeOrchestrator : ICollegeOrchestrator
                         Email = item.Email
                     })
                     .ToList());
+    }
+
+    private async Task<AttendanceAccessContext> EnsureAttendanceAccess(Guid collegeId, Guid requesterUserId)
+    {
+        var user = await _context.Users
+            .AsNoTracking()
+            .Where(item => item.Id == requesterUserId)
+            .Select(item => new
+            {
+                item.Id,
+                item.CollegeId,
+                item.Role,
+                item.Status
+            })
+            .FirstOrDefaultAsync()
+            ?? throw new InvalidOperationException("Attendance access is not available for this user.");
+
+        if (user.CollegeId != collegeId || user.Status != UserStatus.APPROVED)
+        {
+            throw new InvalidOperationException("Attendance access is not available for this user.");
+        }
+
+        var normalizedRole = NormalizeRole(user.Role);
+        if (normalizedRole == "collegeadmin")
+        {
+            return new AttendanceAccessContext(
+                IsCollegeAdmin: true,
+                TrainerId: null);
+        }
+
+        if (normalizedRole == "trainer")
+        {
+            var trainer = await _context.Trainers
+                .AsNoTracking()
+                .Where(item =>
+                    item.CollegeId == collegeId &&
+                    item.UserId == requesterUserId &&
+                    item.Status == UserStatus.APPROVED)
+                .Select(item => new
+                {
+                    item.TrainerId
+                })
+                .FirstOrDefaultAsync()
+                ?? throw new InvalidOperationException("Trainer access is required for attendance.");
+
+            return new AttendanceAccessContext(
+                IsCollegeAdmin: false,
+                TrainerId: trainer.TrainerId);
+        }
+
+        throw new InvalidOperationException("Attendance access is only available for college admins and trainers.");
+    }
+
+    private async Task EnsureAttendanceBatchAccess(AttendanceAccessContext accessContext, Guid batchId)
+    {
+        if (accessContext.IsCollegeAdmin)
+        {
+            return;
+        }
+
+        var hasAssignment = await _context.TrainerBatches
+            .AsNoTracking()
+            .AnyAsync(item => item.BatchId == batchId && item.TrainerId == accessContext.TrainerId);
+
+        if (!hasAssignment)
+        {
+            throw new InvalidOperationException("This trainer is not assigned to the requested batch.");
+        }
+    }
+
+    private static string ResolveAttendanceSubmitterName(string? submittedByTrainerName) =>
+        string.IsNullOrWhiteSpace(submittedByTrainerName)
+            ? CollegeAdminAttendanceSubmitterName
+            : submittedByTrainerName;
+
+    private async Task<Guid?> ResolveBatchOwnerTrainerId(Guid batchId)
+    {
+        var trainerIds = await _context.TrainerBatches
+            .AsNoTracking()
+            .Where(item => item.BatchId == batchId && item.Trainer.Status == UserStatus.APPROVED)
+            .OrderBy(item => item.Trainer.FullName)
+            .Select(item => item.TrainerId)
+            .Distinct()
+            .ToListAsync();
+
+        return trainerIds.Count == 1 ? trainerIds[0] : null;
+    }
+
+    private async Task<Dictionary<Guid, string?>> GetCurrentBatchOwnerNames(IEnumerable<Guid> batchIds)
+    {
+        var batchIdList = batchIds.Distinct().ToList();
+        if (batchIdList.Count == 0)
+        {
+            return [];
+        }
+
+        var assignments = await _context.TrainerBatches
+            .AsNoTracking()
+            .Where(item => batchIdList.Contains(item.BatchId) && item.Trainer.Status == UserStatus.APPROVED)
+            .Select(item => new
+            {
+                item.BatchId,
+                item.Trainer.FullName
+            })
+            .ToListAsync();
+
+        return assignments
+            .GroupBy(item => item.BatchId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Count() == 1 ? group.First().FullName : null);
+    }
+
+    private async Task<List<AttendanceHistoryItemDto>> BuildHistoryItems(Guid batchId, DateTime fromDate, DateTime toDate, bool useLiveRecalculatedTotals)
+    {
+        var sessions = await _context.AttendanceSessions
+            .AsNoTracking()
+            .Include(item => item.Entries)
+            .Include(item => item.SubmittedByTrainer)
+            .Include(item => item.BatchOwnerTrainer)
+            .Where(item =>
+                item.BatchId == batchId &&
+                item.AttendanceDate >= fromDate &&
+                item.AttendanceDate <= toDate)
+            .OrderByDescending(item => item.AttendanceDate)
+            .ThenByDescending(item => item.AttendanceSessionType)
+            .ToListAsync();
+
+        HashSet<Guid>? liveStudentIds = null;
+        int liveStudentCount = 0;
+        if (useLiveRecalculatedTotals)
+        {
+            var currentStudentIds = await _context.Students
+                .AsNoTracking()
+                .Where(item => item.BatchId == batchId && item.Status == UserStatus.APPROVED)
+                .Select(item => item.StudentId)
+                .ToListAsync();
+
+            liveStudentIds = currentStudentIds.ToHashSet();
+            liveStudentCount = currentStudentIds.Count;
+        }
+
+        return sessions.Select(item =>
+        {
+            var relevantEntries = useLiveRecalculatedTotals
+                ? item.Entries.Where(entry => entry.StudentId.HasValue && liveStudentIds!.Contains(entry.StudentId.Value)).ToList()
+                : item.Entries.Where(entry => entry.StudentId.HasValue).ToList();
+
+            var totalStudents = useLiveRecalculatedTotals ? liveStudentCount : relevantEntries.Count;
+            var presentCount = relevantEntries.Count(entry => entry.AttendanceEntryType == AttendanceEntryType.Present);
+            var absentCount = relevantEntries.Count(entry => entry.AttendanceEntryType == AttendanceEntryType.Absent);
+
+            return new AttendanceHistoryItemDto
+            {
+                AttendanceSessionId = item.AttendanceSessionId.ToString(),
+                AttendanceDate = item.AttendanceDate,
+                AttendanceSession = item.AttendanceSessionType,
+                SubmittedByTrainerName = ResolveAttendanceSubmitterName(item.SubmittedByTrainer?.FullName),
+                BatchOwnerTrainerName = item.BatchOwnerTrainer?.FullName,
+                SubmittedAt = item.SubmittedAt,
+                LastModifiedAt = item.LastModifiedAt,
+                IsLocked = IsAttendanceLocked(item.SubmittedAt),
+                TotalStudents = totalStudents,
+                PresentCount = presentCount,
+                AbsentCount = absentCount,
+                AttendancePercentage = totalStudents == 0
+                    ? 0
+                    : Math.Round(presentCount * 100m / totalStudents, 2)
+            };
+        }).ToList();
+    }
+
+    private async Task<List<AttendanceExportEntryDto>> BuildExportEntries(Guid batchId, DateTime fromDate, DateTime toDate)
+    {
+        var currentStudents = await _context.Students
+            .AsNoTracking()
+            .Where(item => item.BatchId == batchId && item.Status == UserStatus.APPROVED)
+            .Select(item => new
+            {
+                item.StudentId,
+                item.FullName,
+                item.Email,
+                item.EnrollmentNumber
+            })
+            .ToListAsync();
+
+        var studentLookup = currentStudents.ToDictionary(item => item.StudentId);
+        var liveStudentIds = currentStudents.Select(item => item.StudentId).ToHashSet();
+
+        var sessions = await _context.AttendanceSessions
+            .AsNoTracking()
+            .Include(item => item.Entries)
+            .Include(item => item.SubmittedByTrainer)
+            .Include(item => item.BatchOwnerTrainer)
+            .Where(item =>
+                item.BatchId == batchId &&
+                item.AttendanceDate >= fromDate &&
+                item.AttendanceDate <= toDate)
+            .OrderBy(item => item.AttendanceDate)
+            .ThenBy(item => item.AttendanceSessionType)
+            .ToListAsync();
+
+        var exportEntries = new List<AttendanceExportEntryDto>();
+        foreach (var session in sessions)
+        {
+            foreach (var entry in session.Entries.Where(item => item.StudentId.HasValue && liveStudentIds.Contains(item.StudentId.Value)))
+            {
+                var student = studentLookup[entry.StudentId!.Value];
+                exportEntries.Add(new AttendanceExportEntryDto
+                {
+                    AttendanceSessionId = session.AttendanceSessionId.ToString(),
+                    AttendanceDate = session.AttendanceDate,
+                    AttendanceSession = session.AttendanceSessionType,
+                    StudentName = student.FullName,
+                    EnrollmentNumber = student.EnrollmentNumber,
+                    Email = student.Email,
+                    AttendanceEntry = entry.AttendanceEntryType,
+                    SubmittedByTrainerName = ResolveAttendanceSubmitterName(session.SubmittedByTrainer?.FullName),
+                    BatchOwnerTrainerName = session.BatchOwnerTrainer?.FullName,
+                    SubmittedAt = session.SubmittedAt,
+                    LastModifiedAt = session.LastModifiedAt
+                });
+            }
+        }
+
+        return exportEntries;
+    }
+
+    private static bool IsAttendanceLocked(DateTime submittedAt) =>
+        DateTime.UtcNow > submittedAt.AddMinutes(AttendanceEditWindowMinutes);
+
+    private static void ValidateAttendanceSession(AttendanceSessionType attendanceSession)
+    {
+        if (!Enum.IsDefined(attendanceSession))
+        {
+            throw new InvalidOperationException("A valid attendance session is required.");
+        }
+    }
+
+    private static void ValidateAttendanceEntries(IEnumerable<SubmitAttendanceEntryDto> entries)
+    {
+        var items = entries?.ToList() ?? [];
+        if (items.Count == 0)
+        {
+            throw new InvalidOperationException("Attendance entries are required.");
+        }
+
+        if (items.Any(item => !Enum.IsDefined(item.AttendanceEntry)))
+        {
+            throw new InvalidOperationException("Attendance entry contains an invalid status.");
+        }
+    }
+
+    private static void ValidateDateRange(DateTime fromDate, DateTime toDate)
+    {
+        if (fromDate.Date > toDate.Date)
+        {
+            throw new InvalidOperationException("From date cannot be greater than to date.");
+        }
     }
 
     private static string NormalizeRole(string role) =>
