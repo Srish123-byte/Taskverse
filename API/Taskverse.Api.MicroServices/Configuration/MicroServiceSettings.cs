@@ -6,4 +6,5 @@ public class MicroServiceSettings
     public string BaseUrlDev { get; set; } = default!;
     public bool UseLocalMicroservices { get; set; }
     public int ServiceTimeoutSeconds { get; set; } = 60;
+    public Dictionary<string, string> ServiceUrls { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
