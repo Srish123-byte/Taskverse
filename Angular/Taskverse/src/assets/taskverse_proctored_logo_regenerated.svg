@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900" role="img" aria-labelledby="title desc">
+  <title id="title">TaskVerse Logo - Proctored Online Assessment Platform</title>
+  <desc id="desc">Dark themed TaskVerse logo with a TV monogram, secure assessment visual cues, and the slogan Secure Assessments Verified Talent.</desc>
+
+  <defs>
+    <radialGradient id="backgroundGlow" cx="50%" cy="42%" r="72%">
+      <stop offset="0%" stop-color="#132447"/>
+      <stop offset="46%" stop-color="#081225"/>
+      <stop offset="100%" stop-color="#020611"/>
+    </radialGradient>
+
+    <linearGradient id="primaryGradient" x1="310" y1="220" x2="820" y2="560" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="48%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+
+    <linearGradient id="wordGradient" x1="350" y1="610" x2="1045" y2="610" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="48%" stop-color="#f8fafc"/>
+      <stop offset="70%" stop-color="#6d8cff"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+
+    <linearGradient id="accentGradient" x1="340" y1="690" x2="1060" y2="690" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="52%" stop-color="#6477ff"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="subtleGlow" x="-20%" y="-30%" width="140%" height="160%">
+      <feGaussianBlur stdDeviation="2.6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <style>
+      .wordmark {
+        font-family: Inter, Montserrat, Poppins, Arial, sans-serif;
+        font-weight: 800;
+        letter-spacing: -4px;
+      }
+      .slogan {
+        font-family: Inter, Montserrat, Poppins, Arial, sans-serif;
+        font-weight: 700;
+        letter-spacing: 6px;
+      }
+      .micro {
+        font-family: Inter, Montserrat, Poppins, Arial, sans-serif;
+        font-weight: 700;
+        letter-spacing: 3px;
+      }
+    </style>
+  </defs>
+
+  <rect width="1400" height="900" fill="url(#backgroundGlow)"/>
+  <ellipse cx="700" cy="430" rx="470" ry="310" fill="#0b1020" opacity="0.44"/>
+
+  <!-- Main brand mark -->
+  <g filter="url(#softGlow)" transform="translate(0, 0)">
+    <!-- assessment motion lines -->
+    <circle cx="390" cy="318" r="13" fill="#a855f7"/>
+    <rect x="420" y="305" width="178" height="26" rx="13" fill="url(#primaryGradient)"/>
+    <rect x="405" y="368" width="195" height="26" rx="13" fill="url(#primaryGradient)" opacity="0.92"/>
+    <circle cx="348" cy="443" r="13" fill="#8b5cf6"/>
+    <rect x="388" y="430" width="212" height="26" rx="13" fill="url(#primaryGradient)" opacity="0.88"/>
+
+    <!-- shield outline for proctored/security cue -->
+    <path d="M676 223
+             C728 253 785 263 848 254
+             V359
+             C848 455 790 525 676 565
+             C562 525 504 455 504 359
+             V254
+             C567 263 624 253 676 223Z"
+          fill="none" stroke="url(#primaryGradient)" stroke-width="12" opacity="0.42"/>
+
+    <!-- T -->
+    <path d="M497 210 H797
+             C815 210 826 229 817 245
+             L802 273
+             C797 282 788 287 777 287
+             H694
+             V495
+             C694 512 681 525 664 525
+             H642
+             C625 525 612 512 612 495
+             V287
+             H488
+             C468 287 456 265 466 248
+             L481 222
+             C485 215 490 210 497 210Z"
+          fill="url(#primaryGradient)"/>
+
+    <!-- V/check -->
+    <path d="M733 342
+             H785
+             C797 342 807 349 812 360
+             L859 462
+             L943 240
+             C948 228 960 220 973 220
+             H1025
+             C1043 220 1055 239 1047 255
+             L884 513
+             C870 538 834 539 819 514
+             L712 379
+             C700 361 713 342 733 342Z"
+          fill="url(#primaryGradient)"/>
+
+    <!-- verification check inside shield -->
+    <path d="M564 354 L620 410 L735 300"
+          fill="none" stroke="#ffffff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" opacity="0.88"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="700" y="650" text-anchor="middle" class="wordmark" font-size="125" fill="url(#wordGradient)" filter="url(#subtleGlow)">TaskVerse</text>
+
+  <!-- Platform descriptor -->
+  <text x="700" y="700" text-anchor="middle" class="micro" font-size="20" fill="#94a3b8">PROCTORED ONLINE ASSESSMENT PLATFORM</text>
+
+  <!-- Slogan ornaments -->
+  <g stroke="url(#accentGradient)" stroke-width="6" stroke-linecap="round" opacity="0.95">
+    <path d="M310 744 H365"/>
+    <path d="M1035 744 H1090"/>
+  </g>
+  <circle cx="392" cy="744" r="6.5" fill="#a855f7"/>
+  <circle cx="1008" cy="744" r="6.5" fill="#22d3ee"/>
+
+  <!-- Slogan -->
+  <text x="700" y="756" text-anchor="middle" class="slogan" font-size="29" fill="#d6d9e8">SECURE ASSESSMENTS · VERIFIED TALENT</text>
+</svg>
