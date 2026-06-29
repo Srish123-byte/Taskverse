@@ -1,4 +1,62 @@
 <section class="student-page attempt-results-page">
+  <ng-container *ngIf="isListMode; else detailView">
+    <section *ngIf="isLoading" class="state-panel">
+      <span class="page-eyebrow">Loading Results</span>
+      <h1>Fetching your released results</h1>
+      <p>We are gathering all assessment results that have been released to you.</p>
+    </section>
+
+    <section *ngIf="!isLoading && errorMessage" class="state-panel state-panel-error">
+      <span class="page-eyebrow">Results Unavailable</span>
+      <h1>We could not load your results</h1>
+      <p>{{ errorMessage }}</p>
+    </section>
+
+    <ng-container *ngIf="!isLoading && !errorMessage">
+      <header class="results-hero">
+        <div class="hero-copy">
+          <span class="page-eyebrow">Results</span>
+          <h1>Your Assessment Results</h1>
+          <p>Released results appear here as soon as your instructor publishes them.</p>
+        </div>
+      </header>
+
+      <section *ngIf="!resultsList.length" class="state-panel">
+        <span class="page-eyebrow">No Results Yet</span>
+        <h1>Nothing to show here yet</h1>
+        <p>Once an instructor releases a result, it will appear in this list.</p>
+      </section>
+
+      <section *ngIf="resultsList.length" class="results-list">
+        <article
+          *ngFor="let item of resultsList; trackBy: trackByResultId"
+          class="result-list-card"
+          (click)="viewResultDetail(item.attemptId)">
+          <div class="result-list-title-block">
+            <strong class="result-list-title">{{ item.assessmentName }}</strong>
+            <span class="page-eyebrow">Completed {{ getCompletedLabel(item) }}</span>
+          </div>
+          <span class="status-badge" [class]="getResultStatusBadgeClass(item.resultStatus)">
+            {{ item.resultStatus }}
+          </span>
+          <div class="result-list-score">
+            <span>Score</span>
+            <strong>{{ item.obtainedMarks }} / {{ item.totalMarks }}</strong>
+          </div>
+          <div class="result-list-percentage">
+            <span>Percentage</span>
+            <strong>{{ item.percentage }}%</strong>
+          </div>
+          <div class="result-list-rank">
+            <span>Rank</span>
+            <strong>{{ item.rank }}</strong>
+          </div>
+        </article>
+      </section>
+    </ng-container>
+  </ng-container>
+
+  <ng-template #detailView>
   <section *ngIf="isLoading" class="state-panel">
     <span class="page-eyebrow">Fetching Result</span>
     <h1>Preparing your assessment report</h1>
@@ -187,4 +245,5 @@
       </article>
     </section>
   </ng-container>
+  </ng-template>
 </section>

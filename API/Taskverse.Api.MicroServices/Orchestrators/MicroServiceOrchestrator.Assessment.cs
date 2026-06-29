@@ -167,4 +167,11 @@ public partial class MicroServiceOrchestrator
 
         return await Post<StudentAttemptSubmitModel>(url, new { });
     }
+
+    public async Task<ObjectResult> GetStudentStreak(Guid studentUserId)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/students/me/streak?studentUserId={studentUserId}";
+
+        return await Get<StudentStreakModel>(url);
+    }
 }

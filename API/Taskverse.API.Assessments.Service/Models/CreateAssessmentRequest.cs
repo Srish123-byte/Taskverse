@@ -570,3 +570,11 @@ public record StudentAttemptRecoveryRecord(
     string? Instructions,
     [property: JsonPropertyName("questions")]
     List<StudentAttemptRecoveryQuestionRecord> Questions);
+
+public record StudentStreakRecord(
+    [property: JsonPropertyName("current_streak")]
+    int CurrentStreak,
+    [property: JsonPropertyName("longest_streak")]
+    int LongestStreak,
+    [property: JsonPropertyName("total_assessments_taken")]
+    int TotalAssessmentsTaken);

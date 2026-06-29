@@ -291,6 +291,53 @@ public class StudentsController : ControllerBase
     }
 
     /// <summary>
+    /// Returns the assessment streak summary for the supplied student.
+    /// </summary>
+    /// <param name="studentUserId">The student user identifier.</param>
+    /// <returns>The student's streak summary.</returns>
+    [HttpGet("me/streak")]
+    [ProducesResponseType(typeof(StudentStreakRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<StudentStreakRecord>> GetStudentStreak([FromQuery] Guid studentUserId)
+    {
+        try
+        {
+            var result = await _assessmentOrchestrator.GetStudentStreak(studentUserId);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (DbUpdateException ex)
+        {
+            return _assessmentOrchestrator.BuildUnexpectedError(
+                ex,
+                "A database error occurred while retrieving the student streak summary.",
+                "StudentStreakDatabaseError");
+        }
+        catch (PostgresException ex)
+        {
+            return _assessmentOrchestrator.BuildUnexpectedError(
+                ex,
+                "A PostgreSQL error occurred while retrieving the student streak summary.",
+                "StudentStreakPostgresError");
+        }
+        catch (Exception ex)
+        {
+            return _assessmentOrchestrator.BuildUnexpectedError(
+                ex,
+                "An unexpected error occurred while retrieving the student streak summary.");
+        }
+    }
+
+    /// <summary>
     /// Saves an answer for a question within a student's assessment attempt.
     /// </summary>
     /// <param name="attemptId">The attempt identifier.</param>
