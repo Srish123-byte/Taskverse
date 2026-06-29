@@ -14,6 +14,7 @@ namespace Taskverse.Business.Orchestrators;
 public class UsersOrchestrator : IUsersOrchestrator
 {
     private const string SuperAdminRole = "SuperAdmin";
+    private const int EnrollmentNumberMaxLength = 50;
 
     private readonly IMicroServiceOrchestrator _microServiceOrchestrator;
     private readonly IUsersManager _usersManager;
@@ -168,6 +169,7 @@ public class UsersOrchestrator : IUsersOrchestrator
             FullName   = dto.FullName.Trim(),
             Email      = dto.Email.Trim().ToLowerInvariant(),
             Phone      = dto.Phone?.Trim(),
+            EnrollmentNumber = string.IsNullOrWhiteSpace(dto.EnrollmentNumber) ? null : dto.EnrollmentNumber.Trim(),
             CollegeId  = dto.CollegeId,
             CollegeName = dto.CollegeName?.Trim(),
             Role       = dto.Role,
@@ -201,6 +203,12 @@ public class UsersOrchestrator : IUsersOrchestrator
         if (!dto.CollegeId.HasValue || dto.CollegeId.Value == Guid.Empty)
         {
             throw new InvalidOperationException("College is required for student registration.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.EnrollmentNumber) &&
+            dto.EnrollmentNumber.Trim().Length > EnrollmentNumberMaxLength)
+        {
+            throw new InvalidOperationException($"Enrollment number must not exceed {EnrollmentNumberMaxLength} characters.");
         }
 
         var hasClassId = dto.ClassId.HasValue && dto.ClassId.Value != Guid.Empty;

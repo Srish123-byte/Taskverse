@@ -11,6 +11,7 @@ namespace Taskverse.Business.Services;
 public class BulkStudentUploadService : IBulkStudentUploadService
 {
     private const string StudentRole = "Student";
+    private const int EnrollmentNumberMaxLength = 50;
 
     private readonly IDbContextFactory<TaskverseContext> _dbContextFactory;
     private readonly IEmailService _emailService;
@@ -66,6 +67,13 @@ public class BulkStudentUploadService : IBulkStudentUploadService
             .Where(row => !fileDuplicateRowNumbers.Contains(row.RowNumber))
             .ToList();
 
+        candidateRows = await PrepareRowsAsync(
+            candidateRows,
+            request.RestrictedCollegeId,
+            context,
+            result.InvalidRows,
+            cancellationToken);
+
         var collegeIds = candidateRows
             .Select(row => ParseGuid(row.Row.CollegeId))
             .Where(value => value.HasValue)
@@ -96,6 +104,11 @@ public class BulkStudentUploadService : IBulkStudentUploadService
             .AsNoTracking()
             .Where(item => classIds.Contains(item.ClassId))
             .ToDictionaryAsync(item => item.ClassId, cancellationToken);
+
+        foreach (var trackedClass in context.Classes.Local)
+        {
+            classes[trackedClass.ClassId] = trackedClass;
+        }
 
         var batches = await context.Batches
             .AsNoTracking()
@@ -154,6 +167,7 @@ public class BulkStudentUploadService : IBulkStudentUploadService
                 FullName = row.Row.FullName.Trim(),
                 Email = normalizedEmail,
                 Phone = row.Row.Phone.Trim(),
+                EnrollmentNumber = string.IsNullOrWhiteSpace(row.Row.EnrollmentNumber) ? null : row.Row.EnrollmentNumber.Trim(),
                 CollegeId = collegeId,
                 CollegeName = colleges[collegeId].CollegeName?.Trim(),
                 Role = StudentRole,
@@ -205,6 +219,233 @@ public class BulkStudentUploadService : IBulkStudentUploadService
         return result;
     }
 
+    private async Task<List<UploadRowContext>> PrepareRowsAsync(
+        List<UploadRowContext> rows,
+        Guid? restrictedCollegeId,
+        TaskverseContext context,
+        List<BulkStudentUploadRowIssueDto> invalidRows,
+        CancellationToken cancellationToken)
+    {
+        var preparedRows = new List<UploadRowContext>();
+        var classLookupByCollege = new Dictionary<Guid, Dictionary<string, List<Class>>>();
+        var collegesById = new Dictionary<Guid, College>();
+        var collegesByNormalizedName = new Dictionary<string, List<College>>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var row in rows)
+        {
+            var resolvedCollege = await ResolveCollegeAsync(
+                row,
+                restrictedCollegeId,
+                context,
+                collegesById,
+                collegesByNormalizedName,
+                invalidRows,
+                cancellationToken);
+
+            if (resolvedCollege is null)
+            {
+                continue;
+            }
+
+            row.Row.CollegeId = resolvedCollege.CollegeId.ToString();
+            row.Row.CollegeName = resolvedCollege.CollegeName?.Trim() ?? row.Row.CollegeName?.Trim() ?? string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(row.Row.ClassId) || string.IsNullOrWhiteSpace(row.Row.ClassName))
+            {
+                preparedRows.Add(row);
+                continue;
+            }
+
+            var classesByNormalizedName = await GetClassesByCollegeAsync(
+                resolvedCollege.CollegeId,
+                context,
+                classLookupByCollege,
+                cancellationToken);
+
+            var normalizedClassName = NormalizeClassName(row.Row.ClassName);
+            if (normalizedClassName.Length == 0)
+            {
+                invalidRows.Add(new BulkStudentUploadRowIssueDto
+                {
+                    RowNumber = row.RowNumber,
+                    Email = row.Row.Email,
+                    Message = "Class is required."
+                });
+                continue;
+            }
+
+            if (!classesByNormalizedName.TryGetValue(normalizedClassName, out var matchingClasses))
+            {
+                var createdClass = new Class
+                {
+                    ClassId = Guid.NewGuid(),
+                    CollegeId = resolvedCollege.CollegeId,
+                    Name = row.Row.ClassName.Trim(),
+                    AcademicYear = null,
+                    Description = null,
+                    CreatedAt = DateTime.UtcNow,
+                    ModifiedAt = DateTime.UtcNow
+                };
+
+                context.Classes.Add(createdClass);
+                classesByNormalizedName[normalizedClassName] = [createdClass];
+                row.Row.ClassId = createdClass.ClassId.ToString();
+                preparedRows.Add(row);
+                continue;
+            }
+
+            if (matchingClasses.Count > 1)
+            {
+                invalidRows.Add(new BulkStudentUploadRowIssueDto
+                {
+                    RowNumber = row.RowNumber,
+                    Email = row.Row.Email,
+                    Message = $"Multiple classes named '{row.Row.ClassName.Trim()}' already exist for this college. Please create or map the class manually."
+                });
+                continue;
+            }
+
+            row.Row.ClassId = matchingClasses[0].ClassId.ToString();
+            preparedRows.Add(row);
+        }
+
+        return preparedRows;
+    }
+
+    private async Task<College?> ResolveCollegeAsync(
+        UploadRowContext row,
+        Guid? restrictedCollegeId,
+        TaskverseContext context,
+        Dictionary<Guid, College> collegesById,
+        Dictionary<string, List<College>> collegesByNormalizedName,
+        List<BulkStudentUploadRowIssueDto> invalidRows,
+        CancellationToken cancellationToken)
+    {
+        if (restrictedCollegeId.HasValue)
+        {
+            var collegeId = restrictedCollegeId.Value;
+            if (collegesById.TryGetValue(collegeId, out var cachedRestrictedCollege))
+            {
+                return cachedRestrictedCollege;
+            }
+
+            var restrictedCollege = await context.Colleges
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.CollegeId == collegeId, cancellationToken);
+
+            if (restrictedCollege is null)
+            {
+                invalidRows.Add(new BulkStudentUploadRowIssueDto
+                {
+                    RowNumber = row.RowNumber,
+                    Email = row.Row.Email,
+                    Message = "The current college could not be resolved for this upload."
+                });
+                return null;
+            }
+
+            collegesById[collegeId] = restrictedCollege;
+            return restrictedCollege;
+        }
+
+        var rawCollegeId = row.Row.CollegeId?.Trim() ?? string.Empty;
+        if (Guid.TryParse(rawCollegeId, out var parsedCollegeId))
+        {
+            if (collegesById.TryGetValue(parsedCollegeId, out var cachedCollegeById))
+            {
+                return cachedCollegeById;
+            }
+
+            var collegeById = await context.Colleges
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.CollegeId == parsedCollegeId, cancellationToken);
+
+            if (collegeById is null)
+            {
+                invalidRows.Add(new BulkStudentUploadRowIssueDto
+                {
+                    RowNumber = row.RowNumber,
+                    Email = row.Row.Email,
+                    Message = "CollegeId was not found."
+                });
+                return null;
+            }
+
+            collegesById[parsedCollegeId] = collegeById;
+            return collegeById;
+        }
+
+        var normalizedCollegeName = NormalizeCollegeName(row.Row.CollegeName);
+        if (normalizedCollegeName.Length == 0)
+        {
+            invalidRows.Add(new BulkStudentUploadRowIssueDto
+            {
+                RowNumber = row.RowNumber,
+                Email = row.Row.Email,
+                Message = "CollegeId or College Name is required."
+            });
+            return null;
+        }
+
+        if (!collegesByNormalizedName.TryGetValue(normalizedCollegeName, out var matchingColleges))
+        {
+            matchingColleges = await context.Colleges
+                .AsNoTracking()
+                .Where(item => item.CollegeName != null && item.CollegeName.ToLower() == normalizedCollegeName)
+                .ToListAsync(cancellationToken);
+            collegesByNormalizedName[normalizedCollegeName] = matchingColleges;
+        }
+
+        if (matchingColleges.Count == 0)
+        {
+            invalidRows.Add(new BulkStudentUploadRowIssueDto
+            {
+                RowNumber = row.RowNumber,
+                Email = row.Row.Email,
+                Message = $"College '{row.Row.CollegeName.Trim()}' was not found."
+            });
+            return null;
+        }
+
+        if (matchingColleges.Count > 1)
+        {
+            invalidRows.Add(new BulkStudentUploadRowIssueDto
+            {
+                RowNumber = row.RowNumber,
+                Email = row.Row.Email,
+                Message = $"Multiple colleges named '{row.Row.CollegeName.Trim()}' were found. Please use CollegeId."
+            });
+            return null;
+        }
+
+        var resolvedCollege = matchingColleges[0];
+        collegesById[resolvedCollege.CollegeId] = resolvedCollege;
+        return resolvedCollege;
+    }
+
+    private static async Task<Dictionary<string, List<Class>>> GetClassesByCollegeAsync(
+        Guid collegeId,
+        TaskverseContext context,
+        Dictionary<Guid, Dictionary<string, List<Class>>> classLookupByCollege,
+        CancellationToken cancellationToken)
+    {
+        if (classLookupByCollege.TryGetValue(collegeId, out var cachedLookup))
+        {
+            return cachedLookup;
+        }
+
+        var existingClasses = await context.Classes
+            .Where(item => item.CollegeId == collegeId)
+            .ToListAsync(cancellationToken);
+
+        var lookup = existingClasses
+            .GroupBy(item => NormalizeClassName(item.Name))
+            .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
+
+        classLookupByCollege[collegeId] = lookup;
+        return lookup;
+    }
+
     private static bool TryValidateRow(
         UploadRowContext context,
         Guid? restrictedCollegeId,
@@ -238,6 +479,13 @@ public class BulkStudentUploadService : IBulkStudentUploadService
             return false;
         }
 
+        if (!string.IsNullOrWhiteSpace(context.Row.EnrollmentNumber) &&
+            context.Row.EnrollmentNumber.Trim().Length > EnrollmentNumberMaxLength)
+        {
+            validationMessage = $"EnrollmentNumber must not exceed {EnrollmentNumberMaxLength} characters.";
+            return false;
+        }
+
         if (!Guid.TryParse(context.Row.CollegeId, out collegeId))
         {
             validationMessage = "CollegeId is invalid.";
@@ -251,9 +499,9 @@ public class BulkStudentUploadService : IBulkStudentUploadService
         Guid parsedClassId = Guid.Empty;
         Guid parsedBatchId = Guid.Empty;
 
-        if (hasClassId != hasBatchId)
+        if (hasBatchId && !hasClassId)
         {
-            validationMessage = "ClassId and BatchId must either both be provided or both be left empty.";
+            validationMessage = "BatchId cannot be provided without ClassId.";
             return false;
         }
 
@@ -272,7 +520,13 @@ public class BulkStudentUploadService : IBulkStudentUploadService
         if (hasClassId)
         {
             classId = parsedClassId;
-            batchId = parsedBatchId;
+            batchId = hasBatchId ? parsedBatchId : null;
+        }
+
+        if (!hasClassId && !string.IsNullOrWhiteSpace(context.Row.ClassName))
+        {
+            validationMessage = "Class could not be resolved for this row.";
+            return false;
         }
 
         if (restrictedCollegeId.HasValue && restrictedCollegeId.Value != collegeId)
@@ -299,6 +553,12 @@ public class BulkStudentUploadService : IBulkStudentUploadService
             return false;
         }
 
+        if (!hasBatchId)
+        {
+            validationMessage = string.Empty;
+            return true;
+        }
+
         if (!batches.TryGetValue(batchId!.Value, out var batchEntity) || batchEntity.ClassId != classId.Value || batchEntity.CollegeId != collegeId)
         {
             validationMessage = "BatchId does not belong to the selected class and college.";
@@ -311,6 +571,12 @@ public class BulkStudentUploadService : IBulkStudentUploadService
 
     private static string NormalizeEmail(string? email) =>
         (email ?? string.Empty).Trim().ToLowerInvariant();
+
+    private static string NormalizeClassName(string? className) =>
+        (className ?? string.Empty).Trim().ToLowerInvariant();
+
+    private static string NormalizeCollegeName(string? collegeName) =>
+        (collegeName ?? string.Empty).Trim().ToLowerInvariant();
 
     private static Guid? ParseGuid(string? value) =>
         Guid.TryParse(value, out var parsed) ? parsed : null;

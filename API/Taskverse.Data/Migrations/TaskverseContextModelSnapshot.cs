@@ -509,6 +509,11 @@ namespace Taskverse.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("email");
 
+                    b.Property<string>("EnrollmentNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("enrollment_number");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("text")

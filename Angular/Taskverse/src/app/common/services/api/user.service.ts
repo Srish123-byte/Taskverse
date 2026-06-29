@@ -7,6 +7,7 @@ export interface RegisterRequest {
   fullName: string;
   email: string;
   phone?: string;
+  enrollmentNumber?: string;
   collegeId?: string;
   collegeName?: string;
   classId?: string;
@@ -20,6 +21,7 @@ export interface RegisterResponse {
   fullName: string;
   email: string;
   phone?: string;
+  enrollmentNumber?: string;
   collegeId?: string;
   collegeName?: string;
   classId?: string;

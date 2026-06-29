@@ -20,8 +20,6 @@ public class AssessmentManager : IAssessmentManager
     private const int MaximumPageSize = 100;
     private static readonly TimeSpan PartialDraftStartOffset = TimeSpan.FromHours(1);
     private static readonly TimeSpan PartialDraftMinimumDuration = TimeSpan.FromMinutes(1);
-    private const string PartialDraftSubjectName = "Draft Subject";
-    private const string PartialDraftTopicName = "Draft Topic";
 
     private readonly TaskverseContext _context;
     private readonly AssessmentSettings _assessmentSettings;
@@ -76,6 +74,7 @@ public class AssessmentManager : IAssessmentManager
         {
             var assessment = await GetAssessmentForUpdateAsync(assessmentId);
             EnsureAssessmentReadAuthorized(assessment, collegeId, requesterRole, requesterName);
+            await PopulateAssessmentLabelsAsync([assessment]);
             return assessment;
         }, "retrieving the assessment");
     }
@@ -105,9 +104,6 @@ public class AssessmentManager : IAssessmentManager
 
             ValidateAssessment(updatedAssessment, request.QuestionIds);
 
-            var classification = await ResolveAssessmentClassificationAsync(updatedAssessment);
-            ApplyClassification(updatedAssessment, classification);
-
             var normalizedQuestionIds = request.QuestionIds.NormalizeQuestionIds();
             var normalizedAssignedBatchIds = NormalizeAssignedBatchIds(updatedAssessment.AssignedBatchIds);
 
@@ -117,12 +113,11 @@ public class AssessmentManager : IAssessmentManager
 
             var questions = await LoadAndValidateQuestionsForCreateAsync(
                 updatedAssessment,
-                normalizedQuestionIds,
-                classification.Subject.SubjectName,
-                classification.Topic.TopicName);
+                normalizedQuestionIds);
 
             ApplyAutoCalculatedTotalMarksIfEnabled(updatedAssessment, questions);
             ValidateQuestionBudget(updatedAssessment, questions);
+            await PopulateAssessmentClassificationAsync(updatedAssessment, questions);
 
             ApplyAssessmentUpdates(assessment, updatedAssessment, questions);
             await SyncAssessmentQuestionsAsync(assessment, questions, normalizedQuestionIds);
@@ -142,15 +137,14 @@ public class AssessmentManager : IAssessmentManager
         updatedAssessment.CreatedAt = assessment.CreatedAt;
         updatedAssessment.ModifiedAt = DateTime.UtcNow;
 
-        ApplyPartialDraftRequiredDefaults(updatedAssessment, DateTime.UtcNow);
-        await EnsurePartialDraftClassificationAsync(updatedAssessment);
-
         var normalizedQuestionIds = (request.QuestionIds ?? []).NormalizeQuestionIds();
         var normalizedAssignedBatchIds = NormalizeAssignedBatchIds(updatedAssessment.AssignedBatchIds);
         await ValidateAssignedBatchesAsync(updatedAssessment.CollegeId, normalizedAssignedBatchIds);
         updatedAssessment.AssignedBatchIds = normalizedAssignedBatchIds;
 
         var questions = await LoadQuestionsForDraftUpdateAsync(updatedAssessment.CollegeId, normalizedQuestionIds);
+        ApplyPartialDraftRequiredDefaults(updatedAssessment, DateTime.UtcNow);
+        await PopulateAssessmentClassificationAsync(updatedAssessment, questions);
 
         ApplyPartialDraftUpdates(assessment, updatedAssessment);
         await SyncAssessmentQuestionsAsync(assessment, questions, normalizedQuestionIds);
@@ -179,9 +173,6 @@ public class AssessmentManager : IAssessmentManager
 
         ValidateAssessment(assessment, questionIds);
 
-        var classification = await ResolveAssessmentClassificationAsync(assessment);
-        ApplyClassification(assessment, classification);
-
         var normalizedQuestionIds = questionIds.NormalizeQuestionIds();
         var normalizedAssignedBatchIds = NormalizeAssignedBatchIds(assessment.AssignedBatchIds);
 
@@ -191,12 +182,11 @@ public class AssessmentManager : IAssessmentManager
 
         var questions = await LoadAndValidateQuestionsForCreateAsync(
             assessment,
-            normalizedQuestionIds,
-            classification.Subject.SubjectName,
-            classification.Topic.TopicName);
+            normalizedQuestionIds);
 
         ApplyAutoCalculatedTotalMarksIfEnabled(assessment, questions);
         ValidateQuestionBudget(assessment, questions);
+        await PopulateAssessmentClassificationAsync(assessment, questions);
 
         PrepareAssessmentForCreation(assessment, questions, targetStatus);
         assessment.AssessmentQuestions = BuildAssessmentQuestions(assessment.AssessmentId, questions, normalizedQuestionIds);
@@ -212,8 +202,9 @@ public class AssessmentManager : IAssessmentManager
         ValidatePartialDraft(assessment);
 
         var now = DateTime.UtcNow;
+        var questions = await LoadQuestionsForDraftUpdateAsync(assessment.CollegeId, questionIds);
         ApplyPartialDraftRequiredDefaults(assessment, now);
-        await EnsurePartialDraftClassificationAsync(assessment);
+        await PopulateAssessmentClassificationAsync(assessment, questions);
         assessment.AssessmentId = assessment.AssessmentId == Guid.Empty ? Guid.NewGuid() : assessment.AssessmentId;
         assessment.AssessmentType = AssessmentType.Objective;
         assessment.AssessmentStatus = AssessmentStatus.Draft;
@@ -227,7 +218,6 @@ public class AssessmentManager : IAssessmentManager
 
         if (questionIds.Count > 0)
         {
-            var questions = await LoadQuestionsForDraftUpdateAsync(assessment.CollegeId, questionIds);
             await SyncAssessmentQuestionsAsync(assessment, questions, questionIds);
             await SaveChangesWithWrapAsync("Unable to save the assessment draft questions.");
         }
@@ -278,54 +268,6 @@ public class AssessmentManager : IAssessmentManager
         }
     }
 
-    private async Task EnsurePartialDraftClassificationAsync(Assessment assessment)
-    {
-        ApplyPartialDraftClassificationFallback(assessment);
-
-        SubjectTopicResolver.Resolution classification;
-        try
-        {
-            classification = await ResolveAssessmentClassificationAsync(assessment);
-        }
-        catch (KeyNotFoundException)
-        {
-            classification = await ResolveDraftPlaceholderClassificationAsync(assessment);
-        }
-        catch (InvalidOperationException)
-        {
-            classification = await ResolveDraftPlaceholderClassificationAsync(assessment);
-        }
-
-        ApplyClassification(assessment, classification);
-    }
-
-    private async Task<SubjectTopicResolver.Resolution> ResolveDraftPlaceholderClassificationAsync(Assessment assessment)
-    {
-        assessment.SubjectId = null;
-        assessment.Subject = null;
-        assessment.SubjectName = PartialDraftSubjectName;
-        assessment.TopicId = null;
-        assessment.Topic = null;
-        assessment.TopicName = PartialDraftTopicName;
-
-        return await ResolveAssessmentClassificationAsync(assessment);
-    }
-
-    private static void ApplyPartialDraftClassificationFallback(Assessment assessment)
-    {
-        if (!assessment.SubjectId.HasValue &&
-            string.IsNullOrWhiteSpace(assessment.SubjectName) &&
-            !assessment.TopicId.HasValue)
-        {
-            assessment.SubjectName = PartialDraftSubjectName;
-        }
-
-        if (!assessment.TopicId.HasValue && string.IsNullOrWhiteSpace(assessment.TopicName))
-        {
-            assessment.TopicName = PartialDraftTopicName;
-        }
-    }
-
     private async Task<List<Question>> LoadQuestionsForDraftUpdateAsync(Guid collegeId, IReadOnlyList<Guid> questionIds)
     {
         if (questionIds.Count == 0)
@@ -373,8 +315,6 @@ public class AssessmentManager : IAssessmentManager
         {
             var assessment = await _context.Assessments
                 .Include(item => item.AssessmentQuestions)
-                .Include(item => item.Subject)
-                .Include(item => item.Topic)
                 .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId);
 
             if (assessment is null)
@@ -388,6 +328,7 @@ public class AssessmentManager : IAssessmentManager
             ValidateQuestionsForPublish(assessment, questions);
             ApplyAutoCalculatedTotalMarksIfEnabled(assessment, questions);
             ValidateQuestionBudget(assessment, questions);
+            await PopulateAssessmentClassificationAsync(assessment, questions);
 
             PrepareAssessmentForPublish(assessment, questions);
 
@@ -509,8 +450,6 @@ public class AssessmentManager : IAssessmentManager
 
             var query = _context.Assessments
                 .AsNoTracking()
-                .Include(item => item.Subject)
-                .Include(item => item.Topic)
                 .Where(item => item.CollegeId == request.CollegeId)
                 .Where(item => item.IsDeleted != true && item.AssessmentStatus != AssessmentStatus.Soft_Deleted);
 
@@ -526,15 +465,6 @@ public class AssessmentManager : IAssessmentManager
                 throw new UnauthorizedAccessException("Only CollegeAdmin and Trainer can access assessments.");
             }
 
-            if (!string.IsNullOrWhiteSpace(normalizedSearchTerm))
-            {
-                var searchPattern = $"%{normalizedSearchTerm}%";
-                query = query.Where(item =>
-                    EF.Functions.ILike(item.AssessmentName, searchPattern) ||
-                    (item.Subject != null && EF.Functions.ILike(item.Subject.SubjectName, searchPattern)) ||
-                    (item.Topic != null && EF.Functions.ILike(item.Topic.TopicName, searchPattern)));
-            }
-
             if (statusFilter.HasValue)
             {
                 query = query.Where(item => item.AssessmentStatus == statusFilter.Value);
@@ -545,18 +475,35 @@ public class AssessmentManager : IAssessmentManager
                 query = query.Where(item => item.DifficultyLevel == request.DifficultyLevel.Value);
             }
 
-            var totalCount = await query.CountAsync();
-            var activeCount = await query.CountAsync(item =>
-                item.AssessmentStatus == AssessmentStatus.Live ||
-                item.AssessmentStatus == AssessmentStatus.Scheduled);
-            var completedCount = await query.CountAsync(item => item.AssessmentStatus == AssessmentStatus.Completed);
-
             var assessments = await query
                 .OrderByDescending(item => item.StartDateTime ?? item.CreatedAt)
                 .ThenByDescending(item => item.CreatedAt)
+                .ToListAsync();
+
+            await PopulateAssessmentLabelsAsync(assessments);
+
+            if (!string.IsNullOrWhiteSpace(normalizedSearchTerm))
+            {
+                assessments = assessments
+                    .Where(item =>
+                        item.AssessmentName.Contains(normalizedSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                        item.SubjectNames.Any(name => name.Contains(normalizedSearchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                        item.TopicNames.Any(name => name.Contains(normalizedSearchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                        (item.SubjectName?.Contains(normalizedSearchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                        (item.TopicName?.Contains(normalizedSearchTerm, StringComparison.OrdinalIgnoreCase) ?? false))
+                    .ToList();
+            }
+
+            var totalCount = assessments.Count;
+            var activeCount = assessments.Count(item =>
+                item.AssessmentStatus == AssessmentStatus.Live ||
+                item.AssessmentStatus == AssessmentStatus.Scheduled);
+            var completedCount = assessments.Count(item => item.AssessmentStatus == AssessmentStatus.Completed);
+
+            assessments = assessments
                 .Skip((safePageNumber - 1) * safePageSize)
                 .Take(safePageSize)
-                .ToListAsync();
+                .ToList();
 
             return new PagedAssessmentSearchRecord(
                 assessments.Select(item => item.ToSearchItemRecord()).ToList(),
@@ -931,30 +878,18 @@ public class AssessmentManager : IAssessmentManager
         }, "submitting the student assessment attempt");
     }
 
-    private async Task<SubjectTopicResolver.Resolution> ResolveAssessmentClassificationAsync(Assessment assessment)
-    {
-        return await SubjectTopicResolver.ResolveAsync(
-            _context,
-            assessment.SubjectId,
-            assessment.SubjectName,
-            assessment.TopicId,
-            assessment.TopicName);
-    }
-
-    private static void ApplyClassification(Assessment assessment, SubjectTopicResolver.Resolution classification)
-    {
-        assessment.SubjectId = classification.Subject.SubjectId;
-        assessment.Subject = classification.Subject;
-        assessment.SubjectName = classification.Subject.SubjectName;
-        assessment.TopicId = classification.Topic.TopicId;
-        assessment.Topic = classification.Topic;
-        assessment.TopicName = classification.Topic.TopicName;
-    }
-
     private static Guid[] NormalizeAssignedBatchIds(IEnumerable<Guid>? assignedBatchIds)
     {
         return (assignedBatchIds ?? [])
             .Where(batchId => batchId != Guid.Empty)
+            .Distinct()
+            .ToArray();
+    }
+
+    private static Guid[] NormalizeClassificationIds(IEnumerable<Guid>? ids)
+    {
+        return (ids ?? [])
+            .Where(id => id != Guid.Empty)
             .Distinct()
             .ToArray();
     }
@@ -982,9 +917,7 @@ public class AssessmentManager : IAssessmentManager
 
     private async Task<List<Question>> LoadAndValidateQuestionsForCreateAsync(
         Assessment assessment,
-        List<Guid> questionIds,
-        string subjectName,
-        string topicName)
+        List<Guid> questionIds)
     {
         if (questionIds.Count == 0)
         {
@@ -998,8 +931,6 @@ public class AssessmentManager : IAssessmentManager
         EnsureQuestionsExist(questionIds, questions);
         EnsureQuestionsBelongToCollege(questions, assessment.CollegeId);
         EnsureQuestionsAreAvailableForCreate(questions);
-        EnsureQuestionsMatchSubject(questions, subjectName);
-        EnsureQuestionsMatchTopic(questions, topicName);
 
         return questions;
     }
@@ -1041,38 +972,131 @@ public class AssessmentManager : IAssessmentManager
         }
     }
 
-    private static void EnsureQuestionsMatchSubject(IEnumerable<Question> questions, string subjectName)
+    private async Task PopulateAssessmentClassificationAsync(Assessment assessment, IReadOnlyCollection<Question> questions)
     {
-        var mismatchedQuestionIds = questions
-            .Where(question => !string.Equals(
-                question.Subject?.Trim(),
-                subjectName,
-                StringComparison.OrdinalIgnoreCase))
-            .Select(question => question.QuestionId)
-            .ToList();
+        var explicitSubjectIds = NormalizeClassificationIds(assessment.SubjectIds);
+        var explicitTopicIds = NormalizeClassificationIds(assessment.TopicIds);
 
-        if (mismatchedQuestionIds.Count > 0)
+        var questionSubjectIds = questions
+            .Where(question => question.SubjectId.HasValue)
+            .Select(question => question.SubjectId!.Value);
+
+        var questionTopicIds = questions
+            .Where(question => question.TopicId.HasValue)
+            .Select(question => question.TopicId!.Value);
+
+        var resolvedTopicIds = NormalizeClassificationIds(explicitTopicIds.Concat(questionTopicIds));
+        var topics = resolvedTopicIds.Length == 0
+            ? []
+            : await _context.Topics
+                .AsNoTracking()
+                .Where(topic => resolvedTopicIds.Contains(topic.TopicId))
+                .Select(topic => new { topic.TopicId, topic.TopicName, topic.SubjectId })
+                .ToListAsync();
+
+        var missingTopicIds = explicitTopicIds.Except(topics.Select(topic => topic.TopicId)).ToArray();
+        if (missingTopicIds.Length > 0)
         {
             throw new InvalidOperationException(
-                $"Question(s) do not belong to subject '{subjectName}': {string.Join(", ", mismatchedQuestionIds)}.");
+                $"Topic id(s) were not found for this assessment: {string.Join(", ", missingTopicIds)}.");
+        }
+
+        var resolvedSubjectIds = NormalizeClassificationIds(
+            explicitSubjectIds
+                .Concat(questionSubjectIds)
+                .Concat(topics.Select(topic => topic.SubjectId)));
+
+        var subjects = resolvedSubjectIds.Length == 0
+            ? []
+            : await _context.Subjects
+                .AsNoTracking()
+                .Where(subject => resolvedSubjectIds.Contains(subject.SubjectId))
+                .Select(subject => new { subject.SubjectId, subject.SubjectName })
+                .ToListAsync();
+
+        var missingSubjectIds = explicitSubjectIds.Except(subjects.Select(subject => subject.SubjectId)).ToArray();
+        if (missingSubjectIds.Length > 0)
+        {
+            throw new InvalidOperationException(
+                $"Subject id(s) were not found for this assessment: {string.Join(", ", missingSubjectIds)}.");
+        }
+
+        var subjectNameMap = subjects.ToDictionary(subject => subject.SubjectId, subject => subject.SubjectName);
+        var topicNameMap = topics.ToDictionary(topic => topic.TopicId, topic => topic.TopicName);
+
+        assessment.SubjectIds = resolvedSubjectIds;
+        assessment.TopicIds = resolvedTopicIds;
+        ApplyAssessmentLabels(assessment, subjectNameMap, topicNameMap);
+    }
+
+    private async Task PopulateAssessmentLabelsAsync(IReadOnlyCollection<Assessment> assessments)
+    {
+        if (assessments.Count == 0)
+        {
+            return;
+        }
+
+        var subjectIds = assessments
+            .SelectMany(assessment => NormalizeClassificationIds(assessment.SubjectIds))
+            .Distinct()
+            .ToArray();
+
+        var topicIds = assessments
+            .SelectMany(assessment => NormalizeClassificationIds(assessment.TopicIds))
+            .Distinct()
+            .ToArray();
+
+        var subjectNameMap = subjectIds.Length == 0
+            ? new Dictionary<Guid, string>()
+            : await _context.Subjects
+                .AsNoTracking()
+                .Where(subject => subjectIds.Contains(subject.SubjectId))
+                .ToDictionaryAsync(subject => subject.SubjectId, subject => subject.SubjectName);
+
+        var topicNameMap = topicIds.Length == 0
+            ? new Dictionary<Guid, string>()
+            : await _context.Topics
+                .AsNoTracking()
+                .Where(topic => topicIds.Contains(topic.TopicId))
+                .ToDictionaryAsync(topic => topic.TopicId, topic => topic.TopicName);
+
+        foreach (var assessment in assessments)
+        {
+            assessment.SubjectIds = NormalizeClassificationIds(assessment.SubjectIds);
+            assessment.TopicIds = NormalizeClassificationIds(assessment.TopicIds);
+            ApplyAssessmentLabels(assessment, subjectNameMap, topicNameMap);
         }
     }
 
-    private static void EnsureQuestionsMatchTopic(IEnumerable<Question> questions, string topicName)
+    private static void ApplyAssessmentLabels(
+        Assessment assessment,
+        IReadOnlyDictionary<Guid, string> subjectNameMap,
+        IReadOnlyDictionary<Guid, string> topicNameMap)
     {
-        var mismatchedQuestionIds = questions
-            .Where(question => !string.Equals(
-                question.Topic?.Trim(),
-                topicName,
-                StringComparison.OrdinalIgnoreCase))
-            .Select(question => question.QuestionId)
-            .ToList();
+        assessment.SubjectNames = assessment.SubjectIds
+            .Where(subjectNameMap.ContainsKey)
+            .Select(subjectId => subjectNameMap[subjectId])
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
-        if (mismatchedQuestionIds.Count > 0)
+        assessment.TopicNames = assessment.TopicIds
+            .Where(topicNameMap.ContainsKey)
+            .Select(topicId => topicNameMap[topicId])
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        assessment.SubjectName = BuildAssessmentLabel(assessment.SubjectNames, "Subject", "Subjects");
+        assessment.TopicName = BuildAssessmentLabel(assessment.TopicNames, "Topic", "Topics");
+    }
+
+    private static string? BuildAssessmentLabel(IReadOnlyCollection<string> names, string singularLabel, string pluralLabel)
+    {
+        if (names.Count == 0)
         {
-            throw new InvalidOperationException(
-                $"Question(s) do not belong to topic '{topicName}': {string.Join(", ", mismatchedQuestionIds)}.");
+            return null;
         }
+
+        return names.Count == 1 ? names.First() : $"Multiple {pluralLabel}";
     }
 
     private IQueryable<Batch> BuildAccessibleBatchQuery(AssessmentAccessibleBatchesRequest request)
@@ -1208,11 +1232,11 @@ public class AssessmentManager : IAssessmentManager
         Assessment source,
         IEnumerable<Question> questions)
     {
-        target.SubjectId = source.SubjectId;
-        target.Subject = source.Subject;
+        target.SubjectIds = source.SubjectIds;
+        target.SubjectNames = source.SubjectNames;
         target.SubjectName = source.SubjectName;
-        target.TopicId = source.TopicId;
-        target.Topic = source.Topic;
+        target.TopicIds = source.TopicIds;
+        target.TopicNames = source.TopicNames;
         target.TopicName = source.TopicName;
         target.AssessmentName = source.AssessmentName;
         target.AssessmentType = ResolveAssessmentType(questions);
@@ -1235,11 +1259,11 @@ public class AssessmentManager : IAssessmentManager
 
     private static void ApplyPartialDraftUpdates(Assessment target, Assessment source)
     {
-        target.SubjectId = source.SubjectId;
-        target.Subject = source.Subject;
+        target.SubjectIds = source.SubjectIds;
+        target.SubjectNames = source.SubjectNames;
         target.SubjectName = source.SubjectName;
-        target.TopicId = source.TopicId;
-        target.Topic = source.Topic;
+        target.TopicIds = source.TopicIds;
+        target.TopicNames = source.TopicNames;
         target.TopicName = source.TopicName;
         target.AssessmentName = source.AssessmentName;
         target.AssessmentType = AssessmentType.Objective;
@@ -1308,8 +1332,6 @@ public class AssessmentManager : IAssessmentManager
     {
         var assessment = await _context.Assessments
             .Include(item => item.AssessmentQuestions)
-            .Include(item => item.Subject)
-            .Include(item => item.Topic)
             .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId);
 
         if (assessment is null)
@@ -1581,6 +1603,8 @@ public class AssessmentManager : IAssessmentManager
             select assessment)
             .ToListAsync();
 
+        await PopulateAssessmentLabelsAsync(completedAssessments);
+
         return completedAssessments
             .Select(assessment => ToStudentAssessmentListItem(assessment, nameof(AssessmentStatus.Completed)))
             .ToList();
@@ -1613,6 +1637,8 @@ public class AssessmentManager : IAssessmentManager
             .ThenBy(assessment => assessment.AssessmentName)
             .ToListAsync();
 
+        await PopulateAssessmentLabelsAsync(assessments);
+
         return assessments
             .Select(assessment => ToStudentAssessmentListItem(assessment, assessment.AssessmentStatus.ToString()))
             .ToList();
@@ -1622,8 +1648,6 @@ public class AssessmentManager : IAssessmentManager
     {
         return _context.Assessments
             .AsNoTracking()
-            .Include(assessment => assessment.Subject)
-            .Include(assessment => assessment.Topic)
             .Where(assessment =>
                 assessment.CollegeId == collegeId &&
                 assessment.AssessmentStatus != AssessmentStatus.Soft_Deleted &&
@@ -1636,8 +1660,8 @@ public class AssessmentManager : IAssessmentManager
         return new StudentAssessmentListItemRecord(
             assessment.AssessmentId,
             assessment.AssessmentName,
-            assessment.Subject?.SubjectName ?? assessment.SubjectName,
-            assessment.Topic?.TopicName ?? assessment.TopicName,
+            assessment.SubjectName,
+            assessment.TopicName,
             assessmentStatus.ToUpperInvariant(),
             assessment.DurationMinutes,
             assessment.TotalMarks,

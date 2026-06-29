@@ -104,6 +104,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
         Validators.required,
         phoneValidator
       ]],
+      enrollmentNumber: ['', [Validators.maxLength(50)]],
       role: ['Student', Validators.required],
       collegeId: [''],
       collegeName: [''],
@@ -346,6 +347,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
     const { confirmPassword, collegeName, ...formValue } = this.registerForm.value;
     const request: RegisterRequest = {
       ...formValue,
+      enrollmentNumber: formValue.enrollmentNumber || undefined,
       collegeId: formValue.collegeId || undefined,
       classId: formValue.classId || undefined,
       batchId: formValue.batchId || undefined,
@@ -584,6 +586,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   get rFullName()        { return this.registerForm.get('fullName'); }
   get rEmail()           { return this.registerForm.get('email'); }
   get rPhone()           { return this.registerForm.get('phone'); }
+  get rEnrollmentNumber(){ return this.registerForm.get('enrollmentNumber'); }
   get rRole()            { return this.registerForm.get('role'); }
   get rCollegeId()       { return this.registerForm.get('collegeId'); }
   get rCollegeName()     { return this.registerForm.get('collegeName'); }
