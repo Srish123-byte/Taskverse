@@ -1,6 +1,224 @@
-<div class="page-container">
-  <h2 class="page-title">My Students</h2>
-  <div class="page-content">
-    <!-- Students list goes here -->
-  </div>
+<div class="attendance-page">
+  <section class="attendance-hero">
+    <div>
+      <h2>Attendance Tracking</h2>
+      <p>Manage session-based attendance for your college batches.</p>
+    </div>
+
+    <div class="attendance-filters">
+      <label>
+        <span>Date</span>
+        <input type="date" [(ngModel)]="selectedAttendanceDate" (ngModelChange)="onAttendanceDateChange($event)">
+      </label>
+
+      <label>
+        <span>Session</span>
+        <select [(ngModel)]="selectedAttendanceSession" (ngModelChange)="onAttendanceSessionChange($event)">
+          <option *ngFor="let session of attendanceSessions" [ngValue]="session.value">{{ session.label }}</option>
+        </select>
+      </label>
+
+      <label class="batch-filter">
+        <span>Batch</span>
+        <select [(ngModel)]="selectedBatchId" (ngModelChange)="onBatchChange($event)">
+          <optgroup *ngFor="let group of batchGroups" [label]="group.className + (group.academicYear ? ' - ' + group.academicYear : '')">
+            <option *ngFor="let batch of group.batches" [value]="batch.batchId">
+              {{ batch.batchName }}{{ batch.batchOwnerTrainerName ? ' (' + batch.batchOwnerTrainerName + ')' : '' }}
+            </option>
+          </optgroup>
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <div *ngIf="errorMessage" class="banner banner-error">{{ errorMessage }}</div>
+  <div *ngIf="successMessage" class="banner banner-success">{{ successMessage }}</div>
+
+  <section class="metrics-grid" *ngIf="roster">
+    <article class="metric-card">
+      <span class="metric-label">Total Students</span>
+      <strong>{{ roster.totalStudents }}</strong>
+    </article>
+    <article class="metric-card">
+      <span class="metric-label">Present</span>
+      <strong>{{ roster.presentCount }}</strong>
+    </article>
+    <article class="metric-card">
+      <span class="metric-label">Absent</span>
+      <strong>{{ roster.absentCount }}</strong>
+    </article>
+    <article class="metric-card">
+      <span class="metric-label">Attendance Rate</span>
+      <strong>{{ roster.attendancePercentage }}%</strong>
+    </article>
+  </section>
+
+  <section class="attendance-shell">
+    <div class="attendance-toolbar">
+      <button type="button" class="action-button secondary" (click)="markAllPresent()" [disabled]="!roster?.canEdit">
+        Mark All as Present
+      </button>
+
+      <input
+        type="search"
+        [(ngModel)]="searchTerm"
+        placeholder="Search student name, email, or ID">
+    </div>
+
+    <div class="attendance-meta" *ngIf="roster">
+      <span>Class: {{ roster.className }}</span>
+      <span>Batch: {{ roster.batchName }}</span>
+      <span>Owner: {{ roster.batchOwnerTrainerName || '-' }}</span>
+      <span *ngIf="roster.isSubmitted">Submitted By: {{ roster.submittedByTrainerName || '-' }}</span>
+    </div>
+
+    <div *ngIf="roster?.isSubmitted" class="lock-banner" [class.lock-banner-editable]="roster?.canEdit && !roster?.isLocked">
+      <span *ngIf="roster?.canEdit && !roster?.isLocked">
+        This session was already submitted. You can edit it for 30 minutes from submission.
+      </span>
+      <span *ngIf="!roster?.canEdit || roster?.isLocked">
+        The attendance has already been submitted for this session.
+      </span>
+    </div>
+
+    <div class="attendance-table-shell" *ngIf="!isLoadingRoster; else rosterLoading">
+      <table class="attendance-table" *ngIf="roster; else emptyRoster">
+        <thead>
+          <tr>
+            <th>Student Name</th>
+            <th>Enrollment Number</th>
+            <th>Email</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let student of filteredStudents">
+            <td>
+              <strong>{{ student.fullName }}</strong>
+            </td>
+            <td>{{ student.enrollmentNumber || '-' }}</td>
+            <td>{{ student.email }}</td>
+            <td>
+              <div class="status-toggle">
+                <label>
+                  <input
+                    type="radio"
+                    [name]="'attendance-' + student.studentId"
+                    [checked]="student.attendanceEntry === AttendanceEntryType.Present"
+                    (change)="setAttendanceEntry(student, AttendanceEntryType.Present)"
+                    [disabled]="!roster.canEdit">
+                  <span>Present</span>
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    [name]="'attendance-' + student.studentId"
+                    [checked]="student.attendanceEntry === AttendanceEntryType.Absent"
+                    (change)="setAttendanceEntry(student, AttendanceEntryType.Absent)"
+                    [disabled]="!roster.canEdit">
+                  <span>Absent</span>
+                </label>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="attendance-actions">
+      <button type="button" class="action-button primary" (click)="submitAttendance()" [disabled]="!canSubmit">
+        {{ isSubmitting ? 'Saving...' : 'Submit Attendance Report' }}
+      </button>
+    </div>
+  </section>
+
+  <section class="history-shell">
+    <div class="history-header">
+      <div>
+        <h3>Attendance History</h3>
+        <p>Review datewise summaries for the selected batch.</p>
+      </div>
+
+      <div class="history-filters">
+        <label>
+          <span>From</span>
+          <input type="date" [(ngModel)]="historyFromDate" (change)="onHistoryFilterChange()">
+        </label>
+        <label>
+          <span>To</span>
+          <input type="date" [(ngModel)]="historyToDate" (change)="onHistoryFilterChange()">
+        </label>
+      </div>
+    </div>
+
+    <div class="history-actions">
+      <button type="button" class="action-button secondary" (click)="exportAttendance()" [disabled]="isExporting || !selectedBatchId">
+        {{ isExporting ? 'Exporting...' : 'Export Excel' }}
+      </button>
+      <div class="email-actions">
+        <textarea
+          [(ngModel)]="emailRecipientsInput"
+          rows="2"
+          placeholder="Enter up to 5 email IDs, separated by comma or new line"></textarea>
+        <button type="button" class="action-button primary" (click)="emailAttendanceReport()" [disabled]="isSendingEmail || !selectedBatchId">
+          {{ isSendingEmail ? 'Sending...' : 'Email Report' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="history-table-shell" *ngIf="!isLoadingHistory; else historyLoading">
+      <table class="history-table" *ngIf="history?.items?.length; else emptyHistory">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Session</th>
+            <th>Present</th>
+            <th>Absent</th>
+            <th>Total</th>
+            <th>Attendance %</th>
+            <th>Submitted By</th>
+            <th>Owner</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of history?.items">
+            <td>{{ item.attendanceDate | date:'yyyy-MM-dd' }}</td>
+            <td>{{ attendanceSessionLabel(item.attendanceSession) }}</td>
+            <td>{{ item.presentCount }}</td>
+            <td>{{ item.absentCount }}</td>
+            <td>{{ item.totalStudents }}</td>
+            <td>{{ item.attendancePercentage }}%</td>
+            <td>{{ item.submittedByTrainerName }}</td>
+            <td>{{ item.batchOwnerTrainerName || '-' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
 </div>
+
+<ng-template #rosterLoading>
+  <app-dashboard-loader
+    class="section-loader"
+    tone="dark"
+    title="Loading attendance roster"
+    copy="Fetching the latest students and submitted attendance for this session.">
+  </app-dashboard-loader>
+</ng-template>
+
+<ng-template #historyLoading>
+  <app-dashboard-loader
+    class="section-loader"
+    tone="dark"
+    title="Loading attendance history"
+    copy="Preparing the datewise attendance summary for the selected range.">
+  </app-dashboard-loader>
+</ng-template>
+
+<ng-template #emptyRoster>
+  <div class="empty-state">No attendance roster is available for the selected filters.</div>
+</ng-template>
+
+<ng-template #emptyHistory>
+  <div class="empty-state">No attendance history found for the selected date range.</div>
+</ng-template>
