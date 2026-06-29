@@ -98,6 +98,21 @@ export interface AssignStudentToBatchRequest {
   studentIds: string[];
 }
 
+export interface CollegeAdminDashboardTotals {
+  registeredStudents: number;
+  registeredTrainers: number;
+  pendingApprovals: number;
+  assessmentsThisMonth: number;
+  assessmentsPreviousMonth: number;
+}
+
+export interface CollegeAdminDashboardData {
+  totals: CollegeAdminDashboardTotals;
+  pendingApprovals: PendingUser[];
+  recentActivity: any[];
+  usageTrends: any[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class CollegeAdminService {
   private readonly url = 'college-admin';
@@ -106,6 +121,23 @@ export class CollegeAdminService {
   readonly pendingUsers$ = this.pendingUsersSubject.asObservable();
 
   constructor(private readonly http: HttpClientService) {}
+
+  getDashboard(): Observable<CollegeAdminDashboardData> {
+    return this.http.get<any>(`${this.url}/dashboard`).pipe(
+      map(response => ({
+        totals: {
+          registeredStudents: response?.totals?.registeredStudents ?? 0,
+          registeredTrainers: response?.totals?.registeredTrainers ?? 0,
+          pendingApprovals: response?.totals?.pendingApprovals ?? 0,
+          assessmentsThisMonth: response?.totals?.assessmentsThisMonth ?? 0,
+          assessmentsPreviousMonth: response?.totals?.assessmentsPreviousMonth ?? 0,
+        },
+        pendingApprovals: response?.pendingApprovals ?? [],
+        recentActivity: response?.recentActivity ?? [],
+        usageTrends: response?.usageTrends ?? [],
+      }))
+    );
+  }
 
   getClassConfiguration(): Observable<ClassConfiguration> {
     return this.http
