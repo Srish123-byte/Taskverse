@@ -591,15 +591,15 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
             var startOfThisMonth = new DateTime(utcNow.Year, utcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
             var startOfPreviousMonth = startOfThisMonth.AddMonths(-1);
 
-            var registeredStudentsTask = context.Students
+            var registeredStudents = await context.Students
                 .AsNoTracking()
                 .CountAsync(student => student.CollegeId == collegeId && student.Status == UserStatus.APPROVED);
 
-            var registeredTrainersTask = context.Trainers
+            var registeredTrainers = await context.Trainers
                 .AsNoTracking()
                 .CountAsync(trainer => trainer.CollegeId == collegeId && trainer.Status == UserStatus.APPROVED);
 
-            var pendingApprovalsTask = context.Users
+            var pendingApprovals = await context.Users
                 .AsNoTracking()
                 .CountAsync(user =>
                     user.CollegeId == collegeId &&
@@ -607,33 +607,26 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
                     user.Role.Trim().ToLower() != "collegeadmin" &&
                     user.Role.Trim().ToLower() != "superadmin");
 
-            var assessmentsThisMonthTask = context.Assessments
+            var assessmentsThisMonth = await context.Assessments
                 .AsNoTracking()
                 .CountAsync(assessment =>
                     assessment.CollegeId == collegeId &&
                     assessment.CreatedAt >= startOfThisMonth);
 
-            var assessmentsPreviousMonthTask = context.Assessments
+            var assessmentsPreviousMonth = await context.Assessments
                 .AsNoTracking()
                 .CountAsync(assessment =>
                     assessment.CollegeId == collegeId &&
                     assessment.CreatedAt >= startOfPreviousMonth &&
                     assessment.CreatedAt < startOfThisMonth);
 
-            await Task.WhenAll(
-                registeredStudentsTask,
-                registeredTrainersTask,
-                pendingApprovalsTask,
-                assessmentsThisMonthTask,
-                assessmentsPreviousMonthTask);
-
             return new CollegeAdminTotalsDto
             {
-                RegisteredStudents = await registeredStudentsTask,
-                RegisteredTrainers = await registeredTrainersTask,
-                PendingApprovals = await pendingApprovalsTask,
-                AssessmentsThisMonth = await assessmentsThisMonthTask,
-                AssessmentsPreviousMonth = await assessmentsPreviousMonthTask
+                RegisteredStudents = registeredStudents,
+                RegisteredTrainers = registeredTrainers,
+                PendingApprovals = pendingApprovals,
+                AssessmentsThisMonth = assessmentsThisMonth,
+                AssessmentsPreviousMonth = assessmentsPreviousMonth
             };
         }
         catch (PostgresException ex) when (IsMissingRelation(ex))
