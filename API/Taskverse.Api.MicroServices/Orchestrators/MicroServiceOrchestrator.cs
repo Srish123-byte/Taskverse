@@ -29,6 +29,7 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
     private readonly string _baseUrlDev;
     private readonly bool _useLocalMicroservices;
     private readonly int _serviceTimeoutSeconds;
+    private readonly IReadOnlyDictionary<string, string> _serviceUrls;
 
     public MicroServiceOrchestrator(
         IHttpClientFactory httpClientFactory,
@@ -47,10 +48,21 @@ public partial class MicroServiceOrchestrator : IMicroServiceOrchestrator
         _baseUrlDev = NormalizeBaseUrl(settings.BaseUrlDev);
         _useLocalMicroservices = settings.UseLocalMicroservices;
         _serviceTimeoutSeconds = settings.ServiceTimeoutSeconds > 0 ? settings.ServiceTimeoutSeconds : 60;
+        _serviceUrls = (settings.ServiceUrls ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase))
+            .Where(item => !string.IsNullOrWhiteSpace(item.Key) && !string.IsNullOrWhiteSpace(item.Value))
+            .ToDictionary(
+                item => item.Key.Trim(),
+                item => NormalizeBaseUrl(item.Value),
+                StringComparer.OrdinalIgnoreCase);
     }
 
     public string GetMicroServiceUrl(MicroService microService)
     {
+        if (_serviceUrls.TryGetValue(microService.ToString(), out var explicitServiceUrl))
+        {
+            return $"{explicitServiceUrl}/";
+        }
+
         var isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
 
         if (isDevelopment && _useLocalMicroservices)
