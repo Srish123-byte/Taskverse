@@ -140,20 +140,23 @@
 .metric-caption-action {
   display: inline-flex;
   align-items: center;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: rgba(153, 0, 0, 0.2);
-  border: 1px solid rgba(200, 0, 0, 0.4);
-  color: #cc0000;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(127, 0, 0, 0.3);
+  border-left: 3px solid #cc0000;
+  color: #ff6b6b;
   font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   text-align: left;
   white-space: normal;
   line-height: 1.4;
-  box-shadow: 0 0 10px rgba(180, 0, 0, 0.35), 0 0 20px rgba(180, 0, 0, 0.15);
-  text-shadow: 0 0 8px rgba(200, 0, 0, 0.6);
+}
+
+.metric-caption-action.metric-caption-empty {
+  color: #fff;
 }
 
 .metric-copy {
