@@ -1,7 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { RouteAddress } from '../../../common/constants/routes.constants';
 import { CollegeAdminService, CollegeAdminDashboardData } from '../../../common/services/api/college-admin.service';
+import { AssessmentAdminService } from '../../../common/services/api/assessment-admin.service';
 import { Session } from '../../../common/services/session/session.service';
+import { forkJoin } from 'rxjs';
 
 interface MetricCard {
   label: string;
@@ -34,6 +36,7 @@ export class DashboardComponent implements OnInit {
 
   constructor(
     private readonly collegeAdminService: CollegeAdminService,
+    private readonly assessmentAdminService: AssessmentAdminService,
     private readonly session: Session
   ) {}
 
@@ -41,9 +44,17 @@ export class DashboardComponent implements OnInit {
     this.isLoading = true;
     const user = this.session.user;
     this.userName = user ? `${user.firstName} ${user.lastName}` : '';
-    this.collegeAdminService.getDashboard().subscribe({
-      next: (data) => {
-        this.setupCards(data);
+    forkJoin({
+      dashboard: this.collegeAdminService.getDashboard(),
+      assessments: this.assessmentAdminService.searchAssessments({ pageNumber: 1, pageSize: 5 })
+    }).subscribe({
+      next: (results) => {
+        this.setupCards(results.dashboard);
+        this.recentAssessments = results.assessments.items.map(a => ({
+          title: a.assessmentName,
+          subtitle: a.startDateTime ? `Scheduled: ${new Date(a.startDateTime).toLocaleDateString()}` : '',
+          status: a.assessmentStatus
+        }));
         this.isLoading = false;
       },
       error: () => {
