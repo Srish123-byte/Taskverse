@@ -526,6 +526,14 @@ public record StudentAttemptRecoveryModel(
     [property: JsonProperty("questions")]
     List<StudentAttemptRecoveryQuestionModel> Questions);
 
+public record StudentStreakModel(
+    [property: JsonProperty("current_streak")]
+    int CurrentStreak,
+    [property: JsonProperty("longest_streak")]
+    int LongestStreak,
+    [property: JsonProperty("total_assessments_taken")]
+    int TotalAssessmentsTaken);
+
 public record AssessmentQuestionListItemModel(
     [property: JsonProperty("question_id")]
     Guid QuestionId,

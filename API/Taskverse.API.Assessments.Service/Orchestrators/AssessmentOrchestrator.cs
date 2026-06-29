@@ -109,6 +109,9 @@ public class AssessmentOrchestrator : IAssessmentOrchestrator
     public async Task<StudentAttemptSubmitRecord> SubmitStudentAttempt(Guid attemptId, Guid studentUserId)
         => await _assessmentManager.SubmitStudentAttempt(attemptId, studentUserId);
 
+    public async Task<StudentStreakRecord> GetStudentStreak(Guid studentUserId)
+        => await _assessmentManager.GetStudentStreak(studentUserId);
+
     public async Task<StudentAttemptAnswerRecord> SaveStudentAttemptAnswer(
         Guid attemptId,
         Guid questionId,

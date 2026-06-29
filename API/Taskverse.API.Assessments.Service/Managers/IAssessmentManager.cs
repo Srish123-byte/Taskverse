@@ -131,4 +131,11 @@ public interface IAssessmentManager
     /// <param name="studentUserId">The student user identifier.</param>
     /// <returns>The submitted attempt summary.</returns>
     Task<StudentAttemptSubmitRecord> SubmitStudentAttempt(Guid attemptId, Guid studentUserId);
+
+    /// <summary>
+    /// Returns the assessment streak summary for a student.
+    /// </summary>
+    /// <param name="studentUserId">The student user identifier.</param>
+    /// <returns>The student's current/longest streak and total assessments taken.</returns>
+    Task<StudentStreakRecord> GetStudentStreak(Guid studentUserId);
 }

@@ -62,6 +62,7 @@ public static class ReportMappings
             UnansweredQuestions = model.UnansweredQuestions,
             ParticipantCount = model.ParticipantCount,
             HasPendingCodingEvaluation = model.HasPendingCodingEvaluation,
+            ShowResultsImmediately = model.ShowResultsImmediately,
             QuestionResults = model.QuestionResults?.Select(item => item.ToDto()).ToList() ?? [],
             QuestionExplanations = model.QuestionExplanations?.Select(item => item.ToDto()).ToList() ?? []
         };

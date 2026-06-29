@@ -359,6 +359,13 @@ public class StudentAttemptSubmitDto
     public DateTime? SubmittedAt { get; set; }
 }
 
+public class StudentStreakDto
+{
+    public int CurrentStreak { get; set; }
+    public int LongestStreak { get; set; }
+    public int TotalAssessmentsTaken { get; set; }
+}
+
 public class StudentAttemptRecoveryQuestionDto
 {
     public Guid QuestionId { get; set; }

@@ -1335,6 +1335,56 @@ public class AssessmentsController : TaskverseBaseController
     }
 
     /// <summary>
+    /// Returns the assessment streak summary for the logged-in student.
+    /// </summary>
+    /// <returns>The student's streak summary.</returns>
+    [HttpGet("/api/students/me/streak")]
+    [SwaggerResponse(200, "Streak summary for the logged-in student", typeof(StudentStreakResponseModel))]
+    [SwaggerResponse(400, "Invalid student context")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Student profile not found")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> GetStudentStreak()
+    {
+        var accessCheck = EnsureStudentAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var currentUserId = GetCurrentUserId();
+        if (!currentUserId.HasValue)
+        {
+            return BadRequest(new { message = "Student user context is missing or invalid." });
+        }
+
+        try
+        {
+            var dto = await _assessmentOrchestrator.GetStudentStreak(currentUserId.Value);
+            return Ok(dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            _logger.LogError(ex, "Unhandled student streak retrieval error for userId={UserId}", currentUserId.Value);
+            return Problem(
+                detail: detail,
+                title: detail,
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    /// <summary>
     /// Saves an answer for a single question within the logged-in student's attempt.
     /// </summary>
     /// <param name="attemptId">The attempt identifier.</param>
