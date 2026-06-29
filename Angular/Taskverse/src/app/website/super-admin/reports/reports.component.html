@@ -1,0 +1,113 @@
+<div class="page-container reports-dashboard">
+  <div class="page-eyebrow">Super Admin</div>
+  <h2 class="page-title">Platform Reports</h2>
+  <p class="page-welcome">Generate and export enterprise-grade performance and activity reports across the platform.</p>
+
+  <div class="page-content">
+    
+    <!-- Filter Section (Simple placeholders for Super Admin to select context) -->
+    <section class="reports-filter-section">
+      <div class="filter-header">
+        <h3>Report Context</h3>
+        <p>Select the target entity for your exports.</p>
+      </div>
+      <div class="filter-controls">
+        <div class="form-group">
+          <label>Target College ID</label>
+          <input type="text" [(ngModel)]="selectedCollegeId" class="form-control" placeholder="Enter College ID (Guid)" />
+        </div>
+        <div class="form-group">
+          <label>Target Branch ID</label>
+          <input type="text" [(ngModel)]="selectedBranchId" class="form-control" placeholder="Enter Branch ID (Guid)" />
+        </div>
+        <div class="form-group">
+          <label>Target Student ID</label>
+          <input type="text" [(ngModel)]="selectedStudentId" class="form-control" placeholder="Enter Student ID (Guid)" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Report Cards Section -->
+    <section class="dashboard-grid hero-grid reports-cards-grid">
+      
+      <!-- College Wise Report Card -->
+      <article class="hero-card report-card">
+        <div class="report-card-icon">
+          <span class="material-symbols-outlined">domain</span>
+        </div>
+        <div class="report-card-content">
+          <h3 class="hero-label report-title">College Wise Report</h3>
+          <p class="hero-copy report-desc">Comprehensive institutional summary, including total branches, trainers, active students, and overall college pass percentage metrics.</p>
+        </div>
+        <div class="report-card-actions">
+          <button class="btn btn-secondary" (click)="viewReport('college')">
+            <span class="material-symbols-outlined">visibility</span> View
+          </button>
+          <button class="btn btn-primary" (click)="exportReport('college', 'pdf')" [disabled]="isExportingPdf && activeReportType === 'college'">
+            <span class="material-symbols-outlined" *ngIf="!(isExportingPdf && activeReportType === 'college')">picture_as_pdf</span>
+            <span class="spinner" *ngIf="isExportingPdf && activeReportType === 'college'"></span>
+            PDF
+          </button>
+          <button class="btn btn-primary btn-excel" (click)="exportReport('college', 'excel')" [disabled]="isExportingExcel && activeReportType === 'college'">
+            <span class="material-symbols-outlined" *ngIf="!(isExportingExcel && activeReportType === 'college')">table_view</span>
+            <span class="spinner" *ngIf="isExportingExcel && activeReportType === 'college'"></span>
+            Excel
+          </button>
+        </div>
+      </article>
+
+      <!-- Branch Wise Report Card -->
+      <article class="hero-card report-card">
+        <div class="report-card-icon">
+          <span class="material-symbols-outlined">account_tree</span>
+        </div>
+        <div class="report-card-content">
+          <h3 class="hero-label report-title">Branch Wise Report</h3>
+          <p class="hero-copy report-desc">Detailed performance breakdown for a specific branch (class), highlighting student performance tables and average marks.</p>
+        </div>
+        <div class="report-card-actions">
+          <button class="btn btn-secondary" (click)="viewReport('branch')">
+            <span class="material-symbols-outlined">visibility</span> View
+          </button>
+          <button class="btn btn-primary" (click)="exportReport('branch', 'pdf')" [disabled]="isExportingPdf && activeReportType === 'branch'">
+            <span class="material-symbols-outlined" *ngIf="!(isExportingPdf && activeReportType === 'branch')">picture_as_pdf</span>
+            <span class="spinner" *ngIf="isExportingPdf && activeReportType === 'branch'"></span>
+            PDF
+          </button>
+          <button class="btn btn-primary btn-excel" (click)="exportReport('branch', 'excel')" [disabled]="isExportingExcel && activeReportType === 'branch'">
+            <span class="material-symbols-outlined" *ngIf="!(isExportingExcel && activeReportType === 'branch')">table_view</span>
+            <span class="spinner" *ngIf="isExportingExcel && activeReportType === 'branch'"></span>
+            Excel
+          </button>
+        </div>
+      </article>
+
+      <!-- Individual Student Report Card -->
+      <article class="hero-card report-card">
+        <div class="report-card-icon">
+          <span class="material-symbols-outlined">person</span>
+        </div>
+        <div class="report-card-content">
+          <h3 class="hero-label report-title">Individual Student Report</h3>
+          <p class="hero-copy report-desc">In-depth performance review for a single student. Includes assessment breakdowns, identified strengths, weaknesses, and trainer remarks.</p>
+        </div>
+        <div class="report-card-actions">
+          <button class="btn btn-secondary" (click)="viewReport('student')">
+            <span class="material-symbols-outlined">visibility</span> View
+          </button>
+          <button class="btn btn-primary" (click)="exportReport('student', 'pdf')" [disabled]="isExportingPdf && activeReportType === 'student'">
+            <span class="material-symbols-outlined" *ngIf="!(isExportingPdf && activeReportType === 'student')">picture_as_pdf</span>
+            <span class="spinner" *ngIf="isExportingPdf && activeReportType === 'student'"></span>
+            PDF
+          </button>
+          <button class="btn btn-primary btn-excel" (click)="exportReport('student', 'excel')" [disabled]="isExportingExcel && activeReportType === 'student'">
+            <span class="material-symbols-outlined" *ngIf="!(isExportingExcel && activeReportType === 'student')">table_view</span>
+            <span class="spinner" *ngIf="isExportingExcel && activeReportType === 'student'"></span>
+            Excel
+          </button>
+        </div>
+      </article>
+
+    </section>
+  </div>
+</div>

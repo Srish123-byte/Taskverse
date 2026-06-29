@@ -97,14 +97,8 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
   deleteConfirmationState: DeleteConfirmationState | null = null;
   initialSelectedTrainerIds = new Set<string>();
   selectedTrainerIds = new Set<string>();
-  trainerSearchQuery = '';
-  trainerPage = 1;
-  trainerPageSize = 5;
   initialSelectedStudentIds = new Set<string>();
   selectedStudentIds = new Set<string>();
-  studentSearchQuery = '';
-  studentPage = 1;
-  studentPageSize = 5;
   activeTrainerAssignmentClassId = '';
   activeTrainerAssignmentClassName = '';
   activeTrainerAssignmentBatchId = '';
@@ -307,8 +301,6 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     this.isTrainerDropdownOpen = true;
     this.trainerAssignmentErrorMessage = '';
     this.successMessage = '';
-    this.trainerSearchQuery = '';
-    this.trainerPage = 1;
     this.activeTrainerAssignmentClassId = classItem.classId;
     this.activeTrainerAssignmentClassName = classItem.name;
     this.activeTrainerAssignmentBatchId = batch.batchId;
@@ -346,8 +338,6 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     this.isStudentAssignmentOpen = true;
     this.studentAssignmentErrorMessage = '';
     this.successMessage = '';
-    this.studentSearchQuery = '';
-    this.studentPage = 1;
     this.activeStudentAssignmentClassId = classItem.classId;
     this.activeStudentAssignmentClassName = classItem.name;
     this.activeStudentAssignmentBatchId = batch.batchId;
@@ -755,27 +745,6 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     return this.approvedTrainers.filter(trainer => this.selectedTrainerIds.has(trainer.trainerId));
   }
 
-  get filteredTrainers(): ApprovedTrainer[] {
-    const q = this.trainerSearchQuery.trim().toLowerCase();
-    return q
-      ? this.approvedTrainers.filter(t =>
-          t.fullName?.toLowerCase().includes(q) || t.email?.toLowerCase().includes(q))
-      : this.approvedTrainers;
-  }
-
-  get pagedTrainers(): ApprovedTrainer[] {
-    const start = (this.trainerPage - 1) * this.trainerPageSize;
-    return this.filteredTrainers.slice(start, start + this.trainerPageSize);
-  }
-
-  get trainerTotalPages(): number {
-    return Math.ceil(this.filteredTrainers.length / this.trainerPageSize);
-  }
-
-  onTrainerSearch(): void {
-    this.trainerPage = 1;
-  }
-
   selectStudent(studentId: string): void {
     this.studentAssignmentErrorMessage = '';
 
@@ -832,27 +801,6 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     }
 
     return 'Choose students for this batch';
-  }
-
-  get filteredStudents(): ApprovedStudent[] {
-    const q = this.studentSearchQuery.trim().toLowerCase();
-    return q
-      ? this.approvedStudents.filter(s =>
-          s.fullName?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q))
-      : this.approvedStudents;
-  }
-
-  get pagedStudents(): ApprovedStudent[] {
-    const start = (this.studentPage - 1) * this.studentPageSize;
-    return this.filteredStudents.slice(start, start + this.studentPageSize);
-  }
-
-  get studentTotalPages(): number {
-    return Math.ceil(this.filteredStudents.length / this.studentPageSize);
-  }
-
-  onStudentSearch(): void {
-    this.studentPage = 1;
   }
 
   getActiveBatchClassLabel(): string {

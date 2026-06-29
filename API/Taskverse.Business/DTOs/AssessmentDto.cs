@@ -5,8 +5,10 @@ public class CreateQuestionBankAssessmentDto
     public Guid CollegeId { get; set; }
     public string CreatedBy { get; set; } = default!;
     public string AssessmentName { get; set; } = default!;
-    public Guid[] SubjectIds { get; set; } = [];
-    public Guid[] TopicIds { get; set; } = [];
+    public Guid? SubjectId { get; set; }
+    public string? SubjectName { get; set; }
+    public Guid? TopicId { get; set; }
+    public string? TopicName { get; set; }
     public string? Instructions { get; set; }
     public bool AllowLateEntry { get; set; }
     public bool AllowQuestionReview { get; set; }
@@ -26,8 +28,10 @@ public class PublishQuestionBankAssessmentDto
     public Guid CollegeId { get; set; }
     public string CreatedBy { get; set; } = default!;
     public string AssessmentName { get; set; } = default!;
-    public Guid[] SubjectIds { get; set; } = [];
-    public Guid[] TopicIds { get; set; } = [];
+    public Guid? SubjectId { get; set; }
+    public string? SubjectName { get; set; }
+    public Guid? TopicId { get; set; }
+    public string? TopicName { get; set; }
     public string? Instructions { get; set; }
     public bool AllowLateEntry { get; set; }
     public bool AllowQuestionReview { get; set; }
@@ -48,8 +52,10 @@ public class UpdateQuestionBankAssessmentDto
     public string UpdatedBy { get; set; } = default!;
     public string RequesterRole { get; set; } = default!;
     public string AssessmentName { get; set; } = default!;
-    public Guid[] SubjectIds { get; set; } = [];
-    public Guid[] TopicIds { get; set; } = [];
+    public Guid? SubjectId { get; set; }
+    public string? SubjectName { get; set; }
+    public Guid? TopicId { get; set; }
+    public string? TopicName { get; set; }
     public string? Instructions { get; set; }
     public bool AllowLateEntry { get; set; }
     public bool AllowQuestionReview { get; set; }
@@ -77,14 +83,10 @@ public class QuestionBankAssessmentDto
 {
     public Guid AssessmentId { get; set; }
     public Guid CollegeId { get; set; }
-    public Guid[] SubjectIds { get; set; } = [];
-    public List<string> SubjectNames { get; set; } = [];
+    public Guid? SubjectId { get; set; }
     public string? SubjectName { get; set; }
-    public string? SubjectDisplayLabel { get; set; }
-    public Guid[] TopicIds { get; set; } = [];
-    public List<string> TopicNames { get; set; } = [];
+    public Guid? TopicId { get; set; }
     public string? TopicName { get; set; }
-    public string? TopicDisplayLabel { get; set; }
     public string AssessmentName { get; set; } = default!;
     public string AssessmentType { get; set; } = default!;
     public string AssessmentStatus { get; set; } = default!;
@@ -168,21 +170,6 @@ public class QuestionClassificationCatalogDto
     public List<QuestionSubjectCatalogDto> Subjects { get; set; } = [];
 }
 
-public class CreateQuestionClassificationEntryDto
-{
-    public Guid? SubjectId { get; set; }
-    public string? SubjectName { get; set; }
-    public string? TopicName { get; set; }
-}
-
-public class QuestionClassificationEntryDto
-{
-    public Guid SubjectId { get; set; }
-    public string SubjectName { get; set; } = default!;
-    public Guid? TopicId { get; set; }
-    public string? TopicName { get; set; }
-}
-
 public class AssessmentSearchDto
 {
     public Guid CollegeId { get; set; }
@@ -199,14 +186,8 @@ public class AssessmentSearchItemDto
 {
     public Guid AssessmentId { get; set; }
     public string AssessmentName { get; set; } = default!;
-    public Guid[] SubjectIds { get; set; } = [];
-    public List<string> SubjectNames { get; set; } = [];
     public string? SubjectName { get; set; }
-    public string? SubjectDisplayLabel { get; set; }
-    public Guid[] TopicIds { get; set; } = [];
-    public List<string> TopicNames { get; set; } = [];
     public string? TopicName { get; set; }
-    public string? TopicDisplayLabel { get; set; }
     public string AssessmentStatus { get; set; } = default!;
     public DateTime? AssessmentDate { get; set; }
     public DateTime? StartDateTime { get; set; }

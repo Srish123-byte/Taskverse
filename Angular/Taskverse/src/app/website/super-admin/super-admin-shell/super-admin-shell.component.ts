@@ -24,6 +24,7 @@ export class SuperAdminShellComponent {
     { label: 'Users',       route: `/${RouteAddress.SuperAdmin.Users}`,       icon: 'groups',      iconPath: 'assets/icons/nav/users.svg' },
     { label: 'Analytics',   route: `/${RouteAddress.SuperAdmin.Analytics}`,   icon: 'query_stats', iconPath: 'assets/icons/nav/analytics.svg' },
     { label: 'Assessments', route: `/${RouteAddress.SuperAdmin.Assessments}`, icon: 'assignment',  iconPath: 'assets/icons/nav/assessments.svg' },
+    { label: 'Reports',     route: `/${RouteAddress.SuperAdmin.Reports}`,     icon: 'summarize',   iconPath: 'assets/icons/nav/reports.svg' },
     { label: 'Settings',    route: `/${RouteAddress.SuperAdmin.Settings}`,    icon: 'settings',    iconPath: 'assets/icons/nav/settings.svg' }
   ];
 

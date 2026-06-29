@@ -56,7 +56,7 @@ public class Startup
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "Taskverse Colleges Service v1");
             });
         }
-        app.UseHttpsRedirection();
+        // app.UseHttpsRedirection(); // Disabled for local dev to avoid SSL cert issues
         app.MapControllers();
         app.UseCors("AllowTaskverse");
         app.MapHealthChecks("/health");
@@ -108,3 +108,4 @@ public class Startup
         });
     }
 }
+

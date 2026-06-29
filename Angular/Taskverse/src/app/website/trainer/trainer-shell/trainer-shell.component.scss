@@ -2,23 +2,18 @@
 
 @include role-shell.role-shell-theme(
   '.role-shell',
-  rgba(148, 210, 189, 0.28),
-  #f6fafc,
-  #0d1b2e,
-  #112240,
-  #00BFFF,
-  #7C3AED,
-  #ffffff,
-  #92abc2,
-  #d5e2ee,
-  #00BFFF,
-  rgba(0, 191, 255, 0.18),
+  rgba(164, 214, 188, 0.24),
+  #f7fcf9,
+  #11352b,
+  #1f5b4b,
+  #95d5b2,
+  #ffd166,
+  #11352b,
+  #a7d0bf,
+  #d9ece4,
+  #95d5b2,
+  rgba(149, 213, 178, 0.18),
   #f7fffb,
-  rgba(238, 155, 0, 0.12),
-  rgba(238, 155, 0, 0.48)
+  rgba(255, 255, 255, 0.06),
+  rgba(255, 255, 255, 0.16)
 );
-
-.shell-main {
-  background: #101a31;
-  scroll-behavior: smooth;
-}

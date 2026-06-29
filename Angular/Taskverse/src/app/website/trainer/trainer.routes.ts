@@ -9,6 +9,7 @@ import { QuestionsManagementComponent } from './questions-management/questions-m
 import { QuestionEditorPageComponent } from './question-editor/question-editor.component';
 import { AssessmentsManagementComponent } from './assessments-management/assessments-management.component';
 import { NewAssessmentComponent } from './new-assessment/new-assessment.component';
+import { ReportsComponent } from './reports/reports.component';
 
 const routes: Routes = [
   {
@@ -26,6 +27,7 @@ const routes: Routes = [
       { path: 'assessments-management/new-assessment', component: NewAssessmentComponent },
       { path: 'assessments-management/edit-assessment/:id', component: NewAssessmentComponent },
       { path: 'manage', component: ManageComponent },
+      { path: 'reports', component: ReportsComponent },
       { path: 'help-center', component: HelpCenterComponent }
     ]
   }

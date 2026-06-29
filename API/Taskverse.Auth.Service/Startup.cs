@@ -61,7 +61,7 @@ public class Startup
             });
         }
 
-        app.UseHttpsRedirection();
+        // app.UseHttpsRedirection(); // Disabled for local dev to avoid SSL cert issues
         app.UseCors("AllowTaskverse");
         app.UseAuthentication();
         app.UseAuthorization();
@@ -143,3 +143,4 @@ public class Startup
         });
     }
 }
+

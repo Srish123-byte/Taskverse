@@ -25,8 +25,9 @@ public class Startup
 
     public void Configure(WebApplication app, IWebHostEnvironment env)
     {
-        app.UseHttpsRedirection();
+        // app.UseHttpsRedirection(); // Disabled for local dev to avoid SSL cert issues
         app.MapControllers();
         app.MapHealthChecks("/health");
     }
 }
+

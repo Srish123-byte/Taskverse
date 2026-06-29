@@ -76,12 +76,6 @@ public partial class MicroServiceOrchestrator
         return await Get<QuestionClassificationCatalogModel>(url);
     }
 
-    public async Task<ObjectResult> CreateQuestionClassificationEntry(CreateQuestionClassificationEntryModel model)
-    {
-        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/questions/catalog/items";
-        return await Post<QuestionClassificationEntryModel>(url, model);
-    }
-
     public async Task<ObjectResult> GetTrainerAssignedClassesAndBatches(AssessmentBootstrapModel model)
     {
         var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/trainer/assigned-classes-batches";

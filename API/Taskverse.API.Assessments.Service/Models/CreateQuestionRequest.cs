@@ -112,14 +112,3 @@ public record QuestionSubjectCatalogRecord(
 
 public record QuestionClassificationCatalogRecord(
     List<QuestionSubjectCatalogRecord> Subjects);
-
-public record CreateQuestionClassificationEntryRequest(
-    Guid? SubjectId,
-    string? SubjectName,
-    string? TopicName);
-
-public record QuestionClassificationEntryRecord(
-    Guid SubjectId,
-    string SubjectName,
-    Guid? TopicId,
-    string? TopicName);

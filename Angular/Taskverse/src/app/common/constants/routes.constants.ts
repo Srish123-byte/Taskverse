@@ -15,6 +15,7 @@ export const RouteAddress = {
     Users:      'super-admin/users',
     Analytics:  'super-admin/analytics',
     Assessments:'super-admin/assessments',
+    Reports:    'super-admin/reports',
     Settings:   'super-admin/settings'
   },
 

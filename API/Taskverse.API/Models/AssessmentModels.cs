@@ -3,8 +3,10 @@ namespace Taskverse.Api.Models;
 public class CreateQuestionBankAssessmentRequestModel
 {
     public string AssessmentName { get; set; } = string.Empty;
-    public Guid[] SubjectIds { get; set; } = [];
-    public Guid[] TopicIds { get; set; } = [];
+    public Guid? SubjectId { get; set; }
+    public string? SubjectName { get; set; }
+    public Guid? TopicId { get; set; }
+    public string? TopicName { get; set; }
     public string? Instructions { get; set; }
     public bool AllowLateEntry { get; set; }
     public bool AllowQuestionReview { get; set; }
@@ -23,8 +25,10 @@ public class PublishQuestionBankAssessmentRequestModel
 {
     public Guid? AssessmentId { get; set; }
     public string AssessmentName { get; set; } = string.Empty;
-    public Guid[] SubjectIds { get; set; } = [];
-    public Guid[] TopicIds { get; set; } = [];
+    public Guid? SubjectId { get; set; }
+    public string? SubjectName { get; set; }
+    public Guid? TopicId { get; set; }
+    public string? TopicName { get; set; }
     public string? Instructions { get; set; }
     public bool AllowLateEntry { get; set; }
     public bool AllowQuestionReview { get; set; }
@@ -41,8 +45,10 @@ public class PublishQuestionBankAssessmentRequestModel
 public class UpdateQuestionBankAssessmentRequestModel
 {
     public string AssessmentName { get; set; } = string.Empty;
-    public Guid[] SubjectIds { get; set; } = [];
-    public Guid[] TopicIds { get; set; } = [];
+    public Guid? SubjectId { get; set; }
+    public string? SubjectName { get; set; }
+    public Guid? TopicId { get; set; }
+    public string? TopicName { get; set; }
     public string? Instructions { get; set; }
     public bool AllowLateEntry { get; set; }
     public bool AllowQuestionReview { get; set; }
@@ -61,14 +67,10 @@ public class QuestionBankAssessmentResponseModel
 {
     public Guid AssessmentId { get; set; }
     public Guid CollegeId { get; set; }
-    public Guid[] SubjectIds { get; set; } = [];
-    public List<string> SubjectNames { get; set; } = [];
+    public Guid? SubjectId { get; set; }
     public string? SubjectName { get; set; }
-    public string? SubjectDisplayLabel { get; set; }
-    public Guid[] TopicIds { get; set; } = [];
-    public List<string> TopicNames { get; set; } = [];
+    public Guid? TopicId { get; set; }
     public string? TopicName { get; set; }
-    public string? TopicDisplayLabel { get; set; }
     public string AssessmentName { get; set; } = string.Empty;
     public string AssessmentType { get; set; } = string.Empty;
     public string AssessmentStatus { get; set; } = string.Empty;
@@ -151,21 +153,6 @@ public class QuestionClassificationCatalogResponseModel
     public List<QuestionSubjectCatalogResponseModel> Subjects { get; set; } = [];
 }
 
-public class CreateQuestionClassificationEntryRequestModel
-{
-    public Guid? SubjectId { get; set; }
-    public string? SubjectName { get; set; }
-    public string? TopicName { get; set; }
-}
-
-public class QuestionClassificationEntryResponseModel
-{
-    public Guid SubjectId { get; set; }
-    public string SubjectName { get; set; } = string.Empty;
-    public Guid? TopicId { get; set; }
-    public string? TopicName { get; set; }
-}
-
 public class AssessmentSearchRequestModel
 {
     public string? SearchTerm { get; set; }
@@ -179,14 +166,8 @@ public class AssessmentSearchItemResponseModel
 {
     public Guid AssessmentId { get; set; }
     public string AssessmentName { get; set; } = string.Empty;
-    public Guid[] SubjectIds { get; set; } = [];
-    public List<string> SubjectNames { get; set; } = [];
     public string? SubjectName { get; set; }
-    public string? SubjectDisplayLabel { get; set; }
-    public Guid[] TopicIds { get; set; } = [];
-    public List<string> TopicNames { get; set; } = [];
     public string? TopicName { get; set; }
-    public string? TopicDisplayLabel { get; set; }
     public string AssessmentStatus { get; set; } = string.Empty;
     public DateTime? AssessmentDate { get; set; }
     public DateTime? StartDateTime { get; set; }

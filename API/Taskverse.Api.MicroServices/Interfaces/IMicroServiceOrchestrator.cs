@@ -41,7 +41,6 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> UpdateQuestion(Guid questionId, CreateQuestionModel model);
     Task<ObjectResult> DeleteQuestions(DeleteQuestionsModel model);
     Task<ObjectResult> GetQuestionClassificationCatalog();
-    Task<ObjectResult> CreateQuestionClassificationEntry(CreateQuestionClassificationEntryModel model);
     Task<ObjectResult> GetTrainerAssignedClassesAndBatches(AssessmentBootstrapModel model);
     Task<ObjectResult> SearchQuestionBank(QuestionBankSearchModel model);
     Task<ObjectResult> SearchAssessments(AssessmentSearchModel model);
@@ -61,6 +60,9 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> GetReportsByUser(string userId);
     Task<ObjectResult> GetStudentResults(Guid studentId);
     Task<ObjectResult> GetStudentAttemptResult(Guid attemptId);
+    Task<IActionResult> ExportCollegeReport(Guid collegeId, string format);
+    Task<IActionResult> ExportBranchReport(Guid branchId, string format);
+    Task<IActionResult> ExportStudentReport(Guid studentId, string format);
 
     // Proctor
     Task<ObjectResult> StartProctorSession(Guid attemptId, Guid studentUserId, StartProctorSessionModel model);

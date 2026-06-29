@@ -81,15 +81,6 @@ public static class QuestionMappings
             topics);
     }
 
-    public static QuestionClassificationEntryRecord ToClassificationEntryRecord(this Subject subject, Topic? topic = null)
-    {
-        return new QuestionClassificationEntryRecord(
-            subject.SubjectId,
-            subject.SubjectName,
-            topic?.TopicId,
-            topic?.TopicName);
-    }
-
     public static void ApplyUpdates(this Question target, Question source)
     {
         target.CollegeId = source.CollegeId;

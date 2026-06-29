@@ -468,57 +468,6 @@ public class AssessmentsController : TaskverseBaseController
     }
 
     /// <summary>
-    /// Creates a shared subject or topic entry for question-bank and assessment builder flows.
-    /// </summary>
-    /// <param name="model">The requested subject/topic details.</param>
-    /// <returns>The persisted catalog entry.</returns>
-    [HttpPost("questions/catalog/items")]
-    [SwaggerResponse(201, "Question classification entry created", typeof(QuestionClassificationEntryResponseModel))]
-    [SwaggerResponse(400, "Invalid request")]
-    [SwaggerResponse(403, "Forbidden")]
-    [SwaggerResponse(404, "Parent subject was not found")]
-    [SwaggerResponse(409, "Question classification entry could not be created due to a conflict")]
-    [SwaggerResponse(503, "Assessments microservice is unavailable")]
-    [SwaggerResponse(500, "Unexpected error")]
-    public async Task<IActionResult> CreateQuestionClassificationEntry([FromBody] CreateQuestionClassificationEntryRequestModel model)
-    {
-        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
-        if (accessCheck is not null) return accessCheck;
-
-        if (model is null)
-        {
-            return BadRequest(new { message = "Question classification entry request is required." });
-        }
-
-        try
-        {
-            var dto = await _assessmentOrchestrator.CreateQuestionClassificationEntry(model.ToDto());
-            return StatusCode(StatusCodes.Status201Created, dto.ToResponseModel());
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
-        catch (HttpRequestException ex)
-        {
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            var detail = ex.GetBaseException().Message;
-            return Problem(detail: detail, title: detail);
-        }
-    }
-
-    /// <summary>
     /// Searches the question bank for the current college scope.
     /// </summary>
     /// <param name="model">The search filters and paging options.</param>

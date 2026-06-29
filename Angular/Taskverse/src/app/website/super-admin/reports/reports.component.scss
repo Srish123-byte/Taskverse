@@ -1,0 +1,225 @@
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+$spacing-2xl: 48px;
+
+$font-size-sm: 12px;
+$font-size-md: 14px;
+$font-size-lg: 16px;
+$font-size-xl: 20px;
+
+$radius-sm: 4px;
+$radius-md: 8px;
+$radius-lg: 12px;
+$radius-xl: 16px;
+
+$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+$border-color: #1F2937;
+$surface-color: #111111;
+$background-color: #0a0a0a;
+
+$text-primary: #FFFFFF;
+$text-secondary: #9CA3AF;
+$primary-color: #00BFFF;
+
+$transition-fast: 150ms ease;
+$transition-normal: 250ms ease;
+
+.reports-dashboard {
+  .page-content {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-2xl;
+  }
+}
+
+.reports-filter-section {
+  background: $surface-color;
+  border-radius: $radius-lg;
+  padding: $spacing-xl;
+  box-shadow: $shadow-sm;
+  border: 1px solid $border-color;
+
+  .filter-header {
+    margin-bottom: $spacing-lg;
+    
+    h3 {
+      font-size: $font-size-lg;
+      font-weight: 600;
+      color: $text-primary;
+      margin: 0 0 $spacing-xs 0;
+    }
+
+    p {
+      color: $text-secondary;
+      margin: 0;
+      font-size: $font-size-sm;
+    }
+  }
+
+  .filter-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: $spacing-lg;
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: $spacing-xs;
+
+      label {
+        font-size: $font-size-sm;
+        font-weight: 500;
+        color: $text-primary;
+      }
+
+      .form-control {
+        padding: $spacing-sm $spacing-md;
+        border: 1px solid $border-color;
+        border-radius: $radius-md;
+        font-family: inherit;
+        font-size: $font-size-md;
+        transition: border-color $transition-fast;
+
+        &:focus {
+          outline: none;
+          border-color: $primary-color;
+          box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
+        }
+      }
+    }
+  }
+}
+
+.reports-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: $spacing-xl;
+  margin-top: 0; /* Override dashboard grid margin if needed */
+}
+
+.report-card {
+  display: flex;
+  flex-direction: column;
+  padding: $spacing-xl;
+  transition: transform $transition-normal, box-shadow $transition-normal;
+  background: $surface-color;
+  border-radius: $radius-xl;
+  border: 1px solid $border-color;
+  position: relative;
+  overflow: hidden;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: $shadow-md;
+  }
+
+  .report-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: $radius-lg;
+    background: rgba($primary-color, 0.1);
+    color: $primary-color;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: $spacing-lg;
+
+    .material-symbols-outlined {
+      font-size: 28px;
+    }
+  }
+
+  .report-card-content {
+    flex: 1;
+    margin-bottom: $spacing-xl;
+
+    .report-title {
+      font-size: $font-size-xl;
+      font-weight: 600;
+      color: $text-primary;
+      margin: 0 0 $spacing-sm 0;
+    }
+
+    .report-desc {
+      font-size: $font-size-md;
+      line-height: 1.5;
+      color: $text-secondary;
+      margin: 0;
+    }
+  }
+
+  .report-card-actions {
+    display: flex;
+    gap: $spacing-sm;
+    flex-wrap: wrap;
+
+    .btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: $spacing-xs;
+      padding: $spacing-sm $spacing-md;
+      font-weight: 500;
+      border-radius: $radius-md;
+      transition: all $transition-fast;
+      white-space: nowrap;
+
+      .material-symbols-outlined {
+        font-size: 20px;
+      }
+
+      &.btn-secondary {
+        background: transparent;
+        border: 1px solid $border-color;
+        color: $text-primary;
+
+        &:hover {
+          background: $background-color;
+        }
+      }
+
+      &.btn-primary {
+        background: $primary-color;
+        border: 1px solid $primary-color;
+        color: white;
+
+        &:hover:not(:disabled) {
+          background: darken($primary-color, 10%);
+        }
+
+        &.btn-excel {
+          background: #107c41; /* Microsoft Excel Green */
+          border-color: #107c41;
+
+          &:hover:not(:disabled) {
+            background: darken(#107c41, 10%);
+          }
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+      }
+    }
+  }
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

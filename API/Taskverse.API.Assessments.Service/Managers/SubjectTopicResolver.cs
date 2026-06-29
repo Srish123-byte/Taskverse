@@ -85,7 +85,7 @@ internal static class SubjectTopicResolver
         }
     }
 
-    internal static async Task<Subject?> ResolveSubjectAsync(
+    private static async Task<Subject?> ResolveSubjectAsync(
         TaskverseContext context,
         Guid? subjectId,
         string? subjectName)
@@ -135,7 +135,7 @@ internal static class SubjectTopicResolver
         return subjectByName;
     }
 
-    internal static async Task<Topic> ResolveTopicAsync(
+    private static async Task<Topic> ResolveTopicAsync(
         TaskverseContext context,
         Guid? topicId,
         string? topicName,
@@ -247,11 +247,7 @@ internal static class SubjectTopicResolver
         {
             foreach (var trackedTopic in trackedTopics.Where(trackedTopic => trackedTopic.Subject is null))
             {
-                var subject = await context.Subjects.FindAsync(trackedTopic.SubjectId);
-                if (subject is not null)
-                {
-                    trackedTopic.Subject = subject;
-                }
+                trackedTopic.Subject = await context.Subjects.FindAsync(trackedTopic.SubjectId);
             }
 
             return trackedTopics;

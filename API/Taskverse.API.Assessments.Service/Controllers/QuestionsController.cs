@@ -45,52 +45,6 @@ public class QuestionsController : ControllerBase
     }
 
     /// <summary>
-    /// Creates a shared subject or topic entry for assessment and question flows.
-    /// </summary>
-    /// <param name="request">The requested subject/topic details.</param>
-    /// <returns>The persisted catalog entry.</returns>
-    [HttpPost("catalog/items")]
-    [ProducesResponseType(typeof(QuestionClassificationEntryRecord), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<QuestionClassificationEntryRecord>> CreateQuestionClassificationEntry(
-        [FromBody] CreateQuestionClassificationEntryRequest request)
-    {
-        if (request is null)
-        {
-            return BadRequest(new { message = "Question classification entry request is required." });
-        }
-
-        try
-        {
-            var result = await _questionManager.CreateQuestionClassificationEntry(request);
-            return StatusCode(StatusCodes.Status201Created, result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                message = "An unexpected error occurred while creating the question classification entry.",
-                detail = ex.Message
-            });
-        }
-    }
-
-    /// <summary>
     /// Creates one or more question-bank entries in the microservice data store.
     /// </summary>
     /// <param name="requests">The question create requests.</param>

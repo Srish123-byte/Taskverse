@@ -56,7 +56,7 @@ public class Startup
             });
         }
 
-        app.UseHttpsRedirection();
+        // app.UseHttpsRedirection(); // Disabled for local dev to avoid SSL cert issues
         app.MapControllers();
         app.MapHealthChecks("/health");
     }
@@ -82,6 +82,9 @@ public class Startup
         services.AddScoped<IResultEvaluationStrategyFactory, ResultEvaluationStrategyFactory>();
         services.AddScoped<IResultEvaluationStrategy, McqResultEvaluationStrategy>();
         services.AddScoped<IResultEvaluationStrategy, CodingResultEvaluationStrategy>();
+        
+        QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+        services.AddScoped<IReportExportManager, ReportExportManager>();
     }
 
     private static void ConfigureSwagger(IServiceCollection services)
@@ -95,3 +98,4 @@ public class Startup
         services.AddEndpointsApiExplorer();
     }
 }
+

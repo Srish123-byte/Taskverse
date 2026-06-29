@@ -14,6 +14,7 @@ import { SettingsComponent } from './settings/settings.component';
 import { HelpCenterComponent } from './help-center/help-center.component';
 import { QuestionEditorPageComponent } from './question-editor/question-editor.component';
 import { NewAssessmentComponent } from './new-assessment/new-assessment.component';
+import { FormsModule } from '@angular/forms';
 
 @NgModule({
   declarations: [
@@ -33,7 +34,8 @@ import { NewAssessmentComponent } from './new-assessment/new-assessment.componen
   imports: [
     CommonModule,
     AppCommonModule,
-    CollegeAdminRoutes
+    CollegeAdminRoutes,
+    FormsModule
   ]
 })
 export class CollegeAdminModule {}

@@ -16,7 +16,6 @@ public interface IAssessmentOrchestrator
     Task<List<Guid>> DeleteQuestions(DeleteQuestionsDto dto);
     Task<AssessmentAssignmentCatalogDto> GetTrainerAssignedClassesAndBatches(AssessmentBootstrapDto dto);
     Task<QuestionClassificationCatalogDto> GetQuestionClassificationCatalog();
-    Task<QuestionClassificationEntryDto> CreateQuestionClassificationEntry(CreateQuestionClassificationEntryDto dto);
     Task<PagedQuestionBankDto> SearchQuestionBank(QuestionBankSearchDto dto);
     Task<PagedAssessmentSearchDto> SearchAssessments(AssessmentSearchDto dto);
     Task<PagedAssessmentQuestionListDto> GetAssessmentQuestionList(Guid assessmentId, int pageNumber, int pageSize);

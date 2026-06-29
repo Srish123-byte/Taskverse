@@ -63,52 +63,6 @@ public class QuestionManager : IQuestionManager
     }
 
     /// <inheritdoc />
-    public async Task<QuestionClassificationEntryRecord> CreateQuestionClassificationEntry(CreateQuestionClassificationEntryRequest request)
-    {
-        if (request is null)
-        {
-            throw new ArgumentException("Question classification entry request is required.");
-        }
-
-        var normalizedSubjectName = string.IsNullOrWhiteSpace(request.SubjectName)
-            ? null
-            : request.SubjectName.Trim();
-        var normalizedTopicName = string.IsNullOrWhiteSpace(request.TopicName)
-            ? null
-            : request.TopicName.Trim();
-
-        if (string.IsNullOrWhiteSpace(normalizedSubjectName) &&
-            (!request.SubjectId.HasValue || request.SubjectId == Guid.Empty) &&
-            string.IsNullOrWhiteSpace(normalizedTopicName))
-        {
-            throw new ArgumentException("Provide a subject or topic name to create.");
-        }
-
-        if (!string.IsNullOrWhiteSpace(normalizedTopicName))
-        {
-            var subject = await SubjectTopicResolver.ResolveSubjectAsync(_context, request.SubjectId, normalizedSubjectName);
-            if (subject is null)
-            {
-                throw new KeyNotFoundException("Subject is required to create a topic.");
-            }
-
-            var topic = await SubjectTopicResolver.ResolveTopicAsync(_context, null, normalizedTopicName, subject.SubjectId);
-            await _context.SaveChangesAsync();
-
-            return subject.ToClassificationEntryRecord(topic);
-        }
-
-        var createdOrExistingSubject = await SubjectTopicResolver.ResolveSubjectAsync(_context, request.SubjectId, normalizedSubjectName);
-        if (createdOrExistingSubject is null)
-        {
-            throw new KeyNotFoundException("Subject is required.");
-        }
-
-        await _context.SaveChangesAsync();
-        return createdOrExistingSubject.ToClassificationEntryRecord();
-    }
-
-    /// <inheritdoc />
     public async Task<List<Question>> CreateQuestions(List<QuestionImportItem> questions)
     {
         if (questions.Count == 0)

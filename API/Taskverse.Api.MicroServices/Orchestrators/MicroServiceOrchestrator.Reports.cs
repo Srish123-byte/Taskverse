@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics;
 using Taskverse.Api.MicroServices.Enums;
 using Taskverse.Api.MicroServices.Models;
 
@@ -46,5 +47,60 @@ public partial class MicroServiceOrchestrator
     {
         var url = $"{GetMicroServiceUrl(MicroService.Reports)}api/results/students/attempts/{attemptId}";
         return await Get<StudentResultModel>(url);
+    }
+
+    public async Task<IActionResult> GetFile(string url)
+    {
+        var uri = GetValidatedUri(url);
+        var client = _httpClientFactory.CreateClient(ClientName);
+        PrepareClient(client, uri);
+        LogRequestStart(HttpMethod.Get, uri);
+        var stopwatch = Stopwatch.StartNew();
+
+        try
+        {
+            var response = await client.GetAsync(uri);
+            stopwatch.Stop();
+            LogRequestCompletion(HttpMethod.Get, uri, response.StatusCode, stopwatch.ElapsedMilliseconds);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsByteArrayAsync();
+                var contentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
+                var contentDisposition = response.Content.Headers.ContentDisposition?.ToString();
+                var fileName = "download";
+                if (!string.IsNullOrEmpty(contentDisposition) && contentDisposition.Contains("filename="))
+                {
+                    fileName = contentDisposition.Split("filename=")[1].Trim('"');
+                }
+                return new FileContentResult(content, contentType) { FileDownloadName = fileName };
+            }
+            
+            return await GetResult<object>(response, url);
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _log.Error($"[MicroServiceOrchestrator] GET File request failed for URL {url}: {ex.Message}", ex);
+            throw;
+        }
+    }
+
+    public async Task<IActionResult> ExportCollegeReport(Guid collegeId, string format)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Reports)}api/reports/export/college/{collegeId}?format={format}";
+        return await GetFile(url); 
+    }
+
+    public async Task<IActionResult> ExportBranchReport(Guid branchId, string format)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Reports)}api/reports/export/branch/{branchId}?format={format}";
+        return await GetFile(url); 
+    }
+
+    public async Task<IActionResult> ExportStudentReport(Guid studentId, string format)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Reports)}api/reports/export/student/{studentId}?format={format}";
+        return await GetFile(url); 
     }
 }

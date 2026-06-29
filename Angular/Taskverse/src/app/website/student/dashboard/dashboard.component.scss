@@ -3,6 +3,16 @@
   color: #edf2ff;
 }
 
+.portal-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 28px;
+  border-bottom: 1px solid rgba(111, 134, 182, 0.18);
+  background: rgba(9, 17, 34, 0.46);
+}
+
 .topbar-breadcrumb {
   color: #dbe7ff;
   font-size: 0.86rem;
@@ -14,6 +24,44 @@
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.profile-pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px 6px 14px;
+  border: 1px solid rgba(120, 143, 193, 0.18);
+  border-radius: 999px;
+  background: rgba(23, 32, 58, 0.86);
+}
+
+.profile-copy {
+  display: grid;
+  gap: 2px;
+  text-align: right;
+}
+
+.profile-copy strong {
+  font-size: 0.95rem;
+}
+
+.profile-copy span {
+  color: #8ea0c8;
+  font-size: 0.75rem;
+}
+
+.profile-avatar {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 2px solid rgba(103, 205, 255, 0.4);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #35527b 0%, #14213b 100%);
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
 .portal-body {
@@ -400,6 +448,7 @@
 }
 
 @media (max-width: 900px) {
+  .portal-topbar,
   .portal-body {
     padding-inline: 18px;
   }
@@ -418,10 +467,20 @@
 }
 
 @media (max-width: 760px) {
+  .portal-topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .topbar-actions {
     width: 100%;
     flex-wrap: wrap;
     justify-content: flex-end;
+  }
+
+  .profile-pill {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .table-head {

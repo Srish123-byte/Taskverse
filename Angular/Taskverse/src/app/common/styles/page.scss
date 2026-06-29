@@ -1,5 +1,5 @@
 .page-container {
-  padding: 28px 32px;
+  padding: 32px 24px;
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -28,60 +28,4 @@
 
 .page-content {
   margin-top: 24px;
-}
-
-.page-section-card {
-  background: #111111;
-  border: 1px solid #1f2937;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 20px;
-}
-
-.stat-card {
-  background: #111111;
-  border: 1px solid #1f2937;
-  border-left: 3px solid #00BFFF;
-  border-radius: 0 12px 12px 0;
-  padding: 20px;
-  transition: border-color 0.2s ease;
-
-  &:hover {
-    border-left-color: #7C3AED;
-  }
-}
-
-.stat-card-value {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #ffffff;
-  line-height: 1;
-}
-
-.stat-card-label {
-  font-size: 0.8rem;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-top: 6px;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 64px 24px;
-  text-align: center;
-  color: #6b7280;
-  gap: 12px;
-
-  .empty-state-icon {
-    font-size: 2.5rem;
-    opacity: 0.3;
-  }
-
-  .empty-state-text {
-    font-size: 0.9rem;
-  }
 }

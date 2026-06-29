@@ -12,6 +12,8 @@ import { QuestionsManagementComponent } from './questions-management/questions-m
 import { QuestionEditorPageComponent } from './question-editor/question-editor.component';
 import { AssessmentsManagementComponent } from './assessments-management/assessments-management.component';
 import { NewAssessmentComponent } from './new-assessment/new-assessment.component';
+import { ReportsComponent } from './reports/reports.component';
+import { FormsModule } from '@angular/forms';
 
 @NgModule({
   declarations: [
@@ -24,12 +26,14 @@ import { NewAssessmentComponent } from './new-assessment/new-assessment.componen
     AssessmentsManagementComponent,
     NewAssessmentComponent,
     ManageComponent,
-    HelpCenterComponent
+    HelpCenterComponent,
+    ReportsComponent
   ],
   imports: [
     CommonModule,
     AppCommonModule,
-    TrainerRoutes
+    TrainerRoutes,
+    FormsModule
   ]
 })
 export class TrainerModule {}

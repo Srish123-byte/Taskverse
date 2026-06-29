@@ -22,13 +22,6 @@ public interface IQuestionManager
     Task<QuestionClassificationCatalogRecord> GetQuestionClassificationCatalog();
 
     /// <summary>
-    /// Creates or resolves a subject or topic entry for the shared classification catalog.
-    /// </summary>
-    /// <param name="request">The requested subject/topic details.</param>
-    /// <returns>The persisted catalog entry.</returns>
-    Task<QuestionClassificationEntryRecord> CreateQuestionClassificationEntry(CreateQuestionClassificationEntryRequest request);
-
-    /// <summary>
     /// Retrieves a question by identifier within the specified college scope.
     /// </summary>
     /// <param name="collegeId">The college identifier.</param>
