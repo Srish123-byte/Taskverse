@@ -155,7 +155,7 @@
     </section>
   </ng-container>
 
-  <section *ngIf="result" class="runner-result-shell">
+  <section *ngIf="result && hasImmediateResult" class="runner-result-shell">
     <span class="runner-eyebrow">Assessment Result</span>
     <h1>{{ result.assessmentName }}</h1>
     <p>Submission completed successfully. Review the result details below.</p>
@@ -170,8 +170,8 @@
         <strong>{{ result.percentage }}%</strong>
       </div>
       <div class="runner-result-card">
-        <span>Rank</span>
-        <strong>{{ result.rank }}</strong>
+        <span>Class Rank</span>
+        <strong>{{ rankSummary }}</strong>
       </div>
       <div class="runner-result-card">
         <span>Status</span>
@@ -183,8 +183,45 @@
       Coding evaluation is still pending. The score shown may update once coding responses are evaluated.
     </div>
 
+    <section class="runner-question-breakdown">
+      <h2>Question-wise Breakdown</h2>
+
+      <article *ngFor="let question of result.questionResults; trackBy: trackByQuestionResult" class="runner-question-card">
+        <div class="runner-question-card-header">
+          <span class="runner-question-tag">Question {{ question.displayOrder }} · {{ question.marks }} Marks</span>
+          <span class="runner-question-status" [class]="'runner-question-status-' + question.status.toLowerCase()">
+            {{ question.status }}
+          </span>
+        </div>
+
+        <h3>{{ question.questionText }}</h3>
+
+        <div class="runner-answer-grid">
+          <div class="runner-answer-box">
+            <span>Your Answer</span>
+            <strong>{{ getJoinedAnswers(question.userAnswers) }}</strong>
+          </div>
+          <div class="runner-answer-box runner-answer-box-correct">
+            <span>Correct Answer</span>
+            <strong>{{ getJoinedAnswers(question.correctAnswers) }}</strong>
+          </div>
+        </div>
+
+        <p *ngIf="question.explanation" class="runner-question-explanation">{{ question.explanation }}</p>
+      </article>
+    </section>
+
     <button type="button" class="runner-button runner-button-primary" (click)="returnToAssessments()">
       Back to Assessments
+    </button>
+  </section>
+
+  <section *ngIf="result && isResultPending" class="runner-state-card">
+    <span class="runner-eyebrow">Assessment Submitted</span>
+    <h1>{{ result.assessmentName }}</h1>
+    <p>Your results will be available in the Results tab.</p>
+    <button type="button" class="runner-button runner-button-primary" (click)="goToResults()">
+      Go to Results
     </button>
   </section>
 

@@ -63,6 +63,7 @@ public class StudentResultDto
     public int UnansweredQuestions { get; set; }
     public int ParticipantCount { get; set; }
     public bool HasPendingCodingEvaluation { get; set; }
+    public bool ShowResultsImmediately { get; set; }
     public List<StudentResultQuestionResultDto> QuestionResults { get; set; } = [];
     public List<StudentResultQuestionExplanationDto> QuestionExplanations { get; set; } = [];
 }

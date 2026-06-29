@@ -12,7 +12,8 @@ import {
   StudentAttemptAnswer,
   StudentAttemptRecovery,
   StudentAttemptRecoveryQuestion,
-  StudentResult
+  StudentResult,
+  StudentResultQuestionResult
 } from '../../../common/services/api/student-assessments.service';
 import {
   AssessmentProctoringService,
@@ -140,7 +141,20 @@ export class AssessmentRunnerComponent implements OnInit, OnDestroy {
   }
 
   get hasImmediateResult(): boolean {
-    return !!this.result;
+    return !!this.result && this.result.showResultsImmediately;
+  }
+
+  get isResultPending(): boolean {
+    return !!this.result && !this.result.showResultsImmediately;
+  }
+
+  get rankSummary(): string {
+    if (!this.result) {
+      return '--';
+    }
+
+    const participantCount = Math.max(this.result.participantCount, this.result.rank);
+    return `${this.result.rank} / ${participantCount}`;
   }
 
   get isFullscreenActive(): boolean {
@@ -179,6 +193,18 @@ export class AssessmentRunnerComponent implements OnInit, OnDestroy {
 
   trackByQuestionOption(_: number, option: string): string {
     return option;
+  }
+
+  trackByQuestionResult(_: number, item: StudentResultQuestionResult): string {
+    return item.questionId;
+  }
+
+  getJoinedAnswers(values: string[] | null | undefined): string {
+    return values?.length ? values.join(', ') : 'Not answered';
+  }
+
+  goToResults(): void {
+    void this.router.navigateByUrl(`/${RouteAddress.Student.Results}`);
   }
 
   async beginProctoredAttempt(): Promise<void> {
@@ -835,7 +861,7 @@ export class AssessmentRunnerComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.warn('Failed to exit fullscreen during assessment teardown.', error);
     } finally {
-      this.navigateToAttemptResult(attemptId);
+      this.loadImmediateResultOrReturn(attemptId);
     }
   }
 
@@ -959,12 +985,5 @@ export class AssessmentRunnerComponent implements OnInit, OnDestroy {
 
   private navigateToAssessments(): void {
     void this.router.navigateByUrl(`/${RouteAddress.Student.MyAssessments}`);
-  }
-
-  private navigateToAttemptResult(attemptId: string): void {
-    void this.router.navigateByUrl(
-      `/${RouteAddress.Student.AttemptResults}/${attemptId}`,
-      { state: { pollForResult: true } }
-    );
   }
 }

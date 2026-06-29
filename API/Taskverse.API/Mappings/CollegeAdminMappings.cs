@@ -12,6 +12,7 @@ public static class CollegeAdminMappings
             RegisteredStudents = dto.Totals.RegisteredStudents,
             RegisteredTrainers = dto.Totals.RegisteredTrainers,
             PendingApprovals = dto.Totals.PendingApprovals,
+            TotalAssessments = dto.Totals.TotalAssessments,
             AssessmentsThisMonth = dto.Totals.AssessmentsThisMonth,
             AssessmentsPreviousMonth = dto.Totals.AssessmentsPreviousMonth
         },

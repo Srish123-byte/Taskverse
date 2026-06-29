@@ -13,6 +13,7 @@ public class CollegeAdminTotalsResponseModel
     public int RegisteredStudents { get; set; }
     public int RegisteredTrainers { get; set; }
     public int PendingApprovals { get; set; }
+    public int TotalAssessments { get; set; }
     public int AssessmentsThisMonth { get; set; }
     public int AssessmentsPreviousMonth { get; set; }
 }

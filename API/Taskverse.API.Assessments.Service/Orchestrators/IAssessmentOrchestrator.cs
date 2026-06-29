@@ -37,6 +37,8 @@ public interface IAssessmentOrchestrator
 
     Task<StudentAttemptSubmitRecord> SubmitStudentAttempt(Guid attemptId, Guid studentUserId);
 
+    Task<StudentStreakRecord> GetStudentStreak(Guid studentUserId);
+
     Task<StudentAttemptAnswerRecord> SaveStudentAttemptAnswer(
         Guid attemptId,
         Guid questionId,
