@@ -16,10 +16,8 @@ public static class AssessmentMappings
             CollegeId = collegeId,
             CreatedBy = createdBy,
             AssessmentName = model.AssessmentName,
-            SubjectId = model.SubjectId,
-            SubjectName = model.SubjectName,
-            TopicId = model.TopicId,
-            TopicName = model.TopicName,
+            SubjectIds = model.SubjectIds,
+            TopicIds = model.TopicIds,
             Instructions = model.Instructions?.Trim(),
             AllowLateEntry = model.AllowLateEntry,
             AllowQuestionReview = model.AllowQuestionReview,
@@ -124,6 +122,16 @@ public static class AssessmentMappings
         };
     }
 
+    public static CreateQuestionClassificationEntryDto ToDto(this CreateQuestionClassificationEntryRequestModel model)
+    {
+        return new CreateQuestionClassificationEntryDto
+        {
+            SubjectId = model.SubjectId,
+            SubjectName = model.SubjectName?.Trim(),
+            TopicName = model.TopicName?.Trim()
+        };
+    }
+
     public static QuestionResponseModel ToResponseModel(this AssessmentQuestionDto dto)
     {
         return new QuestionResponseModel
@@ -178,6 +186,17 @@ public static class AssessmentMappings
         };
     }
 
+    public static QuestionClassificationEntryResponseModel ToResponseModel(this QuestionClassificationEntryDto dto)
+    {
+        return new QuestionClassificationEntryResponseModel
+        {
+            SubjectId = dto.SubjectId,
+            SubjectName = dto.SubjectName,
+            TopicId = dto.TopicId,
+            TopicName = dto.TopicName
+        };
+    }
+
     public static PagedQuestionBankResponseModel ToResponseModel(this PagedQuestionBankDto dto)
     {
         return new PagedQuestionBankResponseModel
@@ -195,8 +214,14 @@ public static class AssessmentMappings
         {
             AssessmentId = dto.AssessmentId,
             AssessmentName = dto.AssessmentName,
+            SubjectIds = dto.SubjectIds,
+            SubjectNames = dto.SubjectNames,
             SubjectName = dto.SubjectName,
+            SubjectDisplayLabel = dto.SubjectDisplayLabel,
+            TopicIds = dto.TopicIds,
+            TopicNames = dto.TopicNames,
             TopicName = dto.TopicName,
+            TopicDisplayLabel = dto.TopicDisplayLabel,
             AssessmentStatus = dto.AssessmentStatus,
             AssessmentDate = UtcDateTime.Normalize(dto.AssessmentDate),
             StartDateTime = UtcDateTime.Normalize(dto.StartDateTime),
@@ -229,10 +254,8 @@ public static class AssessmentMappings
             CollegeId = collegeId,
             CreatedBy = createdBy,
             AssessmentName = model.AssessmentName,
-            SubjectId = model.SubjectId,
-            SubjectName = model.SubjectName,
-            TopicId = model.TopicId,
-            TopicName = model.TopicName,
+            SubjectIds = model.SubjectIds,
+            TopicIds = model.TopicIds,
             Instructions = model.Instructions?.Trim(),
             AllowLateEntry = model.AllowLateEntry,
             AllowQuestionReview = model.AllowQuestionReview,
@@ -262,10 +285,8 @@ public static class AssessmentMappings
             RequesterRole = requesterRole,
             IsDraftSave = model.IsDraftSave,
             AssessmentName = model.AssessmentName,
-            SubjectId = model.SubjectId,
-            SubjectName = model.SubjectName,
-            TopicId = model.TopicId,
-            TopicName = model.TopicName,
+            SubjectIds = model.SubjectIds,
+            TopicIds = model.TopicIds,
             Instructions = model.Instructions?.Trim(),
             AllowLateEntry = model.AllowLateEntry,
             AllowQuestionReview = model.AllowQuestionReview,
@@ -317,10 +338,14 @@ public static class AssessmentMappings
         {
             AssessmentId = dto.AssessmentId,
             CollegeId = dto.CollegeId,
-            SubjectId = dto.SubjectId,
+            SubjectIds = dto.SubjectIds,
+            SubjectNames = dto.SubjectNames,
             SubjectName = dto.SubjectName,
-            TopicId = dto.TopicId,
+            SubjectDisplayLabel = dto.SubjectDisplayLabel,
+            TopicIds = dto.TopicIds,
+            TopicNames = dto.TopicNames,
             TopicName = dto.TopicName,
+            TopicDisplayLabel = dto.TopicDisplayLabel,
             AssessmentName = dto.AssessmentName,
             AssessmentType = dto.AssessmentType,
             AssessmentStatus = dto.AssessmentStatus,

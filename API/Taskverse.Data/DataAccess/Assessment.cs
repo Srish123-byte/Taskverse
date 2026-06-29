@@ -15,11 +15,11 @@ public class Assessment
     [Column("college_id")]
     public Guid CollegeId { get; set; }
 
-    [Column("subject_id")]
-    public Guid? SubjectId { get; set; }
+    [Column("subject_id", TypeName = "uuid[]")]
+    public Guid[] SubjectIds { get; set; } = [];
 
-    [Column("topic_id")]
-    public Guid? TopicId { get; set; }
+    [Column("topic_id", TypeName = "uuid[]")]
+    public Guid[] TopicIds { get; set; } = [];
 
     [Required]
     [MaxLength(120)]
@@ -99,9 +99,11 @@ public class Assessment
     [NotMapped]
     public string? TopicName { get; set; }
 
-    public Subject? Subject { get; set; }
+    [NotMapped]
+    public string[] SubjectNames { get; set; } = [];
 
-    public Topic? Topic { get; set; }
+    [NotMapped]
+    public string[] TopicNames { get; set; } = [];
 
     public ICollection<AssessmentQuestion> AssessmentQuestions { get; set; } = [];
 }

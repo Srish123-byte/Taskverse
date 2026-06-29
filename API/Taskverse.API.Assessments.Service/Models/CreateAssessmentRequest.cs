@@ -17,19 +17,11 @@ public class CreateAssessmentRequest
     [JsonPropertyName("assessment_name")]
     public string AssessmentName { get; set; } = string.Empty;
 
-    [JsonPropertyName("subject_id")]
-    public Guid? SubjectId { get; set; }
+    [JsonPropertyName("subject_ids")]
+    public Guid[] SubjectIds { get; set; } = [];
 
-    [MaxLength(100)]
-    [JsonPropertyName("subject_name")]
-    public string? SubjectName { get; set; }
-
-    [JsonPropertyName("topic_id")]
-    public Guid? TopicId { get; set; }
-
-    [MaxLength(200)]
-    [JsonPropertyName("topic_name")]
-    public string? TopicName { get; set; }
+    [JsonPropertyName("topic_ids")]
+    public Guid[] TopicIds { get; set; } = [];
 
     [MaxLength(2000)]
     [JsonPropertyName("instructions")]
@@ -84,19 +76,11 @@ public class PublishAssessmentRequest
     [JsonPropertyName("assessment_name")]
     public string AssessmentName { get; set; } = string.Empty;
 
-    [JsonPropertyName("subject_id")]
-    public Guid? SubjectId { get; set; }
+    [JsonPropertyName("subject_ids")]
+    public Guid[] SubjectIds { get; set; } = [];
 
-    [MaxLength(100)]
-    [JsonPropertyName("subject_name")]
-    public string? SubjectName { get; set; }
-
-    [JsonPropertyName("topic_id")]
-    public Guid? TopicId { get; set; }
-
-    [MaxLength(200)]
-    [JsonPropertyName("topic_name")]
-    public string? TopicName { get; set; }
+    [JsonPropertyName("topic_ids")]
+    public Guid[] TopicIds { get; set; } = [];
 
     [MaxLength(2000)]
     [JsonPropertyName("instructions")]
@@ -159,19 +143,11 @@ public class UpdateAssessmentRequest
     [JsonPropertyName("assessment_name")]
     public string AssessmentName { get; set; } = string.Empty;
 
-    [JsonPropertyName("subject_id")]
-    public Guid? SubjectId { get; set; }
+    [JsonPropertyName("subject_ids")]
+    public Guid[] SubjectIds { get; set; } = [];
 
-    [MaxLength(100)]
-    [JsonPropertyName("subject_name")]
-    public string? SubjectName { get; set; }
-
-    [JsonPropertyName("topic_id")]
-    public Guid? TopicId { get; set; }
-
-    [MaxLength(200)]
-    [JsonPropertyName("topic_name")]
-    public string? TopicName { get; set; }
+    [JsonPropertyName("topic_ids")]
+    public Guid[] TopicIds { get; set; } = [];
 
     [MaxLength(2000)]
     [JsonPropertyName("instructions")]
@@ -241,14 +217,22 @@ public record AssessmentRecord(
     Guid AssessmentId,
     [property: JsonPropertyName("college_id")]
     Guid CollegeId,
-    [property: JsonPropertyName("subject_id")]
-    Guid? SubjectId,
+    [property: JsonPropertyName("subject_ids")]
+    Guid[] SubjectIds,
+    [property: JsonPropertyName("subject_names")]
+    string[] SubjectNames,
     [property: JsonPropertyName("subject_name")]
     string? SubjectName,
-    [property: JsonPropertyName("topic_id")]
-    Guid? TopicId,
+    [property: JsonPropertyName("subject_display_label")]
+    string? SubjectDisplayLabel,
+    [property: JsonPropertyName("topic_ids")]
+    Guid[] TopicIds,
+    [property: JsonPropertyName("topic_names")]
+    string[] TopicNames,
     [property: JsonPropertyName("topic_name")]
     string? TopicName,
+    [property: JsonPropertyName("topic_display_label")]
+    string? TopicDisplayLabel,
     [property: JsonPropertyName("assessment_name")]
     string AssessmentName,
     [property: JsonPropertyName("assessment_type")]
@@ -338,10 +322,22 @@ public record AssessmentSearchItemRecord(
     Guid AssessmentId,
     [property: JsonPropertyName("assessment_name")]
     string AssessmentName,
+    [property: JsonPropertyName("subject_ids")]
+    Guid[] SubjectIds,
+    [property: JsonPropertyName("subject_names")]
+    string[] SubjectNames,
     [property: JsonPropertyName("subject_name")]
     string? SubjectName,
+    [property: JsonPropertyName("subject_display_label")]
+    string? SubjectDisplayLabel,
+    [property: JsonPropertyName("topic_ids")]
+    Guid[] TopicIds,
+    [property: JsonPropertyName("topic_names")]
+    string[] TopicNames,
     [property: JsonPropertyName("topic_name")]
     string? TopicName,
+    [property: JsonPropertyName("topic_display_label")]
+    string? TopicDisplayLabel,
     [property: JsonPropertyName("assessment_status")]
     string AssessmentStatus,
     [property: JsonPropertyName("assessment_date")]

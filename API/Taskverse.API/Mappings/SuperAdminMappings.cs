@@ -49,9 +49,12 @@ public static class SuperAdminMappings
             FullName = row.FullName,
             Email = row.Email,
             Phone = row.Phone,
+            EnrollmentNumber = row.EnrollmentNumber,
             CollegeId = row.CollegeId,
+            CollegeName = row.CollegeName,
             ClassId = row.ClassId,
-            BatchId = row.BatchId
+            BatchId = row.BatchId,
+            ClassName = row.ClassName
         }).ToList()
     };
 

@@ -140,7 +140,8 @@
 }
 
 .users-table-shell {
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   border: 1px solid rgba(148, 163, 184, 0.16);
   border-radius: 26px;
   background:
@@ -245,7 +246,9 @@
 .actions-cell {
   display: flex;
   gap: 12px;
+  align-items: center;
   justify-content: flex-start;
+  white-space: nowrap;
 }
 
 .actions-cell button {
@@ -253,6 +256,15 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
+  min-width: 72px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .button-spinner {

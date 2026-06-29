@@ -562,9 +562,7 @@
 }
 
 :host(.theme-trainer) .page-container::before {
-  background:
-    radial-gradient(circle at top right, rgba(94, 234, 212, 0.16), transparent 36%),
-    linear-gradient(180deg, rgba(10, 31, 38, 0.95) 0%, rgba(9, 24, 30, 0.99) 100%);
+  background: transparent;
 }
 
 :host(.theme-trainer) .hero-kicker,

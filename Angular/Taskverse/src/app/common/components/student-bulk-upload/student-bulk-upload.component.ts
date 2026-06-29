@@ -39,6 +39,10 @@ export class StudentBulkUploadComponent {
     return this.parsedFile?.rows.slice(0, 5) ?? [];
   }
 
+  get isCollegeAdminScope(): boolean {
+    return this.scope === 'college-admin';
+  }
+
   async onFileSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -53,7 +57,7 @@ export class StudentBulkUploadComponent {
     this.isParsing = true;
 
     try {
-      this.parsedFile = await this.parser.parse(file);
+      this.parsedFile = await this.parser.parse(file, this.scope);
     } catch (error) {
       this.parsedFile = null;
       this.errorMessage = error instanceof Error ? error.message : 'Unable to parse the uploaded file.';
