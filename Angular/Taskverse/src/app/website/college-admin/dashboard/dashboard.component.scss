@@ -109,6 +109,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  overflow: visible;
 }
 
 .metric-icon {
@@ -116,9 +117,11 @@
   place-items: center;
   width: 44px;
   height: 44px;
+  min-width: 44px;
   border-radius: 12px;
   background: rgba(83, 157, 228, 0.16);
   color: #65c8ff;
+  flex-shrink: 0;
 }
 
 .metric-card-action .metric-icon {
@@ -130,16 +133,30 @@
   color: #76d0ff;
   font-size: 0.94rem;
   font-weight: 700;
+  text-align: right;
+  word-break: break-word;
 }
 
 .metric-caption-action {
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #ba1114;
-  color: #ffffff;
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(127, 0, 0, 0.3);
+  border-left: 3px solid #cc0000;
+  color: #ff6b6b;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  text-align: left;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+.metric-caption-action.metric-caption-empty {
+  color: #fff;
 }
 
 .metric-copy {
@@ -362,10 +379,18 @@
 }
 
 .ranking-card mat-icon {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  flex-shrink: 0;
   color: #72cbff;
 }
 
 .ranking-card-alert mat-icon {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  flex-shrink: 0;
   color: #ff928b;
 }
 

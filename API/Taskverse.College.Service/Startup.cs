@@ -84,6 +84,7 @@ public class Startup
     {
         services.AddScoped<ICollegeOrchestrator, CollegeOrchestrator>();
         services.AddScoped<ICollegeService, CollegeService>();
+        services.AddScoped<IAttendanceExportService, AttendanceExportService>();
     }
 
     private void ConfigureMvc(IServiceCollection services)

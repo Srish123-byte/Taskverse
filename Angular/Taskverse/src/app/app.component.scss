@@ -1,4 +1,24 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: #0a0a0a;
+}
+
 main {
+  flex: 1 1 auto;
+  overflow: hidden;
   background: var(--bg-page);
-  min-height: calc(100vh - 120px);
+}
+
+@media (max-width: 980px) {
+  :host {
+    height: auto;
+    overflow: visible;
+  }
+
+  main {
+    overflow: visible;
+  }
 }

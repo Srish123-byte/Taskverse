@@ -283,6 +283,161 @@ namespace Taskverse.Data.Migrations
                     b.ToTable("colleges", (string)null);
                 });
 
+            modelBuilder.Entity("Taskverse.Data.DataAccess.AttendanceSession", b =>
+                {
+                    b.Property<Guid>("AttendanceSessionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("attendance_session_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("AttendanceDate")
+                        .HasColumnType("date")
+                        .HasColumnName("attendance_date");
+
+                    b.Property<int>("AttendanceSessionType")
+                        .HasColumnType("integer")
+                        .HasColumnName("attendance_session");
+
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("batch_id");
+
+                    b.Property<Guid?>("BatchOwnerTrainerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("batch_owner_trainer_id");
+
+                    b.Property<Guid?>("ClassId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("class_id");
+
+                    b.Property<Guid>("CollegeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("college_id");
+
+                    b.Property<DateTime>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid?>("SubmittedByTrainerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submitted_by_trainer_id");
+
+                    b.HasKey("AttendanceSessionId");
+
+                    b.HasIndex("BatchId", "AttendanceDate", "AttendanceSessionType")
+                        .HasDatabaseName("ix_attendance_sessions_batch_id_attendance_date_attendance_sess")
+                        .IsUnique();
+
+                    b.HasIndex("BatchOwnerTrainerId");
+
+                    b.HasIndex("ClassId");
+
+                    b.HasIndex("CollegeId");
+
+                    b.HasIndex("SubmittedByTrainerId");
+
+                    b.ToTable("attendance_sessions", (string)null);
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.AttendanceEntryRecord", b =>
+                {
+                    b.Property<Guid>("AttendanceEntryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("attendance_entry_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<int>("AttendanceEntryType")
+                        .HasColumnType("integer")
+                        .HasColumnName("attendance_entry");
+
+                    b.Property<Guid>("AttendanceSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("attendance_session_id");
+
+                    b.Property<Guid?>("StudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
+
+                    b.HasKey("AttendanceEntryId");
+
+                    b.HasIndex("AttendanceSessionId", "StudentId")
+                        .IsUnique();
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("attendance_entries", (string)null);
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.LookupAttendanceEntry", b =>
+                {
+                    b.Property<int>("AttendanceEntryId")
+                        .ValueGeneratedNever()
+                        .HasColumnType("integer")
+                        .HasColumnName("attendance_entry_id");
+
+                    b.Property<string>("AttendanceEntry")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("attendance_entry");
+
+                    b.HasKey("AttendanceEntryId");
+
+                    b.ToTable("lookup_attendance_entry", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            AttendanceEntryId = 1,
+                            AttendanceEntry = "Present"
+                        },
+                        new
+                        {
+                            AttendanceEntryId = 2,
+                            AttendanceEntry = "Absent"
+                        });
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.LookupAttendanceSession", b =>
+                {
+                    b.Property<int>("AttendanceSessionId")
+                        .ValueGeneratedNever()
+                        .HasColumnType("integer")
+                        .HasColumnName("attendance_session_id");
+
+                    b.Property<string>("AttendanceSession")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("attendance_session");
+
+                    b.HasKey("AttendanceSessionId");
+
+                    b.ToTable("lookup_attendance_session", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            AttendanceSessionId = 1,
+                            AttendanceSession = "PreBreak"
+                        },
+                        new
+                        {
+                            AttendanceSessionId = 2,
+                            AttendanceSession = "PostBreak"
+                        });
+                });
+
             modelBuilder.Entity("Taskverse.Data.DataAccess.Role", b =>
                 {
                     b.Property<short>("RoleId")
@@ -509,6 +664,11 @@ namespace Taskverse.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("email");
 
+                    b.Property<string>("EnrollmentNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("enrollment_number");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("text")
@@ -592,6 +752,72 @@ namespace Taskverse.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_audit_logs_user");
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.AttendanceEntryRecord", b =>
+                {
+                    b.HasOne("Taskverse.Data.DataAccess.AttendanceSession", "AttendanceSession")
+                        .WithMany("Entries")
+                        .HasForeignKey("AttendanceSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_attendance_entries_session");
+
+                    b.HasOne("Taskverse.Data.DataAccess.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_attendance_entries_student");
+
+                    b.Navigation("AttendanceSession");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.AttendanceSession", b =>
+                {
+                    b.HasOne("Taskverse.Data.DataAccess.Batch", "Batch")
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_attendance_sessions_batch");
+
+                    b.HasOne("Taskverse.Data.DataAccess.Trainer", "BatchOwnerTrainer")
+                        .WithMany()
+                        .HasForeignKey("BatchOwnerTrainerId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_attendance_sessions_batch_owner_trainer");
+
+                    b.HasOne("Taskverse.Data.DataAccess.Class", "Class")
+                        .WithMany()
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_attendance_sessions_class");
+
+                    b.HasOne("Taskverse.Data.DataAccess.College", "College")
+                        .WithMany()
+                        .HasForeignKey("CollegeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_attendance_sessions_college");
+
+                    b.HasOne("Taskverse.Data.DataAccess.Trainer", "SubmittedByTrainer")
+                        .WithMany()
+                        .HasForeignKey("SubmittedByTrainerId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_attendance_sessions_submitted_by_trainer");
+
+                    b.Navigation("Batch");
+
+                    b.Navigation("BatchOwnerTrainer");
+
+                    b.Navigation("Class");
+
+                    b.Navigation("College");
+
+                    b.Navigation("Entries");
+
+                    b.Navigation("SubmittedByTrainer");
                 });
 
             modelBuilder.Entity("Taskverse.Data.DataAccess.Batch", b =>

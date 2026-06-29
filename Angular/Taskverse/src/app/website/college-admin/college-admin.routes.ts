@@ -11,6 +11,7 @@ import { SettingsComponent } from './settings/settings.component';
 import { HelpCenterComponent } from './help-center/help-center.component';
 import { QuestionEditorPageComponent } from './question-editor/question-editor.component';
 import { NewAssessmentComponent } from './new-assessment/new-assessment.component';
+import { StudentsComponent } from '../trainer/students/students.component';
 
 const routes: Routes = [
   {
@@ -22,6 +23,7 @@ const routes: Routes = [
       { path: 'approvals', component: UserApprovalsComponent },
       { path: 'users', component: UserManagementComponent },
       { path: 'classes-management', component: AcademicStructureComponent },
+      { path: 'classes-management/attendance-tracker', component: StudentsComponent },
       { path: 'questions-management', component: QuestionsManagementComponent },
       { path: 'questions-management/new', component: QuestionEditorPageComponent },
       { path: 'questions-management/edit/:id', component: QuestionEditorPageComponent },

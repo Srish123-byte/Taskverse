@@ -1,11 +1,7 @@
 <section class="bulk-upload-shell">
   <div class="bulk-upload-copy">
     <p class="bulk-upload-kicker">Student Bulk Upload</p>
-    <h3>Import students from Excel or CSV</h3>
-    <p>
-      Required columns: <strong>fullName</strong>, <strong>email</strong>, <strong>phone</strong>,
-      <strong>collegeId</strong>. Optional columns: <strong>classId</strong> and <strong>batchId</strong>.
-    </p>
+    <h3>Upload your student roster to add learners quickly and keep class records organized.</h3>
   </div>
 
   <div class="bulk-upload-actions">
@@ -34,7 +30,9 @@
         <span>Full Name</span>
         <span>Email</span>
         <span>Phone</span>
-        <span>CollegeId</span>
+        <span>Enrollment No.</span>
+        <span *ngIf="!isCollegeAdminScope">College</span>
+        <span>Class</span>
         <span>ClassId</span>
         <span>BatchId</span>
       </div>
@@ -43,7 +41,9 @@
         <span>{{ row.fullName }}</span>
         <span>{{ row.email }}</span>
         <span>{{ row.phone }}</span>
-        <span>{{ row.collegeId }}</span>
+        <span>{{ row.enrollmentNumber || '-' }}</span>
+        <span *ngIf="!isCollegeAdminScope">{{ row.collegeName || row.collegeId || '-' }}</span>
+        <span>{{ row.className || '-' }}</span>
         <span>{{ row.classId || '-' }}</span>
         <span>{{ row.batchId || '-' }}</span>
       </article>

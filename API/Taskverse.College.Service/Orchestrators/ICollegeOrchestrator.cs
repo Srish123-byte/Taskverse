@@ -15,6 +15,11 @@ public interface ICollegeOrchestrator
     Task<CollegeBatchSummaryDto> UpdateBatch(Guid collegeId, Guid classId, Guid batchId, UpdateCollegeBatchDto dto);
     Task<CollegeBatchSummaryDto> AssignBatchTrainers(Guid collegeId, Guid classId, Guid batchId, AssignBatchTrainersDto dto);
     Task<CollegeBatchSummaryDto> AssignStudentToBatch(Guid collegeId, Guid classId, Guid batchId, AssignStudentToBatchDto dto);
+    Task<List<AttendanceBatchGroupDto>> GetAttendanceBatchGroups(Guid collegeId, Guid requesterUserId);
+    Task<AttendanceRosterDto> GetAttendanceRoster(AttendanceRosterRequestDto dto);
+    Task<AttendanceRosterDto> SubmitAttendance(SubmitAttendanceDto dto);
+    Task<AttendanceHistoryDto> GetAttendanceHistory(AttendanceHistoryRequestDto dto);
+    Task<AttendanceExportDto> ExportAttendance(AttendanceHistoryRequestDto dto);
     Task DeleteClass(Guid collegeId, Guid classId);
     Task DeleteBatch(Guid collegeId, Guid classId, Guid batchId);
     Task ApproveUser(Guid collegeId, string userId, CollegeUserActionDto dto);

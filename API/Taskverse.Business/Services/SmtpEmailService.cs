@@ -27,7 +27,16 @@ public class SmtpEmailService : IEmailService
             IsBodyHtml = true
         };
 
-        mailMessage.To.Add(new MailAddress(message.ToAddress, message.ToName));
+        foreach (var recipient in message.ToAddresses.Where(item => !string.IsNullOrWhiteSpace(item.Address)))
+        {
+            mailMessage.To.Add(new MailAddress(recipient.Address, recipient.Name));
+        }
+
+        foreach (var attachment in message.Attachments.Where(item => item.Content.Length > 0))
+        {
+            var stream = new MemoryStream(attachment.Content);
+            mailMessage.Attachments.Add(new Attachment(stream, attachment.FileName, attachment.ContentType));
+        }
 
         using var smtpClient = new SmtpClient(_settings.Host, _settings.Port)
         {

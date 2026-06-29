@@ -33,5 +33,4 @@ public class Topic
 
     public Subject Subject { get; set; } = default!;
 
-    public ICollection<Assessment> Assessments { get; set; } = [];
 }

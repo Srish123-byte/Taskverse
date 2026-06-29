@@ -210,7 +210,11 @@ export class AssessmentsManagementComponent implements OnInit {
   }
 
   getCategoryLabel(assessment: AssessmentManagementItem): string {
-    return assessment.subjectName?.trim() || assessment.topicName?.trim() || 'Uncategorized';
+    return assessment.subjectDisplayLabel?.trim() ||
+      assessment.subjectName?.trim() ||
+      assessment.topicDisplayLabel?.trim() ||
+      assessment.topicName?.trim() ||
+      'Uncategorized';
   }
 
   isEditAllowed(assessment: AssessmentManagementItem): boolean {

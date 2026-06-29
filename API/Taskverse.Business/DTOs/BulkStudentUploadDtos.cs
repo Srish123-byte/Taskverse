@@ -5,9 +5,12 @@ public class BulkStudentUploadRowDto
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
+    public string EnrollmentNumber { get; set; } = string.Empty;
     public string CollegeId { get; set; } = string.Empty;
+    public string CollegeName { get; set; } = string.Empty;
     public string ClassId { get; set; } = string.Empty;
     public string BatchId { get; set; } = string.Empty;
+    public string ClassName { get; set; } = string.Empty;
 }
 
 public class BulkStudentUploadRequestDto

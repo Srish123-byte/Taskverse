@@ -29,7 +29,5 @@ public class Subject
 
     public ICollection<Topic> Topics { get; set; } = [];
 
-    public ICollection<Assessment> Assessments { get; set; } = [];
-
     public ICollection<SubjectBatch> SubjectBatches { get; set; } = [];
 }

@@ -1,17 +1,15 @@
 <div class="page-container">
-  <div class="page-eyebrow">College Admin</div>
-  <h2 class="page-title">Class &amp; Batch Configuration</h2>
-  <p class="page-welcome">Manage institutional hierarchy and capacity mapping with live class data from the college admin service.</p>
-
   <div class="page-content classes-management-page">
     <section class="hero-shell">
-      <div class="hero-copy">
-        <span class="hero-kicker">Classes Management</span>
-        <h3>Organize classes, batches, and seat utilization from one dashboard.</h3>
-        <p>Use the live create flows to add classes, create batches, and keep seat utilization updated in one place.</p>
-      </div>
-
       <div class="hero-actions">
+        <button
+          type="button"
+          class="primary-action"
+          routerLink="/college-admin/classes-management/attendance-tracker">
+          <img src="assets/icons/nav/students.svg" alt="" class="hero-action-icon" aria-hidden="true">
+          <span>Take Attendance</span>
+        </button>
+
         <button type="button" class="primary-action" (click)="openCreateClassForm()">
           <img src="assets/icons/shared/add.svg" alt="" class="hero-action-icon" aria-hidden="true">
           <span>Create Class</span>
@@ -25,7 +23,6 @@
       <div class="table-header">
         <div class="section-title">
           <h3>Active Classes</h3>
-          <p>Live classes returned by the current CollegeAdminController and MS-backed flow.</p>
         </div>
       </div>
 
@@ -435,6 +432,13 @@
           </button>
 
           <div *ngIf="isTrainerDropdownOpen" class="trainer-dropdown-panel">
+            <input
+              type="text"
+              class="trainer-search-input"
+              placeholder="Search by name or email..."
+              [(ngModel)]="trainerSearchQuery"
+              (input)="onTrainerSearch()" />
+
             <div *ngIf="isLoadingApprovedTrainers" class="trainer-dropdown-empty">
               Loading approved trainers...
             </div>
@@ -444,7 +448,7 @@
             </div>
 
             <button
-              *ngFor="let trainer of approvedTrainers; trackBy: trackByTrainerId"
+              *ngFor="let trainer of pagedTrainers; trackBy: trackByTrainerId"
               type="button"
               class="trainer-option"
               [class.trainer-option-selected]="isTrainerSelected(trainer.trainerId)"
@@ -457,6 +461,12 @@
                 {{ isTrainerSelected(trainer.trainerId) ? 'Unassign' : 'Assign' }}
               </span>
             </button>
+
+            <div class="pagination-controls" *ngIf="trainerTotalPages > 1">
+              <button type="button" (click)="trainerPage = trainerPage - 1" [disabled]="trainerPage === 1">‹</button>
+              <span>{{ trainerPage }} / {{ trainerTotalPages }}</span>
+              <button type="button" (click)="trainerPage = trainerPage + 1" [disabled]="trainerPage === trainerTotalPages">›</button>
+            </div>
           </div>
         </div>
 
@@ -558,6 +568,13 @@
           </div>
 
           <div class="trainer-dropdown-panel">
+            <input
+              type="text"
+              class="student-search-input"
+              placeholder="Search by name or email..."
+              [(ngModel)]="studentSearchQuery"
+              (input)="onStudentSearch()" />
+
             <div *ngIf="isLoadingApprovedStudents" class="trainer-dropdown-empty">
               Loading approved students...
             </div>
@@ -567,7 +584,7 @@
             </div>
 
             <button
-              *ngFor="let student of approvedStudents; trackBy: trackByStudentId"
+              *ngFor="let student of pagedStudents; trackBy: trackByStudentId"
               type="button"
               class="trainer-option"
               [class.trainer-option-selected]="isStudentSelected(student.studentId)"
@@ -580,6 +597,12 @@
                 {{ isStudentSelected(student.studentId) ? 'Selected' : 'Select' }}
               </span>
             </button>
+
+            <div class="pagination-controls" *ngIf="studentTotalPages > 1">
+              <button type="button" (click)="studentPage = studentPage - 1" [disabled]="studentPage === 1">‹</button>
+              <span>{{ studentPage }} / {{ studentTotalPages }}</span>
+              <button type="button" (click)="studentPage = studentPage + 1" [disabled]="studentPage === studentTotalPages">›</button>
+            </div>
           </div>
         </div>
       </div>
