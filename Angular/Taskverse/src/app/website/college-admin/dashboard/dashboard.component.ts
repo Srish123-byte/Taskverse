@@ -66,7 +66,7 @@ export class DashboardComponent implements OnInit {
   private setupCards(data: CollegeAdminDashboardData): void {
     this.metricCards = [
       { label: 'Total Students', value: `${data.totals.registeredStudents}`, icon: 'groups', accent: 'blue' },
-      { label: 'Assessments Pending', value: `${data.totals.assessmentsThisMonth}`, icon: 'assignment', accent: 'gold' },
+      { label: 'Assessments Pending', value: `${data.totals.totalAssessments}`, icon: 'assignment', accent: 'gold' },
       { label: 'Pending Approvals', value: `${data.totals.pendingApprovals}`, icon: 'verified_user', accent: 'action', link: '/college-admin/users', linkLabel: 'Review approvals' },
     ];
   }

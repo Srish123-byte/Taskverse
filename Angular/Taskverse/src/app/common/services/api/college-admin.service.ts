@@ -102,6 +102,7 @@ export interface CollegeAdminDashboardTotals {
   registeredStudents: number;
   registeredTrainers: number;
   pendingApprovals: number;
+  totalAssessments: number;
   assessmentsThisMonth: number;
   assessmentsPreviousMonth: number;
 }
@@ -129,6 +130,7 @@ export class CollegeAdminService {
           registeredStudents: response?.totals?.registeredStudents ?? 0,
           registeredTrainers: response?.totals?.registeredTrainers ?? 0,
           pendingApprovals: response?.totals?.pendingApprovals ?? 0,
+          totalAssessments: response?.totals?.totalAssessments ?? 0,
           assessmentsThisMonth: response?.totals?.assessmentsThisMonth ?? 0,
           assessmentsPreviousMonth: response?.totals?.assessmentsPreviousMonth ?? 0,
         },

@@ -607,6 +607,12 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
                     user.Role.Trim().ToLower() != "collegeadmin" &&
                     user.Role.Trim().ToLower() != "superadmin");
 
+            var totalAssessments = await context.Assessments
+                .AsNoTracking()
+                .CountAsync(assessment =>
+                    assessment.CollegeId == collegeId &&
+                    assessment.IsDeleted != true);
+
             var assessmentsThisMonth = await context.Assessments
                 .AsNoTracking()
                 .CountAsync(assessment =>
@@ -625,6 +631,7 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
                 RegisteredStudents = registeredStudents,
                 RegisteredTrainers = registeredTrainers,
                 PendingApprovals = pendingApprovals,
+                TotalAssessments = totalAssessments,
                 AssessmentsThisMonth = assessmentsThisMonth,
                 AssessmentsPreviousMonth = assessmentsPreviousMonth
             };
