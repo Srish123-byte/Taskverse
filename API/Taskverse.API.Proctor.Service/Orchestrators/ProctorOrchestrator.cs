@@ -10,6 +10,7 @@ namespace Taskverse.API.Proctor.Service.Orchestrators;
 
 public class ProctorOrchestrator : IProctorOrchestrator
 {
+    private const string ProctoringDisabledMessage = "Proctoring is disabled.";
     private readonly IProctorManager _proctorManager;
     private readonly ProctoringSettings _proctoringSettings;
     private readonly ILogger<ProctorOrchestrator> _logger;
@@ -26,6 +27,7 @@ public class ProctorOrchestrator : IProctorOrchestrator
 
     public async Task<ProctorSessionRecord> StartSession(Guid attemptId, Guid studentUserId, StartProctorSessionRequest request)
     {
+        EnsureProctoringEnabled();
         ValidateStartSessionRequest(attemptId, studentUserId, request);
 
         return await ExecuteDbOperationAsync(async () =>
@@ -97,6 +99,7 @@ public class ProctorOrchestrator : IProctorOrchestrator
         Guid studentUserId,
         SessionHeartbeatRequest request)
     {
+        EnsureProctoringEnabled();
         ValidateHeartbeatSessionRequest(sessionId, studentUserId, request);
 
         return await ExecuteDbOperationAsync(async () =>
@@ -174,6 +177,7 @@ public class ProctorOrchestrator : IProctorOrchestrator
         Guid studentUserId,
         ProctorEventBatchRequest request)
     {
+        EnsureProctoringEnabled();
         ValidateRecordEventsRequest(sessionId, studentUserId, request);
 
         return await ExecuteDbOperationAsync(async () =>
@@ -245,6 +249,7 @@ public class ProctorOrchestrator : IProctorOrchestrator
         Guid studentUserId,
         EndProctorSessionRequest request)
     {
+        EnsureProctoringEnabled();
         ValidateEndSessionRequest(sessionId, studentUserId, request);
 
         return await ExecuteDbOperationAsync(async () =>
@@ -295,6 +300,7 @@ public class ProctorOrchestrator : IProctorOrchestrator
 
     public async Task<ProctorSessionStateRecord> GetSessionState(Guid sessionId, Guid studentUserId)
     {
+        EnsureProctoringEnabled();
         ValidateGetSessionStateRequest(sessionId, studentUserId);
 
         return await ExecuteDbOperationAsync(async () =>
@@ -314,6 +320,7 @@ public class ProctorOrchestrator : IProctorOrchestrator
 
     public async Task<ProctorSessionStateRecord> GetSessionStateByAttempt(Guid attemptId, Guid studentUserId)
     {
+        EnsureProctoringEnabled();
         ValidateGetAttemptSessionStateRequest(attemptId);
 
         if (studentUserId == Guid.Empty)
@@ -339,6 +346,7 @@ public class ProctorOrchestrator : IProctorOrchestrator
 
     public async Task<ProctorSessionStateRecord> GetSessionStateByAttempt(Guid attemptId)
     {
+        EnsureProctoringEnabled();
         ValidateGetAttemptSessionStateRequest(attemptId);
 
         return await ExecuteDbOperationAsync(async () =>
@@ -362,6 +370,17 @@ public class ProctorOrchestrator : IProctorOrchestrator
 
             return BuildSessionStateRecord(session, summary);
         }, "retrieving the proctoring session state by attempt");
+    }
+
+    private void EnsureProctoringEnabled()
+    {
+        if (_proctoringSettings.Enabled)
+        {
+            return;
+        }
+
+        _logger.LogInformation("Proctoring request rejected because Proctoring:Enabled is false.");
+        throw new InvalidOperationException(ProctoringDisabledMessage);
     }
 
     private static void ValidateStartSessionRequest(Guid attemptId, Guid studentUserId, StartProctorSessionRequest request)

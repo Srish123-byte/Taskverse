@@ -878,6 +878,19 @@ public class AssessmentManager : IAssessmentManager
         }, "submitting the student assessment attempt");
     }
 
+    /// <inheritdoc />
+    public async Task<StudentStreakRecord> GetStudentStreak(Guid studentUserId)
+    {
+        return await ExecuteDbOperationAsync(async () =>
+        {
+            var student = await GetStudentByUserIdAsync(studentUserId);
+            return new StudentStreakRecord(
+                student.CurrentStreak ?? 0,
+                student.LongestStreak ?? 0,
+                student.TotalAssessmentsTaken ?? 0);
+        }, "retrieving the student streak summary");
+    }
+
     private static Guid[] NormalizeAssignedBatchIds(IEnumerable<Guid>? assignedBatchIds)
     {
         return (assignedBatchIds ?? [])
@@ -2057,12 +2070,40 @@ public class AssessmentManager : IAssessmentManager
 
             var resultProcessingContext = await GetResultProcessingContextAsync(attempt.AssessmentId);
             await ProcessAttemptResultAsync(attempt.AttemptId, attempt.StudentId, resultProcessingContext);
+            await UpdateStudentStreakAsync(attempt.StudentId, submittedAt);
             return attempt;
         }
         catch (DbUpdateException ex)
         {
             throw new InvalidOperationException("Unable to submit the assessment attempt.", ex);
         }
+    }
+
+    private async Task UpdateStudentStreakAsync(Guid studentId, DateTime submittedAtUtc)
+    {
+        var student = await _context.Students.FirstOrDefaultAsync(item => item.StudentId == studentId);
+        if (student is null)
+        {
+            return;
+        }
+
+        var today = submittedAtUtc.Date;
+        var lastAssessmentDate = student.LastAssessmentDate?.Date;
+
+        var updatedStreak = lastAssessmentDate switch
+        {
+            null => 1,
+            var lastDate when lastDate == today => student.CurrentStreak ?? 1,
+            var lastDate when lastDate == today.AddDays(-1) => (student.CurrentStreak ?? 0) + 1,
+            _ => 1
+        };
+
+        student.CurrentStreak = updatedStreak;
+        student.LongestStreak = Math.Max(student.LongestStreak ?? 0, updatedStreak);
+        student.LastAssessmentDate = today;
+        student.TotalAssessmentsTaken = (student.TotalAssessmentsTaken ?? 0) + 1;
+
+        await _context.SaveChangesAsync();
     }
 
     private async Task<int> GetAttemptedQuestionCountAsync(Guid attemptId)

@@ -412,4 +412,12 @@ public static class AssessmentMappings
             Instructions = model.Instructions,
             Questions = model.Questions.Select(item => item.ToDto()).ToList()
         };
+
+    public static StudentStreakDto ToDto(this StudentStreakModel model)
+        => new()
+        {
+            CurrentStreak = model.CurrentStreak,
+            LongestStreak = model.LongestStreak,
+            TotalAssessmentsTaken = model.TotalAssessmentsTaken
+        };
 }

@@ -52,6 +52,7 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> GetStudentAttemptRecovery(Guid attemptId, Guid studentUserId);
     Task<ObjectResult> SaveStudentAttemptAnswer(Guid attemptId, Guid questionId, Guid studentUserId, SaveStudentAttemptAnswerModel model);
     Task<ObjectResult> SubmitStudentAttempt(Guid attemptId, Guid studentUserId);
+    Task<ObjectResult> GetStudentStreak(Guid studentUserId);
 
     // Reports
     Task<ObjectResult> GenerateReport(GenerateReportRequestModel model);
@@ -99,6 +100,11 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> UpdateCollegeBatch(string collegeId, string classId, string batchId, UpdateCollegeBatchModel model);
     Task<ObjectResult> AssignCollegeBatchTrainers(string collegeId, string classId, string batchId, AssignBatchTrainersModel model);
     Task<ObjectResult> AssignCollegeBatchStudent(string collegeId, string classId, string batchId, AssignStudentToBatchModel model);
+    Task<ObjectResult> GetAttendanceBatches(Guid collegeId, Guid requesterUserId);
+    Task<ObjectResult> GetAttendanceRoster(AttendanceRosterRequestModel model);
+    Task<ObjectResult> SubmitAttendance(SubmitAttendanceRequestModel model);
+    Task<ObjectResult> GetAttendanceHistory(Guid collegeId, Guid requesterUserId, Guid batchId, DateTime fromDate, DateTime toDate);
+    Task<ObjectResult> ExportAttendance(Guid collegeId, Guid requesterUserId, Guid batchId, DateTime fromDate, DateTime toDate);
     Task<ObjectResult> DeleteCollegeClass(string collegeId, string classId);
     Task<ObjectResult> DeleteCollegeBatch(string collegeId, string classId, string batchId);
     Task<ObjectResult> ApproveCollegeUser(string collegeId, string userId, CollegeUserActionModel model);
