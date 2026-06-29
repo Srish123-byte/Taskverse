@@ -1,6 +1,0 @@
-@Taskverse.API.ExamEngine.Service_HostAddress = http://localhost:5096
-
-GET {{Taskverse.API.ExamEngine.Service_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
