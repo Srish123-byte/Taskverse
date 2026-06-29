@@ -208,8 +208,14 @@ public class BulkStudentUploadService : IBulkStudentUploadService
         await _emailService.SendEmailAsync(
             new EmailMessage
             {
-                ToAddress = request.UploadedByEmail,
-                ToName = request.UploadedByDisplayName,
+                ToAddresses =
+                [
+                    new EmailRecipient
+                    {
+                        Address = request.UploadedByEmail,
+                        Name = request.UploadedByDisplayName
+                    }
+                ],
                 Subject = $"Taskverse bulk upload summary ({result.CreatedCount} students created)",
                 HtmlBody = BuildSummaryEmailBody(request.UploadedByDisplayName, createdUsers)
             },

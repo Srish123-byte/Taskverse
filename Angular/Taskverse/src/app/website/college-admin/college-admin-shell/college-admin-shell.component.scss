@@ -125,6 +125,10 @@
   scroll-behavior: smooth;
 }
 
+.college-admin-shell .page-content {
+  margin-top: 12px;
+}
+
 @media (max-width: 640px) {
   .shell-nav {
     grid-template-columns: 1fr;

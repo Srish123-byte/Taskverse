@@ -16,6 +16,7 @@ import { QuestionEditorComponent } from './components/question-editor/question-e
 import { AssessmentsManagementComponent } from './components/assessments-management/assessments-management.component';
 import { AssessmentCreatorComponent } from './components/assessment-creator/assessment-creator.component';
 import { StudentBulkUploadComponent } from './components/student-bulk-upload/student-bulk-upload.component';
+import { StudentsComponent as TrainerStudentsComponent } from '../website/trainer/students/students.component';
 
 import { FormatPhone } from './pipes/format-phone.pipe';
 import { ToLowerCaseText } from './pipes/to-lower-case-text.pipe';
@@ -43,6 +44,7 @@ import { MaterialModule } from '../material.module';
     SessionInactivityWarningComponent,
     QuestionBankComponent,
     StudentBulkUploadComponent,
+    TrainerStudentsComponent,
     AssessmentsManagementComponent,
     AssessmentCreatorComponent,
     QuestionEditorComponent,
@@ -60,6 +62,7 @@ import { MaterialModule } from '../material.module';
     SessionInactivityWarningComponent,
     QuestionBankComponent,
     StudentBulkUploadComponent,
+    TrainerStudentsComponent,
     AssessmentsManagementComponent,
     AssessmentCreatorComponent,
     QuestionEditorComponent,
