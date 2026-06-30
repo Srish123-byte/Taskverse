@@ -5,7 +5,7 @@ echo "===== AFTER INSTALL ====="
 
 echo "Copying Angular files..."
 
-cp -R /tmp/taskverse-web/* /var/www/
+cp -R /tmp/taskverse-web/browser/* /var/www/
 
 echo "Fetching config.json from Secrets Manager..."
 

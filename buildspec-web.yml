@@ -11,24 +11,31 @@ phases:
     commands:
       - echo "===== INSTALL PHASE ====="
       - cd Angular/Taskverse
-      - echo "Installing npm dependencies..."
       - npm ci --legacy-peer-deps
 
   build:
     commands:
       - echo "===== BUILD PHASE ====="
-      - echo "Building Angular application..."
       - npm run build -- --configuration production
-      - echo "Angular build completed successfully."
 
   post_build:
     commands:
-      - echo "===== POST BUILD PHASE ====="
-      - ls -la dist
-      - ls -la dist/Taskverse
+      - echo "===== PREPARING DEPLOYMENT BUNDLE ====="
+
+      - cd $CODEBUILD_SRC_DIR
+
+      - mkdir deployment
+
+      - cp appspec-web.yml deployment/appspec.yml
+
+      - cp -r scripts deployment/
+
+      - cp -r Angular/Taskverse/dist/Taskverse/browser deployment/
+
+      - ls -R deployment
 
 artifacts:
-  base-directory: Angular/Taskverse/dist/Taskverse
+  base-directory: deployment
   files:
     - '**/*'
 

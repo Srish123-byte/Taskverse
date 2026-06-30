@@ -1,0 +1,19 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      dotnet: 10.0
+
+  build:
+    commands:
+      - echo "Publishing Proctor Service..."
+      - dotnet publish API/Taskverse.API.Proctor.Service/Taskverse.API.Proctor.Service.csproj -c Release -o publish
+      - cp appspec-proctor.yml appspec.yml
+
+artifacts:
+  files:
+    - publish/**/*
+    - appspec.yml
+    - taskverse-proctor.service
+    - scripts/**/*

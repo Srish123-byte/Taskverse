@@ -11,12 +11,12 @@ phases:
   pre_build:
     commands:
       - echo "===== RESTORE PHASE ====="
-      - dotnet restore API/Taskverse.API/Taskverse.API.csproj
+      - dotnet restore API/Taskverse.Auth.Service/Taskverse.API.Auth.Service.csproj
 
   build:
     commands:
       - echo "===== BUILD PHASE ====="
-      - dotnet publish API/Taskverse.API/Taskverse.API.csproj -c Release -o publish
+      - dotnet publish API/Taskverse.Auth.Service/Taskverse.API.Auth.Service.csproj -c Release -o publish
 
   post_build:
     commands:
@@ -24,9 +24,9 @@ phases:
 
       - mkdir deployment
 
-      - cp appspec-api.yml deployment/appspec.yml
+      - cp appspec-auth.yml deployment/appspec.yml
 
-      - cp taskverse-api.service deployment/
+      - cp taskverse-auth.service deployment/
 
       - cp -r scripts deployment/
 
