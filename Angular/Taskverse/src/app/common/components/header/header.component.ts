@@ -1,8 +1,10 @@
 import { Component, HostListener, OnInit } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 import { Session } from '../../services/session/session.service';
 import { AuthSessionService } from '../../services/session/auth-session.service';
 import { RoleType } from '../../enums/role-type.enum';
+import { ChangePasswordDialogComponent } from '../change-password-dialog/change-password-dialog.component';
 
 @Component({
   selector: 'app-header',
@@ -20,7 +22,8 @@ export class HeaderComponent implements OnInit {
   constructor(
     private router: Router,
     private session: Session,
-    private authSessionService: AuthSessionService
+    private authSessionService: AuthSessionService,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -80,6 +83,17 @@ export class HeaderComponent implements OnInit {
   logout(): void {
     this.profileMenuOpen = false;
     this.authSessionService.confirmLogout();
+  }
+
+  openChangePassword(): void {
+    this.profileMenuOpen = false;
+    this.dialog.open(ChangePasswordDialogComponent, {
+      autoFocus: false,
+      restoreFocus: true,
+      disableClose: false,
+      panelClass: 'logout-confirmation-overlay',
+      backdropClass: 'logout-confirmation-backdrop'
+    });
   }
 
   toggleProfileMenu(): void {

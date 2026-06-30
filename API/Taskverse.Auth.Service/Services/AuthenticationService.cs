@@ -161,13 +161,22 @@ public class AuthenticationService : IAuthenticationService
                 return null;
             }
 
-            var rotateSession = forceRotate || ShouldRotateAccessToken(accessToken);
+            var isAccessTokenNearExpiry = ShouldRotateAccessToken(accessToken, out var currentAccessTokenExpiresAt);
+            var rotateSession = forceRotate || isAccessTokenNearExpiry;
             if (!rotateSession)
             {
                 authSession.LastActivityAt = now;
                 authSession.ModifiedAt = now;
                 await _context.SaveChangesAsync();
-                return null;
+
+                // Access token is still valid and doesn't need rotation yet - return it
+                // unchanged so the caller treats this as a successful refresh, not a failure.
+                return new RefreshTokenResponse
+                {
+                    AccessToken = accessToken!,
+                    RefreshToken = refreshToken,
+                    ExpiresAt = currentAccessTokenExpiresAt
+                };
             }
 
             var (firstName, lastName) = SplitName(user.FullName);
@@ -311,8 +320,10 @@ public class AuthenticationService : IAuthenticationService
         await transaction.CommitAsync();
     }
 
-    private bool ShouldRotateAccessToken(string? accessToken)
+    private bool ShouldRotateAccessToken(string? accessToken, out DateTime expiresAt)
     {
+        expiresAt = DateTime.UtcNow;
+
         if (string.IsNullOrWhiteSpace(accessToken))
         {
             return true;
@@ -331,7 +342,7 @@ public class AuthenticationService : IAuthenticationService
             return true;
         }
 
-        var expiresAt = DateTimeOffset.FromUnixTimeSeconds(expiresAtUnix).UtcDateTime;
+        expiresAt = DateTimeOffset.FromUnixTimeSeconds(expiresAtUnix).UtcDateTime;
         return expiresAt <= DateTime.UtcNow.AddMinutes(3);
     }
 
