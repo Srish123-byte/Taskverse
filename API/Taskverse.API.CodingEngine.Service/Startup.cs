@@ -50,8 +50,6 @@ public class Startup
         ConfigureOptions(services);
         ConfigureSwagger(services);
         ConfigureCors(services);
-        ConfigureWorkers(services);
-        services.AddHostedService<NodeHealthCheckWorker>();
         services.AddHealthChecks();
     }
 
@@ -110,6 +108,14 @@ public class Startup
         {
             var settings = serviceProvider.GetRequiredService<IOptions<Judge0Settings>>().Value;
             client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds > 0 ? settings.TimeoutSeconds : 30);
+            if (!string.IsNullOrWhiteSpace(settings.ApiKey))
+            {
+                client.DefaultRequestHeaders.Add(settings.ApiKeyHeaderName, settings.ApiKey);
+            }
+            if (!string.IsNullOrWhiteSpace(settings.ApiHost))
+            {
+                client.DefaultRequestHeaders.Add(settings.ApiHostHeaderName, settings.ApiHost);
+            }
         });
     }
 

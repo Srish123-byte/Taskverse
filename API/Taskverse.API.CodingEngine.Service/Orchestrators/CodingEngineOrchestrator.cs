@@ -166,7 +166,7 @@ public class CodingEngineOrchestrator : ICodingEngineOrchestrator
             await GetAssessmentCodingQuestionAsync(assessmentId, codingQuestionId);
 
             var now = DateTime.UtcNow;
-            var executionMode = NormalizeMode(request.Mode);
+            var executionMode = "Run";
 
             var studentCode = new StudentCode
             {
@@ -201,32 +201,73 @@ public class CodingEngineOrchestrator : ICodingEngineOrchestrator
             _codingEngineManager.AddCodeExecutionRequest(executionRequest);
             await SaveChangesWithWrapAsync("Unable to queue the code execution.");
 
-            var canAttemptInline = await _executionLifecycle.RegisterAndCheckCapacityAsync(executionMode, cancellationToken);
-            if (!canAttemptInline)
-            {
-                return new RunCodeResponse(
-                    executionRequest.CodeExecutionRequestId, "Queued", null, 0, 0, null, "too_many_active");
-            }
-
-            await _dispatchService.DispatchAsync(executionRequest, "inline", cancellationToken);
-
-            var deadline = DateTime.UtcNow.Add(InlineWaitBudget);
-            while (!IsTerminalStatus(executionRequest.CodeExecutionStatusId) && DateTime.UtcNow < deadline)
-            {
-                await Task.Delay(InlineWaitPollInterval, cancellationToken);
-                await _pollService.CollectResultAsync(executionRequest, cancellationToken);
-            }
-
-            if (!IsTerminalStatus(executionRequest.CodeExecutionStatusId))
-            {
-                return new RunCodeResponse(
-                    executionRequest.CodeExecutionRequestId,
-                    ((CodeExecutionStatus)executionRequest.CodeExecutionStatusId).ToString(),
-                    null, 0, 0, null);
-            }
-
-            return await BuildRunCodeResponseAsync(executionRequest);
+            return new RunCodeResponse(
+                executionRequest.CodeExecutionRequestId,
+                "Queued",
+                null,
+                0,
+                0,
+                null);
         }, "queuing the code execution");
+    }
+
+    public async Task<RunCodeResponse> SubmitCodeAsync(
+        Guid assessmentId, Guid codingQuestionId, Guid studentUserId, RunCodeRequest request, CancellationToken cancellationToken = default)
+    {
+        ValidateGuid(assessmentId, nameof(assessmentId));
+        ValidateGuid(codingQuestionId, nameof(codingQuestionId));
+        ValidateGuid(studentUserId, nameof(studentUserId));
+        ValidateRunCodeRequest(request);
+
+        return await ExecuteDbOperationAsync(async () =>
+        {
+            var student = await GetStudentByUserIdAsync(studentUserId);
+            await GetAssessmentCodingQuestionAsync(assessmentId, codingQuestionId);
+
+            var now = DateTime.UtcNow;
+            var executionMode = "Submit";
+
+            var studentCode = new StudentCode
+            {
+                StudentCodeId = Guid.NewGuid(),
+                StudentId = student.StudentId,
+                AssessmentId = assessmentId,
+                CodingQuestionId = codingQuestionId,
+                CodingLanguageId = request.CodingLanguageId,
+                Code = request.Code,
+                LastSavedAt = now,
+                CreatedAt = now,
+                ModifiedAt = now
+            };
+
+            _codingEngineManager.AddStudentCode(studentCode);
+
+            var executionRequest = new CodeExecutionRequest
+            {
+                CodeExecutionRequestId = Guid.NewGuid(),
+                StudentId = student.StudentId,
+                AssessmentId = assessmentId,
+                CodingLanguageId = request.CodingLanguageId,
+                Code = request.Code,
+                InputPayload = null,
+                ExecutionMode = executionMode,
+                CodeExecutionStatusId = (short)CodeExecutionStatus.Queued,
+                RequestedAt = now,
+                CreatedAt = now,
+                ModifiedAt = now
+            };
+
+            _codingEngineManager.AddCodeExecutionRequest(executionRequest);
+            await SaveChangesWithWrapAsync("Unable to queue the code submission.");
+
+            return new RunCodeResponse(
+                executionRequest.CodeExecutionRequestId,
+                "Queued",
+                null,
+                0,
+                0,
+                null);
+        }, "queuing the code submission");
     }
 
     public async Task<RunCodeResponse> GetExecutionStatusAsync(Guid assessmentId, Guid executionRequestId, Guid studentUserId)

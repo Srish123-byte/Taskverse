@@ -44,6 +44,21 @@ public class CodingEngineOrchestrator : ICodingEngineOrchestrator
         return MapToDto(model);
     }
 
+    public async Task<CodeExecutionResultDto> SubmitCode(string challengeId, string userId, string language, string code)
+    {
+        _log.Debug($"CodingEngineOrchestrator.SubmitCode: challengeId={challengeId}, userId={userId}, language={language}");
+
+        var result = await _microServiceOrchestrator.SubmitCode(
+            new CodeExecutionRequestModel(challengeId, userId, language, code));
+
+        result.EnsureSuccess(nameof(SubmitCode));
+
+        CodeExecutionResultModel model = result.DeserializeValue<CodeExecutionResultModel>()
+            ?? throw new InvalidOperationException("SubmitCode returned an empty response.");
+
+        return MapToDto(model);
+    }
+
     public async Task<CodeExecutionResultDto> GetSubmission(string submissionId)
     {
         _log.Debug($"CodingEngineOrchestrator.GetSubmission: submissionId={submissionId}");

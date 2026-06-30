@@ -29,6 +29,7 @@ public interface ICodingEngineOrchestrator
 {
     Task<ChallengeDto> GetChallenge(string challengeId);
     Task<CodeExecutionResultDto> ExecuteCode(string challengeId, string userId, string language, string code);
+    Task<CodeExecutionResultDto> SubmitCode(string challengeId, string userId, string language, string code);
     Task<CodeExecutionResultDto> GetSubmission(string submissionId);
     Task<List<CodeExecutionResultDto>> GetSubmissionsByUser(string userId);
     Task<List<ChallengeDto>> GetChallengesByAssessment(string assessmentId);

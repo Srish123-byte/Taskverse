@@ -75,6 +75,7 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     // Coding Engine
     Task<ObjectResult> GetChallenge(string challengeId);
     Task<ObjectResult> ExecuteCode(CodeExecutionRequestModel model);
+    Task<ObjectResult> SubmitCode(CodeExecutionRequestModel model);
     Task<ObjectResult> GetSubmission(string submissionId);
     Task<ObjectResult> GetSubmissionsByUser(string userId);
     Task<ObjectResult> GetChallengesByAssessment(string assessmentId);

@@ -116,6 +116,42 @@ public class CodingEngineController : ControllerBase
         }
     }
 
+    [HttpPut("assessments/{assessmentId:guid}/coding-questions/{codingQuestionId:guid}/submit")]
+    [ProducesResponseType(typeof(RunCodeResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<RunCodeResponse>> SubmitCode(
+        Guid assessmentId,
+        Guid codingQuestionId,
+        [FromQuery] Guid studentUserId,
+        [FromBody] RunCodeRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null)
+        {
+            return BadRequest(new { message = "Submit code request is required." });
+        }
+
+        try
+        {
+            var result = await _codingEngineOrchestrator.SubmitCodeAsync(assessmentId, codingQuestionId, studentUserId, request, cancellationToken);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.GetBaseException().Message });
+        }
+    }
+
     [HttpGet("assessments/{assessmentId:guid}/executions/{executionRequestId:guid}")]
     [ProducesResponseType(typeof(RunCodeResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

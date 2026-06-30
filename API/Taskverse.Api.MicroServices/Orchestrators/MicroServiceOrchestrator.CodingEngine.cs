@@ -18,6 +18,12 @@ public partial class MicroServiceOrchestrator
         return await Post<CodeExecutionResultModel>(url, model);
     }
 
+    public async Task<ObjectResult> SubmitCode(CodeExecutionRequestModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.CodingEngine)}code/submit";
+        return await Post<CodeExecutionResultModel>(url, model);
+    }
+
     public async Task<ObjectResult> GetSubmission(string submissionId)
     {
         var url = $"{GetMicroServiceUrl(MicroService.CodingEngine)}submissions/{submissionId}";

@@ -42,7 +42,8 @@ public class AuthControllerTests
             CollegeId: "college-456",
             LastName: "Doe",
             Roles: ["Student"],
-            Status: "APPROVED");
+            Status: "APPROVED",
+            MustChangePassword: false);
 
         _mockOrchestrator
             .Setup(o => o.Login(It.IsAny<LoginRequestDto>()))
