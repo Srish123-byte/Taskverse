@@ -16,7 +16,7 @@ phases:
   build:
     commands:
       - echo "===== BUILD PHASE ====="
-      - npm run build -- --configuration production
+      - npx ng build Taskverse --configuration production
 
   post_build:
     commands:
