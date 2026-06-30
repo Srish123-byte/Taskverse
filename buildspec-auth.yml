@@ -1,0 +1,44 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      dotnet: 10.0
+    commands:
+      - echo "===== INSTALL PHASE ====="
+      - dotnet --version
+
+  pre_build:
+    commands:
+      - echo "===== RESTORE PHASE ====="
+      - dotnet restore API/Taskverse.Auth.Service/Taskverse.API.Auth.Service.csproj
+
+  build:
+    commands:
+      - echo "===== BUILD PHASE ====="
+      - dotnet publish API/Taskverse.Auth.Service/Taskverse.API.Auth.Service.csproj -c Release -o publish
+
+  post_build:
+    commands:
+      - echo "===== PREPARING DEPLOYMENT BUNDLE ====="
+
+      - mkdir deployment
+
+      - cp appspec-auth.yml deployment/appspec.yml
+
+      - cp taskverse-auth.service deployment/
+
+      - cp -r scripts deployment/
+
+      - cp -r publish deployment/
+
+      - ls -R deployment
+
+artifacts:
+  base-directory: deployment
+  files:
+    - '**/*'
+
+cache:
+  paths:
+    - /root/.nuget/packages/**/*

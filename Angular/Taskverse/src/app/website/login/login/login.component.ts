@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -39,6 +39,8 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   currentYear = new Date().getFullYear();
 
   @ViewChild('bgCanvas') private canvasRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('loginEmailInput') private loginEmailInputRef?: ElementRef<HTMLInputElement>;
+  @ViewChild('loginPasswordInput') private loginPasswordInputRef?: ElementRef<HTMLInputElement>;
   private animFrame = 0;
 
   loginForm!: FormGroup;
@@ -47,6 +49,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   isLoading = false;
   errorMessage = '';
   successMessage = '';
+  showLoginPassword = false;
   colleges: RegistrationCollegeOption[] = [];
   classes: RegistrationClassOption[] = [];
   batches: RegistrationBatchOption[] = [];
@@ -68,7 +71,8 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
     private readonly userService: UserService,
     private readonly session: Session,
     private readonly sessionActivityService: SessionActivityService,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly ngZone: NgZone
   ) {}
 
   ngOnInit(): void {
@@ -88,6 +92,14 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]]
     });
+
+    this.subscriptions.add(
+      this.loginForm.valueChanges.subscribe(() => {
+        if (this.errorMessage) {
+          this.errorMessage = '';
+        }
+      })
+    );
 
     this.registerForm = this.fb.group({
       fullName: ['', [
@@ -204,6 +216,8 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onLogin(): void {
+    this.syncLoginFormWithDom();
+
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
       return;
@@ -250,28 +264,49 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
         this.navigateToLandingPage();
       },
       error: err => {
-        const message =
-          err?.error?.message ||
-          (typeof err?.error === 'string' ? err.error : '') ||
-          '';
+        this.ngZone.run(() => {
+          const message =
+            err?.error?.message ||
+            (typeof err?.error === 'string' ? err.error : '') ||
+            '';
 
-        const normalizedMessage = message.toLowerCase();
-        if (normalizedMessage.includes('awaiting approval') || normalizedMessage.includes('pending approval')) {
-          this.redirectToApprovalStatus('', 'PENDING_APPROVAL');
-          return;
-        }
+          const normalizedMessage = message.toLowerCase();
+          if (normalizedMessage.includes('awaiting approval') || normalizedMessage.includes('pending approval')) {
+            this.redirectToApprovalStatus('', 'PENDING_APPROVAL');
+            return;
+          }
 
-        if (normalizedMessage.includes('not allowed to sign in') || normalizedMessage.includes('access restricted')) {
-          this.redirectToApprovalStatus('', 'REJECTED');
-          return;
-        }
+          if (normalizedMessage.includes('not allowed to sign in') || normalizedMessage.includes('access restricted')) {
+            this.redirectToApprovalStatus('', 'REJECTED');
+            return;
+          }
 
-        this.isLoading = false;
-        this.errorMessage =
-          message ||
-          'Invalid email or password. Please try again.';
+          this.isLoading = false;
+          this.errorMessage =
+            message ||
+            'Invalid email or password. Please try again.';
+        });
       }
     });
+  }
+
+  toggleLoginPasswordVisibility(): void {
+    this.showLoginPassword = !this.showLoginPassword;
+  }
+
+  private syncLoginFormWithDom(): void {
+    const email = this.loginEmailInputRef?.nativeElement.value ?? '';
+    const password = this.loginPasswordInputRef?.nativeElement.value ?? '';
+
+    this.loginForm.patchValue(
+      { email, password },
+      { emitEvent: true }
+    );
+
+    this.email?.markAsDirty();
+    this.password?.markAsDirty();
+    this.email?.updateValueAndValidity({ emitEvent: false });
+    this.password?.updateValueAndValidity({ emitEvent: false });
   }
 
   private redirectToApprovalStatus(role: RoleType | '', status: string): void {

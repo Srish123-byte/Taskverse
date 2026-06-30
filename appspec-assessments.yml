@@ -1,0 +1,30 @@
+version: 0.0
+os: linux
+
+files:
+  - source: publish/
+    destination: /opt/taskverse/assessments
+
+  - source: taskverse-assessments.service
+    destination: /etc/systemd/system
+
+hooks:
+  BeforeInstall:
+    - location: scripts/before_install_assessments.sh
+      timeout: 300
+      runas: root
+
+  AfterInstall:
+    - location: scripts/after_install_assessments.sh
+      timeout: 300
+      runas: root
+
+  ApplicationStart:
+    - location: scripts/application_start_assessments.sh
+      timeout: 300
+      runas: root
+
+  ValidateService:
+    - location: scripts/validate_service_assessments.sh
+      timeout: 300
+      runas: root

@@ -1,0 +1,19 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      dotnet: 10.0
+
+  build:
+    commands:
+      - echo "Publishing Assessments Service..."
+      - dotnet publish API/Taskverse.API.Assessments.Service/Taskverse.API.Assessments.Service.csproj -c Release -o publish
+      - cp appspec-assessments.yml appspec.yml
+
+artifacts:
+  files:
+    - publish/**/*
+    - appspec.yml
+    - taskverse-assessments.service
+    - scripts/**/*

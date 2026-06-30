@@ -1,49 +1,44 @@
 version: 0.2
 
-env:
-  variables:
-    DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
-    DOTNET_CLI_TELEMETRY_OPTOUT: "true"
-
 phases:
   install:
     runtime-versions:
       dotnet: 10.0
+    commands:
+      - echo "===== INSTALL PHASE ====="
+      - dotnet --version
 
   pre_build:
     commands:
-      - echo "Restoring NuGet packages..."
-      - cd API
-      - dotnet restore Taskverse.sln
+      - echo "===== RESTORE PHASE ====="
+      - dotnet restore API/Taskverse.API/Taskverse.API.csproj
 
   build:
     commands:
-      - echo "Building Taskverse solution..."
-      - dotnet build Taskverse.sln --configuration Release --no-restore
+      - echo "===== BUILD PHASE ====="
+      - dotnet publish API/Taskverse.API/Taskverse.API.csproj -c Release -o publish
 
   post_build:
     commands:
-      - echo "Publishing services..."
+      - echo "===== PREPARING DEPLOYMENT BUNDLE ====="
 
-      - mkdir -p output
+      - mkdir deployment
 
-      - dotnet publish Taskverse.API/Taskverse.API.csproj -c Release --no-build -o output/Taskverse.API
+      - cp appspec-api.yml deployment/appspec.yml
 
+      - cp taskverse-api.service deployment/
 
-      - dotnet publish Taskverse.API.Assessments.Service/Taskverse.API.Assessments.Service.csproj -c Release --no-build -o output/Assessments
+      - cp -r scripts deployment/
 
-      - dotnet publish Taskverse.API.Proctor.Service/Taskverse.API.Proctor.Service.csproj -c Release --no-build -o output/Proctor
+      - cp -r publish deployment/
 
-      - dotnet publish Taskverse.API.Reports.Service/Taskverse.API.Reports.Service.csproj -c Release --no-build -o output/Reports
-
-      - dotnet publish Taskverse.API.CodingEngine.Service/Taskverse.API.CodingEngine.Service.csproj -c Release --no-build -o output/CodingEngine
-
-
-      - dotnet publish Taskverse.Auth.Service/Taskverse.API.Auth.Service.csproj -c Release --no-build -o output/Auth
-
-      - dotnet publish Taskverse.College.Service/Taskverse.API.College.Service.csproj -c Release --no-build -o output/College
+      - ls -R deployment
 
 artifacts:
-  base-directory: API/output
+  base-directory: deployment
   files:
     - '**/*'
+
+cache:
+  paths:
+    - /root/.nuget/packages/**/*
