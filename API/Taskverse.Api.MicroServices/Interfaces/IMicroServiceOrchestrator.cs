@@ -60,9 +60,6 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> GetReportsByUser(string userId);
     Task<ObjectResult> GetStudentResults(Guid studentId);
     Task<ObjectResult> GetStudentAttemptResult(Guid attemptId);
-    Task<IActionResult> ExportCollegeReport(Guid collegeId, string format);
-    Task<IActionResult> ExportBranchReport(Guid branchId, string format);
-    Task<IActionResult> ExportStudentReport(Guid studentId, string format);
 
     // Enterprise Reports
     Task<ObjectResult> GetCollegeWiseReport(Guid? collegeId, DateTime? dateFrom, DateTime? dateTo, string? academicYear);
