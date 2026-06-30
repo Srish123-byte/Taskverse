@@ -1,0 +1,19 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      dotnet: 10.0
+
+  build:
+    commands:
+      - echo "Publishing Users Service..."
+      - dotnet publish API/Taskverse.API.Users.Service/Taskverse.API.Users.Service.csproj -c Release -o publish
+      - cp appspec-users.yml appspec.yml
+
+artifacts:
+  files:
+    - publish/**/*
+    - appspec.yml
+    - taskverse-users.service
+    - scripts/**/*

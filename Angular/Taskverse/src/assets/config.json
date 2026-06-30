@@ -1,5 +1,5 @@
 {
-  "api_url": "http://localhost:5200/api",
+  "api_url": "https://api.taskverse.placevalue.in/api",
   "support_phone": "+1 (800) 555-0199",
   "support_email": "support@taskverse.edu",
   "csp_meta_tag": "default-src 'self'; script-src 'self' https://www.googletagmanager.com https://cdn.mxpnl.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.mixpanel.com https://www.google-analytics.com; frame-src 'none'; object-src 'none'; base-uri 'self';",

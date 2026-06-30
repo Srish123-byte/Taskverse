@@ -11,7 +11,7 @@ if [ $? -ne 0 ]; then
 fi
 
 if [ ! -f /var/www/assets/config.json ]; then
-    echo "config.json not found."
+    echo "assets/config.json not found."
     exit 1
 fi
 

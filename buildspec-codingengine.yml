@@ -1,0 +1,19 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      dotnet: 10.0
+
+  build:
+    commands:
+      - echo "Publishing CodingEngine Service..."
+      - dotnet publish API/Taskverse.API.CodingEngine.Service/Taskverse.API.CodingEngine.Service.csproj -c Release -o publish
+      - cp appspec-codingengine.yml appspec.yml
+
+artifacts:
+  files:
+    - publish/**/*
+    - appspec.yml
+    - taskverse-codingengine.service
+    - scripts/**/*
