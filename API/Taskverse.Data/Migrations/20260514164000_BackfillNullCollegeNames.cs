@@ -1,10 +1,14 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Taskverse.Data.DataAccess;
 
 #nullable disable
 
 namespace Taskverse.Data.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(TaskverseContext))]
+    [Migration("20260514164000_BackfillNullCollegeNames")]
     public partial class BackfillNullCollegeNames : Migration
     {
         /// <inheritdoc />
