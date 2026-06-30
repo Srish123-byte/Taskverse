@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { RouteAddress } from '../../../common/constants/routes.constants';
 import { CollegeAdminService, CollegeAdminDashboardData } from '../../../common/services/api/college-admin.service';
 import { AssessmentAdminService } from '../../../common/services/api/assessment-admin.service';
@@ -37,7 +37,8 @@ export class DashboardComponent implements OnInit {
   constructor(
     private readonly collegeAdminService: CollegeAdminService,
     private readonly assessmentAdminService: AssessmentAdminService,
-    private readonly session: Session
+    private readonly session: Session,
+    private readonly changeDetectorRef: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -56,9 +57,11 @@ export class DashboardComponent implements OnInit {
           status: a.assessmentStatus
         }));
         this.isLoading = false;
+        this.changeDetectorRef.detectChanges();
       },
       error: () => {
         this.isLoading = false;
+        this.changeDetectorRef.detectChanges();
       }
     });
   }

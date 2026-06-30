@@ -1,6 +1,8 @@
 using System.Net;
+using System.Data.Common;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Taskverse.Business.DTOs;
 using Taskverse.Business.Interface;
 using Taskverse.Data.DataAccess;
@@ -15,13 +17,16 @@ public class BulkStudentUploadService : IBulkStudentUploadService
 
     private readonly IDbContextFactory<TaskverseContext> _dbContextFactory;
     private readonly IEmailService _emailService;
+    private readonly ILogger<BulkStudentUploadService> _logger;
 
     public BulkStudentUploadService(
         IDbContextFactory<TaskverseContext> dbContextFactory,
-        IEmailService emailService)
+        IEmailService emailService,
+        ILogger<BulkStudentUploadService> logger)
     {
         _dbContextFactory = dbContextFactory;
         _emailService = emailService;
+        _logger = logger;
     }
 
     public async Task<BulkStudentUploadResultDto> UploadAsync(
@@ -39,190 +44,256 @@ public class BulkStudentUploadService : IBulkStudentUploadService
         }
 
         await using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
 
-        var result = new BulkStudentUploadResultDto();
-        var normalizedRows = request.Rows
-            .Select((row, index) => new UploadRowContext(index + 2, row))
-            .ToList();
-
-        var duplicateEmailSet = normalizedRows
-            .GroupBy(row => NormalizeEmail(row.Row.Email))
-            .Where(group => !string.IsNullOrWhiteSpace(group.Key) && group.Count() > 1)
-            .SelectMany(group => group)
-            .ToList();
-
-        foreach (var duplicateRow in duplicateEmailSet)
+        try
         {
-            result.DuplicateRows.Add(new BulkStudentUploadRowIssueDto
-            {
-                RowNumber = duplicateRow.RowNumber,
-                Email = duplicateRow.Row.Email,
-                Message = "Duplicate email found in the uploaded file."
-            });
-        }
+            transaction = await context.Database.BeginTransactionAsync(cancellationToken);
 
-        var fileDuplicateRowNumbers = duplicateEmailSet.Select(item => item.RowNumber).ToHashSet();
-        var candidateRows = normalizedRows
-            .Where(row => !fileDuplicateRowNumbers.Contains(row.RowNumber))
-            .ToList();
+            var result = new BulkStudentUploadResultDto();
+            var normalizedRows = request.Rows
+                .Select((row, index) => new UploadRowContext(index + 2, row))
+                .ToList();
 
-        candidateRows = await PrepareRowsAsync(
-            candidateRows,
-            request.RestrictedCollegeId,
-            context,
-            result.InvalidRows,
-            cancellationToken);
+            var duplicateEmailSet = normalizedRows
+                .GroupBy(row => NormalizeEmail(row.Row.Email))
+                .Where(group => !string.IsNullOrWhiteSpace(group.Key) && group.Count() > 1)
+                .SelectMany(group => group)
+                .ToList();
 
-        var collegeIds = candidateRows
-            .Select(row => ParseGuid(row.Row.CollegeId))
-            .Where(value => value.HasValue)
-            .Select(value => value!.Value)
-            .Distinct()
-            .ToList();
-
-        var classIds = candidateRows
-            .Select(row => ParseGuid(row.Row.ClassId))
-            .Where(value => value.HasValue)
-            .Select(value => value!.Value)
-            .Distinct()
-            .ToList();
-
-        var batchIds = candidateRows
-            .Select(row => ParseGuid(row.Row.BatchId))
-            .Where(value => value.HasValue)
-            .Select(value => value!.Value)
-            .Distinct()
-            .ToList();
-
-        var colleges = await context.Colleges
-            .AsNoTracking()
-            .Where(item => collegeIds.Contains(item.CollegeId))
-            .ToDictionaryAsync(item => item.CollegeId, cancellationToken);
-
-        var classes = await context.Classes
-            .AsNoTracking()
-            .Where(item => classIds.Contains(item.ClassId))
-            .ToDictionaryAsync(item => item.ClassId, cancellationToken);
-
-        foreach (var trackedClass in context.Classes.Local)
-        {
-            classes[trackedClass.ClassId] = trackedClass;
-        }
-
-        var batches = await context.Batches
-            .AsNoTracking()
-            .Where(item => batchIds.Contains(item.BatchId))
-            .ToDictionaryAsync(item => item.BatchId, cancellationToken);
-
-        var candidateEmails = candidateRows
-            .Select(item => NormalizeEmail(item.Row.Email))
-            .Where(item => !string.IsNullOrWhiteSpace(item))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var existingEmails = await context.Users
-            .AsNoTracking()
-            .Where(user => candidateEmails.Contains(user.Email))
-            .Select(user => user.Email)
-            .ToListAsync(cancellationToken);
-
-        var existingEmailSet = existingEmails
-            .Select(NormalizeEmail)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        var passwordHasher = new PasswordHasher<User>();
-        var createdUsers = new List<CreatedStudentCredential>();
-
-        foreach (var row in candidateRows)
-        {
-            var normalizedEmail = NormalizeEmail(row.Row.Email);
-            if (existingEmailSet.Contains(normalizedEmail))
+            foreach (var duplicateRow in duplicateEmailSet)
             {
                 result.DuplicateRows.Add(new BulkStudentUploadRowIssueDto
                 {
-                    RowNumber = row.RowNumber,
-                    Email = row.Row.Email,
-                    Message = "Email already exists."
+                    RowNumber = duplicateRow.RowNumber,
+                    Email = duplicateRow.Row.Email,
+                    Message = "Duplicate email found in the uploaded file."
                 });
-                continue;
             }
 
-            if (!TryValidateRow(row, request.RestrictedCollegeId, colleges, classes, batches, out var validationMessage, out var collegeId, out var classId, out var batchId))
+            var fileDuplicateRowNumbers = duplicateEmailSet.Select(item => item.RowNumber).ToHashSet();
+            var candidateRows = normalizedRows
+                .Where(row => !fileDuplicateRowNumbers.Contains(row.RowNumber))
+                .ToList();
+
+            candidateRows = await PrepareRowsAsync(
+                candidateRows,
+                request.RestrictedCollegeId,
+                context,
+                result.InvalidRows,
+                cancellationToken);
+
+            var collegeIds = candidateRows
+                .Select(row => ParseGuid(row.Row.CollegeId))
+                .Where(value => value.HasValue)
+                .Select(value => value!.Value)
+                .Distinct()
+                .ToList();
+
+            var classIds = candidateRows
+                .Select(row => ParseGuid(row.Row.ClassId))
+                .Where(value => value.HasValue)
+                .Select(value => value!.Value)
+                .Distinct()
+                .ToList();
+
+            var batchIds = candidateRows
+                .Select(row => ParseGuid(row.Row.BatchId))
+                .Where(value => value.HasValue)
+                .Select(value => value!.Value)
+                .Distinct()
+                .ToList();
+
+            var colleges = await context.Colleges
+                .AsNoTracking()
+                .Where(item => collegeIds.Contains(item.CollegeId))
+                .ToDictionaryAsync(item => item.CollegeId, cancellationToken);
+
+            var classes = await context.Classes
+                .AsNoTracking()
+                .Where(item => classIds.Contains(item.ClassId))
+                .ToDictionaryAsync(item => item.ClassId, cancellationToken);
+
+            foreach (var trackedClass in context.Classes.Local)
             {
-                result.InvalidRows.Add(new BulkStudentUploadRowIssueDto
+                classes[trackedClass.ClassId] = trackedClass;
+            }
+
+            var batches = await context.Batches
+                .AsNoTracking()
+                .Where(item => batchIds.Contains(item.BatchId))
+                .ToDictionaryAsync(item => item.BatchId, cancellationToken);
+
+            var candidateEmails = candidateRows
+                .Select(item => NormalizeEmail(item.Row.Email))
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var existingEmails = await context.Users
+                .AsNoTracking()
+                .Where(user => candidateEmails.Contains(user.Email))
+                .Select(user => user.Email)
+                .ToListAsync(cancellationToken);
+
+            var existingEmailSet = existingEmails
+                .Select(NormalizeEmail)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var passwordHasher = new PasswordHasher<User>();
+            var createdUsers = new List<CreatedStudentCredential>();
+
+            foreach (var row in candidateRows)
+            {
+                var normalizedEmail = NormalizeEmail(row.Row.Email);
+                if (existingEmailSet.Contains(normalizedEmail))
                 {
-                    RowNumber = row.RowNumber,
-                    Email = row.Row.Email,
-                    Message = validationMessage
+                    result.DuplicateRows.Add(new BulkStudentUploadRowIssueDto
+                    {
+                        RowNumber = row.RowNumber,
+                        Email = row.Row.Email,
+                        Message = "Email already exists."
+                    });
+                    continue;
+                }
+
+                if (!TryValidateRow(row, request.RestrictedCollegeId, colleges, classes, batches, out var validationMessage, out var collegeId, out var classId, out var batchId))
+                {
+                    result.InvalidRows.Add(new BulkStudentUploadRowIssueDto
+                    {
+                        RowNumber = row.RowNumber,
+                        Email = row.Row.Email,
+                        Message = validationMessage
+                    });
+                    continue;
+                }
+
+                var tempPassword = TemporaryPasswordGenerator.Generate();
+                var now = DateTime.UtcNow;
+                var user = new User
+                {
+                    Id = Guid.NewGuid(),
+                    FullName = row.Row.FullName.Trim(),
+                    Email = normalizedEmail,
+                    Phone = row.Row.Phone.Trim(),
+                    EnrollmentNumber = string.IsNullOrWhiteSpace(row.Row.EnrollmentNumber) ? null : row.Row.EnrollmentNumber.Trim(),
+                    CollegeId = collegeId,
+                    CollegeName = colleges[collegeId].CollegeName?.Trim(),
+                    Role = StudentRole,
+                    Status = UserStatus.APPROVED,
+                    BatchId = batchId,
+                    ClassId = classId,
+                    CreatedAt = now,
+                    ModifiedAt = now,
+                    TemporaryPassword = tempPassword,
+                    UploadedBy = request.UploadedByUserId,
+                    IsBulkUploaded = true,
+                    MustChangePassword = true,
+                    TempPasswordIssuedAt = now
+                };
+                user.PasswordHash = passwordHasher.HashPassword(user, tempPassword);
+
+                context.Users.Add(user);
+                existingEmailSet.Add(normalizedEmail);
+                createdUsers.Add(new CreatedStudentCredential(row.Row.FullName.Trim(), normalizedEmail, tempPassword));
+                result.CreatedUsers.Add(new BulkStudentUploadCreatedUserDto
+                {
+                    FullName = row.Row.FullName.Trim(),
+                    Email = normalizedEmail
                 });
-                continue;
             }
 
-            var tempPassword = TemporaryPasswordGenerator.Generate();
-            var now = DateTime.UtcNow;
-            var user = new User
+            result.CreatedCount = result.CreatedUsers.Count;
+            result.DuplicateCount = result.DuplicateRows.Count;
+            result.InvalidCount = result.InvalidRows.Count;
+
+            if (result.CreatedCount == 0)
             {
-                Id = Guid.NewGuid(),
-                FullName = row.Row.FullName.Trim(),
-                Email = normalizedEmail,
-                Phone = row.Row.Phone.Trim(),
-                EnrollmentNumber = string.IsNullOrWhiteSpace(row.Row.EnrollmentNumber) ? null : row.Row.EnrollmentNumber.Trim(),
-                CollegeId = collegeId,
-                CollegeName = colleges[collegeId].CollegeName?.Trim(),
-                Role = StudentRole,
-                Status = UserStatus.APPROVED,
-                BatchId = batchId,
-                ClassId = classId,
-                CreatedAt = now,
-                ModifiedAt = now,
-                TemporaryPassword = tempPassword,
-                UploadedBy = request.UploadedByUserId,
-                IsBulkUploaded = true,
-                MustChangePassword = true,
-                TempPasswordIssuedAt = now
-            };
-            user.PasswordHash = passwordHasher.HashPassword(user, tempPassword);
+                await transaction.RollbackAsync(cancellationToken);
+                return result;
+            }
 
-            context.Users.Add(user);
-            existingEmailSet.Add(normalizedEmail);
-            createdUsers.Add(new CreatedStudentCredential(row.Row.FullName.Trim(), normalizedEmail, tempPassword));
-            result.CreatedUsers.Add(new BulkStudentUploadCreatedUserDto
+            await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            try
             {
-                FullName = row.Row.FullName.Trim(),
-                Email = normalizedEmail
-            });
-        }
+                await _emailService.SendEmailAsync(
+                    new EmailMessage
+                    {
+                        ToAddresses =
+                        [
+                            new EmailRecipient
+                            {
+                                Address = request.UploadedByEmail,
+                                Name = request.UploadedByDisplayName
+                            }
+                        ],
+                        Subject = $"Taskverse bulk upload summary ({result.CreatedCount} students created)",
+                        HtmlBody = BuildSummaryEmailBody(request.UploadedByDisplayName, createdUsers)
+                    },
+                    cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                result.SummaryEmailSent = false;
+                result.SummaryEmailWarning = "Students were created, but we could not send the temporary-password summary email. Please reset passwords for these students before sharing access.";
+                _logger.LogWarning(
+                    ex,
+                    "Bulk student upload created {CreatedCount} students for college {CollegeId}, but the summary email could not be sent to {UploadedByEmail}.",
+                    result.CreatedCount,
+                    request.RestrictedCollegeId,
+                    request.UploadedByEmail);
+            }
 
-        result.CreatedCount = result.CreatedUsers.Count;
-        result.DuplicateCount = result.DuplicateRows.Count;
-        result.InvalidCount = result.InvalidRows.Count;
-
-        if (result.CreatedCount == 0)
-        {
-            await transaction.RollbackAsync(cancellationToken);
             return result;
         }
-
-        await context.SaveChangesAsync(cancellationToken);
-        await _emailService.SendEmailAsync(
-            new EmailMessage
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (DbUpdateException ex)
+        {
+            await RollbackTransactionAsync(transaction, cancellationToken);
+            _logger.LogError(ex, "Bulk student upload failed while saving students to the database for college {CollegeId}.", request.RestrictedCollegeId);
+            throw new InvalidOperationException("We could not save the uploaded students because the database operation failed. Please try again.", ex);
+        }
+        catch (DbException ex)
+        {
+            await RollbackTransactionAsync(transaction, cancellationToken);
+            _logger.LogError(ex, "Bulk student upload failed while reading or writing student data for college {CollegeId}.", request.RestrictedCollegeId);
+            throw new InvalidOperationException("We could not process the upload because the database call failed. Please try again.", ex);
+        }
+        finally
+        {
+            if (transaction is not null)
             {
-                ToAddresses =
-                [
-                    new EmailRecipient
-                    {
-                        Address = request.UploadedByEmail,
-                        Name = request.UploadedByDisplayName
-                    }
-                ],
-                Subject = $"Taskverse bulk upload summary ({result.CreatedCount} students created)",
-                HtmlBody = BuildSummaryEmailBody(request.UploadedByDisplayName, createdUsers)
-            },
-            cancellationToken);
+                await transaction.DisposeAsync();
+            }
+        }
+    }
 
-        await transaction.CommitAsync(cancellationToken);
-        return result;
+    private static async Task RollbackTransactionAsync(
+        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction,
+        CancellationToken cancellationToken)
+    {
+        if (transaction is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await transaction.RollbackAsync(cancellationToken);
+        }
+        catch
+        {
+            // The original database exception is the most important failure to preserve.
+        }
     }
 
     private async Task<List<UploadRowContext>> PrepareRowsAsync(

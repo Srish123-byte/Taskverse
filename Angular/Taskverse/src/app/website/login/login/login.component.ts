@@ -50,6 +50,8 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   errorMessage = '';
   successMessage = '';
   showLoginPassword = false;
+  showRegisterPassword = false;
+  showRegisterConfirmPassword = false;
   colleges: RegistrationCollegeOption[] = [];
   classes: RegistrationClassOption[] = [];
   batches: RegistrationBatchOption[] = [];
@@ -294,6 +296,14 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
     this.showLoginPassword = !this.showLoginPassword;
   }
 
+  toggleRegisterPasswordVisibility(): void {
+    this.showRegisterPassword = !this.showRegisterPassword;
+  }
+
+  toggleRegisterConfirmPasswordVisibility(): void {
+    this.showRegisterConfirmPassword = !this.showRegisterConfirmPassword;
+  }
+
   private syncLoginFormWithDom(): void {
     const email = this.loginEmailInputRef?.nativeElement.value ?? '';
     const password = this.loginPasswordInputRef?.nativeElement.value ?? '';
@@ -346,18 +356,22 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private navigateToLandingPage(): void {
     this.isLoading = false;
-    void this.router.navigateByUrl(`/${RouteAddress.RoleDirector}`)
-      .catch(() => {
-        this.errorMessage = 'Signed in, but we could not open your dashboard.';
-      });
+    this.ngZone.run(() => {
+      void this.router.navigateByUrl(`/${RouteAddress.RoleDirector}`)
+        .catch(() => {
+          this.errorMessage = 'Signed in, but we could not open your dashboard.';
+        });
+    });
   }
 
   private navigateToChangeTemporaryPassword(): void {
     this.isLoading = false;
-    void this.router.navigateByUrl(`/${RouteAddress.ChangeTemporaryPassword}`)
-      .catch(() => {
-        this.errorMessage = 'Signed in, but we could not open the temporary password change screen.';
-      });
+    this.ngZone.run(() => {
+      void this.router.navigateByUrl(`/${RouteAddress.ChangeTemporaryPassword}`)
+        .catch(() => {
+          this.errorMessage = 'Signed in, but we could not open the temporary password change screen.';
+        });
+    });
   }
 
   onRegister(): void {
