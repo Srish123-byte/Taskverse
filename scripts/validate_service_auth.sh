@@ -13,7 +13,13 @@ echo "${SERVICE_NAME} is running."
 
 sleep 20
 
+echo "Testing endpoint..."
+
+curl -v http://localhost:5001/api/system
+
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5001/api/system || true)
+
+echo "HTTP_CODE=$HTTP_CODE"
 
 if [ "$HTTP_CODE" = "200" ]; then
     echo "Auth service validation successful."
@@ -21,5 +27,4 @@ if [ "$HTTP_CODE" = "200" ]; then
 fi
 
 echo "Auth service validation failed."
-
 exit 1
