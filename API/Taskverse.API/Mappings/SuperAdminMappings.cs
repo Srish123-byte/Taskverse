@@ -136,39 +136,10 @@ public static class SuperAdminMappings
     {
         Totals = new SuperAdminTotalsResponseModel
         {
+            PendingApprovals = dto.Totals.PendingApprovals,
             ActiveColleges = dto.Totals.ActiveColleges,
             RegisteredStudents = dto.Totals.RegisteredStudents,
-            AssessmentsThisMonth = dto.Totals.AssessmentsThisMonth,
-            AssessmentsPreviousMonth = dto.Totals.AssessmentsPreviousMonth
-        },
-        PendingApprovals = dto.PendingApprovals.Select(x => x.ToResponseModel()).ToList(),
-        PlatformHealth = new PlatformHealthResponseModel
-        {
-            UptimePercent = dto.PlatformHealth.UptimePercent,
-            ErrorRatePercent = dto.PlatformHealth.ErrorRatePercent,
-            ApiStatus = dto.PlatformHealth.ApiStatus
-        },
-        RecentActivity = dto.RecentActivity.Select(x => new RecentActivityResponseModel
-        {
-            Action = x.Action,
-            EntityType = x.EntityType,
-            EntityId = x.EntityId,
-            PerformedBy = x.PerformedBy,
-            OccurredAt = x.OccurredAt,
-            Details = x.Details
-        }).ToList(),
-        AverageScoresByCollege = dto.AverageScoresByCollege.Select(x => new CollegeScoreSummaryResponseModel
-        {
-            CollegeId = x.CollegeId,
-            CollegeName = x.CollegeName,
-            AverageScore = x.AverageScore,
-            StudentsAssessed = x.StudentsAssessed
-        }).ToList(),
-        UsageTrends = dto.UsageTrends.Select(x => new UsageTrendPointResponseModel
-        {
-            Date = x.Date,
-            Assessments = x.Assessments,
-            StudentsAssessed = x.StudentsAssessed
-        }).ToList()
+            AssessmentsThisMonth = dto.Totals.AssessmentsThisMonth
+        }
     };
 }

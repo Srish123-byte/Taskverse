@@ -119,19 +119,14 @@ public class BulkStudentUploadRowIssueResponseModel
 public class SuperAdminDashboardResponseModel
 {
     public SuperAdminTotalsResponseModel Totals { get; set; } = new();
-    public List<CollegeResponseModel> PendingApprovals { get; set; } = [];
-    public PlatformHealthResponseModel PlatformHealth { get; set; } = new();
-    public List<RecentActivityResponseModel> RecentActivity { get; set; } = [];
-    public List<CollegeScoreSummaryResponseModel> AverageScoresByCollege { get; set; } = [];
-    public List<UsageTrendPointResponseModel> UsageTrends { get; set; } = [];
 }
 
 public class SuperAdminTotalsResponseModel
 {
+    public int PendingApprovals { get; set; }
     public int ActiveColleges { get; set; }
     public int RegisteredStudents { get; set; }
     public int AssessmentsThisMonth { get; set; }
-    public int AssessmentsPreviousMonth { get; set; }
 }
 
 public class PlatformHealthResponseModel

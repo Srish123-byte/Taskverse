@@ -62,19 +62,14 @@ public class PendingUserDto
 public class SuperAdminDashboardDto
 {
     public SuperAdminTotalsDto Totals { get; set; } = new();
-    public List<CollegeDto> PendingApprovals { get; set; } = [];
-    public PlatformHealthDto PlatformHealth { get; set; } = new();
-    public List<RecentActivityDto> RecentActivity { get; set; } = [];
-    public List<CollegeScoreSummaryDto> AverageScoresByCollege { get; set; } = [];
-    public List<UsageTrendPointDto> UsageTrends { get; set; } = [];
 }
 
 public class SuperAdminTotalsDto
 {
+    public int PendingApprovals { get; set; }
     public int ActiveColleges { get; set; }
     public int RegisteredStudents { get; set; }
     public int AssessmentsThisMonth { get; set; }
-    public int AssessmentsPreviousMonth { get; set; }
 }
 
 public class PlatformHealthDto

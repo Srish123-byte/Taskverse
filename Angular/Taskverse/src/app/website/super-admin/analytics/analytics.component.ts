@@ -28,8 +28,4 @@ export class AnalyticsComponent implements OnInit {
       }
     });
   }
-
-  get studentsAssessed(): number {
-    return this.dashboard?.averageScoresByCollege.reduce((total, item) => total + item.studentsAssessed, 0) ?? 0;
-  }
 }

@@ -41,12 +41,4 @@ export class DashboardComponent implements OnInit {
       }
     });
   }
-
-  get assessmentDelta(): number {
-    if (!this.dashboard) {
-      return 0;
-    }
-
-    return this.dashboard.totals.assessmentsThisMonth - this.dashboard.totals.assessmentsPreviousMonth;
-  }
 }
