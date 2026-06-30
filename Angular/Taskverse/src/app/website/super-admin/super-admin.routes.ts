@@ -5,6 +5,7 @@ import { CollegesComponent } from './colleges/colleges.component';
 import { UsersComponent } from './users/users.component';
 import { AnalyticsComponent } from './analytics/analytics.component';
 import { AssessmentsComponent } from './assessments/assessments.component';
+import { ReportsComponent } from './reports/reports.component';
 import { SettingsComponent } from './settings/settings.component';
 
 const routes: Routes = [
@@ -18,6 +19,7 @@ const routes: Routes = [
       { path: 'users', component: UsersComponent },
       { path: 'analytics', component: AnalyticsComponent },
       { path: 'assessments', component: AssessmentsComponent },
+      { path: 'reports', component: ReportsComponent },
       { path: 'settings', component: SettingsComponent }
     ]
   }

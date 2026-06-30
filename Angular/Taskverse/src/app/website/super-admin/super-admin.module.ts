@@ -8,6 +8,7 @@ import { CollegesComponent } from './colleges/colleges.component';
 import { UsersComponent } from './users/users.component';
 import { AnalyticsComponent } from './analytics/analytics.component';
 import { AssessmentsComponent } from './assessments/assessments.component';
+import { ReportsComponent } from './reports/reports.component';
 import { SettingsComponent } from './settings/settings.component';
 
 @NgModule({
@@ -18,6 +19,7 @@ import { SettingsComponent } from './settings/settings.component';
     UsersComponent,
     AnalyticsComponent,
     AssessmentsComponent,
+    ReportsComponent,
     SettingsComponent
   ],
   imports: [
