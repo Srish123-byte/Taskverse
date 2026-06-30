@@ -1,7 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { ReportsService } from '../../../common/services/api/reports.service';
+import { SuperAdminService } from '../../../common/services/api/super-admin.service';
+import { UserService, RegistrationClassOption } from '../../../common/services/api/user.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { finalize } from 'rxjs';
+import { College, PendingUser } from '../../../common/models/super-admin.model';
 
 @Component({
   selector: 'app-super-admin-reports',
@@ -13,10 +16,15 @@ export class ReportsComponent implements OnInit {
   isExportingPdf = false;
   isExportingExcel = false;
   activeReportType: string | null = null;
+  activeView: string | null = null; // 'college' | 'branch' | 'student' | null
 
-  selectedCollegeId: string = '00000000-0000-0000-0000-000000000000'; // Placeholder for testing
-  selectedBranchId: string = '00000000-0000-0000-0000-000000000000';
-  selectedStudentId: string = '00000000-0000-0000-0000-000000000000';
+  colleges: College[] = [];
+  branches: RegistrationClassOption[] = [];
+  students: PendingUser[] = [];
+
+  selectedCollegeId: string = '';
+  selectedBranchId: string = '';
+  selectedStudentId: string = '';
 
   private static readonly snackBarConfig = {
     duration: 3000,
@@ -32,11 +40,35 @@ export class ReportsComponent implements OnInit {
 
   constructor(
     private reportsService: ReportsService,
+    private superAdminService: SuperAdminService,
+    private userService: UserService,
     private snackBar: MatSnackBar
   ) {}
 
   ngOnInit(): void {
-    // In a real scenario, we would load colleges here to populate the filter dropdown
+    this.superAdminService.getColleges().subscribe({
+      next: (colleges) => {
+        this.colleges = colleges;
+      }
+    });
+    // Load all students for the dropdown
+    this.superAdminService.searchUsers({ pageNumber: 1, pageSize: 1000, role: 'Student' }).subscribe({
+      next: (res) => {
+        this.students = res.items || [];
+      }
+    });
+  }
+
+  onCollegeSelect(): void {
+    this.selectedBranchId = '';
+    this.branches = [];
+    if (this.selectedCollegeId) {
+      this.userService.getRegistrationClasses(this.selectedCollegeId).subscribe({
+        next: (classes) => {
+          this.branches = classes;
+        }
+      });
+    }
   }
 
   exportReport(type: 'college' | 'branch' | 'student', format: 'pdf' | 'excel'): void {
@@ -96,6 +128,84 @@ export class ReportsComponent implements OnInit {
   }
 
   viewReport(type: 'college' | 'branch' | 'student'): void {
-    this.snackBar.open(`Viewing ${type} report directly in the browser is coming soon. Use PDF/Excel exports for now.`, 'Close', ReportsComponent.snackBarConfig);
+    if (type === 'college' && !this.selectedCollegeId) {
+      this.snackBar.open('Please select a college first.', 'Close', ReportsComponent.errorSnackBarConfig);
+      return;
+    }
+    if (type === 'branch' && !this.selectedBranchId) {
+      this.snackBar.open('Please select a branch first.', 'Close', ReportsComponent.errorSnackBarConfig);
+      return;
+    }
+    if (type === 'student' && !this.selectedStudentId) {
+      this.snackBar.open('Please select a student first.', 'Close', ReportsComponent.errorSnackBarConfig);
+      return;
+    }
+    this.activeView = type;
+  }
+  
+  closeView(): void {
+    this.activeView = null;
+  }
+
+  // Email Modal State
+  isEmailModalOpen = false;
+  emailTargetType: 'college' | 'branch' | 'student' | null = null;
+  emailFormat: 'pdf' | 'excel' = 'pdf';
+  emailAddress: string = '';
+  isSendingEmail = false;
+
+  openEmailModal(type: 'college' | 'branch' | 'student', format: 'pdf' | 'excel'): void {
+    if (type === 'college' && !this.selectedCollegeId) {
+      this.snackBar.open('Please select a college first.', 'Close', ReportsComponent.errorSnackBarConfig);
+      return;
+    }
+    if (type === 'branch' && !this.selectedBranchId) {
+      this.snackBar.open('Please select a branch first.', 'Close', ReportsComponent.errorSnackBarConfig);
+      return;
+    }
+    if (type === 'student' && !this.selectedStudentId) {
+      this.snackBar.open('Please select a student first.', 'Close', ReportsComponent.errorSnackBarConfig);
+      return;
+    }
+
+    this.emailTargetType = type;
+    this.emailFormat = format;
+    this.emailAddress = '';
+    this.isEmailModalOpen = true;
+  }
+
+  closeEmailModal(): void {
+    this.isEmailModalOpen = false;
+    this.emailTargetType = null;
+  }
+
+  sendEmail(): void {
+    if (!this.emailAddress || !this.emailTargetType) return;
+
+    let entityId = '';
+    if (this.emailTargetType === 'college') entityId = this.selectedCollegeId;
+    if (this.emailTargetType === 'branch') entityId = this.selectedBranchId;
+    if (this.emailTargetType === 'student') entityId = this.selectedStudentId;
+
+    this.isSendingEmail = true;
+    this.reportsService.emailReport({
+      targetEmail: this.emailAddress,
+      reportType: this.emailTargetType,
+      entityId: entityId,
+      format: this.emailFormat
+    }).pipe(
+      finalize(() => {
+        this.isSendingEmail = false;
+        this.closeEmailModal();
+      })
+    ).subscribe({
+      next: () => {
+        this.snackBar.open('Report emailed successfully!', 'Close', ReportsComponent.snackBarConfig);
+      },
+      error: (err) => {
+        console.error('Email failed:', err);
+        this.snackBar.open('Failed to email report.', 'Close', ReportsComponent.errorSnackBarConfig);
+      }
+    });
   }
 }

@@ -27,7 +27,32 @@ public class SmtpEmailService : IEmailService
             IsBodyHtml = true
         };
 
-        mailMessage.To.Add(new MailAddress(message.ToAddress, message.ToName));
+        var recipients = message.ToAddresses
+            .Concat(string.IsNullOrWhiteSpace(message.ToAddress) ? [] : [message.ToAddress])
+            .Select(address => address.Trim())
+            .Where(address => !string.IsNullOrWhiteSpace(address))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (recipients.Count == 0)
+        {
+            throw new InvalidOperationException("At least one recipient email address is required.");
+        }
+
+        foreach (var recipient in recipients)
+        {
+            mailMessage.To.Add(new MailAddress(recipient, recipients.Count == 1 ? message.ToName : null));
+        }
+
+        if (message.Attachments != null)
+        {
+            foreach (var attachment in message.Attachments)
+            {
+                var memoryStream = new MemoryStream(attachment.Content);
+                var mailAttachment = new Attachment(memoryStream, attachment.FileName, attachment.ContentType);
+                mailMessage.Attachments.Add(mailAttachment);
+            }
+        }
 
         using var smtpClient = new SmtpClient(_settings.Host, _settings.Port)
         {
@@ -50,4 +75,3 @@ public class SmtpEmailService : IEmailService
         }
     }
 }
-

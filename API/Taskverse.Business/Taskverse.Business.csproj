@@ -8,11 +8,13 @@
     <NoWarn>1573,1591,S3903,S1481,S2699,S2971</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="log4net" Version="3.3.1" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="10.0.7" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.4" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="QuestPDF" Version="2026.6.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Taskverse.Api.MicroServices\Taskverse.Api.MicroServices.csproj" />

@@ -218,6 +218,7 @@ public class Startup
         // Managers
         services.AddScoped<IUsersManager, UsersManager>();
         services.AddScoped<IEmailService, SmtpEmailService>();
+        services.AddScoped<IReportExportService, ReportExportService>();
         services.AddScoped<IBulkStudentUploadService, BulkStudentUploadService>();
 
         // MicroService layer

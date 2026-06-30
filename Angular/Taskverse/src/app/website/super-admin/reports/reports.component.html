@@ -5,30 +5,79 @@
 
   <div class="page-content">
     
-    <!-- Filter Section (Simple placeholders for Super Admin to select context) -->
-    <section class="reports-filter-section">
+    <!-- Page Header -->
+    <header class="page-header">
+      <div class="breadcrumb">Reports / Overview</div>
+      <div class="header-title">
+        <h1>Institution Analytics</h1>
+        <span class="role-badge">Super Admin</span>
+      </div>
+      <div class="header-desc">
+        Comprehensive performance metrics and analytics across all colleges.
+      </div>
+    </header>
+
+    <!-- KPI Grid -->
+    <section class="kpi-grid" *ngIf="!activeView">
+      <div class="kpi-card">
+        <span class="kpi-label">Total Colleges</span>
+        <div class="kpi-value">{{ colleges.length || '---' }}</div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Avg Institution Score</span>
+        <div class="kpi-value">
+          78.4%
+          <span class="trend-up"><span class="material-symbols-outlined">trending_up</span> 2.1%</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Assessments Taken</span>
+        <div class="kpi-value">
+          14,293
+          <span class="trend-up"><span class="material-symbols-outlined">trending_up</span> 14%</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Overall Pass Rate</span>
+        <div class="kpi-value">
+          86.2%
+          <span class="trend-down"><span class="material-symbols-outlined">trending_down</span> 0.5%</span>
+        </div>
+      </div>
+    </section>
+    <section class="reports-filter-section" *ngIf="!activeView">
       <div class="filter-header">
         <h3>Report Context</h3>
         <p>Select the target entity for your exports.</p>
       </div>
       <div class="filter-controls">
         <div class="form-group">
-          <label>Target College ID</label>
-          <input type="text" [(ngModel)]="selectedCollegeId" class="form-control" placeholder="Enter College ID (Guid)" />
+          <label>Target College</label>
+          <select [(ngModel)]="selectedCollegeId" class="form-control" (change)="onCollegeSelect()">
+            <option value="">-- Select College --</option>
+            <option *ngFor="let c of colleges" [value]="c.collegeId">{{ c.name }}</option>
+          </select>
         </div>
         <div class="form-group">
-          <label>Target Branch ID</label>
-          <input type="text" [(ngModel)]="selectedBranchId" class="form-control" placeholder="Enter Branch ID (Guid)" />
+          <label>Target Branch (Class)</label>
+          <select [(ngModel)]="selectedBranchId" class="form-control" [disabled]="!selectedCollegeId">
+            <option value="">-- Select Branch --</option>
+            <option *ngFor="let b of branches" [value]="b.classId">{{ b.name }}</option>
+          </select>
         </div>
         <div class="form-group">
-          <label>Target Student ID</label>
-          <input type="text" [(ngModel)]="selectedStudentId" class="form-control" placeholder="Enter Student ID (Guid)" />
+          <label>Target Student</label>
+          <select [(ngModel)]="selectedStudentId" class="form-control">
+            <option value="">-- Select Student --</option>
+            <!-- In reality, filter students by branch, but we'll show all or filtered for now -->
+            <option *ngFor="let s of students" [value]="s.userId">{{ s.fullName }} ({{ s.email }})</option>
+          </select>
         </div>
       </div>
     </section>
 
     <!-- Report Cards Section -->
-    <section class="dashboard-grid hero-grid reports-cards-grid">
+    <section class="dashboard-grid hero-grid reports-cards-grid" *ngIf="!activeView">
       
       <!-- College Wise Report Card -->
       <article class="hero-card report-card">
@@ -52,6 +101,9 @@
             <span class="material-symbols-outlined" *ngIf="!(isExportingExcel && activeReportType === 'college')">table_view</span>
             <span class="spinner" *ngIf="isExportingExcel && activeReportType === 'college'"></span>
             Excel
+          </button>
+          <button class="btn btn-secondary btn-email" (click)="openEmailModal('college', 'pdf')">
+            <span class="material-symbols-outlined">mail</span> Email
           </button>
         </div>
       </article>
@@ -79,6 +131,9 @@
             <span class="spinner" *ngIf="isExportingExcel && activeReportType === 'branch'"></span>
             Excel
           </button>
+          <button class="btn btn-secondary btn-email" (click)="openEmailModal('branch', 'pdf')">
+            <span class="material-symbols-outlined">mail</span> Email
+          </button>
         </div>
       </article>
 
@@ -105,9 +160,108 @@
             <span class="spinner" *ngIf="isExportingExcel && activeReportType === 'student'"></span>
             Excel
           </button>
+          <button class="btn btn-secondary btn-email" (click)="openEmailModal('student', 'pdf')">
+            <span class="material-symbols-outlined">mail</span> Email
+          </button>
         </div>
       </article>
 
     </section>
+
+    <!-- INLINE VIEW REPORT SECTION -->
+    <section class="inline-report-view" *ngIf="activeView">
+      <div class="view-header">
+        <button class="btn btn-secondary back-btn" (click)="closeView()">
+          <span class="material-symbols-outlined">arrow_back</span> Back to Dashboard
+        </button>
+        <div class="view-actions">
+          <button class="btn btn-primary" (click)="exportReport(activeView === 'college' ? 'college' : activeView === 'branch' ? 'branch' : 'student', 'pdf')" [disabled]="isExportingPdf">
+            <span class="material-symbols-outlined" *ngIf="!isExportingPdf">picture_as_pdf</span>
+            <span class="spinner" *ngIf="isExportingPdf"></span>
+            Export PDF
+          </button>
+          <button class="btn btn-primary btn-excel" (click)="exportReport(activeView === 'college' ? 'college' : activeView === 'branch' ? 'branch' : 'student', 'excel')" [disabled]="isExportingExcel">
+            <span class="material-symbols-outlined" *ngIf="!isExportingExcel">table_view</span>
+            <span class="spinner" *ngIf="isExportingExcel"></span>
+            Export Excel
+          </button>
+        </div>
+      </div>
+
+      <div class="report-canvas">
+        <div class="dashboard-mock-row">
+          
+          <div class="mock-panel">
+            <h4>{{ activeView | titlecase }} Performance Timeline</h4>
+            <div class="mock-chart">
+              <!-- Pure CSS mock bar chart for demonstration -->
+              <div class="bar" style="height: 40%;" data-val="62%"></div>
+              <div class="bar" style="height: 60%;" data-val="71%"></div>
+              <div class="bar" style="height: 50%;" data-val="68%"></div>
+              <div class="bar" style="height: 80%;" data-val="84%"></div>
+              <div class="bar" style="height: 75%;" data-val="81%"></div>
+              <div class="bar" style="height: 90%;" data-val="92%"></div>
+            </div>
+          </div>
+
+          <div class="mock-panel">
+            <h4>Key Metrics & Distribution</h4>
+            <div class="mock-list">
+              <div class="list-item">
+                <span class="item-name">Aptitude Score</span>
+                <span class="item-score excellent">92%</span>
+              </div>
+              <div class="list-item">
+                <span class="item-name">Technical Skills</span>
+                <span class="item-score good">78%</span>
+              </div>
+              <div class="list-item">
+                <span class="item-name">Communication</span>
+                <span class="item-score excellent">88%</span>
+              </div>
+              <div class="list-item">
+                <span class="item-name">Data Structures</span>
+                <span class="item-score needs-work">58%</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Email Modal Overlay -->
+    <div class="modal-overlay" *ngIf="isEmailModalOpen">
+      <div class="modal-content email-modal">
+        <div class="modal-header">
+          <h3>Email {{ emailTargetType | titlecase }} Report</h3>
+          <button class="close-btn" (click)="closeEmailModal()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">Enter the recipient's email address to send the generated {{ emailFormat | uppercase }} report.</p>
+          <div class="form-group">
+            <label>Recipient Email</label>
+            <input type="email" class="form-control" [(ngModel)]="emailAddress" placeholder="e.g. administrator@college.edu" />
+          </div>
+          <div class="form-group format-selector">
+            <label>Format</label>
+            <div class="radio-group">
+              <label><input type="radio" name="format" [(ngModel)]="emailFormat" value="pdf"> PDF</label>
+              <label><input type="radio" name="format" [(ngModel)]="emailFormat" value="excel"> Excel</label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="closeEmailModal()" [disabled]="isSendingEmail">Cancel</button>
+          <button class="btn btn-primary" (click)="sendEmail()" [disabled]="!emailAddress || isSendingEmail">
+            <span class="material-symbols-outlined" *ngIf="!isSendingEmail">send</span>
+            <span class="spinner" *ngIf="isSendingEmail"></span>
+            Send Email
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

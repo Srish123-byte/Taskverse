@@ -5,26 +5,65 @@
 
   <div class="page-content">
     
-    <!-- Filter Section -->
-    <section class="reports-filter-section">
+    <!-- Page Header -->
+    <header class="page-header">
+      <div class="breadcrumb">Reports / Overview</div>
+      <div class="header-title">
+        <h1>Trainer Analytics</h1>
+        <span class="role-badge">Trainer</span>
+      </div>
+      <div class="header-desc">
+        Performance snapshot for your assigned batches and students.
+      </div>
+    </header>
+
+    <!-- KPI Grid -->
+    <section class="kpi-grid" *ngIf="!activeView">
+      <div class="kpi-card">
+        <span class="kpi-label">Assigned Branches</span>
+        <div class="kpi-value">{{ totals.totalClasses }}</div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Assigned Batches</span>
+        <div class="kpi-value">{{ totals.totalBatches }}</div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Assigned Students</span>
+        <div class="kpi-value">{{ totals.totalStudents }}</div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Average Score</span>
+        <div class="kpi-value">
+          {{ totals.averagePercentage | number:'1.1-1' }}%
+          <span class="trend-up"><span class="material-symbols-outlined">verified</span> {{ totals.passRate | number:'1.1-1' }}% pass</span>
+        </div>
+      </div>
+    </section>
+    <section class="reports-filter-section" *ngIf="!activeView">
       <div class="filter-header">
         <h3>Report Context</h3>
-        <p>Select the target entity from your assigned rosters.</p>
+        <p>Select the target entity for your exports.</p>
       </div>
       <div class="filter-controls">
         <div class="form-group">
-          <label>Target Branch ID</label>
-          <input type="text" [(ngModel)]="selectedBranchId" class="form-control" placeholder="Enter Branch ID (Guid)" />
+          <label>Target Branch (Class)</label>
+          <select [(ngModel)]="selectedBranchId" class="form-control" (change)="onBranchSelect()">
+            <option value="">-- Select Branch --</option>
+            <option *ngFor="let c of classes" [value]="c.classId">{{ c.name }}</option>
+          </select>
         </div>
         <div class="form-group">
-          <label>Target Student ID</label>
-          <input type="text" [(ngModel)]="selectedStudentId" class="form-control" placeholder="Enter Student ID (Guid)" />
+          <label>Target Student</label>
+          <select [(ngModel)]="selectedStudentId" class="form-control" [disabled]="!selectedBranchId">
+            <option value="">-- Select Student --</option>
+            <option *ngFor="let s of students" [value]="s.studentId">{{ s.fullName }} ({{ s.email }})</option>
+          </select>
         </div>
       </div>
     </section>
 
     <!-- Report Cards Section -->
-    <section class="dashboard-grid hero-grid reports-cards-grid">
+    <section class="dashboard-grid hero-grid reports-cards-grid" *ngIf="!activeView">
       
       <!-- Branch Wise Report Card -->
       <article class="hero-card report-card">
@@ -48,6 +87,9 @@
             <span class="material-symbols-outlined" *ngIf="!(isExportingExcel && activeReportType === 'branch')">table_view</span>
             <span class="spinner" *ngIf="isExportingExcel && activeReportType === 'branch'"></span>
             Excel
+          </button>
+          <button class="btn btn-secondary btn-email" (click)="openEmailModal('branch', 'pdf')">
+            <span class="material-symbols-outlined">mail</span> Email
           </button>
         </div>
       </article>
@@ -75,9 +117,105 @@
             <span class="spinner" *ngIf="isExportingExcel && activeReportType === 'student'"></span>
             Excel
           </button>
+          <button class="btn btn-secondary btn-email" (click)="openEmailModal('student', 'pdf')">
+            <span class="material-symbols-outlined">mail</span> Email
+          </button>
         </div>
       </article>
 
     </section>
+
+    <!-- INLINE VIEW REPORT SECTION -->
+    <section class="inline-report-view" *ngIf="activeView">
+      <div class="view-header">
+        <button class="btn btn-secondary back-btn" (click)="closeView()">
+          <span class="material-symbols-outlined">arrow_back</span> Back to Dashboard
+        </button>
+        <div class="view-actions">
+          <button class="btn btn-primary" (click)="exportReport(activeView === 'branch' ? 'branch' : 'student', 'pdf')" [disabled]="isExportingPdf">
+            <span class="material-symbols-outlined" *ngIf="!isExportingPdf">picture_as_pdf</span>
+            <span class="spinner" *ngIf="isExportingPdf"></span>
+            Export PDF
+          </button>
+          <button class="btn btn-primary btn-excel" (click)="exportReport(activeView === 'branch' ? 'branch' : 'student', 'excel')" [disabled]="isExportingExcel">
+            <span class="material-symbols-outlined" *ngIf="!isExportingExcel">table_view</span>
+            <span class="spinner" *ngIf="isExportingExcel"></span>
+            Export Excel
+          </button>
+        </div>
+      </div>
+
+      <div class="report-canvas">
+        <div class="report-summary" *ngIf="activeView === 'branch'">
+          <h3>{{ selectedBranchName }}</h3>
+          <p>{{ selectedBranchStudents.length }} assigned students in your trainer scope.</p>
+          <div class="table-lite">
+            <div class="table-lite-head">
+              <span>Student</span>
+              <span>Email</span>
+              <span>Assessments</span>
+              <span>Average</span>
+            </div>
+            <div class="table-lite-row" *ngFor="let student of selectedBranchStudents">
+              <span>{{ student.fullName }}</span>
+              <span>{{ student.email }}</span>
+              <span>{{ student.assessmentCount }}</span>
+              <span>{{ student.averagePercentage | number:'1.1-1' }}%</span>
+            </div>
+            <div class="empty-row" *ngIf="selectedBranchStudents.length === 0">No assigned students found for this branch.</div>
+          </div>
+        </div>
+
+        <div class="report-summary" *ngIf="activeView === 'student' && selectedStudent as student">
+          <h3>{{ student.fullName }}</h3>
+          <p>{{ student.email }} <span *ngIf="student.enrollmentNumber">/ {{ student.enrollmentNumber }}</span></p>
+          <div class="student-metrics">
+            <div>
+              <span>Assessments</span>
+              <strong>{{ student.assessmentCount }}</strong>
+            </div>
+            <div>
+              <span>Average Score</span>
+              <strong>{{ student.averagePercentage | number:'1.1-1' }}%</strong>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Inline Email Panel -->
+    <div class="email-panel" *ngIf="isEmailModalOpen && !activeView">
+      <div class="email-modal">
+        <div class="modal-header">
+          <h3>Email {{ emailTargetType | titlecase }} Report</h3>
+          <button class="close-btn" (click)="closeEmailModal()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">Enter one or more comma-separated email addresses to send the generated {{ emailFormat | uppercase }} report.</p>
+          <div class="form-group">
+            <label>Recipient Emails</label>
+            <input type="text" class="form-control" [(ngModel)]="emailAddress" placeholder="admin@college.edu, mentor@college.edu" />
+          </div>
+          <div class="form-group format-selector">
+            <label>Format</label>
+            <div class="radio-group">
+              <label><input type="radio" name="format" [(ngModel)]="emailFormat" value="pdf"> PDF</label>
+              <label><input type="radio" name="format" [(ngModel)]="emailFormat" value="excel"> Excel</label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="closeEmailModal()" [disabled]="isSendingEmail">Cancel</button>
+          <button class="btn btn-primary" (click)="sendEmail()" [disabled]="emailRecipients.length === 0 || isSendingEmail">
+            <span class="material-symbols-outlined" *ngIf="!isSendingEmail">send</span>
+            <span class="spinner" *ngIf="isSendingEmail"></span>
+            Send Email
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

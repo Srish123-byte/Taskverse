@@ -1,0 +1,180 @@
+<div class="reports-dashboard">
+  <div class="page-content">
+    
+    <!-- Page Header -->
+    <header class="page-header">
+      <div class="breadcrumb">Reports / My Performance</div>
+      <div class="header-title">
+        <h1>My Analytics</h1>
+        <span class="role-badge">Student</span>
+      </div>
+      <div class="header-desc">
+        Your comprehensive performance overview, scores, and analytics.
+      </div>
+    </header>
+
+    <!-- KPI Grid -->
+    <section class="kpi-grid" *ngIf="!activeView && hasAssessments">
+      <div class="kpi-card">
+        <span class="kpi-label">Assessments Taken</span>
+        <div class="kpi-value">{{ student?.assessmentCount ?? 0 }}</div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Average Score</span>
+        <div class="kpi-value">
+          {{ (student?.averagePercentage ?? 0) | number:'1.1-1' }}%
+          <span class="trend-up"><span class="material-symbols-outlined">verified</span></span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Highest Score</span>
+        <div class="kpi-value">
+          {{ highestPercentage | number:'1.1-1' }}%
+        </div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Passed</span>
+        <div class="kpi-value">
+          {{ passCount }}
+        </div>
+      </div>
+    </section>
+
+    <!-- Empty State -->
+    <div class="report-canvas" *ngIf="!hasAssessments">
+      <div class="empty-state-elegant">
+        <span class="material-symbols-outlined empty-icon">sentiment_dissatisfied</span>
+        <h3>No assessments completed yet.</h3>
+        <p>Your performance report and analytics dashboard will automatically generate after you successfully complete your first assessment.</p>
+      </div>
+    </div>
+
+    <!-- Report Cards Section -->
+    <section class="dashboard-grid hero-grid reports-cards-grid" *ngIf="!activeView && hasAssessments">
+      
+      <!-- Individual Performance Card -->
+      <article class="hero-card report-card">
+        <div class="report-card-icon">
+          <span class="material-symbols-outlined">person</span>
+        </div>
+        <div class="report-card-content">
+          <h2 class="report-title">Comprehensive Report</h2>
+          <p class="report-desc">View your detailed assessment breakdown, strengths, weaknesses, and performance history.</p>
+        </div>
+        <div class="report-card-actions">
+          <button class="btn btn-secondary" (click)="viewDetailedReport()">
+            <span class="material-symbols-outlined">visibility</span> View Dashboard
+          </button>
+          <button class="btn btn-primary" (click)="exportReport('pdf')" [disabled]="isExportingPdf">
+            <span class="material-symbols-outlined" *ngIf="!isExportingPdf">picture_as_pdf</span>
+            <span class="spinner" *ngIf="isExportingPdf"></span>
+            PDF
+          </button>
+          <button class="btn btn-primary btn-excel" (click)="exportReport('excel')" [disabled]="isExportingExcel">
+            <span class="material-symbols-outlined" *ngIf="!isExportingExcel">table_view</span>
+            <span class="spinner" *ngIf="isExportingExcel"></span>
+            Excel
+          </button>
+          <button class="btn btn-secondary btn-email" (click)="openEmailModal('pdf')">
+            <span class="material-symbols-outlined">mail</span> Email
+          </button>
+        </div>
+      </article>
+
+    </section>
+
+    <!-- INLINE VIEW REPORT SECTION -->
+    <section class="inline-report-view" *ngIf="activeView">
+      <div class="view-header">
+        <button class="btn btn-secondary back-btn" (click)="closeView()">
+          <span class="material-symbols-outlined">arrow_back</span> Back to Overview
+        </button>
+        <div class="view-actions">
+          <button class="btn btn-primary" (click)="exportReport('pdf')" [disabled]="isExportingPdf">
+            <span class="material-symbols-outlined" *ngIf="!isExportingPdf">picture_as_pdf</span>
+            <span class="spinner" *ngIf="isExportingPdf"></span>
+            Export PDF
+          </button>
+          <button class="btn btn-primary btn-excel" (click)="exportReport('excel')" [disabled]="isExportingExcel">
+            <span class="material-symbols-outlined" *ngIf="!isExportingExcel">table_view</span>
+            <span class="spinner" *ngIf="isExportingExcel"></span>
+            Export Excel
+          </button>
+        </div>
+      </div>
+
+      <div class="report-canvas">
+        <div class="report-summary" *ngIf="student as currentStudent">
+          <h3>{{ currentStudent.fullName }}</h3>
+          <p>{{ currentStudent.email }} <span *ngIf="currentStudent.enrollmentNumber">/ {{ currentStudent.enrollmentNumber }}</span></p>
+          <div class="student-metrics">
+            <div>
+              <span>Assessments</span>
+              <strong>{{ currentStudent.assessmentCount }}</strong>
+            </div>
+            <div>
+              <span>Average Score</span>
+              <strong>{{ currentStudent.averagePercentage | number:'1.1-1' }}%</strong>
+            </div>
+            <div>
+              <span>Highest Score</span>
+              <strong>{{ highestPercentage | number:'1.1-1' }}%</strong>
+            </div>
+            <div>
+              <span>Passed</span>
+              <strong>{{ passCount }}</strong>
+            </div>
+          </div>
+          <div class="table-lite">
+            <div class="table-lite-head">
+              <span>Assessment</span>
+              <span>Status</span>
+              <span>Marks</span>
+              <span>Percentage</span>
+            </div>
+            <div class="table-lite-row" *ngFor="let result of results">
+              <span>{{ result.assessmentName }}</span>
+              <span>{{ result.resultStatus }}</span>
+              <span>{{ result.obtainedMarks | number:'1.1-1' }} / {{ result.totalMarks | number:'1.1-1' }}</span>
+              <span>{{ result.percentage | number:'1.1-1' }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Inline Email Panel -->
+    <div class="email-panel" *ngIf="isEmailModalOpen">
+      <div class="email-modal">
+        <div class="modal-header">
+          <h3>Email Report</h3>
+          <button class="close-btn" (click)="closeEmailModal()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">Enter one or more comma-separated email addresses to send the generated {{ emailFormat | uppercase }} report.</p>
+          <div class="form-group">
+            <label>Recipient Emails</label>
+            <input type="text" class="form-control" [(ngModel)]="emailAddress" placeholder="admin@college.edu, mentor@college.edu" />
+          </div>
+          <div class="form-group format-selector">
+            <label>Format</label>
+            <div class="radio-group">
+              <label><input type="radio" name="format" [(ngModel)]="emailFormat" value="pdf"> PDF</label>
+              <label><input type="radio" name="format" [(ngModel)]="emailFormat" value="excel"> Excel</label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="closeEmailModal()" [disabled]="isSendingEmail">Cancel</button>
+          <button class="btn btn-primary" (click)="sendEmail()" [disabled]="emailRecipients.length === 0 || isSendingEmail">
+            <span class="material-symbols-outlined" *ngIf="!isSendingEmail">send</span>
+            <span class="spinner" *ngIf="isSendingEmail"></span>
+            Send Email
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
