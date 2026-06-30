@@ -39,6 +39,8 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   currentYear = new Date().getFullYear();
 
   @ViewChild('bgCanvas') private canvasRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('loginEmailInput') private loginEmailInputRef?: ElementRef<HTMLInputElement>;
+  @ViewChild('loginPasswordInput') private loginPasswordInputRef?: ElementRef<HTMLInputElement>;
   private animFrame = 0;
 
   loginForm!: FormGroup;
@@ -90,6 +92,14 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]]
     });
+
+    this.subscriptions.add(
+      this.loginForm.valueChanges.subscribe(() => {
+        if (this.errorMessage) {
+          this.errorMessage = '';
+        }
+      })
+    );
 
     this.registerForm = this.fb.group({
       fullName: ['', [
@@ -206,6 +216,8 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onLogin(): void {
+    this.syncLoginFormWithDom();
+
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
       return;
@@ -280,6 +292,21 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
 
   toggleLoginPasswordVisibility(): void {
     this.showLoginPassword = !this.showLoginPassword;
+  }
+
+  private syncLoginFormWithDom(): void {
+    const email = this.loginEmailInputRef?.nativeElement.value ?? '';
+    const password = this.loginPasswordInputRef?.nativeElement.value ?? '';
+
+    this.loginForm.patchValue(
+      { email, password },
+      { emitEvent: true }
+    );
+
+    this.email?.markAsDirty();
+    this.password?.markAsDirty();
+    this.email?.updateValueAndValidity({ emitEvent: false });
+    this.password?.updateValueAndValidity({ emitEvent: false });
   }
 
   private redirectToApprovalStatus(role: RoleType | '', status: string): void {
