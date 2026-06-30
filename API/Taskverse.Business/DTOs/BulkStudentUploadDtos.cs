@@ -40,6 +40,8 @@ public class BulkStudentUploadResultDto
     public int CreatedCount { get; set; }
     public int DuplicateCount { get; set; }
     public int InvalidCount { get; set; }
+    public bool SummaryEmailSent { get; set; } = true;
+    public string? SummaryEmailWarning { get; set; }
     public List<BulkStudentUploadCreatedUserDto> CreatedUsers { get; set; } = [];
     public List<BulkStudentUploadRowIssueDto> DuplicateRows { get; set; } = [];
     public List<BulkStudentUploadRowIssueDto> InvalidRows { get; set; } = [];

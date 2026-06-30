@@ -107,6 +107,13 @@ export class StudentBulkUploadComponent {
             StudentBulkUploadComponent.successSnackBarConfig);
         }
 
+        if (!result.summaryEmailSent && result.summaryEmailWarning) {
+          this.snackBar.open(
+            result.summaryEmailWarning,
+            'Close',
+            StudentBulkUploadComponent.successSnackBarConfig);
+        }
+
         if (result.createdCount > 0) {
           this.parsedFile = null;
         }

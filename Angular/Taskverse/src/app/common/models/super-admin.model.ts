@@ -78,6 +78,8 @@ export interface BulkStudentUploadResult {
   createdCount: number;
   duplicateCount: number;
   invalidCount: number;
+  summaryEmailSent: boolean;
+  summaryEmailWarning?: string;
   createdUsers: BulkStudentUploadCreatedUser[];
   duplicateRows: BulkStudentUploadRowIssue[];
   invalidRows: BulkStudentUploadRowIssue[];

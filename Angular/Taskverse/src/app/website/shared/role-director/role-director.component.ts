@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, NgZone, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { Session } from '../../../common/services/session/session.service';
 import { AccountService } from '../../../common/services/api/account.service';
@@ -17,7 +17,8 @@ export class RoleDirectorComponent implements OnInit {
   constructor(
     private readonly session: Session,
     private readonly accountService: AccountService,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly ngZone: NgZone
   ) {}
 
   ngOnInit(): void {
@@ -35,9 +36,13 @@ export class RoleDirectorComponent implements OnInit {
             this.session.userEmail = user.email;
             this.session.userId    = user.userId;
             this.session.role      = user.role;
-            this.dispatch(user.role);
+            this.ngZone.run(() => this.dispatch(user.role));
           },
-          error: () => void this.router.navigateByUrl(`/${RouteAddress.Error}`)
+          error: () => {
+            this.ngZone.run(() => {
+              void this.router.navigateByUrl(`/${RouteAddress.Error}`);
+            });
+          }
         });
     }
   }
@@ -45,19 +50,29 @@ export class RoleDirectorComponent implements OnInit {
   private dispatch(role: RoleType): void {
     switch (role) {
       case RoleType.SuperAdmin:
-        void this.router.navigateByUrl(`/${RouteAddress.SuperAdmin.Dashboard}`);
+        this.ngZone.run(() => {
+          void this.router.navigateByUrl(`/${RouteAddress.SuperAdmin.Dashboard}`);
+        });
         break;
       case RoleType.CollegeAdmin:
-        void this.router.navigateByUrl(`/${RouteAddress.CollegeAdmin.Dashboard}`);
+        this.ngZone.run(() => {
+          void this.router.navigateByUrl(`/${RouteAddress.CollegeAdmin.Dashboard}`);
+        });
         break;
       case RoleType.Trainer:
-        void this.router.navigateByUrl(`/${RouteAddress.Trainer.Dashboard}`);
+        this.ngZone.run(() => {
+          void this.router.navigateByUrl(`/${RouteAddress.Trainer.Dashboard}`);
+        });
         break;
       case RoleType.Student:
-        void this.router.navigateByUrl(`/${RouteAddress.Student.Dashboard}`);
+        this.ngZone.run(() => {
+          void this.router.navigateByUrl(`/${RouteAddress.Student.Dashboard}`);
+        });
         break;
       default:
-        void this.router.navigateByUrl(`/${RouteAddress.Error}`);
+        this.ngZone.run(() => {
+          void this.router.navigateByUrl(`/${RouteAddress.Error}`);
+        });
     }
   }
 }

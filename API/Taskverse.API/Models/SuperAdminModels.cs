@@ -96,6 +96,8 @@ public class BulkStudentUploadResultResponseModel
     public int CreatedCount { get; set; }
     public int DuplicateCount { get; set; }
     public int InvalidCount { get; set; }
+    public bool SummaryEmailSent { get; set; }
+    public string? SummaryEmailWarning { get; set; }
     public List<BulkStudentUploadCreatedUserResponseModel> CreatedUsers { get; set; } = [];
     public List<BulkStudentUploadRowIssueResponseModel> DuplicateRows { get; set; } = [];
     public List<BulkStudentUploadRowIssueResponseModel> InvalidRows { get; set; } = [];
