@@ -247,7 +247,7 @@ public class AuthenticationService : IAuthenticationService
         }
     }
 
-    public async Task ChangeTemporaryPasswordAsync(Guid userId, ChangeTemporaryPasswordRequest request)
+    public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.CurrentPassword) || string.IsNullOrWhiteSpace(request.NewPassword))
         {
@@ -260,23 +260,34 @@ public class AuthenticationService : IAuthenticationService
             throw new UnauthorizedAccessException("User was not found.");
         }
 
-        if (!user.MustChangePassword)
+        if (request.IsTemporaryPasswordChange && !user.MustChangePassword)
         {
             throw new InvalidOperationException("This account is not awaiting a temporary password change.");
+        }
+
+        if (!request.IsTemporaryPasswordChange && user.MustChangePassword)
+        {
+            throw new InvalidOperationException("This account must complete the temporary password change flow first.");
         }
 
         var passwordHasher = new PasswordHasher<User>();
         var verificationResult = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword);
         if (verificationResult == PasswordVerificationResult.Failed)
         {
-            throw new InvalidOperationException("The current temporary password is incorrect.");
+            throw new InvalidOperationException(request.IsTemporaryPasswordChange
+                ? "The current temporary password is incorrect."
+                : "The current password is incorrect.");
         }
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
 
         user.PasswordHash = passwordHasher.HashPassword(user, request.NewPassword);
-        user.TemporaryPassword = null;
-        user.MustChangePassword = false;
+        if (request.IsTemporaryPasswordChange)
+        {
+            user.TemporaryPassword = null;
+            user.MustChangePassword = false;
+        }
+
         user.PasswordChangedAt = DateTime.UtcNow;
         user.ModifiedAt = DateTime.UtcNow;
 

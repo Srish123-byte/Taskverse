@@ -16,10 +16,11 @@ public record LoginResponseDto(
     string Status,
     bool MustChangePassword);
 
-public record ChangeTemporaryPasswordRequestDto(
+public record ChangePasswordRequestDto(
     string UserId,
     string CurrentPassword,
-    string NewPassword);
+    string NewPassword,
+    bool IsTemporaryPasswordChange);
 
 public record RefreshLoginResponseDto(
     string AccessToken,

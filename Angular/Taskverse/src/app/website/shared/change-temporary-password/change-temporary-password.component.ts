@@ -65,7 +65,11 @@ export class ChangeTemporaryPasswordComponent implements OnInit {
     this.isSubmitting = true;
     this.errorMessage = '';
 
-    this.accountService.changeTemporaryPassword({ currentPassword, newPassword }).subscribe({
+    this.accountService.changePassword({
+      currentPassword,
+      newPassword,
+      isTemporaryPasswordChange: true
+    }).subscribe({
       next: () => {
         sessionStorage.setItem(SessionKey.PasswordChangeSuccess, 'true');
         this.session.clear();

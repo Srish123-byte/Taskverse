@@ -15,9 +15,10 @@ export interface LogoutRequest {
   refreshToken: string;
 }
 
-export interface ChangeTemporaryPasswordRequest {
+export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;
+  isTemporaryPasswordChange: boolean;
 }
 
 export interface RefreshTokenRequest {
@@ -84,7 +85,7 @@ export class AccountService {
     return this.http.post<void>(`${this.url}/logout`, request);
   }
 
-  changeTemporaryPassword(request: ChangeTemporaryPasswordRequest): Observable<void> {
-    return this.http.post<void>(`${this.url}/change-temporary-password`, request);
+  changePassword(request: ChangePasswordRequest): Observable<void> {
+    return this.http.post<void>(`${this.url}/change-password`, request);
   }
 }

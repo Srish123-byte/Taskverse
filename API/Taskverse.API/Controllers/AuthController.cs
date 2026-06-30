@@ -148,11 +148,11 @@ public class AuthController : Controller
     }
 
     [Authorize]
-    [HttpPost("change-temporary-password")]
-    [SwaggerResponse(204, "Temporary password changed successfully")]
+    [HttpPost("change-password")]
+    [SwaggerResponse(204, "Password changed successfully")]
     [SwaggerResponse(400, "Invalid request")]
     [SwaggerResponse(401, "Unauthorized")]
-    public async Task<IActionResult> ChangeTemporaryPassword([FromBody] ChangeTemporaryPasswordRequestModel model)
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequestModel model)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(userId))
@@ -162,8 +162,12 @@ public class AuthController : Controller
 
         try
         {
-            await _authOrchestrator.ChangeTemporaryPassword(
-                new ChangeTemporaryPasswordRequestDto(userId, model.CurrentPassword, model.NewPassword));
+            await _authOrchestrator.ChangePassword(
+                new ChangePasswordRequestDto(
+                    userId,
+                    model.CurrentPassword,
+                    model.NewPassword,
+                    model.IsTemporaryPasswordChange));
             return NoContent();
         }
         catch (InvalidOperationException ex)
