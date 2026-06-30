@@ -1,8 +1,13 @@
 import { Component, OnInit } from '@angular/core';
-import { ReportClass, ReportContextTotals, ReportStudent, ReportsService } from '../../../common/services/api/reports.service';
-import { AssessmentAdminService, AssessmentAssignmentClass } from '../../../common/services/api/assessment-admin.service';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { finalize, forkJoin } from 'rxjs';
+import { Session } from '../../../common/services/session/session.service';
+import { AppConfig } from '../../../app.config';
+import {
+  ReportsService,
+  ReportFilters,
+  StudentPerformanceReport,
+  StudentPerformanceRow,
+  FilterOption
+} from '../../../common/services/api/reports.service';
 
 @Component({
   selector: 'app-trainer-reports',
@@ -11,265 +16,124 @@ import { finalize, forkJoin } from 'rxjs';
   styleUrl: './reports.component.scss'
 })
 export class ReportsComponent implements OnInit {
-  isExportingPdf = false;
-  isExportingExcel = false;
-  activeReportType: string | null = null;
-  activeView: string | null = null; // 'branch' | 'student' | null
-  isLoading = true;
+  // Legacy fields
+  collegeId = '';
+  classId = '';
+  batchId = '';
+  studentId = '';
 
-  classes: ReportClass[] = [];
-  students: ReportStudent[] = [];
-  selectedBranchStudents: ReportStudent[] = [];
-  totals: ReportContextTotals = {
-    totalClasses: 0,
-    totalBatches: 0,
-    totalStudents: 0,
-    averagePercentage: 0,
-    passRate: 0
-  };
+  // New Fields
+  report: StudentPerformanceReport | null = null;
+  branches: FilterOption[] = [];
+  batches: FilterOption[] = [];
+  loading = false;
+  error = '';
 
-  selectedBranchId: string = '';
-  selectedStudentId: string = '';
+  // Filters
+  selectedBranchId = '';
+  selectedBatchId = '';
+  selectedStudentId = '';
+  selectedPerformanceLevel = '';
+  dateFrom = '';
+  dateTo = '';
 
-  private static readonly snackBarConfig = {
-    duration: 3000,
-    horizontalPosition: 'right' as const,
-    verticalPosition: 'top' as const,
-    panelClass: ['question-editor-success-snackbar']
-  };
-
-  private static readonly errorSnackBarConfig = {
-    ...ReportsComponent.snackBarConfig,
-    panelClass: ['question-bank-restriction-snackbar']
-  };
+  // Selected student for detailed AI Insights modal/view
+  activeStudent: StudentPerformanceRow | null = null;
 
   constructor(
-    private reportsService: ReportsService,
-    private assessmentAdminService: AssessmentAdminService,
-    private snackBar: MatSnackBar
+    private readonly session: Session,
+    private readonly appConfig: AppConfig,
+    private readonly reportsService: ReportsService
   ) {}
 
   ngOnInit(): void {
-    this.assessmentAdminService.getTrainerAssignedClassesAndBatches()
-      .pipe(finalize(() => this.isLoading = false))
-      .subscribe({
-      next: (catalog) => {
-        this.classes = (catalog.classes ?? []).map(item => this.mapAssignmentClass(item));
-        this.totals = {
-          ...this.totals,
-          totalClasses: this.classes.length,
-          totalBatches: this.classes.reduce((sum, item) => sum + item.batches.length, 0)
-        };
-        this.loadStudentsForAssignedBatches();
+    this.collegeId = this.session.collegeId || '';
+    this.loadFilters();
+    this.loadReport();
+  }
+
+  loadFilters(): void {
+    this.reportsService.getBranches(this.collegeId).subscribe({
+      next: (data) => this.branches = data,
+      error: () => this.branches = []
+    });
+    this.reportsService.getBatches().subscribe({
+      next: (data) => this.batches = data,
+      error: () => this.batches = []
+    });
+  }
+
+  loadReport(): void {
+    this.loading = true;
+    this.error = '';
+    const filters = this.buildFilters();
+
+    this.reportsService.getStudentPerformanceReport(filters).subscribe({
+      next: (data) => {
+        this.report = data;
+        this.loading = false;
       },
       error: (err) => {
-        console.error('Unable to load trainer report context:', err);
-        this.snackBar.open('Unable to load your assigned report data.', 'Close', ReportsComponent.errorSnackBarConfig);
+        this.error = 'Failed to load student performance report.';
+        this.loading = false;
+        console.error(err);
       }
     });
   }
 
-  private mapAssignmentClass(item: AssessmentAssignmentClass): ReportClass {
-    return {
-      classId: item.classId,
-      collegeId: item.collegeId,
-      name: item.name,
-      batches: (item.batches ?? []).map(batch => ({
-        batchId: batch.batchId,
-        classId: batch.classId,
-        collegeId: batch.collegeId,
-        name: batch.name,
-        studentCount: 0,
-        students: []
-      }))
-    };
+  applyFilters(): void {
+    this.loadReport();
   }
 
-  private loadStudentsForAssignedBatches(): void {
-    const requests = this.classes.flatMap(classItem =>
-      classItem.batches.map(batch =>
-        this.reportsService.getStudentsForBatch(classItem.classId, batch.batchId)
-      )
-    );
-
-    if (requests.length === 0) {
-      return;
-    }
-
-    forkJoin(requests).subscribe({
-      next: (studentGroups) => {
-        let index = 0;
-        for (const classItem of this.classes) {
-          for (const batch of classItem.batches) {
-            batch.students = studentGroups[index] ?? [];
-            batch.studentCount = batch.students.length;
-            index++;
-          }
-        }
-        const allStudents = this.classes.flatMap(classItem => classItem.batches.flatMap(batch => batch.students));
-        const uniqueStudents = Array.from(new Map(allStudents.map(student => [student.studentId, student])).values());
-        this.totals.totalStudents = uniqueStudents.length;
-        const totalAssessments = uniqueStudents.reduce((sum, student) => sum + student.assessmentCount, 0);
-        this.totals.averagePercentage = totalAssessments > 0
-          ? uniqueStudents.reduce((sum, student) => sum + student.averagePercentage * student.assessmentCount, 0) / totalAssessments
-          : 0;
-      },
-      error: (err) => {
-        console.error('Unable to load assigned students:', err);
-        this.snackBar.open('Unable to load students for your assigned batches.', 'Close', ReportsComponent.errorSnackBarConfig);
-      }
-    });
-  }
-
-  onBranchSelect(): void {
+  clearFilters(): void {
+    this.selectedBranchId = '';
+    this.selectedBatchId = '';
     this.selectedStudentId = '';
-    this.students = [];
-    this.selectedBranchStudents = [];
-    if (this.selectedBranchId) {
-      const selectedClass = this.classes.find(c => c.classId === this.selectedBranchId);
-      if (selectedClass && selectedClass.batches) {
-        const allStudents = selectedClass.batches.flatMap(b => b.students || []);
-        const uniqueStudents = Array.from(new Map(allStudents.map(s => [s.studentId, s])).values());
-        this.students = uniqueStudents;
-        this.selectedBranchStudents = uniqueStudents;
-      }
+    this.selectedPerformanceLevel = '';
+    this.dateFrom = '';
+    this.dateTo = '';
+    this.loadReport();
+  }
+
+  viewInsights(student: StudentPerformanceRow): void {
+    this.activeStudent = student;
+  }
+
+  closeInsights(): void {
+    this.activeStudent = null;
+  }
+
+  exportPdf(): void {
+    this.reportsService.exportStudentPerformancePdf(this.buildFilters());
+  }
+
+  exportExcel(): void {
+    this.reportsService.exportStudentPerformanceExcel(this.buildFilters());
+  }
+
+  getGradeClass(pct: number): string {
+    if (pct >= 85) return 'grade-excellent';
+    if (pct >= 70) return 'grade-good';
+    if (pct >= 50) return 'grade-average';
+    return 'grade-poor';
+  }
+
+  getReadinessClass(readiness: string): string {
+    switch (readiness) {
+      case 'Excellent': case 'Ready': return 'readiness-ready';
+      case 'Good': case 'Partially Ready': return 'readiness-partial';
+      default: return 'readiness-low';
     }
   }
 
-  exportReport(type: 'branch' | 'student', format: 'pdf' | 'excel'): void {
-    let request$;
-    let filename = '';
-
-    if (type === 'branch') {
-      if (!this.selectedBranchId) {
-        this.snackBar.open('Please select a branch first.', 'Close', ReportsComponent.errorSnackBarConfig);
-        return;
-      }
-      request$ = this.reportsService.exportBranchReport(this.selectedBranchId, format);
-      filename = `BranchReport_${new Date().getTime()}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
-    } else if (type === 'student') {
-      if (!this.selectedStudentId) {
-        this.snackBar.open('Please select a student first.', 'Close', ReportsComponent.errorSnackBarConfig);
-        return;
-      }
-      request$ = this.reportsService.exportStudentReport(this.selectedStudentId, format);
-      filename = `StudentReport_${new Date().getTime()}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
-    }
-
-    if (!request$) return;
-
-    if (format === 'pdf') this.isExportingPdf = true;
-    else this.isExportingExcel = true;
-    this.activeReportType = type;
-
-    request$.pipe(
-      finalize(() => {
-        if (format === 'pdf') this.isExportingPdf = false;
-        else this.isExportingExcel = false;
-        this.activeReportType = null;
-      })
-    ).subscribe({
-      next: (blob) => {
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        link.click();
-        window.URL.revokeObjectURL(url);
-        this.snackBar.open(`${format.toUpperCase()} exported successfully!`, 'Close', ReportsComponent.snackBarConfig);
-      },
-      error: (err) => {
-        console.error('Export failed:', err);
-        this.snackBar.open('Failed to export report. Please try again.', 'Close', ReportsComponent.errorSnackBarConfig);
-      }
-    });
-  }
-
-  viewReport(type: 'branch' | 'student'): void {
-    if (type === 'branch' && !this.selectedBranchId) {
-      this.snackBar.open('Please select a branch first.', 'Close', ReportsComponent.errorSnackBarConfig);
-      return;
-    }
-    if (type === 'student' && !this.selectedStudentId) {
-      this.snackBar.open('Please select a student first.', 'Close', ReportsComponent.errorSnackBarConfig);
-      return;
-    }
-    this.activeView = type;
-  }
-  
-  closeView(): void {
-    this.activeView = null;
-  }
-
-  // Email Modal State
-  isEmailModalOpen = false;
-  emailTargetType: 'branch' | 'student' | null = null;
-  emailFormat: 'pdf' | 'excel' = 'pdf';
-  emailAddress: string = '';
-  isSendingEmail = false;
-
-  openEmailModal(type: 'branch' | 'student', format: 'pdf' | 'excel'): void {
-    if (type === 'branch' && !this.selectedBranchId) {
-      this.snackBar.open('Please select a branch first.', 'Close', ReportsComponent.errorSnackBarConfig);
-      return;
-    }
-    if (type === 'student' && !this.selectedStudentId) {
-      this.snackBar.open('Please select a student first.', 'Close', ReportsComponent.errorSnackBarConfig);
-      return;
-    }
-
-    this.emailTargetType = type;
-    this.emailFormat = format;
-    this.emailAddress = '';
-    this.isEmailModalOpen = true;
-  }
-
-  closeEmailModal(): void {
-    this.isEmailModalOpen = false;
-    this.emailTargetType = null;
-  }
-
-  get selectedBranchName(): string {
-    return this.classes.find(item => item.classId === this.selectedBranchId)?.name ?? 'Selected Branch';
-  }
-
-  get selectedStudent(): ReportStudent | undefined {
-    return this.students.find(item => item.studentId === this.selectedStudentId);
-  }
-
-  get emailRecipients(): string[] {
-    return this.emailAddress
-      .split(',')
-      .map(email => email.trim())
-      .filter(email => !!email);
-  }
-
-  sendEmail(): void {
-    if (this.emailRecipients.length === 0 || !this.emailTargetType) return;
-
-    let entityId = '';
-    if (this.emailTargetType === 'branch') entityId = this.selectedBranchId;
-    if (this.emailTargetType === 'student') entityId = this.selectedStudentId;
-
-    this.isSendingEmail = true;
-    this.reportsService.emailReport({
-      targetEmails: this.emailRecipients,
-      reportType: this.emailTargetType,
-      entityId: entityId,
-      format: this.emailFormat
-    }).pipe(
-      finalize(() => {
-        this.isSendingEmail = false;
-        this.closeEmailModal();
-      })
-    ).subscribe({
-      next: () => {
-        this.snackBar.open('Report emailed successfully!', 'Close', ReportsComponent.snackBarConfig);
-      },
-      error: (err) => {
-        console.error('Email failed:', err);
-        this.snackBar.open('Failed to email report.', 'Close', ReportsComponent.errorSnackBarConfig);
-      }
-    });
+  private buildFilters(): ReportFilters {
+    const filters: ReportFilters = { collegeId: this.collegeId };
+    if (this.selectedBranchId) filters.classId = this.selectedBranchId;
+    if (this.selectedBatchId) filters.batchId = this.selectedBatchId;
+    if (this.selectedStudentId) filters.studentId = this.selectedStudentId;
+    if (this.selectedPerformanceLevel) filters.performanceLevel = this.selectedPerformanceLevel;
+    if (this.dateFrom) filters.dateFrom = this.dateFrom;
+    if (this.dateTo) filters.dateTo = this.dateTo;
+    return filters;
   }
 }

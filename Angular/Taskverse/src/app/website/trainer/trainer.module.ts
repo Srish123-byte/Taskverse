@@ -13,7 +13,6 @@ import { QuestionEditorPageComponent } from './question-editor/question-editor.c
 import { AssessmentsManagementComponent } from './assessments-management/assessments-management.component';
 import { NewAssessmentComponent } from './new-assessment/new-assessment.component';
 import { ReportsComponent } from './reports/reports.component';
-import { FormsModule } from '@angular/forms';
 
 @NgModule({
   declarations: [
@@ -25,15 +24,14 @@ import { FormsModule } from '@angular/forms';
     QuestionEditorPageComponent,
     AssessmentsManagementComponent,
     NewAssessmentComponent,
+    ReportsComponent,
     ManageComponent,
-    HelpCenterComponent,
-    ReportsComponent
+    HelpCenterComponent
   ],
   imports: [
     CommonModule,
     AppCommonModule,
-    TrainerRoutes,
-    FormsModule
+    TrainerRoutes
   ]
 })
 export class TrainerModule {}

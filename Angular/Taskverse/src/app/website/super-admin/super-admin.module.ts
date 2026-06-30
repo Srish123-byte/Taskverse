@@ -10,7 +10,6 @@ import { AnalyticsComponent } from './analytics/analytics.component';
 import { AssessmentsComponent } from './assessments/assessments.component';
 import { SettingsComponent } from './settings/settings.component';
 import { ReportsComponent } from './reports/reports.component';
-import { FormsModule } from '@angular/forms';
 
 @NgModule({
   declarations: [
@@ -26,8 +25,7 @@ import { FormsModule } from '@angular/forms';
   imports: [
     CommonModule,
     AppCommonModule,
-    SuperAdminRoutes,
-    FormsModule
+    SuperAdminRoutes
   ]
 })
 export class SuperAdminModule {}

@@ -1,10 +1,12 @@
 import { Component, OnInit } from '@angular/core';
-import { ReportsService } from '../../../common/services/api/reports.service';
-import { SuperAdminService } from '../../../common/services/api/super-admin.service';
-import { UserService, RegistrationClassOption } from '../../../common/services/api/user.service';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { finalize } from 'rxjs';
-import { College, PendingUser } from '../../../common/models/super-admin.model';
+import { AppConfig } from '../../../app.config';
+import {
+  ReportsService,
+  ReportFilters,
+  CollegeWiseReport,
+  CollegeWiseRow,
+  FilterOption
+} from '../../../common/services/api/reports.service';
 
 @Component({
   selector: 'app-super-admin-reports',
@@ -13,199 +15,118 @@ import { College, PendingUser } from '../../../common/models/super-admin.model';
   styleUrl: './reports.component.scss'
 })
 export class ReportsComponent implements OnInit {
-  isExportingPdf = false;
-  isExportingExcel = false;
-  activeReportType: string | null = null;
-  activeView: string | null = null; // 'college' | 'branch' | 'student' | null
+  // Legacy filter fields (preserved)
+  collegeId = '';
+  classId = '';
+  batchId = '';
+  studentId = '';
 
-  colleges: College[] = [];
-  branches: RegistrationClassOption[] = [];
-  students: PendingUser[] = [];
+  // Enterprise report data
+  report: CollegeWiseReport | null = null;
+  colleges: FilterOption[] = [];
+  loading = false;
+  error = '';
 
-  selectedCollegeId: string = '';
-  selectedBranchId: string = '';
-  selectedStudentId: string = '';
-
-  private static readonly snackBarConfig = {
-    duration: 3000,
-    horizontalPosition: 'right' as const,
-    verticalPosition: 'top' as const,
-    panelClass: ['question-editor-success-snackbar']
-  };
-
-  private static readonly errorSnackBarConfig = {
-    ...ReportsComponent.snackBarConfig,
-    panelClass: ['question-bank-restriction-snackbar']
-  };
+  // Filters
+  selectedCollegeId = '';
+  dateFrom = '';
+  dateTo = '';
+  academicYear = '';
 
   constructor(
-    private reportsService: ReportsService,
-    private superAdminService: SuperAdminService,
-    private userService: UserService,
-    private snackBar: MatSnackBar
+    private readonly appConfig: AppConfig,
+    private readonly reportsService: ReportsService
   ) {}
 
   ngOnInit(): void {
-    this.superAdminService.getColleges().subscribe({
-      next: (colleges) => {
-        this.colleges = colleges;
-      }
-    });
-    // Load all students for the dropdown
-    this.superAdminService.searchUsers({ pageNumber: 1, pageSize: 1000, role: 'Student' }).subscribe({
-      next: (res) => {
-        this.students = res.items || [];
-      }
+    this.loadFilters();
+    this.loadReport();
+  }
+
+  loadFilters(): void {
+    this.reportsService.getColleges().subscribe({
+      next: (data) => this.colleges = data,
+      error: () => this.colleges = []
     });
   }
 
-  onCollegeSelect(): void {
-    this.selectedBranchId = '';
-    this.branches = [];
-    if (this.selectedCollegeId) {
-      this.userService.getRegistrationClasses(this.selectedCollegeId).subscribe({
-        next: (classes) => {
-          this.branches = classes;
-        }
-      });
-    }
-  }
+  loadReport(): void {
+    this.loading = true;
+    this.error = '';
+    const filters: ReportFilters = {};
+    if (this.selectedCollegeId) filters.collegeId = this.selectedCollegeId;
+    if (this.dateFrom) filters.dateFrom = this.dateFrom;
+    if (this.dateTo) filters.dateTo = this.dateTo;
+    if (this.academicYear) filters.academicYear = this.academicYear;
 
-  exportReport(type: 'college' | 'branch' | 'student', format: 'pdf' | 'excel'): void {
-    let request$;
-    let filename = '';
-
-    if (type === 'college') {
-      if (!this.selectedCollegeId) {
-        this.snackBar.open('Please select a college first.', 'Close', ReportsComponent.errorSnackBarConfig);
-        return;
-      }
-      request$ = this.reportsService.exportCollegeReport(this.selectedCollegeId, format);
-      filename = `CollegeReport_${new Date().getTime()}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
-    } else if (type === 'branch') {
-      if (!this.selectedBranchId) {
-        this.snackBar.open('Please select a branch first.', 'Close', ReportsComponent.errorSnackBarConfig);
-        return;
-      }
-      request$ = this.reportsService.exportBranchReport(this.selectedBranchId, format);
-      filename = `BranchReport_${new Date().getTime()}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
-    } else if (type === 'student') {
-      if (!this.selectedStudentId) {
-        this.snackBar.open('Please select a student first.', 'Close', ReportsComponent.errorSnackBarConfig);
-        return;
-      }
-      request$ = this.reportsService.exportStudentReport(this.selectedStudentId, format);
-      filename = `StudentReport_${new Date().getTime()}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
-    }
-
-    if (!request$) return;
-
-    if (format === 'pdf') this.isExportingPdf = true;
-    else this.isExportingExcel = true;
-    this.activeReportType = type;
-
-    request$.pipe(
-      finalize(() => {
-        if (format === 'pdf') this.isExportingPdf = false;
-        else this.isExportingExcel = false;
-        this.activeReportType = null;
-      })
-    ).subscribe({
-      next: (blob) => {
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        link.click();
-        window.URL.revokeObjectURL(url);
-        this.snackBar.open(`${format.toUpperCase()} exported successfully!`, 'Close', ReportsComponent.snackBarConfig);
+    this.reportsService.getCollegeWiseReport(filters).subscribe({
+      next: (data) => {
+        this.report = data;
+        this.loading = false;
       },
       error: (err) => {
-        console.error('Export failed:', err);
-        this.snackBar.open('Failed to export report. Please try again.', 'Close', ReportsComponent.errorSnackBarConfig);
+        this.error = 'Failed to load report data. Please try again.';
+        this.loading = false;
+        console.error('Report load error:', err);
       }
     });
   }
 
-  viewReport(type: 'college' | 'branch' | 'student'): void {
-    if (type === 'college' && !this.selectedCollegeId) {
-      this.snackBar.open('Please select a college first.', 'Close', ReportsComponent.errorSnackBarConfig);
-      return;
-    }
-    if (type === 'branch' && !this.selectedBranchId) {
-      this.snackBar.open('Please select a branch first.', 'Close', ReportsComponent.errorSnackBarConfig);
-      return;
-    }
-    if (type === 'student' && !this.selectedStudentId) {
-      this.snackBar.open('Please select a student first.', 'Close', ReportsComponent.errorSnackBarConfig);
-      return;
-    }
-    this.activeView = type;
-  }
-  
-  closeView(): void {
-    this.activeView = null;
+  applyFilters(): void {
+    this.loadReport();
   }
 
-  // Email Modal State
-  isEmailModalOpen = false;
-  emailTargetType: 'college' | 'branch' | 'student' | null = null;
-  emailFormat: 'pdf' | 'excel' = 'pdf';
-  emailAddress: string = '';
-  isSendingEmail = false;
-
-  openEmailModal(type: 'college' | 'branch' | 'student', format: 'pdf' | 'excel'): void {
-    if (type === 'college' && !this.selectedCollegeId) {
-      this.snackBar.open('Please select a college first.', 'Close', ReportsComponent.errorSnackBarConfig);
-      return;
-    }
-    if (type === 'branch' && !this.selectedBranchId) {
-      this.snackBar.open('Please select a branch first.', 'Close', ReportsComponent.errorSnackBarConfig);
-      return;
-    }
-    if (type === 'student' && !this.selectedStudentId) {
-      this.snackBar.open('Please select a student first.', 'Close', ReportsComponent.errorSnackBarConfig);
-      return;
-    }
-
-    this.emailTargetType = type;
-    this.emailFormat = format;
-    this.emailAddress = '';
-    this.isEmailModalOpen = true;
+  clearFilters(): void {
+    this.selectedCollegeId = '';
+    this.dateFrom = '';
+    this.dateTo = '';
+    this.academicYear = '';
+    this.loadReport();
   }
 
-  closeEmailModal(): void {
-    this.isEmailModalOpen = false;
-    this.emailTargetType = null;
+  exportPdf(): void {
+    this.reportsService.exportCollegeWisePdf(this.buildFilters());
   }
 
-  sendEmail(): void {
-    if (!this.emailAddress || !this.emailTargetType) return;
+  exportExcel(): void {
+    this.reportsService.exportCollegeWiseExcel(this.buildFilters());
+  }
 
-    let entityId = '';
-    if (this.emailTargetType === 'college') entityId = this.selectedCollegeId;
-    if (this.emailTargetType === 'branch') entityId = this.selectedBranchId;
-    if (this.emailTargetType === 'student') entityId = this.selectedStudentId;
+  // Legacy export (preserved)
+  exportLegacyPdf(): void {
+    this.legacyExport('pdf');
+  }
 
-    this.isSendingEmail = true;
-    this.reportsService.emailReport({
-      targetEmail: this.emailAddress,
-      reportType: this.emailTargetType,
-      entityId: entityId,
-      format: this.emailFormat
-    }).pipe(
-      finalize(() => {
-        this.isSendingEmail = false;
-        this.closeEmailModal();
-      })
-    ).subscribe({
-      next: () => {
-        this.snackBar.open('Report emailed successfully!', 'Close', ReportsComponent.snackBarConfig);
-      },
-      error: (err) => {
-        console.error('Email failed:', err);
-        this.snackBar.open('Failed to email report.', 'Close', ReportsComponent.errorSnackBarConfig);
-      }
-    });
+  exportLegacyExcel(): void {
+    this.legacyExport('excel');
+  }
+
+  getGradeClass(grade: string): string {
+    switch (grade) {
+      case 'A+': case 'A': return 'grade-excellent';
+      case 'B+': case 'B': return 'grade-good';
+      case 'C': return 'grade-average';
+      default: return 'grade-poor';
+    }
+  }
+
+  private buildFilters(): ReportFilters {
+    const filters: ReportFilters = {};
+    if (this.selectedCollegeId) filters.collegeId = this.selectedCollegeId;
+    if (this.dateFrom) filters.dateFrom = this.dateFrom;
+    if (this.dateTo) filters.dateTo = this.dateTo;
+    if (this.academicYear) filters.academicYear = this.academicYear;
+    return filters;
+  }
+
+  private legacyExport(format: 'pdf' | 'excel'): void {
+    const params = new URLSearchParams();
+    if (this.collegeId) params.set('collegeId', this.collegeId);
+    if (this.classId) params.set('classId', this.classId);
+    if (this.batchId) params.set('batchId', this.batchId);
+    if (this.studentId) params.set('studentId', this.studentId);
+    const apiBaseUrl = (this.appConfig.api_url || '').trim().replace(/\/+$/, '');
+    const reportUrl = `${apiBaseUrl}/reports/export/${format}?${params.toString()}`;
+    window.open(reportUrl, '_blank');
   }
 }

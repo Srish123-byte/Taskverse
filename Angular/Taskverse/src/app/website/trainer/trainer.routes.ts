@@ -26,6 +26,7 @@ const routes: Routes = [
       { path: 'assessments-management', component: AssessmentsManagementComponent },
       { path: 'assessments-management/new-assessment', component: NewAssessmentComponent },
       { path: 'assessments-management/edit-assessment/:id', component: NewAssessmentComponent },
+      { path: 'reports', component: ReportsComponent },
       { path: 'manage', component: ManageComponent },
       { path: 'reports', component: ReportsComponent },
       { path: 'help-center', component: HelpCenterComponent }

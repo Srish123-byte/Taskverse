@@ -1,220 +1,86 @@
-<div class="page-container reports-dashboard">
-  <div class="page-eyebrow">College Admin</div>
-  <h2 class="page-title">Institution Reports</h2>
-  <p class="page-welcome">Generate performance reports for your branches and students.</p>
+<div class="page-container reports-page">
+  <div class="page-header">
+    <h2 class="page-title">Reports</h2>
+    <div class="header-actions">
+      <button type="button" class="btn btn-primary" (click)="exportPdf()"><span class="btn-icon">📄</span> Export PDF</button>
+      <button type="button" class="btn btn-success" (click)="exportExcel()"><span class="btn-icon">📊</span> Export Excel</button>
+    </div>
+  </div>
 
-  <div class="page-content">
-    
-    <!-- Page Header -->
-    <header class="page-header">
-      <div class="breadcrumb">Reports / Overview</div>
-      <div class="header-title">
-        <h1>College Analytics</h1>
-        <span class="role-badge">College Admin</span>
+  <div class="card filter-card">
+    <div class="filter-header">
+      <h3>Filters</h3>
+      <button type="button" class="btn btn-text" (click)="clearFilters()">Clear All</button>
+    </div>
+    <div class="filters">
+      <div class="filter-group">
+        <label for="caBranchFilter">Branch</label>
+        <select id="caBranchFilter" [(ngModel)]="selectedBranchId" (change)="applyFilters()">
+          <option value="">All Branches</option>
+          <option *ngFor="let b of branches" [value]="b.id">{{ b.name }}</option>
+        </select>
       </div>
-      <div class="header-desc">
-        Branch and student performance analytics for your institution.
+      <div class="filter-group">
+        <label for="caBatchFilter">Batch</label>
+        <select id="caBatchFilter" [(ngModel)]="selectedBatchId" (change)="applyFilters()">
+          <option value="">All Batches</option>
+          <option *ngFor="let b of batches" [value]="b.id">{{ b.name }}</option>
+        </select>
       </div>
-    </header>
-
-    <!-- KPI Grid -->
-    <section class="kpi-grid" *ngIf="!activeView">
-      <div class="kpi-card">
-        <span class="kpi-label">Total Branches</span>
-        <div class="kpi-value">{{ totals.totalClasses }}</div>
+      <div class="filter-group">
+        <label for="caDateFrom">From Date</label>
+        <input id="caDateFrom" type="date" [(ngModel)]="dateFrom" (change)="applyFilters()" />
       </div>
-      <div class="kpi-card">
-        <span class="kpi-label">Total Batches</span>
-        <div class="kpi-value">{{ totals.totalBatches }}</div>
-      </div>
-      <div class="kpi-card">
-        <span class="kpi-label">Total Students</span>
-        <div class="kpi-value">{{ totals.totalStudents }}</div>
-      </div>
-      <div class="kpi-card">
-        <span class="kpi-label">Average Score</span>
-        <div class="kpi-value">
-          {{ totals.averagePercentage | number:'1.1-1' }}%
-          <span class="trend-up"><span class="material-symbols-outlined">verified</span> {{ totals.passRate | number:'1.1-1' }}% pass</span>
-        </div>
-      </div>
-    </section>
-    <section class="reports-filter-section" *ngIf="!activeView">
-      <div class="filter-header">
-        <h3>Report Context</h3>
-        <p>Select the target entity for your exports.</p>
-      </div>
-      <div class="filter-controls">
-        <div class="form-group">
-          <label>Target Branch (Class)</label>
-          <select [(ngModel)]="selectedBranchId" class="form-control" (change)="onBranchSelect()">
-            <option value="">-- Select Branch --</option>
-            <option *ngFor="let c of classes" [value]="c.classId">{{ c.name }}</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Target Student</label>
-          <select [(ngModel)]="selectedStudentId" class="form-control" [disabled]="!selectedBranchId">
-            <option value="">-- Select Student --</option>
-            <option *ngFor="let s of students" [value]="s.studentId">{{ s.fullName }} ({{ s.email }})</option>
-          </select>
-        </div>
-      </div>
-    </section>
-
-    <!-- Report Cards Section -->
-    <section class="dashboard-grid hero-grid reports-cards-grid" *ngIf="!activeView">
-      
-      <!-- Branch Wise Report Card -->
-      <article class="hero-card report-card">
-        <div class="report-card-icon">
-          <span class="material-symbols-outlined">account_tree</span>
-        </div>
-        <div class="report-card-content">
-          <h3 class="hero-label report-title">Branch Wise Report</h3>
-          <p class="hero-copy report-desc">Detailed performance breakdown for a specific branch (class), highlighting student performance tables and average marks.</p>
-        </div>
-        <div class="report-card-actions">
-          <button class="btn btn-secondary" (click)="viewReport('branch')">
-            <span class="material-symbols-outlined">visibility</span> View
-          </button>
-          <button class="btn btn-primary" (click)="exportReport('branch', 'pdf')" [disabled]="isExportingPdf && activeReportType === 'branch'">
-            <span class="material-symbols-outlined" *ngIf="!(isExportingPdf && activeReportType === 'branch')">picture_as_pdf</span>
-            <span class="spinner" *ngIf="isExportingPdf && activeReportType === 'branch'"></span>
-            PDF
-          </button>
-          <button class="btn btn-primary btn-excel" (click)="exportReport('branch', 'excel')" [disabled]="isExportingExcel && activeReportType === 'branch'">
-            <span class="material-symbols-outlined" *ngIf="!(isExportingExcel && activeReportType === 'branch')">table_view</span>
-            <span class="spinner" *ngIf="isExportingExcel && activeReportType === 'branch'"></span>
-            Excel
-          </button>
-          <button class="btn btn-secondary btn-email" (click)="openEmailModal('branch', 'pdf')">
-            <span class="material-symbols-outlined">mail</span> Email
-          </button>
-        </div>
-      </article>
-
-      <!-- Individual Student Report Card -->
-      <article class="hero-card report-card">
-        <div class="report-card-icon">
-          <span class="material-symbols-outlined">person</span>
-        </div>
-        <div class="report-card-content">
-          <h3 class="hero-label report-title">Individual Student Report</h3>
-          <p class="hero-copy report-desc">In-depth performance review for a single student. Includes assessment breakdowns, identified strengths, weaknesses, and trainer remarks.</p>
-        </div>
-        <div class="report-card-actions">
-          <button class="btn btn-secondary" (click)="viewReport('student')">
-            <span class="material-symbols-outlined">visibility</span> View
-          </button>
-          <button class="btn btn-primary" (click)="exportReport('student', 'pdf')" [disabled]="isExportingPdf && activeReportType === 'student'">
-            <span class="material-symbols-outlined" *ngIf="!(isExportingPdf && activeReportType === 'student')">picture_as_pdf</span>
-            <span class="spinner" *ngIf="isExportingPdf && activeReportType === 'student'"></span>
-            PDF
-          </button>
-          <button class="btn btn-primary btn-excel" (click)="exportReport('student', 'excel')" [disabled]="isExportingExcel && activeReportType === 'student'">
-            <span class="material-symbols-outlined" *ngIf="!(isExportingExcel && activeReportType === 'student')">table_view</span>
-            <span class="spinner" *ngIf="isExportingExcel && activeReportType === 'student'"></span>
-            Excel
-          </button>
-          <button class="btn btn-secondary btn-email" (click)="openEmailModal('student', 'pdf')">
-            <span class="material-symbols-outlined">mail</span> Email
-          </button>
-        </div>
-      </article>
-
-    </section>
-
-    <!-- INLINE VIEW REPORT SECTION -->
-    <section class="inline-report-view" *ngIf="activeView">
-      <div class="view-header">
-        <button class="btn btn-secondary back-btn" (click)="closeView()">
-          <span class="material-symbols-outlined">arrow_back</span> Back to Dashboard
-        </button>
-        <div class="view-actions">
-          <button class="btn btn-primary" (click)="exportReport(activeView === 'branch' ? 'branch' : 'student', 'pdf')" [disabled]="isExportingPdf">
-            <span class="material-symbols-outlined" *ngIf="!isExportingPdf">picture_as_pdf</span>
-            <span class="spinner" *ngIf="isExportingPdf"></span>
-            Export PDF
-          </button>
-          <button class="btn btn-primary btn-excel" (click)="exportReport(activeView === 'branch' ? 'branch' : 'student', 'excel')" [disabled]="isExportingExcel">
-            <span class="material-symbols-outlined" *ngIf="!isExportingExcel">table_view</span>
-            <span class="spinner" *ngIf="isExportingExcel"></span>
-            Export Excel
-          </button>
-        </div>
-      </div>
-
-      <div class="report-canvas">
-        <div class="report-summary" *ngIf="activeView === 'branch'">
-          <h3>{{ selectedBranchName }}</h3>
-          <p>{{ selectedBranchStudents.length }} students in this branch.</p>
-          <div class="table-lite">
-            <div class="table-lite-head">
-              <span>Student</span>
-              <span>Email</span>
-              <span>Assessments</span>
-              <span>Average</span>
-            </div>
-            <div class="table-lite-row" *ngFor="let student of selectedBranchStudents">
-              <span>{{ student.fullName }}</span>
-              <span>{{ student.email }}</span>
-              <span>{{ student.assessmentCount }}</span>
-              <span>{{ student.averagePercentage | number:'1.1-1' }}%</span>
-            </div>
-            <div class="empty-row" *ngIf="selectedBranchStudents.length === 0">No students found for this branch.</div>
-          </div>
-        </div>
-
-        <div class="report-summary" *ngIf="activeView === 'student' && selectedStudent as student">
-          <h3>{{ student.fullName }}</h3>
-          <p>{{ student.email }} <span *ngIf="student.enrollmentNumber">/ {{ student.enrollmentNumber }}</span></p>
-          <div class="student-metrics">
-            <div>
-              <span>Assessments</span>
-              <strong>{{ student.assessmentCount }}</strong>
-            </div>
-            <div>
-              <span>Average Score</span>
-              <strong>{{ student.averagePercentage | number:'1.1-1' }}%</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Inline Email Panel -->
-    <div class="email-panel" *ngIf="isEmailModalOpen && !activeView">
-      <div class="email-modal">
-        <div class="modal-header">
-          <h3>Email {{ emailTargetType | titlecase }} Report</h3>
-          <button class="close-btn" (click)="closeEmailModal()">
-            <span class="material-symbols-outlined">close</span>
-          </button>
-        </div>
-        <div class="modal-body">
-          <p class="modal-desc">Enter one or more comma-separated email addresses to send the generated {{ emailFormat | uppercase }} report.</p>
-          <div class="form-group">
-            <label>Recipient Emails</label>
-            <input type="text" class="form-control" [(ngModel)]="emailAddress" placeholder="admin@college.edu, mentor@college.edu" />
-          </div>
-          <div class="form-group format-selector">
-            <label>Format</label>
-            <div class="radio-group">
-              <label><input type="radio" name="format" [(ngModel)]="emailFormat" value="pdf"> PDF</label>
-              <label><input type="radio" name="format" [(ngModel)]="emailFormat" value="excel"> Excel</label>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" (click)="closeEmailModal()" [disabled]="isSendingEmail">Cancel</button>
-          <button class="btn btn-primary" (click)="sendEmail()" [disabled]="emailRecipients.length === 0 || isSendingEmail">
-            <span class="material-symbols-outlined" *ngIf="!isSendingEmail">send</span>
-            <span class="spinner" *ngIf="isSendingEmail"></span>
-            Send Email
-          </button>
-        </div>
+      <div class="filter-group">
+        <label for="caDateTo">To Date</label>
+        <input id="caDateTo" type="date" [(ngModel)]="dateTo" (change)="applyFilters()" />
       </div>
     </div>
+  </div>
+
+  <div class="loading-state" *ngIf="loading"><div class="spinner"></div><p>Loading report data...</p></div>
+  <div class="error-state" *ngIf="error"><p>{{ error }}</p><button type="button" class="btn btn-primary" (click)="loadReport()">Retry</button></div>
+
+  <div class="summary-cards" *ngIf="report && !loading">
+    <div class="summary-card"><div class="card-icon">🏢</div><div class="card-value">{{ report.summary.totalBranches }}</div><div class="card-label">Total Branches</div></div>
+    <div class="summary-card"><div class="card-icon">👨‍🎓</div><div class="card-value">{{ report.summary.totalStudents }}</div><div class="card-label">Total Students</div></div>
+    <div class="summary-card"><div class="card-icon">👨‍🏫</div><div class="card-value">{{ report.summary.totalTrainers }}</div><div class="card-label">Total Trainers</div></div>
+    <div class="summary-card"><div class="card-icon">📝</div><div class="card-value">{{ report.summary.totalAssessments }}</div><div class="card-label">Total Assessments</div></div>
+    <div class="summary-card highlight"><div class="card-icon">📈</div><div class="card-value">{{ report.summary.averageMarks }}%</div><div class="card-label">Average Marks</div></div>
+    <div class="summary-card highlight"><div class="card-icon">✅</div><div class="card-value">{{ report.summary.overallPassPercentage }}%</div><div class="card-label">Pass Percentage</div></div>
+  </div>
+
+  <div class="card data-table-card" *ngIf="report && !loading">
+    <h3>Branch Wise Performance</h3>
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Branch Name</th><th>Students</th><th>Trainers</th><th>Assessments</th>
+            <th>Avg Marks</th><th>Highest</th><th>Lowest</th><th>Pass %</th>
+            <th>Strongest Topics</th><th>Weakest Topics</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of report.rows; let i = index" [class.alt-row]="i % 2 === 1">
+            <td class="branch-name">{{ row.branchName }}</td>
+            <td>{{ row.totalStudents }}</td>
+            <td>{{ row.totalTrainers }}</td>
+            <td>{{ row.totalAssessments }}</td>
+            <td><strong>{{ row.averageMarks }}%</strong></td>
+            <td class="score-high">{{ row.highestMarks }}%</td>
+            <td class="score-low">{{ row.lowestMarks }}%</td>
+            <td>{{ row.passPercentage }}%</td>
+            <td class="topics-cell"><span class="topic-tag strong" *ngFor="let t of row.strongestTopics">{{ t }}</span></td>
+            <td class="topics-cell"><span class="topic-tag weak" *ngFor="let t of row.weakestTopics">{{ t }}</span></td>
+          </tr>
+          <tr *ngIf="report.rows.length === 0"><td colspan="10" class="no-data">No data available for the selected filters.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="report-meta" *ngIf="report && !loading">
+    <p>Report: {{ report.metadata.reportTitle }} | Generated: {{ report.metadata.generatedDate }} {{ report.metadata.generatedTime }} UTC</p>
   </div>
 </div>
