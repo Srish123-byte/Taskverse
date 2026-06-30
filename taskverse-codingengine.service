@@ -1,0 +1,23 @@
+[Unit]
+Description=Taskverse CodingEngine Service
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/taskverse/codingengine
+
+ExecStart=/usr/bin/dotnet /opt/taskverse/codingengine/Taskverse.API.CodingEngine.Service.dll
+
+Restart=always
+RestartSec=10
+
+KillSignal=SIGINT
+
+SyslogIdentifier=taskverse-codingengine
+
+User=root
+
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://0.0.0.0:5007
+
+[Install]
+WantedBy=multi-user.target

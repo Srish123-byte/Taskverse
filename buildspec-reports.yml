@@ -1,0 +1,19 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      dotnet: 10.0
+
+  build:
+    commands:
+      - echo "Publishing Reports Service..."
+      - dotnet publish API/Taskverse.API.Reports.Service/Taskverse.API.Reports.Service.csproj -c Release -o publish
+      - cp appspec-reports.yml appspec.yml
+
+artifacts:
+  files:
+    - publish/**/*
+    - appspec.yml
+    - taskverse-reports.service
+    - scripts/**/*
