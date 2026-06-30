@@ -13,7 +13,9 @@ echo "${SERVICE_NAME} is running."
 
 sleep 20
 
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5004/api/system || true)
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5004/health || true)
+
+echo "HTTP_CODE=$HTTP_CODE"
 
 if [ "$HTTP_CODE" = "200" ]; then
     echo "Assessments service validation successful."
