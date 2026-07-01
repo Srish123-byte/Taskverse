@@ -81,6 +81,127 @@ $warn:           #fbbf24;
 
   &.pdf   { background: #d94f4f; color: #fff; }
   &.excel { background: #27ae60; color: #051a0d; }
+  &.mail  { background: #4a6bdf; color: #fff; }
+}
+
+// ─── Mail panel ───────────────────────────────────────────────────────────────
+.mail-panel {
+  background: $surface;
+  border: 1px solid $border-strong;
+  border-radius: 14px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.mail-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-bottom: 1px solid $border;
+  font-weight: 700;
+  font-size: 0.95rem;
+
+  mat-icon { color: $accent; font-size: 20px; width: 20px; height: 20px; line-height: 20px; }
+}
+
+.mail-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: $text-muted;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition: color 0.15s;
+  &:hover { color: $text-primary; }
+  mat-icon { font-size: 20px; width: 20px; height: 20px; line-height: 20px; }
+}
+
+.mail-panel-body {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mail-hint { font-size: 0.75rem; color: $text-muted; font-weight: 400; margin-left: 4px; }
+
+.mail-input {
+  padding: 10px 14px;
+  background: $surface-deep;
+  border: 1px solid $border-strong;
+  border-radius: 9px;
+  color: $text-primary;
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  &:focus { border-color: $accent; }
+  &[disabled] { opacity: 0.5; }
+}
+
+.mail-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.mail-send {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 22px !important;
+  mat-spinner { display: inline-block; }
+}
+
+.mail-feedback {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  mat-icon { font-size: 18px; width: 18px; height: 18px; line-height: 18px; }
+  &.success { color: $pass; }
+  &.error   { color: $fail; }
+}
+
+// ─── Question summary action buttons ─────────────────────────────────────────
+.qs-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.qs-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.btn-qs-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+
+  mat-icon { font-size: 15px; width: 15px; height: 15px; line-height: 15px; }
+  &:hover { opacity: 0.82; }
+  &.excel { background: rgba(39, 174, 96, 0.18); color: #4ade80; }
+  &.mail  { background: rgba(74, 107, 223, 0.18); color: #7ba4ff; }
 }
 
 // ─── Tab bar ──────────────────────────────────────────────────────────────────

@@ -212,6 +212,7 @@ public class AssessmentSearchItemDto
     public DateTime? StartDateTime { get; set; }
     public int TotalMarks { get; set; }
     public int DifficultyLevel { get; set; }
+    public Guid[] AssignedBatchIds { get; set; } = [];
 }
 
 public class PagedAssessmentSearchDto

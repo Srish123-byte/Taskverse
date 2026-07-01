@@ -12,6 +12,7 @@ import {
   AssessmentManagementItem,
 } from '../../../common/services/api/assessment-admin.service';
 import { HttpClientService } from '../../../common/services/http/http-client.service';
+import { ReportEmailService } from '../../../common/services/api/report-email.service';
 
 export type ReportTab = 'overview' | 'batch' | 'student';
 
@@ -24,7 +25,6 @@ interface KpiCard {
 interface BranchRow {
   classId: string;
   name: string;
-  department?: string;
   studentCount: number;
   trainerCount: number;
   assessmentCount: number;
@@ -99,10 +99,19 @@ export class ReportsComponent implements OnInit {
 
   readonly today = new Date().toLocaleString();
 
+  // Mail panel state
+  showMailPanel = false;
+  mailPanelFor: 'main' | string = 'main';
+  mailRecipients = '';
+  isSendingEmail = false;
+  emailSendResult: 'success' | 'error' | null = null;
+  emailSendMessage = '';
+
   constructor(
     private readonly collegeAdminService: CollegeAdminService,
     private readonly assessmentAdminService: AssessmentAdminService,
     private readonly http: HttpClientService,
+    private readonly emailService: ReportEmailService,
     private readonly cdr: ChangeDetectorRef
   ) {}
 
@@ -189,6 +198,95 @@ export class ReportsComponent implements OnInit {
   }
 
   exportToExcel(): void {
+    const wb = this.buildMainWorkbook();
+    XLSX.writeFile(wb, `taskverse-${this.activeTab}-report-${Date.now()}.xlsx`);
+  }
+
+  exportToPdf(): void {
+    window.print();
+  }
+
+  exportResultToExcel(result: StudentResult): void {
+    const wb = XLSX.utils.book_new();
+    const rows: any[][] = [
+      ['Taskverse — Question Details'],
+      ['Assessment', result.assessmentName],
+      ['Student', this.selectedStudent?.fullName ?? ''],
+      ['Submitted', result.submittedAt ? result.submittedAt.toLocaleString() : '—'],
+      ['Score', `${result.obtainedMarks} / ${result.totalMarks} (${Number(result.percentage).toFixed(1)}%)`],
+      ['Status', result.status],
+      [],
+      ['Q#', 'Question', 'Type', 'Max Marks', 'Awarded', 'Status', 'Your Answer', 'Correct Answer'],
+      ...result.questionResults.map(q => [
+        q.displayOrder, q.questionText, q.questionType, q.marks, q.awardedMarks,
+        q.status, q.userAnswers?.join(', ') || '—', q.correctAnswers?.join(', ') || '—'
+      ])
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Question Details');
+    XLSX.writeFile(wb, `taskverse-questions-${result.assessmentName.replace(/\s+/g, '-')}-${Date.now()}.xlsx`);
+  }
+
+  openMailPanel(forTarget: 'main' | string): void {
+    this.mailPanelFor = forTarget;
+    this.showMailPanel = true;
+    this.mailRecipients = '';
+    this.emailSendResult = null;
+    this.emailSendMessage = '';
+    this.cdr.detectChanges();
+  }
+
+  closeMailPanel(): void {
+    this.showMailPanel = false;
+    this.emailSendResult = null;
+    this.cdr.detectChanges();
+  }
+
+  sendEmail(): void {
+    const recipients = this.emailService.parseRecipients(this.mailRecipients);
+    if (!recipients.length) {
+      this.emailSendResult = 'error';
+      this.emailSendMessage = 'Please enter at least one valid email address.';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    let wb: XLSX.WorkBook;
+    let fileName: string;
+
+    if (this.mailPanelFor === 'main') {
+      wb = this.buildMainWorkbook();
+      fileName = `taskverse-${this.activeTab}-report-${Date.now()}.xlsx`;
+    } else {
+      const result = this.studentResults.find(r => r.resultId === this.mailPanelFor);
+      if (!result) return;
+      wb = this.buildResultWorkbook(result);
+      fileName = `taskverse-questions-${result.assessmentName.replace(/\s+/g, '-')}-${Date.now()}.xlsx`;
+    }
+
+    const fileBytes = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as Uint8Array;
+    const base64 = btoa(String.fromCharCode(...fileBytes));
+
+    this.isSendingEmail = true;
+    this.emailSendResult = null;
+    this.cdr.detectChanges();
+
+    this.emailService.sendEmail({ recipients, fileName, fileContentBase64: base64 }).subscribe({
+      next: () => {
+        this.isSendingEmail = false;
+        this.emailSendResult = 'success';
+        this.emailSendMessage = `Report sent to ${recipients.join(', ')}.`;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.isSendingEmail = false;
+        this.emailSendResult = 'error';
+        this.emailSendMessage = 'Failed to send email. Please try again.';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  private buildMainWorkbook(): XLSX.WorkBook {
     const wb = XLSX.utils.book_new();
 
     if (this.activeTab === 'overview') {
@@ -200,8 +298,8 @@ export class ReportsComponent implements OnInit {
         ...this.kpiCards.map(c => [c.label, c.value]),
         [],
         ['Branch Performance'],
-        ['Branch / Class', 'Department', 'Students', 'Trainers', 'Assessments'],
-        ...this.branchRows.map(r => [r.name, r.department ?? '—', r.studentCount, r.trainerCount, r.assessmentCount])
+        ['Branch / Class', 'Students', 'Trainers', 'Assessments'],
+        ...this.branchRows.map(r => [r.name, r.studentCount, r.trainerCount, r.assessmentCount])
       ];
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Overview');
 
@@ -231,34 +329,47 @@ export class ReportsComponent implements OnInit {
         ...this.studentResults.map(r => [
           r.assessmentName,
           r.submittedAt ? r.submittedAt.toLocaleDateString() : '—',
-          r.totalMarks,
-          r.obtainedMarks,
+          r.totalMarks, r.obtainedMarks,
           `${Number(r.percentage).toFixed(1)}%`,
-          r.status,
-          r.correctAnswers,
-          r.wrongAnswers,
-          r.unansweredQuestions
+          r.status, r.correctAnswers, r.wrongAnswers, r.unansweredQuestions
         ])
       ];
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryRows), 'Student Report');
 
       const qRows: any[][] = [
-        ['Assessment', 'Q#', 'Question', 'Type', 'Max Marks', 'Awarded', 'Status']
+        ['Assessment', 'Q#', 'Question', 'Type', 'Max Marks', 'Awarded', 'Status', 'Your Answer', 'Correct Answer']
       ];
       for (const result of this.studentResults) {
         for (const q of result.questionResults) {
-          qRows.push([result.assessmentName, q.displayOrder, q.questionText, q.questionType, q.marks, q.awardedMarks, q.status]);
+          qRows.push([result.assessmentName, q.displayOrder, q.questionText, q.questionType, q.marks, q.awardedMarks, q.status, q.userAnswers?.join(', ') || '', q.correctAnswers?.join(', ') || '']);
         }
       }
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(qRows), 'Question Summary');
+      if (qRows.length > 1) {
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(qRows), 'Question Summary');
+      }
     }
 
-    const fileName = `taskverse-${this.activeTab}-report-${Date.now()}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+    return wb;
   }
 
-  exportToPdf(): void {
-    window.print();
+  private buildResultWorkbook(result: StudentResult): XLSX.WorkBook {
+    const wb = XLSX.utils.book_new();
+    const rows: any[][] = [
+      ['Taskverse — Question Details'],
+      ['Assessment', result.assessmentName],
+      ['Student', this.selectedStudent?.fullName ?? ''],
+      ['Submitted', result.submittedAt ? result.submittedAt.toLocaleString() : '—'],
+      ['Score', `${result.obtainedMarks} / ${result.totalMarks} (${Number(result.percentage).toFixed(1)}%)`],
+      ['Status', result.status],
+      [],
+      ['Q#', 'Question', 'Type', 'Max Marks', 'Awarded', 'Status', 'Your Answer', 'Correct Answer'],
+      ...result.questionResults.map(q => [
+        q.displayOrder, q.questionText, q.questionType, q.marks, q.awardedMarks,
+        q.status, q.userAnswers?.join(', ') || '—', q.correctAnswers?.join(', ') || '—'
+      ])
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Question Details');
+    return wb;
   }
 
   private loadReportData(): void {
@@ -304,7 +415,6 @@ export class ReportsComponent implements OnInit {
       return {
         classId: cls.classId,
         name: cls.name,
-        department: cls.department,
         studentCount: cls.totalStudents,
         trainerCount: trainerSet.size,
         assessmentCount
