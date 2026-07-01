@@ -19,7 +19,8 @@ export class StudentShellComponent {
   readonly navItems: StudentNavItem[] = [
     { label: 'Dashboard', route: `/${RouteAddress.Student.Dashboard}`, icon: 'dashboard', iconPath: 'assets/icons/nav/dashboard.svg' },
     { label: 'My Assessments', route: `/${RouteAddress.Student.MyAssessments}`, icon: 'assignment', iconPath: 'assets/icons/nav/assessments.svg' },
-    { label: 'Results', route: `/${RouteAddress.Student.Results}`, icon: 'analytics', iconPath: 'assets/icons/nav/reports.svg' }
+    { label: 'Results', route: `/${RouteAddress.Student.Results}`, icon: 'analytics', iconPath: 'assets/icons/nav/reports.svg' },
+    { label: 'My Reports', route: `/${RouteAddress.Student.Reports}`, icon: 'bar_chart', iconPath: 'assets/icons/nav/reports.svg' }
   ];
   readonly routeAddress = RouteAddress;
 

@@ -1,0 +1,400 @@
+// ─── Design tokens ────────────────────────────────────────────────────────────
+$surface:        #202b42;
+$surface-deep:   #1a2338;
+$surface-hover:  rgba(255, 255, 255, 0.025);
+$border:         rgba(143, 176, 255, 0.1);
+$border-strong:  rgba(143, 176, 255, 0.18);
+$text-primary:   #eef4ff;
+$text-secondary: #8ea0c8;
+$text-muted:     #5e7299;
+$accent:         #65c8ff;
+$pass:           #4ade80;
+$fail:           #f87171;
+$warn:           #fbbf24;
+
+.reports-page { color: $text-primary; padding: 0; }
+
+.print-header { display: none; }
+
+// ─── Page header ──────────────────────────────────────────────────────────────
+.reports-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-weight: 700;
+  color: $accent;
+  margin: 0 0 6px;
+}
+
+.page-title { font-size: 1.85rem; font-weight: 700; margin: 0; line-height: 1.1; }
+
+.export-actions { display: flex; gap: 10px; flex-shrink: 0; align-items: center; }
+
+.btn-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+
+  &:hover:not(:disabled) { opacity: 0.82; }
+  &:active:not(:disabled) { transform: scale(0.97); }
+  mat-icon { font-size: 18px; width: 18px; height: 18px; line-height: 18px; }
+  &.pdf   { background: #d94f4f; color: #fff; }
+  &.excel { background: #27ae60; color: #051a0d; }
+}
+
+// ─── States ───────────────────────────────────────────────────────────────────
+.loading-state, .error-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 64px 0;
+  color: $text-secondary;
+  font-size: 0.95rem;
+}
+
+.error-state { color: $fail; mat-icon { opacity: 0.7; } }
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 48px 24px;
+  color: $text-muted;
+  font-size: 0.9rem;
+  text-align: center;
+
+  mat-icon { font-size: 42px; width: 42px; height: 42px; opacity: 0.25; }
+  p { margin: 0; }
+  .empty-sub { font-size: 0.82rem; }
+  &.full { padding: 80px 24px; }
+}
+
+// ─── KPI row ──────────────────────────────────────────────────────────────────
+.kpi-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+.kpi-card {
+  flex: 1;
+  min-width: 150px;
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: 14px;
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  &.pass { border-color: rgba(74, 222, 128, 0.22); }
+  &.best { border-color: rgba(101, 200, 255, 0.22); }
+}
+
+.kpi-icon { color: $accent; font-size: 22px; width: 22px; height: 22px; line-height: 22px; opacity: 0.7; }
+.kpi-value { font-size: 2rem; font-weight: 700; line-height: 1; }
+.kpi-label { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: $text-secondary; }
+
+// ─── Report panels ────────────────────────────────────────────────────────────
+.report-panel {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 22px;
+  border-bottom: 1px solid $border;
+  font-weight: 700;
+  font-size: 0.975rem;
+
+  mat-icon { color: $accent; font-size: 20px; width: 20px; height: 20px; line-height: 20px; flex-shrink: 0; }
+}
+
+.panel-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(101, 200, 255, 0.12);
+  color: $accent;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  min-width: 24px;
+}
+
+.panel-sub { font-size: 0.85rem; font-weight: 400; color: $text-muted; }
+
+// ─── Tables ───────────────────────────────────────────────────────────────────
+.table-scroll { overflow-x: auto; }
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+
+  th {
+    padding: 11px 16px;
+    background: rgba(11, 20, 39, 0.28);
+    color: $text-muted;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    text-align: left;
+    white-space: nowrap;
+    &.num { text-align: right; }
+  }
+
+  td {
+    padding: 13px 16px;
+    border-top: 1px solid $border;
+    vertical-align: middle;
+    &.num { text-align: right; font-variant-numeric: tabular-nums; }
+  }
+
+  tbody tr:hover td { background: $surface-hover; }
+  .cell-primary { font-weight: 600; color: #f0f6ff; }
+  .cell-muted   { color: $text-secondary; }
+  .fw           { font-weight: 700; }
+  .text-pass    { color: $pass; font-weight: 600; }
+  .text-fail    { color: $fail; font-weight: 600; }
+  .text-muted   { color: $text-muted; }
+}
+
+// ─── Score pills ──────────────────────────────────────────────────────────────
+.score-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  &.pass { background: rgba(74, 222, 128, 0.12); color: $pass; }
+  &.fail { background: rgba(248, 113, 113, 0.12); color: $fail; }
+}
+
+// ─── Status chips ─────────────────────────────────────────────────────────────
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+
+  &.chip-pass    { background: rgba(74, 222, 128, 0.12); color: $pass; }
+  &.chip-fail    { background: rgba(248, 113, 113, 0.12); color: $fail; }
+  &.chip-pending { background: rgba(251, 191, 36, 0.12);  color: $warn; }
+}
+
+// ─── Drill-down section ───────────────────────────────────────────────────────
+.drill-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  padding: 18px 22px;
+  border-bottom: 1px solid $border;
+}
+
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.filter-label { font-size: 0.875rem; font-weight: 600; color: $text-secondary; white-space: nowrap; }
+
+.filter-select {
+  padding: 9px 14px;
+  background: $surface-deep;
+  border: 1px solid $border-strong;
+  border-radius: 9px;
+  color: $text-primary;
+  font-size: 0.9rem;
+  min-width: 260px;
+  cursor: pointer;
+  outline: none;
+  appearance: auto;
+
+  &:focus { border-color: $accent; }
+  option { background: #1a2338; }
+}
+
+.drill-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 52px 24px;
+  color: $text-muted;
+  text-align: center;
+
+  mat-icon { font-size: 42px; width: 42px; height: 42px; opacity: 0.2; }
+  p { font-size: 0.9rem; margin: 0; }
+}
+
+// ─── Attempt KPI mini-row ─────────────────────────────────────────────────────
+.attempt-kpi-row {
+  display: flex;
+  gap: 1px;
+  background: $border;
+  border-top: 1px solid $border;
+  border-bottom: 1px solid $border;
+  overflow-x: auto;
+}
+
+.attempt-kpi {
+  flex: 1;
+  min-width: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 12px;
+  background: $surface;
+  text-align: center;
+
+  &.pass { background: rgba(74, 222, 128, 0.04); }
+  &.fail { background: rgba(248, 113, 113, 0.04); }
+  &.muted { background: $surface; }
+  &.status-kpi.pass   { background: rgba(74, 222, 128, 0.06); }
+  &.status-kpi.fail   { background: rgba(248, 113, 113, 0.06); }
+}
+
+.ak-val {
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1;
+  .pass & { color: $pass; }
+  .fail & { color: $fail; }
+  .muted & { color: $text-secondary; }
+}
+
+.ak-lbl { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: $text-muted; }
+
+.status-text { text-transform: uppercase; font-size: 1rem; }
+
+// ─── Question detail table ────────────────────────────────────────────────────
+.qs-scroll { margin: 0; }
+
+.question-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+
+  th {
+    padding: 9px 14px;
+    text-align: left;
+    color: $text-muted;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid $border;
+    white-space: nowrap;
+    background: rgba(11, 20, 39, 0.28);
+    &.num { text-align: right; }
+  }
+
+  td {
+    padding: 9px 14px;
+    border-top: 1px solid rgba(143, 176, 255, 0.05);
+    vertical-align: top;
+    &.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 52px; }
+  }
+
+  .q-text { max-width: 380px; word-break: break-word; line-height: 1.5; }
+  .q-status-cell { white-space: nowrap; min-width: 100px; }
+  .cell-muted { color: $text-secondary; }
+  .fw { font-weight: 700; }
+}
+
+.qs-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 22px;
+  color: $text-muted;
+  font-size: 0.875rem;
+}
+
+.q-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+
+  .q-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  &.qs-correct   { color: $pass;  .q-dot { background: $pass; } }
+  &.qs-incorrect { color: $fail;  .q-dot { background: $fail; } }
+  &.qs-unanswered,
+  &.qs-skipped   { color: $text-muted; .q-dot { background: $text-muted; } }
+  &.qs-pending   { color: $warn;  .q-dot { background: $warn; } }
+}
+
+// ─── Responsive ───────────────────────────────────────────────────────────────
+@media (max-width: 680px) {
+  .reports-header { flex-direction: column; }
+  .filter-select { min-width: 200px; }
+  .kpi-card { min-width: 130px; }
+  .attempt-kpi { min-width: 72px; padding: 12px 8px; }
+  .ak-val { font-size: 1.15rem; }
+}
+
+// ─── Print ────────────────────────────────────────────────────────────────────
+@media print {
+  .no-print { display: none !important; }
+
+  .print-header {
+    display: block;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #333;
+  }
+
+  .reports-page { color: #111; }
+  .kpi-card { background: #f5f7fa; border: 1px solid #dde2ec; break-inside: avoid; }
+  .kpi-value { color: #111; }
+  .kpi-label { color: #555; }
+  .report-panel { background: #fff; border: 1px solid #dde2ec; break-inside: avoid; }
+  .panel-header { border-bottom-color: #dde2ec; color: #111; mat-icon { color: #555; } }
+  .report-table th { background: #eef0f5; color: #444; }
+  .report-table td { border-top-color: #e8eaf0; color: #222; }
+  .status-chip { border: 1px solid currentColor; background: transparent !important; }
+  .score-pill { border: 1px solid currentColor; background: transparent !important; }
+  .q-status { color: #333 !important; }
+  .q-dot { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}

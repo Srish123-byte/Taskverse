@@ -57,6 +57,7 @@ export const RouteAddress = {
     AssessmentRunner: 'student/my-assessments/attempts',
     Results:          'student/results',
     AttemptResults:   'student/results/attempts',
+    Reports:          'student/reports',
     HelpCenter:       'student/help-center'
   }
 };

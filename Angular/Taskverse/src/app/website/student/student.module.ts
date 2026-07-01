@@ -8,6 +8,7 @@ import { MyAssessmentsComponent } from './my-assessments/my-assessments.componen
 import { AssessmentRunnerComponent } from './assessment-runner/assessment-runner.component';
 import { ResultsComponent } from './results/results.component';
 import { HelpCenterComponent } from './help-center/help-center.component';
+import { ReportsComponent } from './reports/reports.component';
 
 @NgModule({
   declarations: [
@@ -16,7 +17,8 @@ import { HelpCenterComponent } from './help-center/help-center.component';
     MyAssessmentsComponent,
     AssessmentRunnerComponent,
     ResultsComponent,
-    HelpCenterComponent
+    HelpCenterComponent,
+    ReportsComponent
   ],
   imports: [
     CommonModule,
