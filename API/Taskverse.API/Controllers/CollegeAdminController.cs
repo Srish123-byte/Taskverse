@@ -13,6 +13,7 @@ namespace Taskverse.Api.Controllers;
 public class CollegeAdminController : TaskverseBaseController
 {
     private const string CollegeAdminRole = "CollegeAdmin";
+    private const string TrainerRole = "Trainer";
     private static readonly ILog _log = LogManager.GetLogger(typeof(CollegeAdminController));
 
     private readonly ICollegeAdminOrchestrator _collegeAdminOrchestrator;
@@ -444,9 +445,56 @@ public class CollegeAdminController : TaskverseBaseController
         }
     }
 
+    // ── Report read-only endpoints (also accessible by Trainer) ─────────────────
+
+    [HttpGet("reports/classes")]
+    [SwaggerResponse(200, "College classes and batches for reporting", typeof(ClassConfigurationResponseModel))]
+    [SwaggerResponse(400, "CollegeId header is missing or invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> GetReportClasses()
+    {
+        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        var dto = await _collegeAdminOrchestrator.GetClassConfiguration(collegeId);
+        return Ok(dto.ToResponseModel());
+    }
+
+    [HttpGet("reports/students")]
+    [SwaggerResponse(200, "Approved students for reporting", typeof(List<ApprovedStudentResponseModel>))]
+    [SwaggerResponse(400, "CollegeId header is missing or invalid")]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> GetReportStudents()
+    {
+        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var tenantCheck = TryGetCollegeId(out var collegeId);
+        if (tenantCheck is not null) return tenantCheck;
+
+        var dtos = await _collegeAdminOrchestrator.GetApprovedStudents(collegeId);
+        return Ok(dtos.Select(dto => dto.ToResponseModel()).ToList());
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+
     private IActionResult? EnsureCollegeAdminAccess()
     {
         if (User?.Identity?.IsAuthenticated != true || !User.IsInRole(CollegeAdminRole))
+        {
+            return Forbid();
+        }
+
+        return null;
+    }
+
+    private IActionResult? EnsureCollegeAdminOrTrainerAccess()
+    {
+        if (User?.Identity?.IsAuthenticated != true ||
+            (!User.IsInRole(CollegeAdminRole) && !User.IsInRole(TrainerRole)))
         {
             return Forbid();
         }

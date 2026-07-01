@@ -48,10 +48,13 @@ interface QuestionResult {
   marks: number;
   awardedMarks: number;
   status: string;
+  userAnswers: string[];
+  correctAnswers: string[];
 }
 
 interface StudentResult {
   resultId: string;
+  attemptId: string;
   assessmentName: string;
   submittedAt?: Date;
   totalMarks: number;
@@ -63,6 +66,8 @@ interface StudentResult {
   wrongAnswers: number;
   unansweredQuestions: number;
   questionResults: QuestionResult[];
+  questionsLoading: boolean;
+  questionsFetched: boolean;
 }
 
 @Component({
@@ -139,7 +144,30 @@ export class ReportsComponent implements OnInit {
   }
 
   toggleQuestionSummary(resultId: string): void {
-    this.expandedResultId = this.expandedResultId === resultId ? null : resultId;
+    if (this.expandedResultId === resultId) {
+      this.expandedResultId = null;
+      return;
+    }
+    this.expandedResultId = resultId;
+
+    const result = this.studentResults.find(r => r.resultId === resultId);
+    if (!result || result.questionsFetched || result.questionsLoading) return;
+
+    result.questionsLoading = true;
+    this.http.get<any>(`results/students/attempts/${result.attemptId}`).subscribe({
+      next: (detail) => {
+        const mapped = this.mapStudentResult(detail);
+        result.questionResults = mapped.questionResults;
+        result.questionsLoading = false;
+        result.questionsFetched = true;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        result.questionsLoading = false;
+        result.questionsFetched = true;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   get selectedStudent(): ApprovedStudent | undefined {
@@ -314,6 +342,7 @@ export class ReportsComponent implements OnInit {
     const submittedRaw = r.submittedAt ?? r.submitted_at;
     return {
       resultId: r.resultId ?? r.result_id ?? '',
+      attemptId: r.attemptId ?? r.attempt_id ?? '',
       assessmentName: r.assessmentName ?? r.assessment_name ?? '',
       submittedAt: submittedRaw ? new Date(submittedRaw) : undefined,
       totalMarks: r.totalMarks ?? r.total_marks ?? 0,
@@ -330,8 +359,12 @@ export class ReportsComponent implements OnInit {
         questionType: q.questionType ?? q.question_type ?? '',
         marks: q.marks ?? 0,
         awardedMarks: q.awardedMarks ?? q.awarded_marks ?? 0,
-        status: q.status ?? ''
-      }))
+        status: q.status ?? '',
+        userAnswers: q.userAnswers ?? q.user_answers ?? [],
+        correctAnswers: q.correctAnswers ?? q.correct_answers ?? []
+      })),
+      questionsLoading: false,
+      questionsFetched: false
     };
   }
 }

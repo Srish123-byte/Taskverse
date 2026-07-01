@@ -201,6 +201,18 @@ export class CollegeAdminService {
       .pipe(map(items => (items ?? []).map(item => this.mapSubject(item))));
   }
 
+  getReportClassConfiguration(): Observable<ClassConfiguration> {
+    return this.http
+      .get<any>(`${this.url}/reports/classes`)
+      .pipe(map(configuration => this.mapConfiguration(configuration)));
+  }
+
+  getReportStudents(): Observable<ApprovedStudent[]> {
+    return this.http
+      .get<any[]>(`${this.url}/reports/students`)
+      .pipe(map(items => (items ?? []).map(item => this.mapStudent(item))));
+  }
+
   assignBatchTrainers(
     classId: string,
     batchId: string,

@@ -5,6 +5,7 @@ import { CoursesComponent } from './courses/courses.component';
 import { StudentsComponent } from './students/students.component';
 import { ManageComponent } from './manage/manage.component';
 import { HelpCenterComponent } from './help-center/help-center.component';
+import { ReportsComponent } from './reports/reports.component';
 import { QuestionsManagementComponent } from './questions-management/questions-management.component';
 import { QuestionEditorPageComponent } from './question-editor/question-editor.component';
 import { AssessmentsManagementComponent } from './assessments-management/assessments-management.component';
@@ -25,6 +26,7 @@ const routes: Routes = [
       { path: 'assessments-management', component: AssessmentsManagementComponent },
       { path: 'assessments-management/new-assessment', component: NewAssessmentComponent },
       { path: 'assessments-management/edit-assessment/:id', component: NewAssessmentComponent },
+      { path: 'reports', component: ReportsComponent },
       { path: 'manage', component: ManageComponent },
       { path: 'help-center', component: HelpCenterComponent }
     ]

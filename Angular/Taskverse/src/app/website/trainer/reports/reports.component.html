@@ -1,0 +1,238 @@
+<div class="reports-page">
+
+  <!-- Print-only header -->
+  <div class="print-header">
+    <div class="print-logo">Taskverse</div>
+    <h1 class="print-title">Student Performance Report</h1>
+    <p class="print-meta">Batch: {{ selectedBatchName }} | Generated: {{ today }}</p>
+  </div>
+
+  <!-- Page header -->
+  <header class="reports-header no-print">
+    <div>
+      <p class="eyebrow">Analytics</p>
+      <h1 class="page-title">Reports</h1>
+    </div>
+    <div class="export-actions" *ngIf="selectedStudent && studentResults.length > 0">
+      <button class="btn-export pdf" (click)="exportToPdf()">
+        <mat-icon>picture_as_pdf</mat-icon>
+        Export PDF
+      </button>
+      <button class="btn-export excel" (click)="exportToExcel()">
+        <mat-icon>table_view</mat-icon>
+        Export Excel
+      </button>
+    </div>
+  </header>
+
+  <!-- Loading batches -->
+  <div *ngIf="isLoadingStructure" class="loading-state">
+    <mat-spinner [diameter]="36"></mat-spinner>
+    <span>Loading your batches…</span>
+  </div>
+
+  <ng-container *ngIf="!isLoadingStructure">
+
+    <!-- Batch + Student pickers -->
+    <div class="picker-panel no-print">
+      <div class="filter-bar">
+        <label class="filter-label" for="batchPicker">Select Batch</label>
+        <select
+          id="batchPicker"
+          class="filter-select"
+          [(ngModel)]="selectedBatchId"
+          (change)="onBatchChange()">
+          <option value="">— Choose a batch —</option>
+          <option *ngFor="let b of batches" [value]="b.batchId">
+            {{ b.className }} / {{ b.batchName }}
+          </option>
+        </select>
+      </div>
+
+      <div class="filter-bar" *ngIf="selectedBatchId">
+        <label class="filter-label" for="studentPicker">Select Student</label>
+        <select
+          id="studentPicker"
+          class="filter-select wide"
+          [(ngModel)]="selectedStudentId"
+          (change)="onStudentChange()">
+          <option value="">— Choose a student —</option>
+          <option *ngFor="let s of studentsInBatch" [value]="s.studentId">
+            {{ s.fullName }} ({{ s.email }})
+          </option>
+        </select>
+        <span class="filter-count" *ngIf="studentsInBatch.length > 0">
+          {{ studentsInBatch.length }} student{{ studentsInBatch.length !== 1 ? 's' : '' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- No batch selected -->
+    <div *ngIf="!selectedBatchId && batches.length > 0" class="prompt-state">
+      <mat-icon>groups</mat-icon>
+      <p>Select a batch above to begin.</p>
+    </div>
+
+    <!-- No batches at all -->
+    <div *ngIf="batches.length === 0" class="prompt-state">
+      <mat-icon>inbox</mat-icon>
+      <p>You don't have any batches assigned yet.</p>
+    </div>
+
+    <!-- No student selected -->
+    <div *ngIf="selectedBatchId && !selectedStudentId" class="prompt-state">
+      <mat-icon>person_search</mat-icon>
+      <p>Select a student to view their performance report.</p>
+    </div>
+
+    <!-- Loading student results -->
+    <div *ngIf="isLoadingStudentResults" class="loading-state">
+      <mat-spinner [diameter]="28"></mat-spinner>
+      <span>Loading results…</span>
+    </div>
+
+    <!-- Student results -->
+    <ng-container *ngIf="!isLoadingStudentResults && selectedStudentId">
+
+      <!-- KPI cards -->
+      <div class="student-kpi-row" *ngIf="studentResults.length > 0">
+        <div class="kpi-card mini">
+          <span class="kpi-value">{{ studentResults.length }}</span>
+          <span class="kpi-label">Assessments Taken</span>
+        </div>
+        <div class="kpi-card mini">
+          <span class="kpi-value">{{ studentAvgScore }}</span>
+          <span class="kpi-label">Average Score</span>
+        </div>
+        <div class="kpi-card mini pass">
+          <span class="kpi-value">{{ studentPassCount }}</span>
+          <span class="kpi-label">Passed</span>
+        </div>
+        <div class="kpi-card mini fail">
+          <span class="kpi-value">{{ studentResults.length - studentPassCount }}</span>
+          <span class="kpi-label">Failed</span>
+        </div>
+      </div>
+
+      <!-- Assessment results table -->
+      <div class="report-panel">
+        <div class="panel-header">
+          <mat-icon>assignment_turned_in</mat-icon>
+          <span>Assessment Results</span>
+          <span class="panel-subtitle" *ngIf="selectedStudent"> — {{ selectedStudent.fullName }}</span>
+        </div>
+
+        <div class="table-scroll" *ngIf="studentResults.length > 0; else noResults">
+          <table class="report-table expandable-table">
+            <thead>
+              <tr>
+                <th class="col-toggle"></th>
+                <th>Assessment</th>
+                <th>Submitted</th>
+                <th class="num">Total</th>
+                <th class="num">Score</th>
+                <th class="num">%</th>
+                <th>Status</th>
+                <th class="num">Questions</th>
+                <th class="num">Correct</th>
+                <th class="num">Wrong</th>
+                <th class="num">Skipped</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngFor="let result of studentResults">
+                <tr
+                  class="result-row"
+                  [class.row-expanded]="expandedResultId === result.resultId"
+                  (click)="toggleQuestionSummary(result.resultId)">
+                  <td class="col-toggle">
+                    <mat-icon class="expand-icon">
+                      {{ expandedResultId === result.resultId ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}
+                    </mat-icon>
+                  </td>
+                  <td class="cell-primary">{{ result.assessmentName }}</td>
+                  <td class="cell-muted">
+                    {{ result.submittedAt ? (result.submittedAt | date:'dd MMM yyyy, h:mm a') : '—' }}
+                  </td>
+                  <td class="num">{{ result.totalMarks }}</td>
+                  <td class="num fw">{{ result.obtainedMarks }}</td>
+                  <td class="num">{{ result.percentage | number:'1.1-1' }}%</td>
+                  <td>
+                    <span class="status-chip" [ngClass]="'chip-' + (result.status | lowercase)">
+                      {{ result.status }}
+                    </span>
+                  </td>
+                  <td class="num">{{ result.totalQuestions }}</td>
+                  <td class="num text-pass">{{ result.correctAnswers }}</td>
+                  <td class="num text-fail">{{ result.wrongAnswers }}</td>
+                  <td class="num text-muted">{{ result.unansweredQuestions }}</td>
+                </tr>
+
+                <!-- Question summary (expanded) -->
+                <tr *ngIf="expandedResultId === result.resultId" class="question-detail-row">
+                  <td colspan="11">
+                    <div class="question-summary-panel">
+                      <div class="qs-title">Question Summary</div>
+
+                      <div *ngIf="result.questionsLoading" class="qs-loading">
+                        <mat-spinner [diameter]="22"></mat-spinner>
+                        <span>Loading question details…</span>
+                      </div>
+
+                      <ng-container *ngIf="!result.questionsLoading">
+                        <div *ngIf="result.questionResults.length > 0; else noQuestions">
+                          <table class="question-table">
+                            <thead>
+                              <tr>
+                                <th class="num">#</th>
+                                <th>Question</th>
+                                <th>Type</th>
+                                <th class="num">Max</th>
+                                <th class="num">Awarded</th>
+                                <th>Status</th>
+                                <th>Student's Answer</th>
+                                <th>Correct Answer</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr *ngFor="let q of result.questionResults">
+                                <td class="num cell-muted">{{ q.displayOrder }}</td>
+                                <td class="q-text">{{ q.questionText }}</td>
+                                <td class="cell-muted">{{ q.questionType }}</td>
+                                <td class="num">{{ q.marks }}</td>
+                                <td class="num fw">{{ q.awardedMarks }}</td>
+                                <td>
+                                  <span class="q-status" [ngClass]="'qs-' + (q.status | lowercase)">
+                                    <span class="q-dot"></span>{{ q.status }}
+                                  </span>
+                                </td>
+                                <td class="cell-muted">{{ q.userAnswers?.join(', ') || '—' }}</td>
+                                <td class="cell-muted">{{ q.correctAnswers?.join(', ') || '—' }}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <ng-template #noQuestions>
+                          <div class="qs-empty">Question-level details are not available for this result.</div>
+                        </ng-template>
+                      </ng-container>
+                    </div>
+                  </td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+
+        <ng-template #noResults>
+          <div class="empty-state">
+            <mat-icon>assignment</mat-icon>
+            <span>No results found for this student.</span>
+          </div>
+        </ng-template>
+      </div>
+    </ng-container>
+
+  </ng-container>
+</div>

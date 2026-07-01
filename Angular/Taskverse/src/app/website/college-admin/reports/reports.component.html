@@ -283,38 +283,49 @@
                       <div class="question-summary-panel">
                         <div class="qs-title">Question Summary</div>
 
-                        <div *ngIf="result.questionResults.length > 0; else noQuestions">
-                          <table class="question-table">
-                            <thead>
-                              <tr>
-                                <th class="num">#</th>
-                                <th>Question</th>
-                                <th>Type</th>
-                                <th class="num">Max</th>
-                                <th class="num">Awarded</th>
-                                <th>Status</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <tr *ngFor="let q of result.questionResults">
-                                <td class="num cell-muted">{{ q.displayOrder }}</td>
-                                <td class="q-text">{{ q.questionText }}</td>
-                                <td class="cell-muted">{{ q.questionType }}</td>
-                                <td class="num">{{ q.marks }}</td>
-                                <td class="num fw">{{ q.awardedMarks }}</td>
-                                <td>
-                                  <span class="q-status" [ngClass]="'qs-' + (q.status | lowercase)">
-                                    <span class="q-dot"></span>{{ q.status }}
-                                  </span>
-                                </td>
-                              </tr>
-                            </tbody>
-                          </table>
+                        <div *ngIf="result.questionsLoading" class="qs-loading">
+                          <mat-spinner [diameter]="22"></mat-spinner>
+                          <span>Loading question details…</span>
                         </div>
 
-                        <ng-template #noQuestions>
-                          <div class="qs-empty">Question-level details are not available for this result.</div>
-                        </ng-template>
+                        <ng-container *ngIf="!result.questionsLoading">
+                          <div *ngIf="result.questionResults.length > 0; else noQuestions">
+                            <table class="question-table">
+                              <thead>
+                                <tr>
+                                  <th class="num">#</th>
+                                  <th>Question</th>
+                                  <th>Type</th>
+                                  <th class="num">Max</th>
+                                  <th class="num">Awarded</th>
+                                  <th>Status</th>
+                                  <th>Your Answer</th>
+                                  <th>Correct Answer</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr *ngFor="let q of result.questionResults">
+                                  <td class="num cell-muted">{{ q.displayOrder }}</td>
+                                  <td class="q-text">{{ q.questionText }}</td>
+                                  <td class="cell-muted">{{ q.questionType }}</td>
+                                  <td class="num">{{ q.marks }}</td>
+                                  <td class="num fw">{{ q.awardedMarks }}</td>
+                                  <td>
+                                    <span class="q-status" [ngClass]="'qs-' + (q.status | lowercase)">
+                                      <span class="q-dot"></span>{{ q.status }}
+                                    </span>
+                                  </td>
+                                  <td class="cell-muted">{{ q.userAnswers?.join(', ') || '—' }}</td>
+                                  <td class="cell-muted">{{ q.correctAnswers?.join(', ') || '—' }}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+
+                          <ng-template #noQuestions>
+                            <div class="qs-empty">Question-level details are not available for this result.</div>
+                          </ng-template>
+                        </ng-container>
                       </div>
                     </td>
                   </tr>

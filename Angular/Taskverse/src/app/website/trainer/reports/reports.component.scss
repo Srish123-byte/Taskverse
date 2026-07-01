@@ -12,24 +12,16 @@ $pass:           #4ade80;
 $fail:           #f87171;
 $warn:           #fbbf24;
 
-// ─── Page shell ───────────────────────────────────────────────────────────────
-.reports-page {
-  color: $text-primary;
-  padding: 0;
-}
+.reports-page { color: $text-primary; padding: 0; }
 
-// ─── Print-only header ────────────────────────────────────────────────────────
-.print-header {
-  display: none;
-}
+.print-header { display: none; }
 
-// ─── Page header ──────────────────────────────────────────────────────────────
 .reports-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 
 .eyebrow {
@@ -41,20 +33,9 @@ $warn:           #fbbf24;
   margin: 0 0 6px;
 }
 
-.page-title {
-  font-size: 1.85rem;
-  font-weight: 700;
-  margin: 0;
-  line-height: 1.1;
-}
+.page-title { font-size: 1.85rem; font-weight: 700; margin: 0; line-height: 1.1; }
 
-// ─── Export buttons ───────────────────────────────────────────────────────────
-.export-actions {
-  display: flex;
-  gap: 10px;
-  flex-shrink: 0;
-  align-items: center;
-}
+.export-actions { display: flex; gap: 10px; flex-shrink: 0; align-items: center; }
 
 .btn-export {
   display: inline-flex;
@@ -72,55 +53,22 @@ $warn:           #fbbf24;
   &:active:not(:disabled) { transform: scale(0.97); }
   &:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  mat-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
-    line-height: 18px;
-  }
-
+  mat-icon { font-size: 18px; width: 18px; height: 18px; line-height: 18px; }
   &.pdf   { background: #d94f4f; color: #fff; }
   &.excel { background: #27ae60; color: #051a0d; }
 }
 
-// ─── Tab bar ──────────────────────────────────────────────────────────────────
-.tab-bar {
+// ─── Picker panel ─────────────────────────────────────────────────────────────
+.picker-panel {
+  margin-bottom: 24px;
+  padding: 18px 22px;
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: 14px;
   display: flex;
-  gap: 2px;
-  border-bottom: 1px solid $border;
-  margin-bottom: 28px;
-}
-
-.tab-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 22px;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: $text-secondary;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-  margin-bottom: -1px;
-
-  mat-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
-    line-height: 18px;
-  }
-
-  &.active {
-    color: $accent;
-    border-bottom-color: $accent;
-  }
-
-  &:hover:not(.active) {
-    color: $text-primary;
-  }
+  flex-wrap: wrap;
+  gap: 0;
+  flex-direction: column;
 }
 
 // ─── Loading ──────────────────────────────────────────────────────────────────
@@ -134,14 +82,53 @@ $warn:           #fbbf24;
   font-size: 0.95rem;
 }
 
-// ─── KPI cards ────────────────────────────────────────────────────────────────
-.kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
+// ─── Filters ──────────────────────────────────────────────────────────────────
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+
+  &:last-child { margin-bottom: 0; }
 }
 
+.filter-label { font-size: 0.875rem; font-weight: 600; color: $text-secondary; white-space: nowrap; }
+
+.filter-select {
+  padding: 9px 14px;
+  background: $surface-deep;
+  border: 1px solid $border-strong;
+  border-radius: 9px;
+  color: $text-primary;
+  font-size: 0.9rem;
+  min-width: 240px;
+  cursor: pointer;
+  outline: none;
+  appearance: auto;
+
+  &.wide { min-width: 360px; }
+  &:focus { border-color: $accent; }
+  option { background: #1a2338; }
+}
+
+.filter-count { font-size: 0.8rem; color: $text-muted; }
+
+// ─── Prompt states ────────────────────────────────────────────────────────────
+.prompt-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 80px 24px;
+  color: $text-muted;
+  text-align: center;
+
+  mat-icon { font-size: 52px; width: 52px; height: 52px; opacity: 0.25; }
+  p { font-size: 0.95rem; margin: 0; }
+}
+
+// ─── KPI cards ────────────────────────────────────────────────────────────────
 .student-kpi-row {
   display: flex;
   gap: 14px;
@@ -158,78 +145,13 @@ $warn:           #fbbf24;
   flex-direction: column;
   gap: 10px;
 
-  &.mini {
-    padding: 16px 20px;
-    gap: 6px;
-    min-width: 140px;
-  }
-
+  &.mini { padding: 16px 20px; gap: 6px; min-width: 140px; }
   &.pass { border-color: rgba(74, 222, 128, 0.22); }
   &.fail { border-color: rgba(248, 113, 113, 0.22); }
 }
 
-.kpi-icon {
-  color: $accent;
-  font-size: 22px;
-  width: 22px;
-  height: 22px;
-  line-height: 22px;
-}
-
-.kpi-value {
-  font-size: 2rem;
-  font-weight: 700;
-  line-height: 1;
-
-  .mini & { font-size: 1.6rem; }
-}
-
-.kpi-label {
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: $text-secondary;
-}
-
-// ─── Filters ──────────────────────────────────────────────────────────────────
-.filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-
-.filter-label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: $text-secondary;
-  white-space: nowrap;
-}
-
-.filter-select {
-  padding: 9px 14px;
-  background: $surface-deep;
-  border: 1px solid $border-strong;
-  border-radius: 9px;
-  color: $text-primary;
-  font-size: 0.9rem;
-  min-width: 240px;
-  cursor: pointer;
-  outline: none;
-  appearance: auto;
-
-  &.wide { min-width: 360px; }
-  &:focus { border-color: $accent; }
-
-  option { background: #1a2338; }
-}
-
-.filter-count {
-  font-size: 0.8rem;
-  color: $text-muted;
-}
+.kpi-value { font-size: 2rem; font-weight: 700; line-height: 1; .mini & { font-size: 1.6rem; } }
+.kpi-label { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: $text-secondary; }
 
 // ─── Report panels ────────────────────────────────────────────────────────────
 .report-panel {
@@ -249,26 +171,13 @@ $warn:           #fbbf24;
   font-weight: 700;
   font-size: 0.975rem;
 
-  mat-icon {
-    color: $accent;
-    font-size: 20px;
-    width: 20px;
-    height: 20px;
-    line-height: 20px;
-    flex-shrink: 0;
-  }
+  mat-icon { color: $accent; font-size: 20px; width: 20px; height: 20px; line-height: 20px; flex-shrink: 0; }
 }
 
-.panel-subtitle {
-  font-weight: 400;
-  color: $text-secondary;
-  margin-left: 2px;
-}
+.panel-subtitle { font-weight: 400; color: $text-secondary; margin-left: 2px; }
 
 // ─── Tables ───────────────────────────────────────────────────────────────────
-.table-scroll {
-  overflow-x: auto;
-}
+.table-scroll { overflow-x: auto; }
 
 .report-table {
   width: 100%;
@@ -285,7 +194,6 @@ $warn:           #fbbf24;
     letter-spacing: 0.09em;
     text-align: left;
     white-space: nowrap;
-
     &.num { text-align: right; }
   }
 
@@ -293,12 +201,10 @@ $warn:           #fbbf24;
     padding: 13px 16px;
     border-top: 1px solid $border;
     vertical-align: middle;
-
     &.num { text-align: right; font-variant-numeric: tabular-nums; }
   }
 
   tbody tr:hover td { background: $surface-hover; }
-
   .cell-primary { font-weight: 600; color: #f0f6ff; }
   .cell-muted   { color: $text-secondary; }
   .fw           { font-weight: 700; }
@@ -323,18 +229,14 @@ $warn:           #fbbf24;
   &.chip-pending { background: rgba(251, 191, 36, 0.12);  color: $warn; }
 }
 
-// ─── Expandable student rows ──────────────────────────────────────────────────
+// ─── Expandable rows ──────────────────────────────────────────────────────────
 .expandable-table .result-row {
   cursor: pointer;
   transition: background 0.1s;
-
   &.row-expanded td { background: rgba(101, 200, 255, 0.04); }
 }
 
-.col-toggle {
-  width: 42px;
-  text-align: center;
-}
+.col-toggle { width: 42px; text-align: center; }
 
 .expand-icon {
   font-size: 20px;
@@ -347,15 +249,10 @@ $warn:           #fbbf24;
 }
 
 .result-row:hover .expand-icon,
-.result-row.row-expanded .expand-icon {
-  color: $accent;
-}
+.result-row.row-expanded .expand-icon { color: $accent; }
 
 // ─── Question summary panel ───────────────────────────────────────────────────
-.question-detail-row td {
-  padding: 0 !important;
-  background: $surface-deep;
-}
+.question-detail-row td { padding: 0 !important; background: $surface-deep; }
 
 .question-summary-panel {
   padding: 16px 24px 20px;
@@ -369,6 +266,15 @@ $warn:           #fbbf24;
   letter-spacing: 0.12em;
   color: $text-muted;
   margin-bottom: 12px;
+}
+
+.qs-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0;
+  color: $text-muted;
+  font-size: 0.875rem;
 }
 
 .question-table {
@@ -385,7 +291,6 @@ $warn:           #fbbf24;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     border-bottom: 1px solid $border;
-
     &.num { text-align: right; }
   }
 
@@ -393,16 +298,10 @@ $warn:           #fbbf24;
     padding: 9px 12px;
     border-top: 1px solid rgba(143, 176, 255, 0.05);
     vertical-align: top;
-
     &.num { text-align: right; font-variant-numeric: tabular-nums; }
   }
 
-  .q-text {
-    max-width: 440px;
-    word-break: break-word;
-    line-height: 1.5;
-  }
-
+  .q-text { max-width: 440px; word-break: break-word; line-height: 1.5; }
   .fw { font-weight: 700; }
 }
 
@@ -427,22 +326,9 @@ $warn:           #fbbf24;
   &.qs-pending   { color: $warn; .q-dot { background: $warn; } }
 }
 
-.qs-loading {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 0;
-  color: $text-muted;
-  font-size: 0.875rem;
-}
+.qs-empty { padding: 16px 0 4px; color: $text-muted; font-size: 0.875rem; }
 
-.qs-empty {
-  padding: 16px 0 4px;
-  color: $text-muted;
-  font-size: 0.875rem;
-}
-
-// ─── Empty & prompt states ────────────────────────────────────────────────────
+// ─── Empty state ──────────────────────────────────────────────────────────────
 .empty-state {
   display: flex;
   align-items: center;
@@ -451,44 +337,15 @@ $warn:           #fbbf24;
   padding: 48px 24px;
   color: $text-muted;
   font-size: 0.9rem;
-
   mat-icon { font-size: 22px; width: 22px; height: 22px; opacity: 0.4; }
 }
 
-.student-prompt {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  padding: 80px 24px;
-  color: $text-muted;
-  text-align: center;
-
-  mat-icon { font-size: 52px; width: 52px; height: 52px; opacity: 0.25; }
-  p { font-size: 0.95rem; margin: 0; }
-}
-
-// ─── Tab content animation ────────────────────────────────────────────────────
-.tab-content {
-  animation: tabIn 0.18s ease;
-}
-
-@keyframes tabIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
 // ─── Responsive ───────────────────────────────────────────────────────────────
-@media (max-width: 1100px) {
-  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
 @media (max-width: 680px) {
-  .kpi-grid { grid-template-columns: 1fr 1fr; }
   .reports-header { flex-direction: column; }
-  .tab-btn { padding: 10px 14px; font-size: 0.82rem; }
   .filter-select { min-width: 200px; }
   .filter-select.wide { min-width: 260px; }
+  .picker-panel { padding: 14px 16px; }
 }
 
 // ─── Print styles ─────────────────────────────────────────────────────────────
@@ -502,70 +359,18 @@ $warn:           #fbbf24;
     border-bottom: 2px solid #333;
   }
 
-  .print-logo {
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: #555;
-    margin-bottom: 6px;
-  }
-
-  .print-title {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: #111;
-    margin: 0 0 4px;
-  }
-
-  .print-meta {
-    font-size: 0.8rem;
-    color: #666;
-    margin: 0;
-  }
-
   .reports-page { color: #111; }
-
-  .kpi-card {
-    background: #f5f7fa;
-    border: 1px solid #dde2ec;
-    break-inside: avoid;
-  }
-
+  .kpi-card { background: #f5f7fa; border: 1px solid #dde2ec; break-inside: avoid; }
   .kpi-value { color: #111; }
   .kpi-label { color: #555; }
-
-  .report-panel {
-    background: #fff;
-    border: 1px solid #dde2ec;
-    break-inside: avoid;
-  }
-
-  .panel-header {
-    border-bottom-color: #dde2ec;
-    color: #111;
-    mat-icon { color: #555; }
-  }
-
-  .report-table th {
-    background: #eef0f5;
-    color: #444;
-  }
-
-  .report-table td {
-    border-top-color: #e8eaf0;
-    color: #222;
-  }
-
-  .status-chip {
-    border: 1px solid currentColor;
-    background: transparent !important;
-  }
-
+  .report-panel { background: #fff; border: 1px solid #dde2ec; break-inside: avoid; }
+  .panel-header { border-bottom-color: #dde2ec; color: #111; mat-icon { color: #555; } }
+  .report-table th { background: #eef0f5; color: #444; }
+  .report-table td { border-top-color: #e8eaf0; color: #222; }
+  .status-chip { border: 1px solid currentColor; background: transparent !important; }
   .question-detail-row td { background: #f9f9fb; }
   .q-status { color: #333 !important; }
   .q-dot { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   .expand-icon { display: none; }
-
   .col-toggle { display: none; }
 }
