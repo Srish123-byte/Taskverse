@@ -83,18 +83,6 @@ public class CreateQuestionRequest
     public List<CodingTestCaseRequest>? TestCases { get; set; }
 
     public int? SourceRowNumber { get; set; }
-
-    [JsonPropertyName("examples")]
-    public List<CodingQuestionExampleRequest>? ExamplesAlias
-    {
-        set => Examples = value;
-    }
-
-    [JsonPropertyName("test_cases")]
-    public List<CodingTestCaseRequest>? TestCasesAlias
-    {
-        set => TestCases = value;
-    }
 }
 
 public class CodingQuestionExampleRequest
@@ -104,24 +92,6 @@ public class CodingQuestionExampleRequest
     public string? Output { get; set; }
 
     public string? Explanation { get; set; }
-
-    [JsonPropertyName("input")]
-    public string? InputAlias
-    {
-        set => Input = value;
-    }
-
-    [JsonPropertyName("output")]
-    public string? OutputAlias
-    {
-        set => Output = value;
-    }
-
-    [JsonPropertyName("explanation")]
-    public string? ExplanationAlias
-    {
-        set => Explanation = value;
-    }
 }
 
 public class CodingTestCaseRequest
