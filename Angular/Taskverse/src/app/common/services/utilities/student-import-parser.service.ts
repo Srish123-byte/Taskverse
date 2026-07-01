@@ -5,9 +5,18 @@ import { BulkStudentUploadRow } from '../../models/super-admin.model';
 export interface ParsedStudentImportFile {
   fileName: string;
   rows: BulkStudentUploadRow[];
+  warnings: string[];
 }
 
 type RawCell = string | number | boolean | null | undefined;
+type HeaderMetadata = {
+  variantsByIndex: string[][];
+  warnings: string[];
+};
+type ParsedStudentRows = {
+  rows: BulkStudentUploadRow[];
+  warnings: string[];
+};
 
 @Injectable({ providedIn: 'root' })
 export class StudentImportParserService {
@@ -69,29 +78,33 @@ export class StudentImportParserService {
     scope: 'super-admin' | 'college-admin'
   ): ParsedStudentImportFile {
     const parsedRows: BulkStudentUploadRow[] = [];
+    const warnings: string[] = [];
     const requireCollegeIdentifier = scope === 'super-admin';
 
     if (workbook.SheetNames.length === 1) {
       const rows = this.readSheet(workbook.Sheets[workbook.SheetNames[0]]);
+      const parsedResult = this.parseRows(rows, {
+        requireCollegeIdentifier,
+        defaultClassName: '',
+        supportClassColumn: true
+      });
       return {
         fileName,
-        rows: this.parseRows(rows, {
-          requireCollegeIdentifier,
-          defaultClassName: '',
-          supportClassColumn: true
-        })
+        rows: parsedResult.rows,
+        warnings: parsedResult.warnings
       };
     }
 
     for (const sheetName of workbook.SheetNames) {
       const rows = this.readSheet(workbook.Sheets[sheetName]);
-      const parsedSheetRows = this.parseRows(rows, {
+      const parsedResult = this.parseRows(rows, {
         requireCollegeIdentifier,
         defaultClassName: sheetName.trim(),
         supportClassColumn: false
       });
 
-      parsedRows.push(...parsedSheetRows);
+      parsedRows.push(...parsedResult.rows);
+      warnings.push(...parsedResult.warnings.map(warning => `${sheetName}: ${warning}`));
     }
 
     if (parsedRows.length === 0) {
@@ -100,7 +113,8 @@ export class StudentImportParserService {
 
     return {
       fileName,
-      rows: parsedRows
+      rows: parsedRows,
+      warnings
     };
   }
 
@@ -111,7 +125,7 @@ export class StudentImportParserService {
       defaultClassName: string;
       supportClassColumn: boolean;
     }
-  ): BulkStudentUploadRow[] {
+  ): ParsedStudentRows {
     if (rows.length === 0) {
       throw new Error('The selected file does not contain any worksheet data.');
     }
@@ -119,7 +133,9 @@ export class StudentImportParserService {
     const headerRowIndex = this.findHeaderRowIndex(rows);
     const hasHeaderRow = headerRowIndex >= 0;
     const headerRow = hasHeaderRow ? rows[headerRowIndex] : [];
-    const headers = headerRow.map(value => this.getHeaderVariants(this.toCellString(value)));
+    const headerMetadata = hasHeaderRow
+      ? this.buildHeaderMetadata(headerRow)
+      : { variantsByIndex: [], warnings: [] };
     const parsedRows: BulkStudentUploadRow[] = [];
     const startRowIndex = hasHeaderRow ? headerRowIndex + 1 : 0;
 
@@ -133,7 +149,7 @@ export class StudentImportParserService {
 
       parsedRows.push(
         hasHeaderRow
-          ? this.mapRow(headers, row, rowNumber, options)
+          ? this.mapRow(headerMetadata.variantsByIndex, row, rowNumber, options)
           : this.mapRowWithoutHeaders(row, rowNumber, options)
       );
     }
@@ -142,7 +158,10 @@ export class StudentImportParserService {
       throw new Error('The selected file does not contain any populated student rows.');
     }
 
-    return parsedRows;
+    return {
+      rows: parsedRows,
+      warnings: headerMetadata.warnings
+    };
   }
 
   private mapRow(
@@ -270,9 +289,7 @@ export class StudentImportParserService {
     return value
       .trim()
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+      .replace(/[^a-z0-9]/g, '');
   }
 
   private getHeaderVariants(value: string): string[] {
@@ -292,6 +309,36 @@ export class StudentImportParserService {
       .forEach(segment => addVariant(segment));
 
     return [...variants];
+  }
+
+  private buildHeaderMetadata(headerRow: RawCell[]): HeaderMetadata {
+    const warnings: string[] = [];
+    const primaryHeaderIndexes = new Map<string, number>();
+    const variantsByIndex = headerRow.map((value, index) => {
+      const rawHeader = this.toCellString(value);
+      const variants = this.getHeaderVariants(rawHeader);
+      const normalizedPrimaryHeader = this.normalizeHeader(rawHeader);
+
+      if (normalizedPrimaryHeader.length > 0) {
+        const firstIndex = primaryHeaderIndexes.get(normalizedPrimaryHeader);
+        if (firstIndex === undefined) {
+          primaryHeaderIndexes.set(normalizedPrimaryHeader, index);
+        } else {
+          warnings.push(
+            `Duplicate header '${rawHeader.trim() || `Column ${index + 1}`}' matches the same normalized key as column ${firstIndex + 1}. Using the first matching column.`
+          );
+        }
+      }
+
+      return variants;
+    });
+
+    warnings.forEach(warning => console.warn(`[StudentImportParserService] ${warning}`));
+
+    return {
+      variantsByIndex,
+      warnings
+    };
   }
 
   private findHeaderRowIndex(rows: RawCell[][]): number {
@@ -323,21 +370,7 @@ export class StudentImportParserService {
   private findHeaderIndex(headers: string[][], field: keyof BulkStudentUploadRow): number {
     const aliases = this.headerAliases[field].map(alias => this.normalizeHeader(alias));
 
-    return headers.findIndex(headerVariants => headerVariants.some(header => this.matchesAlias(header, aliases)));
-  }
-
-  private matchesAlias(header: string, aliases: string[]): boolean {
-    return aliases.some(alias =>
-      header === alias ||
-      header.includes(alias) ||
-      alias.includes(header) ||
-      this.containsAllAliasWords(header, alias)
-    );
-  }
-
-  private containsAllAliasWords(header: string, alias: string): boolean {
-    const aliasWords = alias.split(' ').filter(Boolean);
-    return aliasWords.length > 0 && aliasWords.every(word => header.includes(word));
+    return headers.findIndex(headerVariants => headerVariants.some(header => aliases.includes(header)));
   }
 
   private resolveClassNameFromHeaderlessRow(cells: string[], rowNumber: number, emailIndex: number): string {

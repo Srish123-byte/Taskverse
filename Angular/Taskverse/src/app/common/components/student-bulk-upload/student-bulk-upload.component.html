@@ -18,6 +18,7 @@
   </div>
 
   <div *ngIf="errorMessage" class="bulk-upload-state bulk-upload-state-error">{{ errorMessage }}</div>
+  <div *ngIf="warningMessage" class="bulk-upload-state bulk-upload-state-warning">{{ warningMessage }}</div>
   <div *ngIf="lastResult && !lastResult.summaryEmailSent && lastResult.summaryEmailWarning" class="bulk-upload-state bulk-upload-state-warning">
     {{ lastResult.summaryEmailWarning }}
   </div>

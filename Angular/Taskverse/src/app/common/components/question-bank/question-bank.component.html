@@ -27,9 +27,10 @@
   </section>
 
   <div class="page-content questions-page-shell">
-    <section *ngIf="uploadMessage || uploadErrorMessage" class="upload-state-shell">
+    <section *ngIf="uploadMessage || uploadErrorMessage || uploadWarningMessage" class="upload-state-shell">
       <div *ngIf="uploadMessage" class="page-state page-state-success">{{ uploadMessage }}</div>
       <div *ngIf="uploadErrorMessage" class="page-state page-state-error">{{ uploadErrorMessage }}</div>
+      <div *ngIf="uploadWarningMessage" class="page-state page-state-warning">{{ uploadWarningMessage }}</div>
       <div class="upload-hint">
         Import supports <strong>.csv</strong>, <strong>.xls</strong>, and <strong>.xlsx</strong>. Use the current API model fields as columns. For MCQ rows, the <strong>options</strong> cell must contain a JSON array such as <code>["A","B","C","D"]</code>.
       </div>
