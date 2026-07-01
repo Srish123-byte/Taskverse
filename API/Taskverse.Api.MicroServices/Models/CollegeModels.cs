@@ -117,7 +117,11 @@ public record ApprovedStudentModel(
     string StudentId,
     string UserId,
     string FullName,
-    string Email);
+    string Email,
+    string? CurrentClassId,
+    string? CurrentClassName,
+    string? CurrentBatchId,
+    string? CurrentBatchName);
 
 public record AssignBatchTrainersModel(
     List<string> TrainerIds);

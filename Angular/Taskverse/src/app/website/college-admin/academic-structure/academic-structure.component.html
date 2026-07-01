@@ -524,7 +524,11 @@
         <div class="assignment-summary-card">
           <span class="assignment-summary-kicker">{{ activeStudentAssignmentClassName }}</span>
           <strong>{{ activeStudentAssignmentBatchName }}</strong>
-          <p>Choose the full student list for this batch. Already assigned students can be deselected to unassign, and approved unassigned students can be selected to assign.</p>
+          <p>Choose the full approved student list for this batch. Students already assigned to another class or batch are marked below and can be reassigned here after confirmation.</p>
+        </div>
+
+        <div *ngIf="getStudentsMarkedForReassignment().length > 0" class="form-warning-banner">
+          {{ getStudentsMarkedForReassignment().length }} selected student{{ getStudentsMarkedForReassignment().length === 1 ? '' : 's' }} will be reassigned from another class or batch when you save.
         </div>
 
         <div *ngIf="getAssignedStudentsForActiveBatch().length > 0" class="selected-trainers-shell">
@@ -553,9 +557,11 @@
               *ngFor="let student of getSelectedStudents(); trackBy: trackByStudentId"
               type="button"
               class="selected-trainer-chip"
+              [class.selected-trainer-chip-warning]="isStudentAssignedElsewhere(student)"
               [disabled]="isSubmittingStudentAssignment"
               (click)="selectStudent(student.studentId)">
               <span>{{ student.fullName }}</span>
+              <small *ngIf="isStudentAssignedElsewhere(student)">{{ getStudentAssignmentStatus(student) }}</small>
               <mat-icon>close</mat-icon>
             </button>
           </div>
@@ -580,21 +586,32 @@
             </div>
 
             <div *ngIf="!isLoadingApprovedStudents && approvedStudents.length === 0" class="trainer-dropdown-empty">
-              No approved unassigned students are available for this college yet.
+              No approved students are available for this college yet.
+            </div>
+
+            <div *ngIf="!isLoadingApprovedStudents && approvedStudents.length > 0 && filteredStudents.length === 0" class="trainer-dropdown-empty">
+              No additional approved students match the current search.
             </div>
 
             <button
               *ngFor="let student of pagedStudents; trackBy: trackByStudentId"
               type="button"
               class="trainer-option"
+              [class.trainer-option-warning]="isStudentAssignedElsewhere(student)"
               [class.trainer-option-selected]="isStudentSelected(student.studentId)"
               (click)="selectStudent(student.studentId)">
               <div class="trainer-option-copy">
                 <strong>{{ student.fullName }}</strong>
                 <span>{{ student.email }}</span>
+                <small *ngIf="isStudentAssignedElsewhere(student)" class="trainer-option-meta">
+                  {{ getStudentAssignmentStatus(student) }}
+                </small>
+                <small *ngIf="!isStudentAssignedElsewhere(student)" class="trainer-option-meta">
+                  Unassigned
+                </small>
               </div>
               <span class="trainer-option-action">
-                {{ isStudentSelected(student.studentId) ? 'Selected' : 'Select' }}
+                {{ isStudentSelected(student.studentId) ? 'Selected' : (isStudentAssignedElsewhere(student) ? 'Reassign' : 'Select') }}
               </span>
             </button>
 

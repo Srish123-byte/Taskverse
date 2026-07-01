@@ -81,6 +81,10 @@ public class ApprovedStudentDto
     public string UserId { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
+    public string? CurrentClassId { get; set; }
+    public string? CurrentClassName { get; set; }
+    public string? CurrentBatchId { get; set; }
+    public string? CurrentBatchName { get; set; }
 }
 
 public class AssignBatchTrainersDto

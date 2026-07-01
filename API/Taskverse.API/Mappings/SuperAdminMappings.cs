@@ -111,6 +111,8 @@ public static class SuperAdminMappings
         CreatedCount = dto.CreatedCount,
         DuplicateCount = dto.DuplicateCount,
         InvalidCount = dto.InvalidCount,
+        SummaryEmailSent = dto.SummaryEmailSent,
+        SummaryEmailWarning = dto.SummaryEmailWarning,
         CreatedUsers = dto.CreatedUsers.Select(item => new BulkStudentUploadCreatedUserResponseModel
         {
             FullName = item.FullName,

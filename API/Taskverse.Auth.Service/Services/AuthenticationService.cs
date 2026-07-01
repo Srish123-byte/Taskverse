@@ -300,9 +300,9 @@ public class AuthenticationService : IAuthenticationService
         user.PasswordChangedAt = DateTime.UtcNow;
         user.ModifiedAt = DateTime.UtcNow;
 
-        if (IsBulkUploadedStudent(user))
+        if (ShouldTouchStudentRecordOnPasswordChange(user))
         {
-            await EnsureStudentRecordAsync(user);
+            await TouchStudentRecordModifiedAtAsync(user.Id, user.ModifiedAt);
         }
 
         var activeSessions = await _context.AuthSessions
@@ -368,8 +368,7 @@ public class AuthenticationService : IAuthenticationService
         return null;
     }
 
-    private bool IsBulkUploadedStudent(User user) =>
-        user.IsBulkUploaded &&
+    private static bool ShouldTouchStudentRecordOnPasswordChange(User user) =>
         string.Equals(user.Role, "Student", StringComparison.OrdinalIgnoreCase);
 
     private static bool ShouldSyncStudentRecordOnLogin(User user) =>
@@ -416,6 +415,17 @@ public class AuthenticationService : IAuthenticationService
             ModifiedAt = DateTime.UtcNow,
             ApprovedBy = user.UploadedBy
         });
+    }
+
+    private async Task TouchStudentRecordModifiedAtAsync(Guid userId, DateTime modifiedAtUtc)
+    {
+        var existingStudent = await _context.Students.FirstOrDefaultAsync(student => student.UserId == userId);
+        if (existingStudent is null)
+        {
+            return;
+        }
+
+        existingStudent.ModifiedAt = modifiedAtUtc;
     }
 
     private static (string FirstName, string LastName) SplitName(string fullName)

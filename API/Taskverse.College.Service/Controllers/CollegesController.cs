@@ -83,11 +83,11 @@ public class CollegesController : ControllerBase
         return Ok(dtos.Select(dto => dto.ToModel()).ToList());
     }
 
-    [HttpGet("colleges/{collegeId:guid}/students/approved-unassigned")]
+    [HttpGet("colleges/{collegeId:guid}/students/approved")]
     [ProducesResponseType(typeof(List<ApprovedStudentRecord>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<ApprovedStudentRecord>>> GetApprovedUnassignedStudents(Guid collegeId)
+    public async Task<ActionResult<List<ApprovedStudentRecord>>> GetApprovedStudents(Guid collegeId)
     {
-        var dtos = await _collegeOrchestrator.GetApprovedUnassignedStudentsByCollege(collegeId);
+        var dtos = await _collegeOrchestrator.GetApprovedStudentsByCollege(collegeId);
         return Ok(dtos.Select(dto => dto.ToModel()).ToList());
     }
 

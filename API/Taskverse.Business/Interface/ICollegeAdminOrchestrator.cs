@@ -9,7 +9,7 @@ public interface ICollegeAdminOrchestrator
     Task<List<PendingUserDto>> GetPendingUsers(Guid collegeId);
     Task<List<PendingUserDto>> GetPendingUsersForCollegeAdmin(Guid collegeAdminUserId);
     Task<List<ApprovedTrainerDto>> GetApprovedTrainers(Guid collegeId);
-    Task<List<ApprovedStudentDto>> GetApprovedUnassignedStudents(Guid collegeId);
+    Task<List<ApprovedStudentDto>> GetApprovedStudents(Guid collegeId);
     Task<List<SubjectOptionDto>> GetSubjects();
     Task<CollegeClassSummaryDto> CreateClass(Guid collegeId, CreateCollegeClassDto dto);
     Task<CollegeClassSummaryDto> UpdateClass(Guid collegeId, string classId, UpdateCollegeClassDto dto);

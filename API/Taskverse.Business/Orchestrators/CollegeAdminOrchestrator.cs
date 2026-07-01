@@ -358,15 +358,15 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
         return models.Select(model => model.ToDto()).ToList();
     }
 
-    public async Task<List<ApprovedStudentDto>> GetApprovedUnassignedStudents(Guid collegeId)
+    public async Task<List<ApprovedStudentDto>> GetApprovedStudents(Guid collegeId)
     {
-        _log.Debug($"CollegeAdminOrchestrator.GetApprovedUnassignedStudents: collegeId={collegeId}");
+        _log.Debug($"CollegeAdminOrchestrator.GetApprovedStudents: collegeId={collegeId}");
 
-        var result = await _microServiceOrchestrator.GetApprovedUnassignedCollegeStudents(collegeId.ToString());
-        EnsureMicroServiceSuccess(result, nameof(GetApprovedUnassignedStudents));
+        var result = await _microServiceOrchestrator.GetApprovedCollegeStudents(collegeId.ToString());
+        EnsureMicroServiceSuccess(result, nameof(GetApprovedStudents));
 
         var models = result.DeserializeValue<List<ApprovedStudentModel>>()
-            ?? throw new InvalidOperationException($"GetApprovedUnassignedStudents returned empty for collegeId={collegeId}.");
+            ?? throw new InvalidOperationException($"GetApprovedStudents returned empty for collegeId={collegeId}.");
 
         return models.Select(model => model.ToDto()).ToList();
     }

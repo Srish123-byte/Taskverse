@@ -66,9 +66,9 @@ public partial class MicroServiceOrchestrator
         return await Get<List<ApprovedTrainerModel>>(url);
     }
 
-    public async Task<ObjectResult> GetApprovedUnassignedCollegeStudents(string collegeId)
+    public async Task<ObjectResult> GetApprovedCollegeStudents(string collegeId)
     {
-        var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/students/approved-unassigned";
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/students/approved";
         return await Get<List<ApprovedStudentModel>>(url);
     }
 

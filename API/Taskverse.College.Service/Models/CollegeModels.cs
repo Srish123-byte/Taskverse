@@ -79,7 +79,11 @@ public record ApprovedStudentRecord(
     string StudentId,
     string UserId,
     string FullName,
-    string Email);
+    string Email,
+    string? CurrentClassId,
+    string? CurrentClassName,
+    string? CurrentBatchId,
+    string? CurrentBatchName);
 
 public record AssignBatchTrainersRequest(
     List<string> TrainerIds);

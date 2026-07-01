@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { RouteAddress } from '../../../common/constants/routes.constants';
 import { CollegeAdminService } from '../../../common/services/api/college-admin.service';
@@ -40,20 +40,26 @@ export class CollegeAdminShellComponent implements OnInit, OnDestroy {
     private readonly collegeAdminService: CollegeAdminService,
     private readonly authSessionService: AuthSessionService,
     private readonly session: Session,
-    private readonly router: Router) {}
+    private readonly router: Router,
+    private readonly changeDetectorRef: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     this.subscriptions.add(
       this.collegeAdminService.pendingUsers$.subscribe(users => {
         const pendingCount = users.filter(user => user.role === 'Student' || user.role === 'Trainer').length;
         this.updateUserManagementBadge(pendingCount);
+        this.changeDetectorRef.detectChanges();
       })
     );
 
     this.subscriptions.add(
       this.collegeAdminService.getPendingUsers().subscribe({
+        next: () => {
+          this.changeDetectorRef.detectChanges();
+        },
         error: () => {
           this.updateUserManagementBadge(0);
+          this.changeDetectorRef.detectChanges();
         }
       })
     );
