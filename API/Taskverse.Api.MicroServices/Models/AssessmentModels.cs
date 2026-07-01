@@ -9,14 +9,10 @@ public record CreateQuestionBankAssessmentModel(
     string CreatedBy,
     [property: JsonProperty("assessment_name")]
     string AssessmentName,
-    [property: JsonProperty("subject_id")]
-    Guid? SubjectId,
-    [property: JsonProperty("subject_name")]
-    string? SubjectName,
-    [property: JsonProperty("topic_id")]
-    Guid? TopicId,
-    [property: JsonProperty("topic_name")]
-    string? TopicName,
+    [property: JsonProperty("subject_ids")]
+    Guid[] SubjectIds,
+    [property: JsonProperty("topic_ids")]
+    Guid[] TopicIds,
     [property: JsonProperty("instructions")]
     string? Instructions,
     [property: JsonProperty("allow_late_entry")]
@@ -49,14 +45,10 @@ public record PublishQuestionBankAssessmentModel(
     string CreatedBy,
     [property: JsonProperty("assessment_name")]
     string AssessmentName,
-    [property: JsonProperty("subject_id")]
-    Guid? SubjectId,
-    [property: JsonProperty("subject_name")]
-    string? SubjectName,
-    [property: JsonProperty("topic_id")]
-    Guid? TopicId,
-    [property: JsonProperty("topic_name")]
-    string? TopicName,
+    [property: JsonProperty("subject_ids")]
+    Guid[] SubjectIds,
+    [property: JsonProperty("topic_ids")]
+    Guid[] TopicIds,
     [property: JsonProperty("instructions")]
     string? Instructions,
     [property: JsonProperty("allow_late_entry")]
@@ -91,14 +83,10 @@ public record UpdateQuestionBankAssessmentModel(
     string RequesterRole,
     [property: JsonProperty("assessment_name")]
     string AssessmentName,
-    [property: JsonProperty("subject_id")]
-    Guid? SubjectId,
-    [property: JsonProperty("subject_name")]
-    string? SubjectName,
-    [property: JsonProperty("topic_id")]
-    Guid? TopicId,
-    [property: JsonProperty("topic_name")]
-    string? TopicName,
+    [property: JsonProperty("subject_ids")]
+    Guid[] SubjectIds,
+    [property: JsonProperty("topic_ids")]
+    Guid[] TopicIds,
     [property: JsonProperty("instructions")]
     string? Instructions,
     [property: JsonProperty("allow_late_entry")]
@@ -141,14 +129,22 @@ public record QuestionBankAssessmentModel(
     Guid AssessmentId,
     [property: JsonProperty("college_id")]
     Guid CollegeId,
-    [property: JsonProperty("subject_id")]
-    Guid? SubjectId,
+    [property: JsonProperty("subject_ids")]
+    Guid[] SubjectIds,
+    [property: JsonProperty("subject_names")]
+    List<string> SubjectNames,
     [property: JsonProperty("subject_name")]
     string? SubjectName,
-    [property: JsonProperty("topic_id")]
-    Guid? TopicId,
+    [property: JsonProperty("subject_display_label")]
+    string? SubjectDisplayLabel,
+    [property: JsonProperty("topic_ids")]
+    Guid[] TopicIds,
+    [property: JsonProperty("topic_names")]
+    List<string> TopicNames,
     [property: JsonProperty("topic_name")]
     string? TopicName,
+    [property: JsonProperty("topic_display_label")]
+    string? TopicDisplayLabel,
     [property: JsonProperty("assessment_name")]
     string AssessmentName,
     [property: JsonProperty("assessment_type")]
@@ -290,6 +286,24 @@ public record QuestionClassificationCatalogModel(
     [property: JsonProperty("subjects")]
     List<QuestionSubjectCatalogModel> Subjects);
 
+public record CreateQuestionClassificationEntryModel(
+    [property: JsonProperty("subject_id")]
+    Guid? SubjectId,
+    [property: JsonProperty("subject_name")]
+    string? SubjectName,
+    [property: JsonProperty("topic_name")]
+    string? TopicName);
+
+public record QuestionClassificationEntryModel(
+    [property: JsonProperty("subject_id")]
+    Guid SubjectId,
+    [property: JsonProperty("subject_name")]
+    string SubjectName,
+    [property: JsonProperty("topic_id")]
+    Guid? TopicId,
+    [property: JsonProperty("topic_name")]
+    string? TopicName);
+
 public record AssessmentSearchModel(
     [property: JsonProperty("college_id")]
     Guid CollegeId,
@@ -313,10 +327,22 @@ public record AssessmentSearchItemModel(
     Guid AssessmentId,
     [property: JsonProperty("assessment_name")]
     string AssessmentName,
+    [property: JsonProperty("subject_ids")]
+    Guid[] SubjectIds,
+    [property: JsonProperty("subject_names")]
+    List<string> SubjectNames,
     [property: JsonProperty("subject_name")]
     string? SubjectName,
+    [property: JsonProperty("subject_display_label")]
+    string? SubjectDisplayLabel,
+    [property: JsonProperty("topic_ids")]
+    Guid[] TopicIds,
+    [property: JsonProperty("topic_names")]
+    List<string> TopicNames,
     [property: JsonProperty("topic_name")]
     string? TopicName,
+    [property: JsonProperty("topic_display_label")]
+    string? TopicDisplayLabel,
     [property: JsonProperty("assessment_status")]
     string AssessmentStatus,
     [property: JsonProperty("assessment_date")]
@@ -555,6 +581,14 @@ public record StudentAttemptRecoveryModel(
     string? Instructions,
     [property: JsonProperty("questions")]
     List<StudentAttemptRecoveryQuestionModel> Questions);
+
+public record StudentStreakModel(
+    [property: JsonProperty("current_streak")]
+    int CurrentStreak,
+    [property: JsonProperty("longest_streak")]
+    int LongestStreak,
+    [property: JsonProperty("total_assessments_taken")]
+    int TotalAssessmentsTaken);
 
 public record AssessmentQuestionListItemModel(
     [property: JsonProperty("question_id")]

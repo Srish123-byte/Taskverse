@@ -19,7 +19,7 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> RefreshToken(RefreshTokenRequestModel model);
     Task<ObjectResult> Logout(LogoutRequestModel model);
     Task<ObjectResult> ValidateToken(ValidateTokenRequestModel model);
-    Task<ObjectResult> ChangeTemporaryPassword(ChangeTemporaryPasswordRequestModel model);
+    Task<ObjectResult> ChangePassword(ChangePasswordRequestModel model);
 
     // Exam Engine
     Task<ObjectResult> GetExam(string examId);
@@ -41,6 +41,7 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> UpdateQuestion(Guid questionId, CreateQuestionModel model);
     Task<ObjectResult> DeleteQuestions(DeleteQuestionsModel model);
     Task<ObjectResult> GetQuestionClassificationCatalog();
+    Task<ObjectResult> CreateQuestionClassificationEntry(CreateQuestionClassificationEntryModel model);
     Task<ObjectResult> GetTrainerAssignedClassesAndBatches(AssessmentBootstrapModel model);
     Task<ObjectResult> SearchQuestionBank(QuestionBankSearchModel model);
     Task<ObjectResult> SearchAssessments(AssessmentSearchModel model);
@@ -51,6 +52,7 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> GetStudentAttemptRecovery(Guid attemptId, Guid studentUserId);
     Task<ObjectResult> SaveStudentAttemptAnswer(Guid attemptId, Guid questionId, Guid studentUserId, SaveStudentAttemptAnswerModel model);
     Task<ObjectResult> SubmitStudentAttempt(Guid attemptId, Guid studentUserId);
+    Task<ObjectResult> GetStudentStreak(Guid studentUserId);
 
     // Reports
     Task<ObjectResult> GenerateReport(GenerateReportRequestModel model);
@@ -91,12 +93,19 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> GetCollegePendingUsers(string collegeId);
     Task<ObjectResult> GetCollegeAdminPendingUsers(string collegeAdminUserId);
     Task<ObjectResult> GetApprovedCollegeTrainers(string collegeId);
+    Task<ObjectResult> GetApprovedCollegeStudents(string collegeId);
     Task<ObjectResult> GetCollegeSubjects();
     Task<ObjectResult> CreateCollegeClass(string collegeId, CreateCollegeClassModel model);
     Task<ObjectResult> UpdateCollegeClass(string collegeId, string classId, UpdateCollegeClassModel model);
     Task<ObjectResult> CreateCollegeBatch(string collegeId, string classId, CreateCollegeBatchModel model);
     Task<ObjectResult> UpdateCollegeBatch(string collegeId, string classId, string batchId, UpdateCollegeBatchModel model);
     Task<ObjectResult> AssignCollegeBatchTrainers(string collegeId, string classId, string batchId, AssignBatchTrainersModel model);
+    Task<ObjectResult> AssignCollegeBatchStudent(string collegeId, string classId, string batchId, AssignStudentToBatchModel model);
+    Task<ObjectResult> GetAttendanceBatches(Guid collegeId, Guid requesterUserId);
+    Task<ObjectResult> GetAttendanceRoster(AttendanceRosterRequestModel model);
+    Task<ObjectResult> SubmitAttendance(SubmitAttendanceRequestModel model);
+    Task<ObjectResult> GetAttendanceHistory(Guid collegeId, Guid requesterUserId, Guid batchId, DateTime fromDate, DateTime toDate);
+    Task<ObjectResult> ExportAttendance(Guid collegeId, Guid requesterUserId, Guid batchId, DateTime fromDate, DateTime toDate);
     Task<ObjectResult> DeleteCollegeClass(string collegeId, string classId);
     Task<ObjectResult> DeleteCollegeBatch(string collegeId, string classId, string batchId);
     Task<ObjectResult> ApproveCollegeUser(string collegeId, string userId, CollegeUserActionModel model);

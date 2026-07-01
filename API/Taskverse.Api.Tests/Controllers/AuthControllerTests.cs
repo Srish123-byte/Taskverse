@@ -38,9 +38,9 @@ public class AuthControllerTests
             UserId: "user-123",
             Email: "john.doe@example.com",
             FirstName: "John",
-            CollegeName: "Test University",
-            CollegeId: "college-456",
             LastName: "Doe",
+            CollegeId: "college-456",
+            CollegeName: "Test University",
             Roles: ["Student"],
             Status: "APPROVED",
             MustChangePassword: false);

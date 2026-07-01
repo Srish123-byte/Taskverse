@@ -100,7 +100,8 @@ public record CollegeBatchSummaryModel(
     int Capacity,
     int StudentCount,
     DateTime CreatedAt,
-    List<ApprovedTrainerModel> AssignedTrainers);
+    List<ApprovedTrainerModel> AssignedTrainers,
+    List<ApprovedStudentModel> AssignedStudents);
 
 public record SubjectOptionModel(
     string SubjectId,
@@ -112,5 +113,18 @@ public record ApprovedTrainerModel(
     string FullName,
     string Email);
 
+public record ApprovedStudentModel(
+    string StudentId,
+    string UserId,
+    string FullName,
+    string Email,
+    string? CurrentClassId,
+    string? CurrentClassName,
+    string? CurrentBatchId,
+    string? CurrentBatchName);
+
 public record AssignBatchTrainersModel(
     List<string> TrainerIds);
+
+public record AssignStudentToBatchModel(
+    List<string> StudentIds);

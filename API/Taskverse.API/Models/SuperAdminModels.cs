@@ -83,9 +83,12 @@ public class BulkStudentUploadRowRequestModel
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
+    public string EnrollmentNumber { get; set; } = string.Empty;
     public string CollegeId { get; set; } = string.Empty;
+    public string CollegeName { get; set; } = string.Empty;
     public string ClassId { get; set; } = string.Empty;
     public string BatchId { get; set; } = string.Empty;
+    public string ClassName { get; set; } = string.Empty;
 }
 
 public class BulkStudentUploadResultResponseModel
@@ -93,6 +96,8 @@ public class BulkStudentUploadResultResponseModel
     public int CreatedCount { get; set; }
     public int DuplicateCount { get; set; }
     public int InvalidCount { get; set; }
+    public bool SummaryEmailSent { get; set; }
+    public string? SummaryEmailWarning { get; set; }
     public List<BulkStudentUploadCreatedUserResponseModel> CreatedUsers { get; set; } = [];
     public List<BulkStudentUploadRowIssueResponseModel> DuplicateRows { get; set; } = [];
     public List<BulkStudentUploadRowIssueResponseModel> InvalidRows { get; set; } = [];
@@ -114,19 +119,14 @@ public class BulkStudentUploadRowIssueResponseModel
 public class SuperAdminDashboardResponseModel
 {
     public SuperAdminTotalsResponseModel Totals { get; set; } = new();
-    public List<CollegeResponseModel> PendingApprovals { get; set; } = [];
-    public PlatformHealthResponseModel PlatformHealth { get; set; } = new();
-    public List<RecentActivityResponseModel> RecentActivity { get; set; } = [];
-    public List<CollegeScoreSummaryResponseModel> AverageScoresByCollege { get; set; } = [];
-    public List<UsageTrendPointResponseModel> UsageTrends { get; set; } = [];
 }
 
 public class SuperAdminTotalsResponseModel
 {
+    public int PendingApprovals { get; set; }
     public int ActiveColleges { get; set; }
     public int RegisteredStudents { get; set; }
     public int AssessmentsThisMonth { get; set; }
-    public int AssessmentsPreviousMonth { get; set; }
 }
 
 public class PlatformHealthResponseModel

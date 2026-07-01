@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -34,8 +34,14 @@ import {
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'
 })
-export class LoginComponent implements OnInit, OnDestroy {
+export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
   mode: AuthMode = 'login';
+  currentYear = new Date().getFullYear();
+
+  @ViewChild('bgCanvas') private canvasRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('loginEmailInput') private loginEmailInputRef?: ElementRef<HTMLInputElement>;
+  @ViewChild('loginPasswordInput') private loginPasswordInputRef?: ElementRef<HTMLInputElement>;
+  private animFrame = 0;
 
   loginForm!: FormGroup;
   registerForm!: FormGroup;
@@ -43,6 +49,9 @@ export class LoginComponent implements OnInit, OnDestroy {
   isLoading = false;
   errorMessage = '';
   successMessage = '';
+  showLoginPassword = false;
+  showRegisterPassword = false;
+  showRegisterConfirmPassword = false;
   colleges: RegistrationCollegeOption[] = [];
   classes: RegistrationClassOption[] = [];
   batches: RegistrationBatchOption[] = [];
@@ -64,7 +73,8 @@ export class LoginComponent implements OnInit, OnDestroy {
     private readonly userService: UserService,
     private readonly session: Session,
     private readonly sessionActivityService: SessionActivityService,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly ngZone: NgZone
   ) {}
 
   ngOnInit(): void {
@@ -85,6 +95,14 @@ export class LoginComponent implements OnInit, OnDestroy {
       password: ['', [Validators.required, Validators.minLength(8)]]
     });
 
+    this.subscriptions.add(
+      this.loginForm.valueChanges.subscribe(() => {
+        if (this.errorMessage) {
+          this.errorMessage = '';
+        }
+      })
+    );
+
     this.registerForm = this.fb.group({
       fullName: ['', [
         Validators.required,
@@ -100,6 +118,7 @@ export class LoginComponent implements OnInit, OnDestroy {
         Validators.required,
         phoneValidator
       ]],
+      enrollmentNumber: ['', [Validators.maxLength(50)]],
       role: ['Student', Validators.required],
       collegeId: [''],
       collegeName: [''],
@@ -127,8 +146,66 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.handleRegistrationRoleChange(this.rRole?.value);
   }
 
+  ngAfterViewInit(): void {
+    this.startCanvas();
+  }
+
   ngOnDestroy(): void {
     this.subscriptions.unsubscribe();
+    cancelAnimationFrame(this.animFrame);
+  }
+
+  private startCanvas(): void {
+    const canvas = this.canvasRef?.nativeElement;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const stars = Array.from({ length: 120 }, () => ({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: Math.random() * 1.5 + 0.3,
+      a: Math.random(),
+      speed: Math.random() * 0.004 + 0.001,
+      phase: Math.random() * Math.PI * 2
+    }));
+
+    const draw = (t: number) => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      stars.forEach(s => {
+        s.a = 0.3 + 0.5 * Math.sin(t * s.speed + s.phase);
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0, 191, 255, ${s.a})`;
+        ctx.fill();
+      });
+
+      for (let i = 0; i < stars.length; i++) {
+        for (let j = i + 1; j < stars.length; j++) {
+          const dx = stars[i].x - stars[j].x;
+          const dy = stars[i].y - stars[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 120) {
+            ctx.beginPath();
+            ctx.moveTo(stars[i].x, stars[i].y);
+            ctx.lineTo(stars[j].x, stars[j].y);
+            ctx.strokeStyle = `rgba(0, 191, 255, ${0.06 * (1 - dist / 120)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+
+      this.animFrame = requestAnimationFrame(draw);
+    };
+    this.animFrame = requestAnimationFrame(draw);
   }
 
   switchMode(mode: AuthMode): void {
@@ -141,6 +218,8 @@ export class LoginComponent implements OnInit, OnDestroy {
   }
 
   onLogin(): void {
+    this.syncLoginFormWithDom();
+
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
       return;
@@ -187,28 +266,57 @@ export class LoginComponent implements OnInit, OnDestroy {
         this.navigateToLandingPage();
       },
       error: err => {
-        const message =
-          err?.error?.message ||
-          (typeof err?.error === 'string' ? err.error : '') ||
-          '';
+        this.ngZone.run(() => {
+          const message =
+            err?.error?.message ||
+            (typeof err?.error === 'string' ? err.error : '') ||
+            '';
 
-        const normalizedMessage = message.toLowerCase();
-        if (normalizedMessage.includes('awaiting approval') || normalizedMessage.includes('pending approval')) {
-          this.redirectToApprovalStatus('', 'PENDING_APPROVAL');
-          return;
-        }
+          const normalizedMessage = message.toLowerCase();
+          if (normalizedMessage.includes('awaiting approval') || normalizedMessage.includes('pending approval')) {
+            this.redirectToApprovalStatus('', 'PENDING_APPROVAL');
+            return;
+          }
 
-        if (normalizedMessage.includes('not allowed to sign in') || normalizedMessage.includes('access restricted')) {
-          this.redirectToApprovalStatus('', 'REJECTED');
-          return;
-        }
+          if (normalizedMessage.includes('not allowed to sign in') || normalizedMessage.includes('access restricted')) {
+            this.redirectToApprovalStatus('', 'REJECTED');
+            return;
+          }
 
-        this.isLoading = false;
-        this.errorMessage =
-          message ||
-          'Invalid email or password. Please try again.';
+          this.isLoading = false;
+          this.errorMessage =
+            message ||
+            'Invalid email or password. Please try again.';
+        });
       }
     });
+  }
+
+  toggleLoginPasswordVisibility(): void {
+    this.showLoginPassword = !this.showLoginPassword;
+  }
+
+  toggleRegisterPasswordVisibility(): void {
+    this.showRegisterPassword = !this.showRegisterPassword;
+  }
+
+  toggleRegisterConfirmPasswordVisibility(): void {
+    this.showRegisterConfirmPassword = !this.showRegisterConfirmPassword;
+  }
+
+  private syncLoginFormWithDom(): void {
+    const email = this.loginEmailInputRef?.nativeElement.value ?? '';
+    const password = this.loginPasswordInputRef?.nativeElement.value ?? '';
+
+    this.loginForm.patchValue(
+      { email, password },
+      { emitEvent: true }
+    );
+
+    this.email?.markAsDirty();
+    this.password?.markAsDirty();
+    this.email?.updateValueAndValidity({ emitEvent: false });
+    this.password?.updateValueAndValidity({ emitEvent: false });
   }
 
   private redirectToApprovalStatus(role: RoleType | '', status: string): void {
@@ -248,23 +356,36 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   private navigateToLandingPage(): void {
     this.isLoading = false;
-    void this.router.navigateByUrl(`/${RouteAddress.RoleDirector}`)
-      .catch(() => {
-        this.errorMessage = 'Signed in, but we could not open your dashboard.';
-      });
+    this.ngZone.run(() => {
+      void this.router.navigateByUrl(`/${RouteAddress.RoleDirector}`)
+        .catch(() => {
+          this.errorMessage = 'Signed in, but we could not open your dashboard.';
+        });
+    });
   }
 
   private navigateToChangeTemporaryPassword(): void {
     this.isLoading = false;
-    void this.router.navigateByUrl(`/${RouteAddress.ChangeTemporaryPassword}`)
-      .catch(() => {
-        this.errorMessage = 'Signed in, but we could not open the temporary password change screen.';
-      });
+    this.ngZone.run(() => {
+      void this.router.navigateByUrl(`/${RouteAddress.ChangeTemporaryPassword}`)
+        .catch(() => {
+          this.errorMessage = 'Signed in, but we could not open the temporary password change screen.';
+        });
+    });
   }
 
   onRegister(): void {
     if (this.registerForm.invalid) {
       this.registerForm.markAllAsTouched();
+      return;
+    }
+
+    const selectedRole = this.rRole?.value;
+    const classId = this.rClassId?.value?.trim?.() || '';
+    const batchId = this.rBatchId?.value?.trim?.() || '';
+    if (selectedRole === RoleType.Student && ((classId && !batchId) || (!classId && batchId))) {
+      this.batchControl?.markAsTouched();
+      this.errorMessage = 'Class and batch must either both be selected or both be left empty.';
       return;
     }
 
@@ -275,6 +396,10 @@ export class LoginComponent implements OnInit, OnDestroy {
     const { confirmPassword, collegeName, ...formValue } = this.registerForm.value;
     const request: RegisterRequest = {
       ...formValue,
+      enrollmentNumber: formValue.enrollmentNumber || undefined,
+      collegeId: formValue.collegeId || undefined,
+      classId: formValue.classId || undefined,
+      batchId: formValue.batchId || undefined,
       collegeName: collegeName || undefined
     };
 
@@ -423,8 +548,8 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   private applyInstitutionValidators(role: string | null | undefined): void {
     this.collegeControl?.setValidators([Validators.required]);
-    this.classControl?.setValidators(role === RoleType.Student ? [Validators.required] : []);
-    this.batchControl?.setValidators(role === RoleType.Student ? [Validators.required] : []);
+    this.classControl?.setValidators([]);
+    this.batchControl?.setValidators([]);
 
     if (role !== RoleType.Student) {
       this.registerForm.patchValue({
@@ -510,6 +635,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   get rFullName()        { return this.registerForm.get('fullName'); }
   get rEmail()           { return this.registerForm.get('email'); }
   get rPhone()           { return this.registerForm.get('phone'); }
+  get rEnrollmentNumber(){ return this.registerForm.get('enrollmentNumber'); }
   get rRole()            { return this.registerForm.get('role'); }
   get rCollegeId()       { return this.registerForm.get('collegeId'); }
   get rCollegeName()     { return this.registerForm.get('collegeName'); }

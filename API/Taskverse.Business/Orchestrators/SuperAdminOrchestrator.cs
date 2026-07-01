@@ -1,6 +1,5 @@
 using log4net;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 using Taskverse.Api.MicroServices.Interfaces;
 using Taskverse.Api.MicroServices.Models;
 using Taskverse.Business.DTOs;
@@ -14,7 +13,6 @@ namespace Taskverse.Business.Orchestrators;
 
 public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 {
-    private const string HealthyStatus = "Healthy";
     private const string ActiveCollegeStatus = "Active";
 
     private readonly IMicroServiceOrchestrator _microServiceOrchestrator;
@@ -36,39 +34,43 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
     {
         _log.Debug("SuperAdminOrchestrator.GetDashboard");
 
-        var collegesTask = GetColleges();
-        var pendingTask = GetPendingColleges();
-        var totalsTask = GetAssessmentTotals();
-
-        await Task.WhenAll(collegesTask, pendingTask, totalsTask);
-
-        var totals = await totalsTask;
-        var colleges = await collegesTask;
-        var pendingApprovals = await pendingTask;
-
-        _log.Debug(
-            $"SuperAdminOrchestrator.GetDashboard: colleges={colleges.Count}, activeColleges={colleges.Count(c => c.IsActive)}, pendingApprovals={pendingApprovals.Count}, assessmentsThisMonth={totals.ThisMonth}, assessmentsPreviousMonth={totals.PreviousMonth}");
-
-        return new SuperAdminDashboardDto
+        try
         {
-            Totals = new SuperAdminTotalsDto
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
+
+            var pendingApprovalsCount = await context.Users
+                .CountAsync(u => u.Role == "CollegeAdmin" && u.Status == UserStatus.PENDING_APPROVAL);
+
+            var activeCollegesCount = await context.Users
+                .Where(u => u.Role == "CollegeAdmin" && u.Status == UserStatus.APPROVED && u.CollegeName != null)
+                .Select(u => u.CollegeName)
+                .Distinct()
+                .CountAsync();
+
+            var registeredStudentsCount = await context.Students.CountAsync();
+
+            var assessmentsThisMonthCount = await context.Assessments
+                .CountAsync(a => a.AssessmentStatus == AssessmentStatus.Completed);
+
+            _log.Debug(
+                $"GetDashboard: pendingApprovals={pendingApprovalsCount}, activeColleges={activeCollegesCount}, registeredStudents={registeredStudentsCount}, assessmentsThisMonth={assessmentsThisMonthCount}");
+
+            return new SuperAdminDashboardDto
             {
-                ActiveColleges = colleges.Count(c => c.IsActive),
-                RegisteredStudents = 0,
-                AssessmentsThisMonth = totals.ThisMonth,
-                AssessmentsPreviousMonth = totals.PreviousMonth
-            },
-            PendingApprovals = pendingApprovals,
-            PlatformHealth = new PlatformHealthDto
-            {
-                UptimePercent = 99.95,
-                ErrorRatePercent = 0.05,
-                ApiStatus = HealthyStatus
-            },
-            RecentActivity = [],
-            AverageScoresByCollege = [],
-            UsageTrends = []
-        };
+                Totals = new SuperAdminTotalsDto
+                {
+                    PendingApprovals = pendingApprovalsCount,
+                    ActiveColleges = activeCollegesCount,
+                    RegisteredStudents = registeredStudentsCount,
+                    AssessmentsThisMonth = assessmentsThisMonthCount
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _log.Error("GetDashboard failed", ex);
+            throw;
+        }
     }
 
     public async Task<List<CollegeDto>> GetColleges()
@@ -307,17 +309,14 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
 
         await EnsureUserCollegeName(context, user);
 
-        if (!user.BatchId.HasValue)
-        {
-            throw new InvalidOperationException($"Student user '{user.Id}' cannot be approved without a batch.");
-        }
-
         var existingStudent = await context.Students
             .FirstOrDefaultAsync(student => student.UserId == user.Id);
 
         if (existingStudent is not null)
         {
             existingStudent.ClassId = user.ClassId;
+            existingStudent.BatchId = user.BatchId;
+            existingStudent.EnrollmentNumber = string.IsNullOrWhiteSpace(user.EnrollmentNumber) ? null : user.EnrollmentNumber.Trim();
             existingStudent.Status = UserStatus.APPROVED;
             existingStudent.ModifiedAt = DateTime.UtcNow;
             existingStudent.ApprovedBy = approvedByUserId;
@@ -330,7 +329,8 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             UserId = user.Id,
             CollegeId = user.CollegeId.Value,
             ClassId = user.ClassId,
-            BatchId = user.BatchId.Value,
+            BatchId = user.BatchId,
+            EnrollmentNumber = string.IsNullOrWhiteSpace(user.EnrollmentNumber) ? null : user.EnrollmentNumber.Trim(),
             FullName = user.FullName,
             Email = user.Email,
             Status = UserStatus.APPROVED,
@@ -398,135 +398,5 @@ public class SuperAdminOrchestrator : ISuperAdminOrchestrator
             : collegeName.Trim();
     }
 
-    private async Task<(int ThisMonth, int PreviousMonth)> GetAssessmentTotals()
-    {
-        try
-        {
-            _log.Debug("SuperAdminOrchestrator.GetAssessmentTotals: opening db context");
-            await using var context = await _dbContextFactory.CreateDbContextAsync();
 
-            var utcNow = DateTime.UtcNow;
-            var startOfThisMonth = new DateTime(utcNow.Year, utcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-            var startOfPreviousMonth = startOfThisMonth.AddMonths(-1);
-
-            var thisMonth = await context.Assessments.CountAsync(a => a.CreatedAt >= startOfThisMonth);
-            var previousMonth = await context.Assessments.CountAsync(a =>
-                a.CreatedAt >= startOfPreviousMonth && a.CreatedAt < startOfThisMonth);
-
-            _log.Debug(
-                $"SuperAdminOrchestrator.GetAssessmentTotals: thisMonth={thisMonth}, previousMonth={previousMonth}, startOfThisMonth={startOfThisMonth:O}, startOfPreviousMonth={startOfPreviousMonth:O}");
-
-            return (thisMonth, previousMonth);
-        }
-        catch (PostgresException ex) when (IsMissingRelation(ex))
-        {
-            _log.Warn("SuperAdminOrchestrator.GetAssessmentTotals: assessments table is missing. Returning zero totals.", ex);
-            return (0, 0);
-        }
-    }
-
-    private async Task<List<RecentActivityDto>> GetRecentActivity()
-    {
-        try
-        {
-            _log.Debug("SuperAdminOrchestrator.GetRecentActivity: opening db context");
-            await using var context = await _dbContextFactory.CreateDbContextAsync();
-
-            var recentLogs = await context.AuditLogs
-                .AsNoTracking()
-                .OrderByDescending(a => a.OccurredAt)
-                .Take(20)
-                .Join(
-                    context.Users.AsNoTracking(),
-                    audit => audit.UserId,
-                    user => user.Id,
-                    (audit, user) => new { audit, user.FullName })
-                .ToListAsync();
-
-            _log.Debug($"SuperAdminOrchestrator.GetRecentActivity: fetched {recentLogs.Count} activity rows");
-
-            return recentLogs
-                .Select(x => x.audit.ToDto(x.FullName))
-                .ToList();
-        }
-        catch (PostgresException ex) when (IsMissingRelation(ex))
-        {
-            _log.Warn("SuperAdminOrchestrator.GetRecentActivity: required audit tables are missing. Returning empty activity list.", ex);
-            return [];
-        }
-    }
-
-    private async Task<List<CollegeScoreSummaryDto>> GetAverageScoresByCollege()
-    {
-        try
-        {
-            _log.Debug("SuperAdminOrchestrator.GetAverageScoresByCollege: opening db context");
-            await using var context = await _dbContextFactory.CreateDbContextAsync();
-
-            var scores = await context.Results
-                .AsNoTracking()
-                .Join(context.Students.AsNoTracking(),
-                    result => result.StudentId,
-                    student => student.StudentId,
-                    (result, student) => new { result, student })
-                .Join(context.Colleges.AsNoTracking(),
-                    x => x.student.CollegeId,
-                    college => college.CollegeId,
-                    (x, college) => new { x.result, x.student, college })
-                .GroupBy(x => new { x.college.CollegeId, CollegeName = x.college.CollegeName ?? "Unknown College" })
-                .Select(group => new CollegeScoreSummaryDto
-                {
-                    CollegeId = group.Key.CollegeId.ToString(),
-                    CollegeName = group.Key.CollegeName,
-                    AverageScore = (double)Math.Round(group.Average(x => x.result.ObtainedMarks), 2),
-                    StudentsAssessed = group.Select(x => x.student.StudentId).Distinct().Count()
-                })
-                .OrderByDescending(x => x.AverageScore)
-                .Take(10)
-                .ToListAsync();
-
-            _log.Debug($"SuperAdminOrchestrator.GetAverageScoresByCollege: computed {scores.Count} college score summaries");
-            return scores;
-        }
-        catch (PostgresException ex) when (IsMissingRelation(ex))
-        {
-            _log.Warn("SuperAdminOrchestrator.GetAverageScoresByCollege: required assessment tables are missing. Returning empty scores.", ex);
-            return [];
-        }
-    }
-
-    private async Task<List<UsageTrendPointDto>> GetUsageTrends()
-    {
-        try
-        {
-            _log.Debug("SuperAdminOrchestrator.GetUsageTrends: opening db context");
-            await using var context = await _dbContextFactory.CreateDbContextAsync();
-
-            var utcToday = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
-            var rangeStart = utcToday.AddDays(-29);
-
-            var trends = await context.Results
-                .AsNoTracking()
-                .Where(result => result.GeneratedAt >= rangeStart)
-                .GroupBy(result => result.GeneratedAt.Date)
-                .Select(group => new UsageTrendPointDto
-                {
-                    Date = group.Key,
-                    Assessments = group.Select(x => x.AssessmentId).Distinct().Count(),
-                    StudentsAssessed = group.Select(x => x.StudentId).Distinct().Count()
-                })
-                .OrderBy(point => point.Date)
-                .ToListAsync();
-
-            _log.Debug($"SuperAdminOrchestrator.GetUsageTrends: computed {trends.Count} trend points from rangeStart={rangeStart:O}");
-            return trends;
-        }
-        catch (PostgresException ex) when (IsMissingRelation(ex))
-        {
-            _log.Warn("SuperAdminOrchestrator.GetUsageTrends: result tables are missing. Returning empty trend data.", ex);
-            return [];
-        }
-    }
-
-    private static bool IsMissingRelation(PostgresException ex) => ex.SqlState == PostgresErrorCodes.UndefinedTable;
 }

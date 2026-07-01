@@ -23,6 +23,7 @@ export interface CollegeBatchSummary {
   studentCount: number;
   createdAt: string;
   assignedTrainers: ApprovedTrainer[];
+  assignedStudents: ApprovedStudent[];
 }
 
 export interface SubjectOption {
@@ -35,6 +36,17 @@ export interface ApprovedTrainer {
   userId: string;
   fullName: string;
   email: string;
+}
+
+export interface ApprovedStudent {
+  studentId: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  currentClassId?: string;
+  currentClassName?: string;
+  currentBatchId?: string;
+  currentBatchName?: string;
 }
 
 export interface CollegeClassSummary {
@@ -86,6 +98,26 @@ export interface AssignBatchTrainersRequest {
   trainerIds: string[];
 }
 
+export interface AssignStudentToBatchRequest {
+  studentIds: string[];
+}
+
+export interface CollegeAdminDashboardTotals {
+  registeredStudents: number;
+  registeredTrainers: number;
+  pendingApprovals: number;
+  totalAssessments: number;
+  assessmentsThisMonth: number;
+  assessmentsPreviousMonth: number;
+}
+
+export interface CollegeAdminDashboardData {
+  totals: CollegeAdminDashboardTotals;
+  pendingApprovals: PendingUser[];
+  recentActivity: any[];
+  usageTrends: any[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class CollegeAdminService {
   private readonly url = 'college-admin';
@@ -94,6 +126,24 @@ export class CollegeAdminService {
   readonly pendingUsers$ = this.pendingUsersSubject.asObservable();
 
   constructor(private readonly http: HttpClientService) {}
+
+  getDashboard(): Observable<CollegeAdminDashboardData> {
+    return this.http.get<any>(`${this.url}/dashboard`).pipe(
+      map(response => ({
+        totals: {
+          registeredStudents: response?.totals?.registeredStudents ?? 0,
+          registeredTrainers: response?.totals?.registeredTrainers ?? 0,
+          pendingApprovals: response?.totals?.pendingApprovals ?? 0,
+          totalAssessments: response?.totals?.totalAssessments ?? 0,
+          assessmentsThisMonth: response?.totals?.assessmentsThisMonth ?? 0,
+          assessmentsPreviousMonth: response?.totals?.assessmentsPreviousMonth ?? 0,
+        },
+        pendingApprovals: response?.pendingApprovals ?? [],
+        recentActivity: response?.recentActivity ?? [],
+        usageTrends: response?.usageTrends ?? [],
+      }))
+    );
+  }
 
   getClassConfiguration(): Observable<ClassConfiguration> {
     return this.http
@@ -139,6 +189,12 @@ export class CollegeAdminService {
       .pipe(map(items => (items ?? []).map(item => this.mapTrainer(item))));
   }
 
+  getApprovedStudents(): Observable<ApprovedStudent[]> {
+    return this.http
+      .get<any[]>(`${this.url}/students/approved`)
+      .pipe(map(items => (items ?? []).map(item => this.mapStudent(item))));
+  }
+
   getSubjects(): Observable<SubjectOption[]> {
     return this.http
       .get<any[]>(`${this.url}/subjects`)
@@ -152,6 +208,16 @@ export class CollegeAdminService {
   ): Observable<CollegeBatchSummary> {
     return this.http
       .post<any>(`${this.url}/classes/${classId}/batches/${batchId}/trainers`, request)
+      .pipe(map(item => this.mapBatch(item)));
+  }
+
+  assignStudentToBatch(
+    classId: string,
+    batchId: string,
+    request: AssignStudentToBatchRequest
+  ): Observable<CollegeBatchSummary> {
+    return this.http
+      .post<any>(`${this.url}/classes/${classId}/batches/${batchId}/students`, request)
       .pipe(map(item => this.mapBatch(item)));
   }
 
@@ -220,7 +286,8 @@ export class CollegeAdminService {
       capacity: item?.capacity ?? item?.Capacity ?? 0,
       studentCount: item?.studentCount ?? item?.StudentCount ?? 0,
       createdAt: item?.createdAt ?? item?.CreatedAt ?? '',
-      assignedTrainers: (item?.assignedTrainers ?? item?.AssignedTrainers ?? []).map((trainer: any) => this.mapTrainer(trainer))
+      assignedTrainers: (item?.assignedTrainers ?? item?.AssignedTrainers ?? []).map((trainer: any) => this.mapTrainer(trainer)),
+      assignedStudents: (item?.assignedStudents ?? item?.AssignedStudents ?? []).map((student: any) => this.mapStudent(student))
     };
   }
 
@@ -230,6 +297,19 @@ export class CollegeAdminService {
       userId: item?.userId ?? item?.UserId ?? '',
       fullName: item?.fullName ?? item?.FullName ?? '',
       email: item?.email ?? item?.Email ?? ''
+    };
+  }
+
+  private mapStudent(item: any): ApprovedStudent {
+    return {
+      studentId: item?.studentId ?? item?.StudentId ?? '',
+      userId: item?.userId ?? item?.UserId ?? '',
+      fullName: item?.fullName ?? item?.FullName ?? '',
+      email: item?.email ?? item?.Email ?? '',
+      currentClassId: item?.currentClassId ?? item?.CurrentClassId ?? undefined,
+      currentClassName: item?.currentClassName ?? item?.CurrentClassName ?? undefined,
+      currentBatchId: item?.currentBatchId ?? item?.CurrentBatchId ?? undefined,
+      currentBatchName: item?.currentBatchName ?? item?.CurrentBatchName ?? undefined
     };
   }
 

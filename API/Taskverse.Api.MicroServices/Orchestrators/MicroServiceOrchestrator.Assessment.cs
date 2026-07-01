@@ -76,6 +76,12 @@ public partial class MicroServiceOrchestrator
         return await Get<QuestionClassificationCatalogModel>(url);
     }
 
+    public async Task<ObjectResult> CreateQuestionClassificationEntry(CreateQuestionClassificationEntryModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/questions/catalog/items";
+        return await Post<QuestionClassificationEntryModel>(url, model);
+    }
+
     public async Task<ObjectResult> GetTrainerAssignedClassesAndBatches(AssessmentBootstrapModel model)
     {
         var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/assessments/trainer/assigned-classes-batches";
@@ -160,5 +166,12 @@ public partial class MicroServiceOrchestrator
             $"{GetMicroServiceUrl(MicroService.Assessment)}api/students/attempts/{attemptId}/submit?studentUserId={studentUserId}";
 
         return await Post<StudentAttemptSubmitModel>(url, new { });
+    }
+
+    public async Task<ObjectResult> GetStudentStreak(Guid studentUserId)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.Assessment)}api/students/me/streak?studentUserId={studentUserId}";
+
+        return await Get<StudentStreakModel>(url);
     }
 }

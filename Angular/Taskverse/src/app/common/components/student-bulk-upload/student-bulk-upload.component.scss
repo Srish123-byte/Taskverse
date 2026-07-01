@@ -69,6 +69,7 @@
   background: rgba(51, 65, 85, 0.72);
   color: #e2e8f0;
   cursor: pointer;
+  min-width: 120px;
 }
 
 .bulk-upload-primary:disabled,
@@ -87,6 +88,12 @@
   border: 1px solid rgba(248, 113, 113, 0.35);
   background: rgba(127, 29, 29, 0.24);
   color: #fecaca;
+}
+
+.bulk-upload-state-warning {
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  background: rgba(120, 53, 15, 0.24);
+  color: #fde68a;
 }
 
 .bulk-upload-summary,

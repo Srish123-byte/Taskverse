@@ -185,6 +185,12 @@ export interface StudentAttemptSubmitResult {
   submittedAt?: string | null;
 }
 
+export interface StudentStreak {
+  currentStreak: number;
+  longestStreak: number;
+  totalAssessmentsTaken: number;
+}
+
 export interface StudentResult {
   resultId: string;
   assessmentId: string;
@@ -323,5 +329,9 @@ export class StudentAssessmentsService {
 
   getStudentResults(studentId: string): Observable<StudentResult[]> {
     return this.http.get<StudentResult[]>(`results/students/${studentId}`);
+  }
+
+  getStudentStreak(): Observable<StudentStreak> {
+    return this.http.get<StudentStreak>('students/me/streak');
   }
 }

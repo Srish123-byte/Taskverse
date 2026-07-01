@@ -301,6 +301,113 @@
   color: #d4e1f5;
 }
 
+.runner-question-breakdown {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 26px;
+}
+
+.runner-question-breakdown h2 {
+  margin: 0;
+  color: #f2f7ff;
+  font-size: 1.4rem;
+}
+
+.runner-question-card {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid rgba(122, 145, 191, 0.16);
+  border-radius: 18px;
+  background: rgba(37, 50, 76, 0.72);
+}
+
+.runner-question-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.runner-question-tag {
+  color: #8fb0d8;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.runner-question-status {
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.runner-question-status-correct {
+  color: #38ef7d;
+}
+
+.runner-question-status-incorrect {
+  color: #ff6b6b;
+}
+
+.runner-question-status-unanswered {
+  color: #c8d2e7;
+}
+
+.runner-question-status-pending {
+  color: #ffd36b;
+}
+
+.runner-question-card h3 {
+  margin: 0;
+  color: #f5f8ff;
+  font-size: 1.2rem;
+  line-height: 1.4;
+}
+
+.runner-answer-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.runner-answer-box {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(18, 27, 45, 0.88);
+}
+
+.runner-answer-box span {
+  color: #8fb0d8;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.runner-answer-box strong {
+  color: #f2f7ff;
+  font-size: 0.98rem;
+  line-height: 1.4;
+}
+
+.runner-answer-box-correct {
+  border: 1px solid rgba(49, 208, 111, 0.22);
+  background: rgba(22, 50, 37, 0.44);
+}
+
+.runner-question-explanation {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid rgba(122, 145, 191, 0.14);
+  border-radius: 14px;
+  background: rgba(18, 27, 45, 0.66);
+  color: #d4e1f5;
+  line-height: 1.6;
+}
+
 @media (max-width: 840px) {
   .runner-gate-grid,
   .runner-result-grid {
@@ -340,6 +447,10 @@
   .assessment-question-options,
   .assessment-player-actions {
     width: 100%;
+  }
+
+  .runner-answer-grid {
+    grid-template-columns: 1fr;
   }
 
   .assessment-player-actions {

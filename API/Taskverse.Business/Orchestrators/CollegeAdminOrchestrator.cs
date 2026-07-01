@@ -136,8 +136,8 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
 
         var studentCountsByBatch = await context.Students
             .AsNoTracking()
-            .Where(item => item.CollegeId == collegeId && item.Status == UserStatus.APPROVED)
-            .GroupBy(item => item.BatchId)
+            .Where(item => item.CollegeId == collegeId && item.Status == UserStatus.APPROVED && item.BatchId.HasValue)
+            .GroupBy(item => item.BatchId!.Value)
             .Select(group => new
             {
                 BatchId = group.Key,
@@ -187,6 +187,35 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
                     })
                     .ToList());
 
+        var assignedStudentsByBatch = await context.Students
+            .AsNoTracking()
+            .Where(item => item.CollegeId == collegeId && item.Status == UserStatus.APPROVED && item.BatchId.HasValue)
+            .Select(item => new
+            {
+                BatchId = item.BatchId!.Value,
+                item.StudentId,
+                item.UserId,
+                item.FullName,
+                item.Email
+            })
+            .ToListAsync();
+
+        var studentsLookup = assignedStudentsByBatch
+            .GroupBy(item => item.BatchId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderBy(item => item.FullName)
+                    .ThenBy(item => item.Email)
+                    .Select(item => new ApprovedStudentDto
+                    {
+                        StudentId = item.StudentId.ToString(),
+                        UserId = item.UserId.ToString(),
+                        FullName = item.FullName,
+                        Email = item.Email
+                    })
+                    .ToList());
+
         var batchesByClass = registrationBatches
             .Where(item =>
                 Guid.TryParse(item.ClassId, out var parsedClassId) &&
@@ -230,6 +259,10 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
                         AssignedTrainers = Guid.TryParse(item.BatchId, out var trainerBatchId) &&
                                            trainersLookup.TryGetValue(trainerBatchId, out var trainers)
                             ? trainers
+                            : [],
+                        AssignedStudents = Guid.TryParse(item.BatchId, out var studentBatchId) &&
+                                           studentsLookup.TryGetValue(studentBatchId, out var students)
+                            ? students
                             : []
                     })
                     .OrderBy(item => item.Name)
@@ -321,6 +354,19 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
 
         var models = result.DeserializeValue<List<ApprovedTrainerModel>>()
             ?? throw new InvalidOperationException($"GetApprovedTrainers returned empty for collegeId={collegeId}.");
+
+        return models.Select(model => model.ToDto()).ToList();
+    }
+
+    public async Task<List<ApprovedStudentDto>> GetApprovedStudents(Guid collegeId)
+    {
+        _log.Debug($"CollegeAdminOrchestrator.GetApprovedStudents: collegeId={collegeId}");
+
+        var result = await _microServiceOrchestrator.GetApprovedCollegeStudents(collegeId.ToString());
+        EnsureMicroServiceSuccess(result, nameof(GetApprovedStudents));
+
+        var models = result.DeserializeValue<List<ApprovedStudentModel>>()
+            ?? throw new InvalidOperationException($"GetApprovedStudents returned empty for collegeId={collegeId}.");
 
         return models.Select(model => model.ToDto()).ToList();
     }
@@ -456,6 +502,34 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
         return model.ToDto();
     }
 
+    public async Task<CollegeBatchSummaryDto> AssignStudentToBatch(Guid collegeId, string classId, string batchId, AssignStudentToBatchDto dto)
+    {
+        _log.Debug(
+            $"CollegeAdminOrchestrator.AssignStudentToBatch: collegeId={collegeId}, classId={classId}, batchId={batchId}, studentCount={dto.StudentIds.Count}");
+
+        if (!Guid.TryParse(classId, out _))
+        {
+            throw new InvalidOperationException("Class id is invalid.");
+        }
+
+        if (!Guid.TryParse(batchId, out _))
+        {
+            throw new InvalidOperationException("Batch id is invalid.");
+        }
+
+        var result = await _microServiceOrchestrator.AssignCollegeBatchStudent(
+            collegeId.ToString(),
+            classId,
+            batchId,
+            dto.ToMicroServiceModel());
+        EnsureMicroServiceSuccess(result, nameof(AssignStudentToBatch));
+
+        var model = result.DeserializeValue<CollegeBatchSummaryModel>()
+            ?? throw new InvalidOperationException($"AssignStudentToBatch returned empty for collegeId={collegeId}, classId={classId}, batchId={batchId}.");
+
+        return model.ToDto();
+    }
+
     public async Task DeleteClass(Guid collegeId, string classId)
     {
         _log.Debug($"CollegeAdminOrchestrator.DeleteClass: collegeId={collegeId}, classId={classId}");
@@ -517,15 +591,15 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
             var startOfThisMonth = new DateTime(utcNow.Year, utcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
             var startOfPreviousMonth = startOfThisMonth.AddMonths(-1);
 
-            var registeredStudentsTask = context.Students
+            var registeredStudents = await context.Students
                 .AsNoTracking()
                 .CountAsync(student => student.CollegeId == collegeId && student.Status == UserStatus.APPROVED);
 
-            var registeredTrainersTask = context.Trainers
+            var registeredTrainers = await context.Trainers
                 .AsNoTracking()
                 .CountAsync(trainer => trainer.CollegeId == collegeId && trainer.Status == UserStatus.APPROVED);
 
-            var pendingApprovalsTask = context.Users
+            var pendingApprovals = await context.Users
                 .AsNoTracking()
                 .CountAsync(user =>
                     user.CollegeId == collegeId &&
@@ -533,33 +607,33 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
                     user.Role.Trim().ToLower() != "collegeadmin" &&
                     user.Role.Trim().ToLower() != "superadmin");
 
-            var assessmentsThisMonthTask = context.Assessments
+            var totalAssessments = await context.Assessments
+                .AsNoTracking()
+                .CountAsync(assessment =>
+                    assessment.CollegeId == collegeId &&
+                    assessment.IsDeleted != true);
+
+            var assessmentsThisMonth = await context.Assessments
                 .AsNoTracking()
                 .CountAsync(assessment =>
                     assessment.CollegeId == collegeId &&
                     assessment.CreatedAt >= startOfThisMonth);
 
-            var assessmentsPreviousMonthTask = context.Assessments
+            var assessmentsPreviousMonth = await context.Assessments
                 .AsNoTracking()
                 .CountAsync(assessment =>
                     assessment.CollegeId == collegeId &&
                     assessment.CreatedAt >= startOfPreviousMonth &&
                     assessment.CreatedAt < startOfThisMonth);
 
-            await Task.WhenAll(
-                registeredStudentsTask,
-                registeredTrainersTask,
-                pendingApprovalsTask,
-                assessmentsThisMonthTask,
-                assessmentsPreviousMonthTask);
-
             return new CollegeAdminTotalsDto
             {
-                RegisteredStudents = await registeredStudentsTask,
-                RegisteredTrainers = await registeredTrainersTask,
-                PendingApprovals = await pendingApprovalsTask,
-                AssessmentsThisMonth = await assessmentsThisMonthTask,
-                AssessmentsPreviousMonth = await assessmentsPreviousMonthTask
+                RegisteredStudents = registeredStudents,
+                RegisteredTrainers = registeredTrainers,
+                PendingApprovals = pendingApprovals,
+                TotalAssessments = totalAssessments,
+                AssessmentsThisMonth = assessmentsThisMonth,
+                AssessmentsPreviousMonth = assessmentsPreviousMonth
             };
         }
         catch (PostgresException ex) when (IsMissingRelation(ex))

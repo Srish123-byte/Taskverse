@@ -62,7 +62,8 @@ public record CollegeBatchSummaryRecord(
     int Capacity,
     int StudentCount,
     DateTime CreatedAt,
-    List<ApprovedTrainerRecord> AssignedTrainers);
+    List<ApprovedTrainerRecord> AssignedTrainers,
+    List<ApprovedStudentRecord> AssignedStudents);
 
 public record SubjectOptionRecord(
     string SubjectId,
@@ -74,8 +75,21 @@ public record ApprovedTrainerRecord(
     string FullName,
     string Email);
 
+public record ApprovedStudentRecord(
+    string StudentId,
+    string UserId,
+    string FullName,
+    string Email,
+    string? CurrentClassId,
+    string? CurrentClassName,
+    string? CurrentBatchId,
+    string? CurrentBatchName);
+
 public record AssignBatchTrainersRequest(
     List<string> TrainerIds);
+
+public record AssignStudentToBatchRequest(
+    List<string> StudentIds);
 
 public record PendingUserRecord(
     string UserId,

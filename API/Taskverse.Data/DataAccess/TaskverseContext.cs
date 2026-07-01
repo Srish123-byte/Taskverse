@@ -37,8 +37,12 @@ public class TaskverseContext : DbContext
     public DbSet<AssessmentQuestion> AssessmentQuestions { get; set; }
     public DbSet<Attempt> Attempts { get; set; }
     public DbSet<AttemptAnswer> AttemptAnswers { get; set; }
+    public DbSet<AttendanceSession> AttendanceSessions { get; set; }
+    public DbSet<AttendanceEntryRecord> AttendanceEntries { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<AuthSession> AuthSessions { get; set; }
+    public DbSet<LookupAttendanceSession> LookupAttendanceSessions { get; set; }
+    public DbSet<LookupAttendanceEntry> LookupAttendanceEntries { get; set; }
     public DbSet<Question> Questions { get; set; }
     public DbSet<ProctoringSession> ProctoringSessions { get; set; }
     public DbSet<ProctoringEvent> ProctoringEvents { get; set; }
@@ -396,6 +400,7 @@ public class TaskverseContext : DbContext
             entity.Property(u => u.FullName).HasColumnName("full_name").IsRequired();
             entity.Property(u => u.Email).HasColumnName("email").IsRequired();
             entity.Property(u => u.Phone).HasColumnName("phone");
+            entity.Property(u => u.EnrollmentNumber).HasColumnName("enrollment_number").HasMaxLength(50);
             entity.Property(u => u.CollegeId).HasColumnName("college_id");
             entity.Property(u => u.CollegeName).HasColumnName("college_name");
             entity.Property(u => u.Role).HasColumnName("role").IsRequired();
@@ -508,6 +513,124 @@ public class TaskverseContext : DbContext
                 .HasForeignKey(b => b.CollegeId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("fk_batches_college");
+        });
+
+        modelBuilder.Entity<LookupAttendanceSession>(entity =>
+        {
+            entity.ToTable("lookup_attendance_session");
+            entity.HasKey(item => item.AttendanceSessionId);
+            entity.Property(item => item.AttendanceSessionId).HasColumnName("attendance_session_id").ValueGeneratedNever();
+            entity.Property(item => item.AttendanceSession).HasColumnName("attendance_session").IsRequired().HasMaxLength(50);
+
+            entity.HasData(
+                new LookupAttendanceSession
+                {
+                    AttendanceSessionId = (int)AttendanceSessionType.PreBreak,
+                    AttendanceSession = nameof(AttendanceSessionType.PreBreak)
+                },
+                new LookupAttendanceSession
+                {
+                    AttendanceSessionId = (int)AttendanceSessionType.PostBreak,
+                    AttendanceSession = nameof(AttendanceSessionType.PostBreak)
+                });
+        });
+
+        modelBuilder.Entity<LookupAttendanceEntry>(entity =>
+        {
+            entity.ToTable("lookup_attendance_entry");
+            entity.HasKey(item => item.AttendanceEntryId);
+            entity.Property(item => item.AttendanceEntryId).HasColumnName("attendance_entry_id").ValueGeneratedNever();
+            entity.Property(item => item.AttendanceEntry).HasColumnName("attendance_entry").IsRequired().HasMaxLength(50);
+
+            entity.HasData(
+                new LookupAttendanceEntry
+                {
+                    AttendanceEntryId = (int)AttendanceEntryType.Present,
+                    AttendanceEntry = nameof(AttendanceEntryType.Present)
+                },
+                new LookupAttendanceEntry
+                {
+                    AttendanceEntryId = (int)AttendanceEntryType.Absent,
+                    AttendanceEntry = nameof(AttendanceEntryType.Absent)
+                });
+        });
+
+        modelBuilder.Entity<AttendanceSession>(entity =>
+        {
+            entity.ToTable("attendance_sessions");
+            entity.HasKey(item => item.AttendanceSessionId);
+            entity.Property(item => item.AttendanceSessionId).HasColumnName("attendance_session_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(item => item.CollegeId).HasColumnName("college_id");
+            entity.Property(item => item.ClassId).HasColumnName("class_id");
+            entity.Property(item => item.BatchId).HasColumnName("batch_id");
+            entity.Property(item => item.AttendanceDate).HasColumnName("attendance_date").HasColumnType("date");
+            entity.Property(item => item.AttendanceSessionType).HasColumnName("attendance_session").HasConversion<int>();
+            entity.Property(item => item.SubmittedByTrainerId).HasColumnName("submitted_by_trainer_id");
+            entity.Property(item => item.BatchOwnerTrainerId).HasColumnName("batch_owner_trainer_id");
+            entity.Property(item => item.SubmittedAt).HasColumnName("submitted_at").HasDefaultValueSql("now()");
+            entity.Property(item => item.LastModifiedAt).HasColumnName("modified_at").HasDefaultValueSql("now()");
+
+            entity.HasIndex(item => new { item.BatchId, item.AttendanceDate, item.AttendanceSessionType })
+                .HasDatabaseName("ix_attendance_sessions_batch_id_attendance_date_attendance_sess")
+                .IsUnique();
+            entity.HasIndex(item => item.CollegeId);
+            entity.HasIndex(item => item.ClassId);
+            entity.HasIndex(item => item.SubmittedByTrainerId);
+
+            entity.HasOne(item => item.College)
+                .WithMany()
+                .HasForeignKey(item => item.CollegeId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_attendance_sessions_college");
+
+            entity.HasOne(item => item.Class)
+                .WithMany()
+                .HasForeignKey(item => item.ClassId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_attendance_sessions_class");
+
+            entity.HasOne(item => item.Batch)
+                .WithMany()
+                .HasForeignKey(item => item.BatchId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_attendance_sessions_batch");
+
+            entity.HasOne(item => item.SubmittedByTrainer)
+                .WithMany()
+                .HasForeignKey(item => item.SubmittedByTrainerId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_attendance_sessions_submitted_by_trainer");
+
+            entity.HasOne(item => item.BatchOwnerTrainer)
+                .WithMany()
+                .HasForeignKey(item => item.BatchOwnerTrainerId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_attendance_sessions_batch_owner_trainer");
+        });
+
+        modelBuilder.Entity<AttendanceEntryRecord>(entity =>
+        {
+            entity.ToTable("attendance_entries");
+            entity.HasKey(item => item.AttendanceEntryId);
+            entity.Property(item => item.AttendanceEntryId).HasColumnName("attendance_entry_id").HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(item => item.AttendanceSessionId).HasColumnName("attendance_session_id");
+            entity.Property(item => item.StudentId).HasColumnName("student_id");
+            entity.Property(item => item.AttendanceEntryType).HasColumnName("attendance_entry").HasConversion<int>();
+
+            entity.HasIndex(item => new { item.AttendanceSessionId, item.StudentId }).IsUnique();
+            entity.HasIndex(item => item.StudentId);
+
+            entity.HasOne(item => item.AttendanceSession)
+                .WithMany(session => session.Entries)
+                .HasForeignKey(item => item.AttendanceSessionId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_attendance_entries_session");
+
+            entity.HasOne(item => item.Student)
+                .WithMany()
+                .HasForeignKey(item => item.StudentId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_attendance_entries_student");
         });
 
         // Configure Subject entity
@@ -704,8 +827,8 @@ public class TaskverseContext : DbContext
             entity.HasKey(a => a.AssessmentId);
             entity.Property(a => a.AssessmentId).HasColumnName("assessment_id").HasDefaultValueSql("gen_random_uuid()");
             entity.Property(a => a.CollegeId).HasColumnName("college_id");
-            entity.Property(a => a.SubjectId).HasColumnName("subject_id");
-            entity.Property(a => a.TopicId).HasColumnName("topic_id");
+            entity.Property(a => a.SubjectIds).HasColumnName("subject_id").HasColumnType("uuid[]");
+            entity.Property(a => a.TopicIds).HasColumnName("topic_id").HasColumnType("uuid[]");
             entity.Property(a => a.AssessmentName).HasColumnName("assessment_name").IsRequired().HasMaxLength(120);
             entity.Property(a => a.AssessmentType).HasColumnName("assessment_type").HasConversion<int>();
             entity.Property(a => a.AssessmentStatus).HasColumnName("assessment_status").HasConversion<int>();
@@ -730,20 +853,6 @@ public class TaskverseContext : DbContext
             entity.Property(a => a.SoftDeletedBy).HasColumnName("soft_deleted_by").HasMaxLength(200);
             entity.HasQueryFilter(a => a.AssessmentStatus != AssessmentStatus.Soft_Deleted);
 
-            entity.HasIndex(a => a.SubjectId);
-            entity.HasIndex(a => a.TopicId);
-
-            entity.HasOne(a => a.Subject)
-                .WithMany(s => s.Assessments)
-                .HasForeignKey(a => a.SubjectId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("fk_assessments_subject");
-
-            entity.HasOne(a => a.Topic)
-                .WithMany(t => t.Assessments)
-                .HasForeignKey(a => a.TopicId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("fk_assessments_topic");
         });
 
         // Configure AssessmentQuestion entity

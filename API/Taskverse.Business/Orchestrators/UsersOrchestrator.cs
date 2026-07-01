@@ -14,6 +14,7 @@ namespace Taskverse.Business.Orchestrators;
 public class UsersOrchestrator : IUsersOrchestrator
 {
     private const string SuperAdminRole = "SuperAdmin";
+    private const int EnrollmentNumberMaxLength = 50;
 
     private readonly IMicroServiceOrchestrator _microServiceOrchestrator;
     private readonly IUsersManager _usersManager;
@@ -149,6 +150,8 @@ public class UsersOrchestrator : IUsersOrchestrator
     {
         _log.Debug($"UsersOrchestrator.RegisterUser: email={dto.Email}, role={dto.Role}");
 
+        await ValidateStudentRegistrationAsync(dto);
+
         // Duplicate check
         _log.Debug($"UsersOrchestrator.RegisterUser: checking existing user by email={dto.Email}");
         User? existing = await _usersManager.GetByEmail(dto.Email);
@@ -166,6 +169,7 @@ public class UsersOrchestrator : IUsersOrchestrator
             FullName   = dto.FullName.Trim(),
             Email      = dto.Email.Trim().ToLowerInvariant(),
             Phone      = dto.Phone?.Trim(),
+            EnrollmentNumber = string.IsNullOrWhiteSpace(dto.EnrollmentNumber) ? null : dto.EnrollmentNumber.Trim(),
             CollegeId  = dto.CollegeId,
             CollegeName = dto.CollegeName?.Trim(),
             Role       = dto.Role,
@@ -187,5 +191,64 @@ public class UsersOrchestrator : IUsersOrchestrator
 
         _log.Info($"UsersOrchestrator.RegisterUser: created id={created.Id}, status={created.Status}");
         return created.ToDto();
+    }
+
+    private async Task ValidateStudentRegistrationAsync(CreateUserDto dto)
+    {
+        if (!string.Equals(dto.Role, "Student", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (!dto.CollegeId.HasValue || dto.CollegeId.Value == Guid.Empty)
+        {
+            throw new InvalidOperationException("College is required for student registration.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.EnrollmentNumber) &&
+            dto.EnrollmentNumber.Trim().Length > EnrollmentNumberMaxLength)
+        {
+            throw new InvalidOperationException($"Enrollment number must not exceed {EnrollmentNumberMaxLength} characters.");
+        }
+
+        var hasClassId = dto.ClassId.HasValue && dto.ClassId.Value != Guid.Empty;
+        var hasBatchId = dto.BatchId.HasValue && dto.BatchId.Value != Guid.Empty;
+
+        if (hasClassId != hasBatchId)
+        {
+            throw new InvalidOperationException("Class and batch must either both be selected or both be left empty.");
+        }
+
+        if (!hasClassId)
+        {
+            return;
+        }
+
+        var selectedClassId = dto.ClassId!.Value;
+        var selectedBatchId = dto.BatchId!.Value;
+
+        var collegeResult = await _microServiceOrchestrator.GetApprovedRegistrationColleges();
+        collegeResult.EnsureSuccess(nameof(ValidateStudentRegistrationAsync));
+        var colleges = collegeResult.DeserializeValue<List<RegistrationCollegeModel>>() ?? [];
+        if (!colleges.Any(college => Guid.TryParse(college.CollegeId, out var collegeId) && collegeId == dto.CollegeId.Value))
+        {
+            throw new InvalidOperationException("Selected college is invalid.");
+        }
+
+        var classesResult = await _microServiceOrchestrator.GetRegistrationClasses(dto.CollegeId.Value.ToString());
+        classesResult.EnsureSuccess(nameof(ValidateStudentRegistrationAsync));
+        var classes = classesResult.DeserializeValue<List<RegistrationClassModel>>() ?? [];
+        if (!classes.Any(item => Guid.TryParse(item.ClassId, out var classId) && classId == selectedClassId))
+        {
+            throw new InvalidOperationException("Selected class does not belong to the selected college.");
+        }
+
+        var batchesResult = await _microServiceOrchestrator.GetRegistrationBatches(selectedClassId.ToString());
+        batchesResult.EnsureSuccess(nameof(ValidateStudentRegistrationAsync));
+        var batches = batchesResult.DeserializeValue<List<RegistrationBatchModel>>() ?? [];
+        if (!batches.Any(item => Guid.TryParse(item.BatchId, out var batchId) && batchId == selectedBatchId))
+        {
+            throw new InvalidOperationException("Selected batch does not belong to the selected class.");
+        }
     }
 }

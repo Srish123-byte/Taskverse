@@ -1,17 +1,15 @@
 <div class="page-container">
-  <div class="page-eyebrow">College Admin</div>
-  <h2 class="page-title">Class &amp; Batch Configuration</h2>
-  <p class="page-welcome">Manage institutional hierarchy and capacity mapping with live class data from the college admin service.</p>
-
   <div class="page-content classes-management-page">
     <section class="hero-shell">
-      <div class="hero-copy">
-        <span class="hero-kicker">Classes Management</span>
-        <h3>Organize classes, batches, and seat utilization from one dashboard.</h3>
-        <p>Use the live create flows to add classes, create batches, and keep seat utilization updated in one place.</p>
-      </div>
-
       <div class="hero-actions">
+        <button
+          type="button"
+          class="primary-action"
+          routerLink="/college-admin/classes-management/attendance-tracker">
+          <img src="assets/icons/nav/students.svg" alt="" class="hero-action-icon" aria-hidden="true">
+          <span>Take Attendance</span>
+        </button>
+
         <button type="button" class="primary-action" (click)="openCreateClassForm()">
           <img src="assets/icons/shared/add.svg" alt="" class="hero-action-icon" aria-hidden="true">
           <span>Create Class</span>
@@ -25,7 +23,6 @@
       <div class="table-header">
         <div class="section-title">
           <h3>Active Classes</h3>
-          <p>Live classes returned by the current CollegeAdminController and MS-backed flow.</p>
         </div>
       </div>
 
@@ -145,6 +142,14 @@
                     (click)="$event.stopPropagation(); openAssignTrainerModal(classItem, batchCard.batch!)">
                     <img src="assets/icons/nav/assign-trainer.svg" alt="" class="mini-action-icon" aria-hidden="true">
                     <span>Assign Trainer</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="mini-action mini-action-muted"
+                    [disabled]="isDeletingBatch(batchCard.batch!.batchId)"
+                    (click)="$event.stopPropagation(); openAssignStudentModal(classItem, batchCard.batch!)">
+                    <img src="assets/icons/nav/students.svg" alt="" class="mini-action-icon" aria-hidden="true">
+                    <span>Assign Student</span>
                   </button>
                 </div>
               </ng-container>
@@ -427,6 +432,13 @@
           </button>
 
           <div *ngIf="isTrainerDropdownOpen" class="trainer-dropdown-panel">
+            <input
+              type="text"
+              class="trainer-search-input"
+              placeholder="Search by name or email..."
+              [(ngModel)]="trainerSearchQuery"
+              (input)="onTrainerSearch()" />
+
             <div *ngIf="isLoadingApprovedTrainers" class="trainer-dropdown-empty">
               Loading approved trainers...
             </div>
@@ -436,7 +448,7 @@
             </div>
 
             <button
-              *ngFor="let trainer of approvedTrainers; trackBy: trackByTrainerId"
+              *ngFor="let trainer of pagedTrainers; trackBy: trackByTrainerId"
               type="button"
               class="trainer-option"
               [class.trainer-option-selected]="isTrainerSelected(trainer.trainerId)"
@@ -449,6 +461,12 @@
                 {{ isTrainerSelected(trainer.trainerId) ? 'Unassign' : 'Assign' }}
               </span>
             </button>
+
+            <div class="pagination-controls" *ngIf="trainerTotalPages > 1">
+              <button type="button" (click)="trainerPage = trainerPage - 1" [disabled]="trainerPage === 1">‹</button>
+              <span>{{ trainerPage }} / {{ trainerTotalPages }}</span>
+              <button type="button" (click)="trainerPage = trainerPage + 1" [disabled]="trainerPage === trainerTotalPages">›</button>
+            </div>
           </div>
         </div>
 
@@ -476,6 +494,144 @@
           [disabled]="isSubmittingTrainerAssignment || isLoadingApprovedTrainers || !hasTrainerSelectionChanges()"
           (click)="submitTrainerAssignment()">
           {{ isSubmittingTrainerAssignment ? 'Saving...' : 'Save Changes' }}
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <div *ngIf="isStudentAssignmentOpen && !isSuccessDialogOpen" class="modal-backdrop" (click)="!isSubmittingStudentAssignment && closeStudentAssignmentModal()">
+    <section class="create-class-modal trainer-assignment-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-title-icon">
+            <img src="assets/icons/nav/students.svg" alt="" class="modal-title-icon-image" aria-hidden="true">
+          </div>
+          <div>
+            <h3>Assign Student</h3>
+            <p>Manage students for {{ activeStudentAssignmentBatchName }} in {{ activeStudentAssignmentClassName }}.</p>
+          </div>
+        </div>
+        <button type="button" class="close-button" [disabled]="isSubmittingStudentAssignment" (click)="closeStudentAssignmentModal()" aria-label="Close student assignment form">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div *ngIf="studentAssignmentErrorMessage" class="form-error-banner">
+          {{ studentAssignmentErrorMessage }}
+        </div>
+
+        <div class="assignment-summary-card">
+          <span class="assignment-summary-kicker">{{ activeStudentAssignmentClassName }}</span>
+          <strong>{{ activeStudentAssignmentBatchName }}</strong>
+          <p>Choose the full approved student list for this batch. Students already assigned to another class or batch are marked below and can be reassigned here after confirmation.</p>
+        </div>
+
+        <div *ngIf="getStudentsMarkedForReassignment().length > 0" class="form-warning-banner">
+          {{ getStudentsMarkedForReassignment().length }} selected student{{ getStudentsMarkedForReassignment().length === 1 ? '' : 's' }} will be reassigned from another class or batch when you save.
+        </div>
+
+        <div *ngIf="getAssignedStudentsForActiveBatch().length > 0" class="selected-trainers-shell">
+          <span class="selected-trainers-label">Assigned students</span>
+          <div class="trainer-dropdown-panel">
+            <button
+              *ngFor="let student of getAssignedStudentsForActiveBatch(); trackBy: trackByStudentId"
+              type="button"
+              class="trainer-option"
+              [class.trainer-option-selected]="isStudentSelected(student.studentId)"
+              [disabled]="isSubmittingStudentAssignment"
+              (click)="selectStudent(student.studentId)">
+              <div class="trainer-option-copy">
+                <strong>{{ student.fullName }}</strong>
+                <span>{{ student.email }}</span>
+              </div>
+              <span class="trainer-option-action">{{ isStudentSelected(student.studentId) ? 'Keep Assigned' : 'Unassign' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="getSelectedStudentCount() > 0" class="selected-trainers-shell">
+          <span class="selected-trainers-label">Selected students</span>
+          <div class="selected-trainers-list">
+            <button
+              *ngFor="let student of getSelectedStudents(); trackBy: trackByStudentId"
+              type="button"
+              class="selected-trainer-chip"
+              [class.selected-trainer-chip-warning]="isStudentAssignedElsewhere(student)"
+              [disabled]="isSubmittingStudentAssignment"
+              (click)="selectStudent(student.studentId)">
+              <span>{{ student.fullName }}</span>
+              <small *ngIf="isStudentAssignedElsewhere(student)">{{ getStudentAssignmentStatus(student) }}</small>
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        <div class="trainer-dropdown-shell">
+          <div class="trainer-dropdown-trigger" [attr.aria-disabled]="true">
+            <span>{{ getStudentAssignmentLabel() }}</span>
+            <mat-icon>person_add</mat-icon>
+          </div>
+
+          <div class="trainer-dropdown-panel">
+            <input
+              type="text"
+              class="student-search-input"
+              placeholder="Search by name or email..."
+              [(ngModel)]="studentSearchQuery"
+              (input)="onStudentSearch()" />
+
+            <div *ngIf="isLoadingApprovedStudents" class="trainer-dropdown-empty">
+              Loading approved students...
+            </div>
+
+            <div *ngIf="!isLoadingApprovedStudents && approvedStudents.length === 0" class="trainer-dropdown-empty">
+              No approved students are available for this college yet.
+            </div>
+
+            <div *ngIf="!isLoadingApprovedStudents && approvedStudents.length > 0 && filteredStudents.length === 0" class="trainer-dropdown-empty">
+              No additional approved students match the current search.
+            </div>
+
+            <button
+              *ngFor="let student of pagedStudents; trackBy: trackByStudentId"
+              type="button"
+              class="trainer-option"
+              [class.trainer-option-warning]="isStudentAssignedElsewhere(student)"
+              [class.trainer-option-selected]="isStudentSelected(student.studentId)"
+              (click)="selectStudent(student.studentId)">
+              <div class="trainer-option-copy">
+                <strong>{{ student.fullName }}</strong>
+                <span>{{ student.email }}</span>
+                <small *ngIf="isStudentAssignedElsewhere(student)" class="trainer-option-meta">
+                  {{ getStudentAssignmentStatus(student) }}
+                </small>
+                <small *ngIf="!isStudentAssignedElsewhere(student)" class="trainer-option-meta">
+                  Unassigned
+                </small>
+              </div>
+              <span class="trainer-option-action">
+                {{ isStudentSelected(student.studentId) ? 'Selected' : (isStudentAssignedElsewhere(student) ? 'Reassign' : 'Select') }}
+              </span>
+            </button>
+
+            <div class="pagination-controls" *ngIf="studentTotalPages > 1">
+              <button type="button" (click)="studentPage = studentPage - 1" [disabled]="studentPage === 1">‹</button>
+              <span>{{ studentPage }} / {{ studentTotalPages }}</span>
+              <button type="button" (click)="studentPage = studentPage + 1" [disabled]="studentPage === studentTotalPages">›</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="footer-action footer-action-muted" [disabled]="isSubmittingStudentAssignment" (click)="closeStudentAssignmentModal()">Cancel</button>
+        <button
+          type="button"
+          class="footer-action footer-action-primary"
+          [disabled]="isSubmittingStudentAssignment || isLoadingApprovedStudents || !hasStudentSelectionChanges()"
+          (click)="submitStudentAssignment()">
+          {{ isSubmittingStudentAssignment ? 'Saving...' : 'Save Changes' }}
         </button>
       </div>
     </section>

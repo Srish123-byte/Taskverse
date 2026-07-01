@@ -1,19 +1,9 @@
 <div class="student-dashboard">
-  <header class="portal-topbar">
-    <div class="profile-pill">
-      <div class="profile-copy">
-        <strong>{{ userName || 'Alex Thompson' }}</strong>
-        <span>Student Access</span>
-      </div>
-      <div class="profile-avatar">{{ firstName ? (firstName | slice:0:1) : 'S' }}</div>
-    </div>
-  </header>
-
   <section class="portal-body">
     <header class="dashboard-intro">
       <div>
         <h1>Welcome back{{ firstName ? ', ' + firstName : ', Student' }}</h1>
-        <p>You have <span>3 assessments</span> scheduled for this week.</p>
+        <p>You have <span>{{ upcomingAssessments.length }} assessments</span> scheduled for this week.</p>
       </div>
     </header>
 
@@ -24,38 +14,41 @@
             <img src="assets/icons/student/upcoming-assessments.svg" alt="" class="student-section-icon" aria-hidden="true" />
             <h2>My Upcoming Assessments</h2>
           </div>
-          <span class="status-chip">3 Scheduled</span>
+          <span class="status-chip">{{ upcomingAssessments.length }} Scheduled</span>
         </div>
 
         <div class="assessment-list">
-          <article *ngFor="let assessment of upcomingAssessments" class="assessment-item" [ngClass]="'assessment-item-' + assessment.accent">
+          <article
+            *ngFor="let assessment of upcomingAssessments; let i = index; trackBy: trackByAssessmentId"
+            class="assessment-item"
+            [ngClass]="getAccentClass(i)">
             <div class="assessment-copy">
               <div class="assessment-title-row">
                 <div>
-                  <h3>{{ assessment.title }}</h3>
-                  <p>{{ assessment.subtitle }}</p>
-                </div>
-
-                <div *ngIf="assessment.countdown" class="assessment-countdown">
-                  <span class="countdown-label">
-                    <img src="assets/icons/student/starts-in-timer.svg" alt="" class="student-inline-icon student-inline-icon-sm" aria-hidden="true" />
-                    Starts in
-                  </span>
-                  <strong>{{ assessment.countdown }}</strong>
+                  <h3>{{ assessment.assessmentName }}</h3>
+                  <p>{{ getAssessmentContext(assessment) }}</p>
                 </div>
               </div>
 
               <div class="assessment-meta">
-                <span><img src="assets/icons/student/due-date.svg" alt="" class="student-inline-icon" aria-hidden="true" />{{ assessment.schedule }}</span>
-                <span><img src="assets/icons/student/starts-in-timer.svg" alt="" class="student-inline-icon" aria-hidden="true" />{{ assessment.duration }}</span>
+                <span><img src="assets/icons/student/due-date.svg" alt="" class="student-inline-icon" aria-hidden="true" />{{ getScheduleLabel(assessment) }}</span>
+                <span><img src="assets/icons/student/starts-in-timer.svg" alt="" class="student-inline-icon" aria-hidden="true" />{{ getDurationLabel(assessment) }}</span>
               </div>
             </div>
 
-            <button type="button" class="assessment-action" [class.assessment-action-disabled]="assessment.ctaState === 'disabled'">
+            <button type="button" class="assessment-action" (click)="goToAssessments()">
               <img src="assets/icons/student/start-assessment.svg" alt="" class="student-action-icon" aria-hidden="true" />
-              <span>{{ assessment.ctaLabel }}</span>
+              <span>{{ getActionLabel(assessment.assessmentStatus) }}</span>
             </button>
           </article>
+
+          <p *ngIf="!isLoadingAssessments && !upcomingAssessments.length" class="assessment-list-empty">
+            No active or upcoming assessments right now. New assessments assigned to you will appear here.
+          </p>
+
+          <p *ngIf="isLoadingAssessments && !upcomingAssessments.length" class="assessment-list-empty">
+            Loading your upcoming assessments...
+          </p>
         </div>
       </article>
 
@@ -63,66 +56,13 @@
         <article class="achievement-card">
           <div>
             <span class="mini-eyebrow">Current Achievement</span>
-            <strong>5 Day Streak</strong>
+            <strong>{{ currentStreakDays }} Day Streak</strong>
           </div>
           <div class="achievement-icon">
             <img src="assets/icons/student/streak.svg" alt="" class="streak-icon" aria-hidden="true" />
           </div>
         </article>
-
-        <article class="dashboard-panel trend-panel">
-          <div class="small-panel-header">
-            <span>Performance Trend</span>
-            <mat-icon>trending_up</mat-icon>
-          </div>
-
-          <div class="chart">
-            <div *ngFor="let bar of performanceTrend" class="chart-bar" [class.chart-bar-active]="bar.active" [style.height.%]="bar.value"></div>
-          </div>
-
-          <div class="chart-labels">
-            <span>30 days ago</span>
-            <span>Today</span>
-          </div>
-        </article>
-
-        <article class="privacy-card">
-          Only your private academic data is displayed here. Administrative tools are hidden.
-        </article>
       </aside>
-    </section>
-
-    <section class="dashboard-panel results-panel">
-      <div class="panel-header panel-header-results">
-        <div class="panel-title-wrap">
-          <mat-icon>history</mat-icon>
-          <h2>My Recent Results</h2>
-        </div>
-        <a [routerLink]="'/' + routeAddress.Student.Results">View All Results</a>
-      </div>
-
-      <div class="results-table">
-        <div class="table-head">
-          <span>Assessment Name</span>
-          <span>Date</span>
-          <span>Score</span>
-          <span>Rank in Batch</span>
-          <span>Action</span>
-        </div>
-
-        <div *ngFor="let result of recentResults" class="table-row">
-          <div class="result-name">
-            <span class="result-status"><mat-icon>check_circle</mat-icon></span>
-            <strong>{{ result.name }}</strong>
-          </div>
-          <span>{{ result.date }}</span>
-          <span class="score-chip">{{ result.score }}</span>
-          <strong class="rank-value">{{ result.rank }}</strong>
-          <button type="button" class="view-button" aria-label="View result details">
-            <mat-icon>visibility</mat-icon>
-          </button>
-        </div>
-      </div>
     </section>
   </section>
 </div>

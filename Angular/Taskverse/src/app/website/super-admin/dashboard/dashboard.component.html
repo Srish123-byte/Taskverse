@@ -12,31 +12,17 @@
     <div *ngIf="errorMessage" class="dashboard-state dashboard-state-error">{{ errorMessage }}</div>
 
     <ng-container *ngIf="dashboard">
-      <section class="dashboard-grid hero-grid">
+      <section class="dashboard-grid metrics-grid">
         <article class="hero-card hero-card-primary">
           <span class="hero-label">Action Required</span>
-          <strong class="hero-value">{{ dashboard.pendingApprovals.length }}</strong>
-          <p class="hero-copy">Colleges waiting for registration approval.</p>
+          <strong class="hero-value">{{ dashboard.totals.pendingApprovals }}</strong>
+          <p class="hero-copy">College admin registrations pending action.</p>
         </article>
 
-        <article class="hero-card">
-          <span class="hero-label">Platform Uptime</span>
-          <strong class="hero-value">{{ dashboard.platformHealth.uptimePercent }}%</strong>
-          <p class="hero-copy">Current reported uptime across the platform.</p>
-        </article>
-
-        <article class="hero-card">
-          <span class="hero-label">Monthly Change</span>
-          <strong class="hero-value">{{ assessmentDelta > 0 ? '+' : '' }}{{ assessmentDelta }}</strong>
-          <p class="hero-copy">Difference between this month and the prior month.</p>
-        </article>
-      </section>
-
-      <section class="dashboard-grid metrics-grid">
         <article class="metric-card">
           <span class="metric-label">Total Active Colleges</span>
           <strong class="metric-value">{{ dashboard.totals.activeColleges }}</strong>
-          <span class="metric-footnote">Live colleges currently active on the platform</span>
+          <span class="metric-footnote">Unique colleges with approved admins</span>
         </article>
 
         <article class="metric-card">
@@ -48,91 +34,7 @@
         <article class="metric-card">
           <span class="metric-label">Assessments This Month</span>
           <strong class="metric-value">{{ dashboard.totals.assessmentsThisMonth }}</strong>
-          <span class="metric-footnote">Completed during the current UTC month</span>
-        </article>
-
-        <article class="metric-card">
-          <span class="metric-label">Previous Month</span>
-          <strong class="metric-value">{{ dashboard.totals.assessmentsPreviousMonth }}</strong>
-          <span class="metric-footnote">Baseline from the immediately prior month</span>
-        </article>
-      </section>
-
-      <section class="dashboard-grid content-grid">
-        <article class="dashboard-panel">
-          <div class="panel-header">
-            <h3>Pending College Approvals</h3>
-            <span class="status-badge" *ngIf="dashboard.pendingApprovals.length">{{ dashboard.pendingApprovals.length }} action required</span>
-          </div>
-
-          <div *ngIf="!dashboard.pendingApprovals.length" class="panel-empty">No pending college approvals.</div>
-
-          <div *ngFor="let college of dashboard.pendingApprovals" class="list-row">
-            <div>
-              <div class="list-title">{{ college.name }}</div>
-              <div class="list-subtitle">{{ college.city }}{{ college.city && college.state ? ', ' : '' }}{{ college.state }}</div>
-            </div>
-            <div class="list-meta">
-              Requested by {{ college.requestedBy || 'Unknown' }} on {{ college.requestedAt | date:'mediumDate' }}
-            </div>
-          </div>
-        </article>
-
-        <article class="dashboard-panel">
-          <div class="panel-header">
-            <h3>Platform Health</h3>
-            <span class="health-pill">{{ dashboard.platformHealth.apiStatus }}</span>
-          </div>
-
-          <div class="health-grid">
-            <div>
-              <div class="metric-label">Uptime</div>
-              <div class="metric-value">{{ dashboard.platformHealth.uptimePercent }}%</div>
-            </div>
-            <div>
-              <div class="metric-label">Error Rate</div>
-              <div class="metric-value">{{ dashboard.platformHealth.errorRatePercent }}%</div>
-            </div>
-            <div>
-              <div class="metric-label">API Status</div>
-              <div class="metric-value">{{ dashboard.platformHealth.apiStatus }}</div>
-            </div>
-          </div>
-        </article>
-      </section>
-
-      <section class="dashboard-grid content-grid">
-        <article class="dashboard-panel">
-          <div class="panel-header">
-            <h3>Average Scores By College</h3>
-          </div>
-
-          <div *ngIf="!dashboard.averageScoresByCollege.length" class="panel-empty">No assessment score data available yet.</div>
-
-          <div *ngFor="let college of dashboard.averageScoresByCollege" class="list-row">
-            <div>
-              <div class="list-title">{{ college.collegeName }}</div>
-              <div class="list-subtitle">{{ college.studentsAssessed }} students assessed</div>
-            </div>
-            <div class="score-pill">{{ college.averageScore }}</div>
-          </div>
-        </article>
-
-        <article class="dashboard-panel">
-          <div class="panel-header">
-            <h3>Recent Activity</h3>
-            <span class="panel-caption">Last 20 actions</span>
-          </div>
-
-          <div *ngIf="!dashboard.recentActivity.length" class="panel-empty">No recent audit activity found.</div>
-
-          <div *ngFor="let item of dashboard.recentActivity" class="list-row">
-            <div>
-              <div class="list-title">{{ item.action }}</div>
-              <div class="list-subtitle">{{ item.entityType || 'Platform' }} | {{ item.performedBy }}</div>
-            </div>
-            <div class="list-meta">{{ item.occurredAt | date:'medium' }}</div>
-          </div>
+          <span class="metric-footnote">Completed assessments this month</span>
         </article>
       </section>
     </ng-container>

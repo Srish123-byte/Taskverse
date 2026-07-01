@@ -76,7 +76,7 @@ public class AssessmentsController : TaskverseBaseController
             var trainerBatchAccessCheck = await EnsureTrainerCanAssignRequestedBatches(
                 collegeId,
                 model.AssignedBatchIds,
-                requireAtLeastOneBatch: false);
+                requireAtLeastOneBatch: !model.IsDraftSave);
             if (trainerBatchAccessCheck is not null) return trainerBatchAccessCheck;
 
             var dto = await _assessmentOrchestrator.CreateAssessment(
@@ -275,11 +275,14 @@ public class AssessmentsController : TaskverseBaseController
         var accessCheck = EnsureCollegeAdminOrTrainerAccess();
         if (accessCheck is not null) return accessCheck;
 
-        var tenantCheck = TryGetCollegeId(out _);
+        var tenantCheck = TryGetCollegeId(out var collegeId);
         if (tenantCheck is not null) return tenantCheck;
 
         try
         {
+            var trainerBatchAccessCheck = await EnsureTrainerCanPublishExistingAssessment(collegeId, id);
+            if (trainerBatchAccessCheck is not null) return trainerBatchAccessCheck;
+
             var dto = await _assessmentOrchestrator.PublishAssessment(new Taskverse.Business.DTOs.PublishQuestionBankAssessmentDto
             {
                 AssessmentId = id
@@ -465,6 +468,57 @@ public class AssessmentsController : TaskverseBaseController
     }
 
     /// <summary>
+    /// Creates a shared subject or topic entry for question-bank and assessment builder flows.
+    /// </summary>
+    /// <param name="model">The requested subject/topic details.</param>
+    /// <returns>The persisted catalog entry.</returns>
+    [HttpPost("questions/catalog/items")]
+    [SwaggerResponse(201, "Question classification entry created", typeof(QuestionClassificationEntryResponseModel))]
+    [SwaggerResponse(400, "Invalid request")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Parent subject was not found")]
+    [SwaggerResponse(409, "Question classification entry could not be created due to a conflict")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> CreateQuestionClassificationEntry([FromBody] CreateQuestionClassificationEntryRequestModel model)
+    {
+        var accessCheck = EnsureCollegeAdminOrTrainerAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        if (model is null)
+        {
+            return BadRequest(new { message = "Question classification entry request is required." });
+        }
+
+        try
+        {
+            var dto = await _assessmentOrchestrator.CreateQuestionClassificationEntry(model.ToDto());
+            return StatusCode(StatusCodes.Status201Created, dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            return Problem(detail: detail, title: detail);
+        }
+    }
+
+    /// <summary>
     /// Searches the question bank for the current college scope.
     /// </summary>
     /// <param name="model">The search filters and paging options.</param>
@@ -619,8 +673,7 @@ public class AssessmentsController : TaskverseBaseController
 
         try
         {
-            var requestedBatchIds = model.AssessmentId.HasValue ? [] : model.AssignedBatchIds;
-            var trainerBatchAccessCheck = await EnsureTrainerCanAssignRequestedBatches(collegeId, requestedBatchIds);
+            var trainerBatchAccessCheck = await EnsureTrainerCanAssignRequestedBatches(collegeId, model.AssignedBatchIds);
             if (trainerBatchAccessCheck is not null) return trainerBatchAccessCheck;
 
             var dto = await _assessmentOrchestrator.PublishAssessment(
@@ -1282,6 +1335,56 @@ public class AssessmentsController : TaskverseBaseController
     }
 
     /// <summary>
+    /// Returns the assessment streak summary for the logged-in student.
+    /// </summary>
+    /// <returns>The student's streak summary.</returns>
+    [HttpGet("/api/students/me/streak")]
+    [SwaggerResponse(200, "Streak summary for the logged-in student", typeof(StudentStreakResponseModel))]
+    [SwaggerResponse(400, "Invalid student context")]
+    [SwaggerResponse(403, "Forbidden")]
+    [SwaggerResponse(404, "Student profile not found")]
+    [SwaggerResponse(503, "Assessments microservice is unavailable")]
+    [SwaggerResponse(500, "Unexpected error")]
+    public async Task<IActionResult> GetStudentStreak()
+    {
+        var accessCheck = EnsureStudentAccess();
+        if (accessCheck is not null) return accessCheck;
+
+        var currentUserId = GetCurrentUserId();
+        if (!currentUserId.HasValue)
+        {
+            return BadRequest(new { message = "Student user context is missing or invalid." });
+        }
+
+        try
+        {
+            var dto = await _assessmentOrchestrator.GetStudentStreak(currentUserId.Value);
+            return Ok(dto.ToResponseModel());
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.GetBaseException().Message;
+            _logger.LogError(ex, "Unhandled student streak retrieval error for userId={UserId}", currentUserId.Value);
+            return Problem(
+                detail: detail,
+                title: detail,
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    /// <summary>
     /// Saves an answer for a single question within the logged-in student's attempt.
     /// </summary>
     /// <param name="attemptId">The attempt identifier.</param>
@@ -1503,6 +1606,31 @@ public class AssessmentsController : TaskverseBaseController
         }
 
         return null;
+    }
+
+    private async Task<IActionResult?> EnsureTrainerCanPublishExistingAssessment(Guid collegeId, Guid assessmentId)
+    {
+        if (!User.IsInRole(TrainerRole))
+        {
+            return null;
+        }
+
+        await using var context = await _dbContextFactory.CreateDbContextAsync();
+        var assessment = await context.Assessments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.AssessmentId == assessmentId && item.CollegeId == collegeId);
+
+        if (assessment is null)
+        {
+            return null;
+        }
+
+        return assessment.AssignedBatchIds.Length == 0
+            ? StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Trainer assessments must be assigned to at least one batch."
+            })
+            : null;
     }
 
     private Guid? GetCurrentUserId()

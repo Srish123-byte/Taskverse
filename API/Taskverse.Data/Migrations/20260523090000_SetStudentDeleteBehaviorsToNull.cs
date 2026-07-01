@@ -1,10 +1,14 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Taskverse.Data.DataAccess;
 
 #nullable disable
 
 namespace Taskverse.Data.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(TaskverseContext))]
+    [Migration("20260523090000_SetStudentDeleteBehaviorsToNull")]
     public partial class SetStudentDeleteBehaviorsToNull : Migration
     {
         /// <inheritdoc />

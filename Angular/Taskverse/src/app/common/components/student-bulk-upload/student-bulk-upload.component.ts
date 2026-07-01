@@ -24,6 +24,7 @@ export class StudentBulkUploadComponent {
   isParsing = false;
   isUploading = false;
   errorMessage = '';
+  warningMessage = '';
   parsedFile: ParsedStudentImportFile | null = null;
   lastResult: BulkStudentUploadResult | null = null;
 
@@ -39,6 +40,10 @@ export class StudentBulkUploadComponent {
     return this.parsedFile?.rows.slice(0, 5) ?? [];
   }
 
+  get isCollegeAdminScope(): boolean {
+    return this.scope === 'college-admin';
+  }
+
   async onFileSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -49,14 +54,17 @@ export class StudentBulkUploadComponent {
     }
 
     this.errorMessage = '';
+    this.warningMessage = '';
     this.lastResult = null;
     this.isParsing = true;
 
     try {
-      this.parsedFile = await this.parser.parse(file);
+      this.parsedFile = await this.parser.parse(file, this.scope);
+      this.warningMessage = this.parsedFile.warnings.join(' ');
     } catch (error) {
       this.parsedFile = null;
       this.errorMessage = error instanceof Error ? error.message : 'Unable to parse the uploaded file.';
+      this.warningMessage = '';
     } finally {
       this.isParsing = false;
       this.changeDetectorRef.detectChanges();
@@ -67,6 +75,7 @@ export class StudentBulkUploadComponent {
     this.parsedFile = null;
     this.lastResult = null;
     this.errorMessage = '';
+    this.warningMessage = '';
     this.changeDetectorRef.detectChanges();
   }
 
@@ -99,6 +108,13 @@ export class StudentBulkUploadComponent {
         if (result.duplicateCount > 0) {
           this.snackBar.open(
             'Some rows were skipped because the email already exists or was duplicated in the file.',
+            'Close',
+            StudentBulkUploadComponent.successSnackBarConfig);
+        }
+
+        if (!result.summaryEmailSent && result.summaryEmailWarning) {
+          this.snackBar.open(
+            result.summaryEmailWarning,
             'Close',
             StudentBulkUploadComponent.successSnackBarConfig);
         }

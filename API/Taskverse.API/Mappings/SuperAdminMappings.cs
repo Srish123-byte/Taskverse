@@ -49,9 +49,12 @@ public static class SuperAdminMappings
             FullName = row.FullName,
             Email = row.Email,
             Phone = row.Phone,
+            EnrollmentNumber = row.EnrollmentNumber,
             CollegeId = row.CollegeId,
+            CollegeName = row.CollegeName,
             ClassId = row.ClassId,
-            BatchId = row.BatchId
+            BatchId = row.BatchId,
+            ClassName = row.ClassName
         }).ToList()
     };
 
@@ -108,6 +111,8 @@ public static class SuperAdminMappings
         CreatedCount = dto.CreatedCount,
         DuplicateCount = dto.DuplicateCount,
         InvalidCount = dto.InvalidCount,
+        SummaryEmailSent = dto.SummaryEmailSent,
+        SummaryEmailWarning = dto.SummaryEmailWarning,
         CreatedUsers = dto.CreatedUsers.Select(item => new BulkStudentUploadCreatedUserResponseModel
         {
             FullName = item.FullName,
@@ -131,39 +136,10 @@ public static class SuperAdminMappings
     {
         Totals = new SuperAdminTotalsResponseModel
         {
+            PendingApprovals = dto.Totals.PendingApprovals,
             ActiveColleges = dto.Totals.ActiveColleges,
             RegisteredStudents = dto.Totals.RegisteredStudents,
-            AssessmentsThisMonth = dto.Totals.AssessmentsThisMonth,
-            AssessmentsPreviousMonth = dto.Totals.AssessmentsPreviousMonth
-        },
-        PendingApprovals = dto.PendingApprovals.Select(x => x.ToResponseModel()).ToList(),
-        PlatformHealth = new PlatformHealthResponseModel
-        {
-            UptimePercent = dto.PlatformHealth.UptimePercent,
-            ErrorRatePercent = dto.PlatformHealth.ErrorRatePercent,
-            ApiStatus = dto.PlatformHealth.ApiStatus
-        },
-        RecentActivity = dto.RecentActivity.Select(x => new RecentActivityResponseModel
-        {
-            Action = x.Action,
-            EntityType = x.EntityType,
-            EntityId = x.EntityId,
-            PerformedBy = x.PerformedBy,
-            OccurredAt = x.OccurredAt,
-            Details = x.Details
-        }).ToList(),
-        AverageScoresByCollege = dto.AverageScoresByCollege.Select(x => new CollegeScoreSummaryResponseModel
-        {
-            CollegeId = x.CollegeId,
-            CollegeName = x.CollegeName,
-            AverageScore = x.AverageScore,
-            StudentsAssessed = x.StudentsAssessed
-        }).ToList(),
-        UsageTrends = dto.UsageTrends.Select(x => new UsageTrendPointResponseModel
-        {
-            Date = x.Date,
-            Assessments = x.Assessments,
-            StudentsAssessed = x.StudentsAssessed
-        }).ToList()
+            AssessmentsThisMonth = dto.Totals.AssessmentsThisMonth
+        }
     };
 }

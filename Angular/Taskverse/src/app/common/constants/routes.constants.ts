@@ -15,6 +15,7 @@ export const RouteAddress = {
     Users:      'super-admin/users',
     Analytics:  'super-admin/analytics',
     Assessments:'super-admin/assessments',
+    Reports:    'super-admin/reports',
     Settings:   'super-admin/settings'
   },
 
@@ -24,6 +25,7 @@ export const RouteAddress = {
     Approvals:          'college-admin/approvals',
     Users:              'college-admin/users',
     ClassesManagement:  'college-admin/classes-management',
+    AttendanceTracker:  'college-admin/classes-management/attendance-tracker',
     QuestionsManagement:'college-admin/questions-management',
     AddQuestion:        'college-admin/questions-management/new',
     AssessmentsManagement: 'college-admin/assessments-management',

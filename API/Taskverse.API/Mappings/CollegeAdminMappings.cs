@@ -12,6 +12,7 @@ public static class CollegeAdminMappings
             RegisteredStudents = dto.Totals.RegisteredStudents,
             RegisteredTrainers = dto.Totals.RegisteredTrainers,
             PendingApprovals = dto.Totals.PendingApprovals,
+            TotalAssessments = dto.Totals.TotalAssessments,
             AssessmentsThisMonth = dto.Totals.AssessmentsThisMonth,
             AssessmentsPreviousMonth = dto.Totals.AssessmentsPreviousMonth
         },
@@ -70,7 +71,8 @@ public static class CollegeAdminMappings
         Capacity = dto.Capacity,
         StudentCount = dto.StudentCount,
         CreatedAt = dto.CreatedAt,
-        AssignedTrainers = dto.AssignedTrainers.Select(x => x.ToResponseModel()).ToList()
+        AssignedTrainers = dto.AssignedTrainers.Select(x => x.ToResponseModel()).ToList(),
+        AssignedStudents = dto.AssignedStudents.Select(x => x.ToResponseModel()).ToList()
     };
 
     public static SubjectOptionResponseModel ToResponseModel(this SubjectOptionDto dto) => new()
@@ -85,6 +87,18 @@ public static class CollegeAdminMappings
         UserId = dto.UserId,
         FullName = dto.FullName,
         Email = dto.Email
+    };
+
+    public static ApprovedStudentResponseModel ToResponseModel(this ApprovedStudentDto dto) => new()
+    {
+        StudentId = dto.StudentId,
+        UserId = dto.UserId,
+        FullName = dto.FullName,
+        Email = dto.Email,
+        CurrentClassId = dto.CurrentClassId,
+        CurrentClassName = dto.CurrentClassName,
+        CurrentBatchId = dto.CurrentBatchId,
+        CurrentBatchName = dto.CurrentBatchName
     };
 
     public static CreateCollegeClassDto ToDto(this CreateCollegeClassRequestModel model) => new()
@@ -122,5 +136,10 @@ public static class CollegeAdminMappings
     public static AssignBatchTrainersDto ToDto(this AssignBatchTrainersRequestModel model) => new()
     {
         TrainerIds = model.TrainerIds ?? []
+    };
+
+    public static AssignStudentToBatchDto ToDto(this AssignStudentToBatchRequestModel model) => new()
+    {
+        StudentIds = model.StudentIds ?? []
     };
 }

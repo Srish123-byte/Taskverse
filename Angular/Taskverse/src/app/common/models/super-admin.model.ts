@@ -51,9 +51,12 @@ export interface BulkStudentUploadRow {
   fullName: string;
   email: string;
   phone: string;
-  collegeId: string;
-  classId: string;
-  batchId: string;
+  enrollmentNumber?: string;
+  collegeId?: string;
+  collegeName?: string;
+  classId?: string;
+  batchId?: string;
+  className?: string;
 }
 
 export interface BulkStudentUploadRequest {
@@ -75,6 +78,8 @@ export interface BulkStudentUploadResult {
   createdCount: number;
   duplicateCount: number;
   invalidCount: number;
+  summaryEmailSent: boolean;
+  summaryEmailWarning?: string;
   createdUsers: BulkStudentUploadCreatedUser[];
   duplicateRows: BulkStudentUploadRowIssue[];
   invalidRows: BulkStudentUploadRowIssue[];
@@ -96,45 +101,12 @@ export interface College {
 }
 
 export interface SuperAdminTotals {
+  pendingApprovals: number;
   activeColleges: number;
   registeredStudents: number;
   assessmentsThisMonth: number;
-  assessmentsPreviousMonth: number;
-}
-
-export interface PlatformHealth {
-  uptimePercent: number;
-  errorRatePercent: number;
-  apiStatus: string;
-}
-
-export interface RecentActivity {
-  action: string;
-  entityType?: string;
-  entityId?: string;
-  performedBy: string;
-  occurredAt: string;
-  details?: string;
-}
-
-export interface CollegeScoreSummary {
-  collegeId: string;
-  collegeName: string;
-  averageScore: number;
-  studentsAssessed: number;
-}
-
-export interface UsageTrendPoint {
-  date: string;
-  assessments: number;
-  studentsAssessed: number;
 }
 
 export interface SuperAdminDashboard {
   totals: SuperAdminTotals;
-  pendingApprovals: College[];
-  platformHealth: PlatformHealth;
-  recentActivity: RecentActivity[];
-  averageScoresByCollege: CollegeScoreSummary[];
-  usageTrends: UsageTrendPoint[];
 }

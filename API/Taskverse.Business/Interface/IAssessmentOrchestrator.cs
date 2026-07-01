@@ -16,6 +16,7 @@ public interface IAssessmentOrchestrator
     Task<List<Guid>> DeleteQuestions(DeleteQuestionsDto dto);
     Task<AssessmentAssignmentCatalogDto> GetTrainerAssignedClassesAndBatches(AssessmentBootstrapDto dto);
     Task<QuestionClassificationCatalogDto> GetQuestionClassificationCatalog();
+    Task<QuestionClassificationEntryDto> CreateQuestionClassificationEntry(CreateQuestionClassificationEntryDto dto);
     Task<PagedQuestionBankDto> SearchQuestionBank(QuestionBankSearchDto dto);
     Task<PagedAssessmentSearchDto> SearchAssessments(AssessmentSearchDto dto);
     Task<PagedAssessmentQuestionListDto> GetAssessmentQuestionList(Guid assessmentId, int pageNumber, int pageSize);
@@ -25,4 +26,5 @@ public interface IAssessmentOrchestrator
     Task<StudentAttemptRecoveryDto> GetStudentAttemptRecovery(Guid attemptId, Guid studentUserId);
     Task<StudentAttemptAnswerDto> SaveStudentAttemptAnswer(Guid attemptId, Guid questionId, Guid studentUserId, SaveStudentAttemptAnswerDto dto);
     Task<StudentAttemptSubmitDto> SubmitStudentAttempt(Guid attemptId, Guid studentUserId);
+    Task<StudentStreakDto> GetStudentStreak(Guid studentUserId);
 }

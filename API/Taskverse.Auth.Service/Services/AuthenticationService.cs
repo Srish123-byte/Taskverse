@@ -65,6 +65,12 @@ public class AuthenticationService : IAuthenticationService
                 return null;
             }
 
+            if (ShouldSyncStudentRecordOnLogin(user))
+            {
+                await EnsureStudentRecordAsync(user);
+                await _context.SaveChangesAsync();
+            }
+
             _logger.LogInformation($"[Login] Password verified. Generating tokens for user: {normalizedEmail}");
             var (firstName, lastName) = SplitName(user.FullName);
             var authSession = new AuthSession
@@ -155,13 +161,22 @@ public class AuthenticationService : IAuthenticationService
                 return null;
             }
 
-            var rotateSession = forceRotate || ShouldRotateAccessToken(accessToken);
+            var isAccessTokenNearExpiry = ShouldRotateAccessToken(accessToken, out var currentAccessTokenExpiresAt);
+            var rotateSession = forceRotate || isAccessTokenNearExpiry;
             if (!rotateSession)
             {
                 authSession.LastActivityAt = now;
                 authSession.ModifiedAt = now;
                 await _context.SaveChangesAsync();
-                return null;
+
+                // Access token is still valid and doesn't need rotation yet - return it
+                // unchanged so the caller treats this as a successful refresh, not a failure.
+                return new RefreshTokenResponse
+                {
+                    AccessToken = accessToken!,
+                    RefreshToken = refreshToken,
+                    ExpiresAt = currentAccessTokenExpiresAt
+                };
             }
 
             var (firstName, lastName) = SplitName(user.FullName);
@@ -241,7 +256,7 @@ public class AuthenticationService : IAuthenticationService
         }
     }
 
-    public async Task ChangeTemporaryPasswordAsync(Guid userId, ChangeTemporaryPasswordRequest request)
+    public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.CurrentPassword) || string.IsNullOrWhiteSpace(request.NewPassword))
         {
@@ -254,29 +269,40 @@ public class AuthenticationService : IAuthenticationService
             throw new UnauthorizedAccessException("User was not found.");
         }
 
-        if (!user.MustChangePassword)
+        if (request.IsTemporaryPasswordChange && !user.MustChangePassword)
         {
             throw new InvalidOperationException("This account is not awaiting a temporary password change.");
+        }
+
+        if (!request.IsTemporaryPasswordChange && user.MustChangePassword)
+        {
+            throw new InvalidOperationException("This account must complete the temporary password change flow first.");
         }
 
         var passwordHasher = new PasswordHasher<User>();
         var verificationResult = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword);
         if (verificationResult == PasswordVerificationResult.Failed)
         {
-            throw new InvalidOperationException("The current temporary password is incorrect.");
+            throw new InvalidOperationException(request.IsTemporaryPasswordChange
+                ? "The current temporary password is incorrect."
+                : "The current password is incorrect.");
         }
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
 
         user.PasswordHash = passwordHasher.HashPassword(user, request.NewPassword);
-        user.TemporaryPassword = null;
-        user.MustChangePassword = false;
+        if (request.IsTemporaryPasswordChange)
+        {
+            user.TemporaryPassword = null;
+            user.MustChangePassword = false;
+        }
+
         user.PasswordChangedAt = DateTime.UtcNow;
         user.ModifiedAt = DateTime.UtcNow;
 
-        if (IsBulkUploadedStudent(user))
+        if (ShouldTouchStudentRecordOnPasswordChange(user))
         {
-            await EnsureStudentRecordAsync(user);
+            await TouchStudentRecordModifiedAtAsync(user.Id, user.ModifiedAt);
         }
 
         var activeSessions = await _context.AuthSessions
@@ -294,8 +320,10 @@ public class AuthenticationService : IAuthenticationService
         await transaction.CommitAsync();
     }
 
-    private bool ShouldRotateAccessToken(string? accessToken)
+    private bool ShouldRotateAccessToken(string? accessToken, out DateTime expiresAt)
     {
+        expiresAt = DateTime.UtcNow;
+
         if (string.IsNullOrWhiteSpace(accessToken))
         {
             return true;
@@ -314,7 +342,7 @@ public class AuthenticationService : IAuthenticationService
             return true;
         }
 
-        var expiresAt = DateTimeOffset.FromUnixTimeSeconds(expiresAtUnix).UtcDateTime;
+        expiresAt = DateTimeOffset.FromUnixTimeSeconds(expiresAtUnix).UtcDateTime;
         return expiresAt <= DateTime.UtcNow.AddMinutes(3);
     }
 
@@ -340,15 +368,19 @@ public class AuthenticationService : IAuthenticationService
         return null;
     }
 
-    private bool IsBulkUploadedStudent(User user) =>
-        user.IsBulkUploaded &&
+    private static bool ShouldTouchStudentRecordOnPasswordChange(User user) =>
         string.Equals(user.Role, "Student", StringComparison.OrdinalIgnoreCase);
+
+    private static bool ShouldSyncStudentRecordOnLogin(User user) =>
+        string.Equals(user.Role, "Student", StringComparison.OrdinalIgnoreCase) &&
+        user.Status == UserStatus.APPROVED &&
+        user.CollegeId.HasValue;
 
     private async Task EnsureStudentRecordAsync(User user)
     {
-        if (!user.CollegeId.HasValue || !user.ClassId.HasValue || !user.BatchId.HasValue)
+        if (!user.CollegeId.HasValue)
         {
-            throw new InvalidOperationException("Bulk uploaded students must have college, class, and batch values before activation.");
+            throw new InvalidOperationException("Bulk uploaded students must have a college value before activation.");
         }
 
         var existingStudent = await _context.Students.FirstOrDefaultAsync(student => student.UserId == user.Id);
@@ -357,6 +389,7 @@ public class AuthenticationService : IAuthenticationService
             existingStudent.FullName = user.FullName;
             existingStudent.Email = user.Email;
             existingStudent.Phone = user.Phone;
+            existingStudent.EnrollmentNumber = string.IsNullOrWhiteSpace(user.EnrollmentNumber) ? null : user.EnrollmentNumber.Trim();
             existingStudent.CollegeId = user.CollegeId.Value;
             existingStudent.ClassId = user.ClassId;
             existingStudent.BatchId = user.BatchId;
@@ -373,6 +406,7 @@ public class AuthenticationService : IAuthenticationService
             CollegeId = user.CollegeId.Value,
             ClassId = user.ClassId,
             BatchId = user.BatchId,
+            EnrollmentNumber = string.IsNullOrWhiteSpace(user.EnrollmentNumber) ? null : user.EnrollmentNumber.Trim(),
             FullName = user.FullName,
             Email = user.Email,
             Phone = user.Phone,
@@ -381,6 +415,17 @@ public class AuthenticationService : IAuthenticationService
             ModifiedAt = DateTime.UtcNow,
             ApprovedBy = user.UploadedBy
         });
+    }
+
+    private async Task TouchStudentRecordModifiedAtAsync(Guid userId, DateTime modifiedAtUtc)
+    {
+        var existingStudent = await _context.Students.FirstOrDefaultAsync(student => student.UserId == userId);
+        if (existingStudent is null)
+        {
+            return;
+        }
+
+        existingStudent.ModifiedAt = modifiedAtUtc;
     }
 
     private static (string FirstName, string LastName) SplitName(string fullName)

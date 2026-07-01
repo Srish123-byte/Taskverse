@@ -8,8 +8,10 @@ import {
   AssessmentAssignmentBatch,
   AssessmentAssignmentCatalog,
   AssessmentAssignmentClass,
+  CreateQuestionClassificationEntryRequest,
   CreateAssessmentRequest,
   PublishAssessmentRequest,
+  QuestionClassificationEntry,
   QuestionClassificationCatalog,
   QuestionBankItem
 } from '../../services/api/assessment-admin.service';
@@ -73,13 +75,22 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
 
   selectedBatchIds = new Set<string>();
   selectedQuestionIds = new Set<string>();
+  selectedSubjectIds = new Set<string>();
+  selectedTopicIds = new Set<string>();
 
   assessmentName = '';
-  selectedSubjectId = '';
-  selectedTopicId = '';
   selectedDifficulty = 'all';
   selectedQuestionBankSubjectId = '';
   selectedQuestionBankTopicId = '';
+  isSubjectFilterMenuOpen = false;
+  isTopicFilterMenuOpen = false;
+  isCreatingSubject = false;
+  isCreatingTopic = false;
+  isSubjectCreationFormVisible = false;
+  isTopicCreationFormVisible = false;
+  newSubjectName = '';
+  newTopicName = '';
+  newTopicSubjectId = '';
   durationMinutes: number | null = 60;
   passingPercentage: number | null = 50;
   startDate = '';
@@ -168,6 +179,44 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
 
   get hasBlockingLoadError(): boolean {
     return this.isEditMode && !!this.assessmentLoadErrorMessage;
+  }
+
+  get selectedSubjectSummary(): string {
+    return this.loadedAssessmentRecord?.subjectDisplayLabel ?? 'No subject filter';
+  }
+
+  get selectedTopicSummary(): string {
+    return this.loadedAssessmentRecord?.topicDisplayLabel ?? 'No topic filter';
+  }
+
+  get subjectFilterButtonLabel(): string {
+    if (this.selectedSubjectIds.size === 0) {
+      return 'Select subjects';
+    }
+
+    if (this.selectedSubjectIds.size === 1) {
+      const selectedSubject = this.visibleSubjects.find(subject => this.selectedSubjectIds.has(subject.subjectId));
+      return selectedSubject?.subjectName ?? '1 subject selected';
+    }
+
+    return `${this.selectedSubjectIds.size} subjects selected`;
+  }
+
+  get topicFilterButtonLabel(): string {
+    if (this.selectedTopicIds.size === 0) {
+      return 'Select topics';
+    }
+
+    if (this.selectedTopicIds.size === 1) {
+      const selectedTopic = this.visibleTopics.find(topic => this.selectedTopicIds.has(topic.topicId));
+      return selectedTopic?.topicName ?? '1 topic selected';
+    }
+
+    return `${this.selectedTopicIds.size} topics selected`;
+  }
+
+  get topicCreationSubjects(): AssessmentCreatorSubjectOption[] {
+    return this.questionBankSubjects;
   }
 
   get selectedBatchCount(): number {
@@ -261,12 +310,19 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   }
 
   get visibleTopics() {
-    const subject = this.visibleSubjects.find(item => item.subjectId === this.selectedSubjectId);
-    if (!subject) {
-      return [];
+    const selectedSubjects = this.selectedSubjectIds.size > 0
+      ? this.visibleSubjects.filter(item => this.selectedSubjectIds.has(item.subjectId))
+      : this.visibleSubjects;
+
+    const topicMap = new Map<string, AssessmentCreatorTopicOption>();
+    for (const subject of selectedSubjects) {
+      for (const topic of subject.topics) {
+        topicMap.set(topic.topicId, topic);
+      }
     }
 
-    return subject.topics;
+    return Array.from(topicMap.values())
+      .sort((left, right) => left.topicName.localeCompare(right.topicName));
   }
 
   get questionBankSubjects(): AssessmentCreatorSubjectOption[] {
@@ -364,16 +420,170 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     this.submitAssessment('schedule');
   }
 
-  onSubjectChange(): void {
-    if (this.selectedSubjectId &&
-        !this.visibleSubjects.some(subject => subject.subjectId === this.selectedSubjectId)) {
-      this.selectedSubjectId = '';
+  toggleSubjectSelection(subjectId: string): void {
+    if (!subjectId) {
+      return;
     }
 
-    if (this.selectedTopicId &&
-        !this.visibleTopics.some(topic => topic.topicId === this.selectedTopicId)) {
-      this.selectedTopicId = '';
+    if (this.selectedSubjectIds.has(subjectId)) {
+      this.selectedSubjectIds.delete(subjectId);
+    } else {
+      this.selectedSubjectIds.add(subjectId);
     }
+
+    this.syncSelectedTopicIds();
+  }
+
+  toggleSubjectFilterMenu(): void {
+    this.isSubjectFilterMenuOpen = !this.isSubjectFilterMenuOpen;
+    if (this.isSubjectFilterMenuOpen) {
+      this.isTopicFilterMenuOpen = false;
+      this.isTopicCreationFormVisible = false;
+    }
+  }
+
+  toggleTopicSelection(topicId: string): void {
+    if (!topicId) {
+      return;
+    }
+
+    if (this.selectedTopicIds.has(topicId)) {
+      this.selectedTopicIds.delete(topicId);
+      return;
+    }
+
+    this.selectedTopicIds.add(topicId);
+  }
+
+  toggleTopicFilterMenu(): void {
+    this.isTopicFilterMenuOpen = !this.isTopicFilterMenuOpen;
+    if (this.isTopicFilterMenuOpen) {
+      this.isSubjectFilterMenuOpen = false;
+      this.newTopicSubjectId = this.newTopicSubjectId || this.getDefaultTopicCreationSubjectId();
+      this.isSubjectCreationFormVisible = false;
+    }
+  }
+
+  isSubjectSelected(subjectId: string): boolean {
+    return this.selectedSubjectIds.has(subjectId);
+  }
+
+  isTopicSelected(topicId: string): boolean {
+    return this.selectedTopicIds.has(topicId);
+  }
+
+  clearSubjectSelections(): void {
+    this.selectedSubjectIds.clear();
+    this.syncSelectedTopicIds();
+  }
+
+  clearTopicSelections(): void {
+    this.selectedTopicIds.clear();
+  }
+
+  closeFilterMenus(): void {
+    this.isSubjectFilterMenuOpen = false;
+    this.isTopicFilterMenuOpen = false;
+    this.isSubjectCreationFormVisible = false;
+    this.isTopicCreationFormVisible = false;
+  }
+
+  showSubjectCreationForm(): void {
+    this.isSubjectCreationFormVisible = true;
+    this.newSubjectName = '';
+  }
+
+  cancelSubjectCreation(): void {
+    this.isSubjectCreationFormVisible = false;
+    this.newSubjectName = '';
+    this.isCreatingSubject = false;
+  }
+
+  createSubject(): void {
+    const request: CreateQuestionClassificationEntryRequest = {
+      subjectName: this.newSubjectName.trim()
+    };
+
+    if (!request.subjectName) {
+      this.openBuilderSnackBar('Enter a subject name to continue.');
+      return;
+    }
+
+    this.isCreatingSubject = true;
+    this.assessmentAdminService.createQuestionClassificationEntry(request)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: entry => {
+          this.applyCreatedQuestionClassificationEntry(entry);
+          this.selectedSubjectIds.add(entry.subjectId);
+          this.syncSelectedTopicIds();
+          this.cancelSubjectCreation();
+          this.loadQuestionClassificationCatalog();
+          this.openBuilderSnackBar('Subject created successfully.', true);
+          this.changeDetectorRef.detectChanges();
+        },
+        error: error => {
+          this.isCreatingSubject = false;
+          this.openBuilderSnackBar(
+            error?.error?.message || error?.error?.detail || 'Unable to create the subject right now.'
+          );
+          this.changeDetectorRef.detectChanges();
+        }
+      });
+  }
+
+  showTopicCreationForm(): void {
+    this.isTopicCreationFormVisible = true;
+    this.newTopicName = '';
+    this.newTopicSubjectId = this.newTopicSubjectId || this.getDefaultTopicCreationSubjectId();
+  }
+
+  cancelTopicCreation(): void {
+    this.isTopicCreationFormVisible = false;
+    this.newTopicName = '';
+    this.newTopicSubjectId = this.getDefaultTopicCreationSubjectId();
+    this.isCreatingTopic = false;
+  }
+
+  createTopic(): void {
+    const request: CreateQuestionClassificationEntryRequest = {
+      subjectId: this.newTopicSubjectId.trim() || undefined,
+      topicName: this.newTopicName.trim()
+    };
+
+    if (!request.subjectId) {
+      this.openBuilderSnackBar('Choose a subject before creating a topic.');
+      return;
+    }
+
+    if (!request.topicName) {
+      this.openBuilderSnackBar('Enter a topic name to continue.');
+      return;
+    }
+
+    this.isCreatingTopic = true;
+    this.assessmentAdminService.createQuestionClassificationEntry(request)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: entry => {
+          this.applyCreatedQuestionClassificationEntry(entry);
+          this.selectedSubjectIds.add(entry.subjectId);
+          if (entry.topicId) {
+            this.selectedTopicIds.add(entry.topicId);
+          }
+          this.cancelTopicCreation();
+          this.loadQuestionClassificationCatalog();
+          this.openBuilderSnackBar('Topic created successfully.', true);
+          this.changeDetectorRef.detectChanges();
+        },
+        error: error => {
+          this.isCreatingTopic = false;
+          this.openBuilderSnackBar(
+            error?.error?.message || error?.error?.detail || 'Unable to create the topic right now.'
+          );
+          this.changeDetectorRef.detectChanges();
+        }
+      });
   }
 
   onQuestionBankSubjectChange(): void {
@@ -447,6 +657,10 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
 
   trackBySubjectId(_: number, subject: AssessmentCreatorSubjectOption): string {
     return subject.subjectId;
+  }
+
+  trackByTopicId(_: number, topic: AssessmentCreatorTopicOption): string {
+    return topic.topicId;
   }
 
   trackByAssignmentClassId(_: number, classItem: AssessmentAssignmentClass): string {
@@ -551,7 +765,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       .subscribe({
         next: catalog => {
           this.questionClassificationCatalog = catalog ?? { subjects: [] };
-          this.onSubjectChange();
+          this.syncSelectedTopicIds();
           this.onQuestionBankSubjectChange();
           this.changeDetectorRef.detectChanges();
         },
@@ -815,14 +1029,6 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       return 'Assessment name is required before saving.';
     }
 
-    if (!this.selectedSubjectId) {
-      return 'Select a subject before saving this assessment.';
-    }
-
-    if (!this.selectedTopicId) {
-      return 'Select a topic before saving this assessment.';
-    }
-
     if (!this.durationMinutes || this.durationMinutes <= 0) {
       return 'Duration must be greater than zero.';
     }
@@ -834,10 +1040,6 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
 
     if (endDateTime && endDateTime < now) {
       return 'End time must be later than the current time.';
-    }
-
-    if (this.selectedBatchIds.size === 0) {
-      return 'Select at least one batch before saving this assessment.';
     }
 
     if (this.selectedQuestionIds.size === 0) {
@@ -858,15 +1060,10 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       return null;
     }
 
-    const selectedSubject = this.visibleSubjects.find(subject => subject.subjectId === this.selectedSubjectId);
-    const selectedTopic = selectedSubject?.topics.find(topic => topic.topicId === this.selectedTopicId);
-
     return {
       assessmentName: this.assessmentName.trim(),
-      subjectId: this.selectedSubjectId || null,
-      subjectName: selectedSubject?.subjectName ?? null,
-      topicId: this.selectedTopicId || null,
-      topicName: selectedTopic?.topicName ?? null,
+      subjectIds: Array.from(this.selectedSubjectIds),
+      topicIds: Array.from(this.selectedTopicIds),
       instructions: this.normalizeInstructions(),
       allowLateEntry: this.allowLateEntry,
       allowQuestionReview: this.allowQuestionReview,
@@ -976,11 +1173,11 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   private applyAssessmentRecord(assessment: AssessmentRecord): void {
     this.loadedAssessmentRecord = assessment;
     this.assessmentName = assessment.assessmentName ?? '';
-    this.selectedSubjectId = assessment.subjectId ?? '';
-    this.selectedTopicId = assessment.topicId ?? '';
+    this.selectedSubjectIds = new Set(assessment.subjectIds ?? []);
+    this.selectedTopicIds = new Set(assessment.topicIds ?? []);
     this.selectedDifficulty = 'all';
-    this.selectedQuestionBankSubjectId = assessment.subjectId ?? '';
-    this.selectedQuestionBankTopicId = assessment.topicId ?? '';
+    this.selectedQuestionBankSubjectId = (assessment.subjectIds ?? [])[0] ?? '';
+    this.selectedQuestionBankTopicId = (assessment.topicIds ?? [])[0] ?? '';
     this.durationMinutes = assessment.durationMinutes ?? 60;
     this.passingPercentage = assessment.passingPercentage ?? 50;
     this.startDate = this.toDateTimeLocalInputValue(assessment.startDateTime);
@@ -994,8 +1191,9 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     this.selectedQuestionIds = new Set(assessment.questionIds ?? []);
     this.questionSearchTerm = '';
     this.ensureSelectedQuestionsLoaded(assessment.questionIds ?? []);
-    this.onSubjectChange();
+    this.syncSelectedTopicIds();
     this.onQuestionBankSubjectChange();
+    this.closeFilterMenus();
   }
 
   private resetBuilderAfterSubmission(assessment: AssessmentRecord): void {
@@ -1014,8 +1212,8 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   private resetBuilderForm(): void {
     this.loadedAssessmentRecord = null;
     this.assessmentName = '';
-    this.selectedSubjectId = '';
-    this.selectedTopicId = '';
+    this.selectedSubjectIds.clear();
+    this.selectedTopicIds.clear();
     this.selectedDifficulty = 'all';
     this.selectedQuestionBankSubjectId = '';
     this.selectedQuestionBankTopicId = '';
@@ -1033,6 +1231,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     this.questionBankTotalCount = 0;
     this.selectedBatchIds.clear();
     this.selectedQuestionIds.clear();
+    this.closeFilterMenus();
   }
 
   private formatMarks(totalMarks: number): string {
@@ -1124,12 +1323,12 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       }
     }
 
-    const subjectId = assessment?.subjectId?.trim();
-    const subjectName = assessment?.subjectName?.trim();
-    const topicId = assessment?.topicId?.trim();
-    const topicName = assessment?.topicName?.trim();
+    (assessment?.subjectIds ?? []).forEach((subjectId, index) => {
+      const subjectName = assessment?.subjectNames?.[index]?.trim();
+      if (!subjectId?.trim() || !subjectName) {
+        return;
+      }
 
-    if (subjectId && subjectName) {
       const subject = subjectMap.get(subjectId) ?? {
         subjectId,
         subjectName,
@@ -1139,11 +1338,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       if (!subjectMap.has(subjectId)) {
         subjectMap.set(subjectId, subject);
       }
-
-      if (topicId && topicName && !subject.topics.some(topic => topic.topicId === topicId)) {
-        subject.topics.push({ topicId, topicName });
-      }
-    }
+    });
 
     return Array.from(subjectMap.values())
       .map(subject => ({
@@ -1172,15 +1367,6 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     subjects: AssessmentCreatorSubjectOption[],
     assessment?: AssessmentRecord | null
   ): AssessmentCreatorSubjectOption[] {
-    const subjectId = assessment?.subjectId?.trim();
-    const subjectName = assessment?.subjectName?.trim();
-    const topicId = assessment?.topicId?.trim();
-    const topicName = assessment?.topicName?.trim();
-
-    if (!subjectId || !subjectName) {
-      return subjects;
-    }
-
     const subjectMap = new Map<string, AssessmentCreatorSubjectOption>(
       subjects.map(subject => [subject.subjectId, {
         subjectId: subject.subjectId,
@@ -1189,22 +1375,86 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       }])
     );
 
-    const subject = subjectMap.get(subjectId) ?? {
-      subjectId,
-      subjectName,
-      topics: []
-    };
+    (assessment?.subjectIds ?? []).forEach((subjectId, index) => {
+      const subjectName = assessment?.subjectNames?.[index]?.trim();
+      if (!subjectId?.trim() || !subjectName) {
+        return;
+      }
 
-    if (topicId && topicName && !subject.topics.some(topic => topic.topicId === topicId)) {
-      subject.topics.push({ topicId, topicName });
-      subject.topics.sort((left: AssessmentCreatorTopicOption, right: AssessmentCreatorTopicOption) =>
-        left.topicName.localeCompare(right.topicName));
-    }
+      const subject = subjectMap.get(subjectId) ?? {
+        subjectId,
+        subjectName,
+        topics: []
+      };
 
-    subjectMap.set(subjectId, subject);
+      subjectMap.set(subjectId, subject);
+    });
 
     return Array.from(subjectMap.values())
       .sort((left, right) => left.subjectName.localeCompare(right.subjectName));
+  }
+
+  private syncSelectedTopicIds(): void {
+    const availableTopicIds = new Set(this.visibleTopics.map(topic => topic.topicId));
+
+    for (const topicId of Array.from(this.selectedTopicIds)) {
+      if (!availableTopicIds.has(topicId)) {
+        this.selectedTopicIds.delete(topicId);
+      }
+    }
+  }
+
+  private getDefaultTopicCreationSubjectId(): string {
+    const selectedSubject = this.visibleSubjects.find(subject => this.selectedSubjectIds.has(subject.subjectId));
+    if (selectedSubject) {
+      return selectedSubject.subjectId;
+    }
+
+    return this.questionBankSubjects[0]?.subjectId ?? '';
+  }
+
+  private applyCreatedQuestionClassificationEntry(entry: QuestionClassificationEntry): void {
+    if (!entry.subjectId || !entry.subjectName) {
+      return;
+    }
+
+    const subjects = [...(this.questionClassificationCatalog.subjects ?? [])];
+    let subject = subjects.find(item => item.subjectId === entry.subjectId);
+
+    if (!subject) {
+      subject = {
+        subjectId: entry.subjectId,
+        subjectName: entry.subjectName,
+        topics: []
+      };
+      subjects.push(subject);
+    } else {
+      subject.subjectName = entry.subjectName;
+      subject.topics = [...(subject.topics ?? [])];
+    }
+
+    if (entry.topicId && entry.topicName) {
+      const topicExists = subject.topics.some(topic => topic.topicId === entry.topicId);
+      if (!topicExists) {
+        subject.topics.push({
+          topicId: entry.topicId,
+          topicName: entry.topicName
+        });
+        subject.topics.sort((left, right) => left.topicName.localeCompare(right.topicName));
+      }
+    }
+
+    subjects.sort((left, right) => left.subjectName.localeCompare(right.subjectName));
+    this.questionClassificationCatalog = { subjects };
+  }
+
+  private openBuilderSnackBar(message: string, isSuccess = false): void {
+    this.snackBar.open(message, 'Close', {
+      duration: 3200,
+      horizontalPosition: 'center',
+      verticalPosition: 'top',
+      panelClass: isSuccess ? ['question-editor-success-snackbar'] : undefined
+    });
   }
 
   private ensureSelectedQuestionsLoaded(questionIds: string[]): void {
@@ -1222,7 +1472,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
       .subscribe({
         next: questions => {
           this.mergeQuestions(questions.filter((question): question is QuestionBankItem => !!question));
-          this.onSubjectChange();
+          this.syncSelectedTopicIds();
           this.onQuestionBankSubjectChange();
           this.changeDetectorRef.detectChanges();
         },

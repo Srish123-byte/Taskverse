@@ -1,5 +1,39 @@
 <header class="app-header">
   <div class="header-container">
-    <span class="app-title">Taskverse</span>
+    <div class="header-left">
+      <button
+        class="header-logo-btn"
+        (click)="navigateHome()"
+        aria-label="Go to home">
+        <img src="assets/taskverse-logo.svg" alt="Taskverse" class="header-logo" />
+      </button>
+    </div>
+    <div class="header-right" *ngIf="!isLoginPage">
+      <div class="profile-menu-wrapper">
+        <button class="profile-btn" (click)="toggleProfileMenu()" aria-label="Profile menu">
+          <span class="profile-avatar">{{ avatarInitials }}</span>
+          <div class="profile-name-wrap">
+            <span class="profile-name" [title]="displayName">{{ displayName }}</span>
+            <span class="profile-role" *ngIf="displayRole">{{ displayRole }}</span>
+          </div>
+          <span class="profile-chevron">▾</span>
+        </button>
+        <div class="profile-dropdown" *ngIf="profileMenuOpen">
+          <div class="profile-dropdown-header">
+            <span class="dropdown-avatar">{{ avatarInitials }}</span>
+            <div>
+              <p class="dropdown-name" [title]="displayName">{{ displayName }}</p>
+              <p class="dropdown-email" [title]="displayEmail">{{ displayEmail }}</p>
+            </div>
+          </div>
+          <hr class="dropdown-divider" />
+          <a class="dropdown-item" href="#">Edit Profile</a>
+          <a class="dropdown-item" href="#">Settings</a>
+          <button type="button" class="dropdown-item" (click)="openChangePassword()">Change Password</button>
+          <hr class="dropdown-divider" />
+          <button type="button" class="dropdown-item dropdown-item-danger" (click)="logout()">Sign Out</button>
+        </div>
+      </div>
+    </div>
   </div>
 </header>

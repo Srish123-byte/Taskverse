@@ -63,8 +63,9 @@ public class ValidateTokenResponseModel
     public DateTime? ExpiresAt { get; set; }
 }
 
-public class ChangeTemporaryPasswordRequestModel
+public class ChangePasswordRequestModel
 {
     [Required] public string CurrentPassword { get; set; } = string.Empty;
     [Required] public string NewPassword { get; set; } = string.Empty;
+    public bool IsTemporaryPasswordChange { get; set; }
 }

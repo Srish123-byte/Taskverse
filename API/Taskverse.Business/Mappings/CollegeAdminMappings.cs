@@ -32,6 +32,9 @@ public static class CollegeAdminMappings
     public static AssignBatchTrainersModel ToMicroServiceModel(this AssignBatchTrainersDto dto) => new(
         dto.TrainerIds);
 
+    public static AssignStudentToBatchModel ToMicroServiceModel(this AssignStudentToBatchDto dto) => new(
+        dto.StudentIds);
+
     public static CollegeUserActionModel ToMicroServiceModel(this UserActionDto dto) => new(
         dto.PerformedBy,
         dto.PerformedByUserId,
@@ -62,7 +65,8 @@ public static class CollegeAdminMappings
         Capacity = model.Capacity,
         StudentCount = model.StudentCount,
         CreatedAt = model.CreatedAt,
-        AssignedTrainers = model.AssignedTrainers.Select(trainer => trainer.ToDto()).ToList()
+        AssignedTrainers = model.AssignedTrainers.Select(trainer => trainer.ToDto()).ToList(),
+        AssignedStudents = model.AssignedStudents.Select(student => student.ToDto()).ToList()
     };
 
     public static SubjectOptionDto ToDto(this SubjectOptionModel model) => new()
@@ -77,5 +81,17 @@ public static class CollegeAdminMappings
         UserId = model.UserId,
         FullName = model.FullName,
         Email = model.Email
+    };
+
+    public static ApprovedStudentDto ToDto(this ApprovedStudentModel model) => new()
+    {
+        StudentId = model.StudentId,
+        UserId = model.UserId,
+        FullName = model.FullName,
+        Email = model.Email,
+        CurrentClassId = model.CurrentClassId,
+        CurrentClassName = model.CurrentClassName,
+        CurrentBatchId = model.CurrentBatchId,
+        CurrentBatchName = model.CurrentBatchName
     };
 }

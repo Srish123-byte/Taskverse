@@ -6,6 +6,8 @@ import { RouteAddress } from '../../../common/constants/routes.constants';
 import { SessionKey } from '../../../common/enums/session-key';
 import { Session } from '../../../common/services/session/session.service';
 
+type ChangeTemporaryPasswordField = 'currentPassword' | 'newPassword' | 'confirmPassword';
+
 @Component({
   selector: 'app-change-temporary-password',
   standalone: false,
@@ -15,6 +17,7 @@ import { Session } from '../../../common/services/session/session.service';
 export class ChangeTemporaryPasswordComponent implements OnInit {
   isSubmitting = false;
   errorMessage = '';
+  private readonly visibleFields = new Set<ChangeTemporaryPasswordField>();
 
   readonly form;
 
@@ -42,6 +45,18 @@ export class ChangeTemporaryPasswordComponent implements OnInit {
     }
   }
 
+  isPasswordVisible(field: ChangeTemporaryPasswordField): boolean {
+    return this.visibleFields.has(field);
+  }
+
+  togglePasswordVisibility(field: ChangeTemporaryPasswordField): void {
+    if (this.visibleFields.has(field)) {
+      this.visibleFields.delete(field);
+    } else {
+      this.visibleFields.add(field);
+    }
+  }
+
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -65,7 +80,11 @@ export class ChangeTemporaryPasswordComponent implements OnInit {
     this.isSubmitting = true;
     this.errorMessage = '';
 
-    this.accountService.changeTemporaryPassword({ currentPassword, newPassword }).subscribe({
+    this.accountService.changePassword({
+      currentPassword,
+      newPassword,
+      isTemporaryPasswordChange: true
+    }).subscribe({
       next: () => {
         sessionStorage.setItem(SessionKey.PasswordChangeSuccess, 'true');
         this.session.clear();

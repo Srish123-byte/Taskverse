@@ -231,6 +231,7 @@ public class Startup
         services.AddScoped<IReportsOrchestrator, ReportsOrchestrator>();
         services.AddScoped<ISuperAdminOrchestrator, SuperAdminOrchestrator>();
         services.AddScoped<ICollegeAdminOrchestrator, CollegeAdminOrchestrator>();
+        services.AddScoped<IAttendanceOrchestrator, AttendanceOrchestrator>();
         services.AddScoped<ICodingEngineOrchestrator, CodingEngineOrchestrator>();
     }
 

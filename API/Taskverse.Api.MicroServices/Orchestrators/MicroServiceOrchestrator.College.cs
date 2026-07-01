@@ -66,6 +66,12 @@ public partial class MicroServiceOrchestrator
         return await Get<List<ApprovedTrainerModel>>(url);
     }
 
+    public async Task<ObjectResult> GetApprovedCollegeStudents(string collegeId)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/students/approved";
+        return await Get<List<ApprovedStudentModel>>(url);
+    }
+
     public async Task<ObjectResult> GetCollegeSubjects()
     {
         var url = $"{GetMicroServiceUrl(MicroService.College)}api/subjects";
@@ -100,6 +106,46 @@ public partial class MicroServiceOrchestrator
     {
         var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/classes/{classId}/batches/{batchId}/trainers";
         return await Post<CollegeBatchSummaryModel>(url, model);
+    }
+
+    public async Task<ObjectResult> AssignCollegeBatchStudent(string collegeId, string classId, string batchId, AssignStudentToBatchModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/colleges/{collegeId}/classes/{classId}/batches/{batchId}/students";
+        return await Post<CollegeBatchSummaryModel>(url, model);
+    }
+
+    public async Task<ObjectResult> GetAttendanceBatches(Guid collegeId, Guid requesterUserId)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/attendance/batches?collegeId={collegeId}&requesterUserId={requesterUserId}";
+        return await Get<List<AttendanceBatchGroupModel>>(url);
+    }
+
+    public async Task<ObjectResult> GetAttendanceRoster(AttendanceRosterRequestModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/attendance/roster";
+        return await Post<AttendanceRosterModel>(url, model);
+    }
+
+    public async Task<ObjectResult> SubmitAttendance(SubmitAttendanceRequestModel model)
+    {
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/attendance/sessions";
+        return await Post<AttendanceRosterModel>(url, model);
+    }
+
+    public async Task<ObjectResult> GetAttendanceHistory(Guid collegeId, Guid requesterUserId, Guid batchId, DateTime fromDate, DateTime toDate)
+    {
+        var encodedFromDate = Uri.EscapeDataString(fromDate.ToString("O"));
+        var encodedToDate = Uri.EscapeDataString(toDate.ToString("O"));
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/attendance/history?collegeId={collegeId}&requesterUserId={requesterUserId}&batchId={batchId}&fromDate={encodedFromDate}&toDate={encodedToDate}";
+        return await Get<AttendanceHistoryModel>(url);
+    }
+
+    public async Task<ObjectResult> ExportAttendance(Guid collegeId, Guid requesterUserId, Guid batchId, DateTime fromDate, DateTime toDate)
+    {
+        var encodedFromDate = Uri.EscapeDataString(fromDate.ToString("O"));
+        var encodedToDate = Uri.EscapeDataString(toDate.ToString("O"));
+        var url = $"{GetMicroServiceUrl(MicroService.College)}api/attendance/export?collegeId={collegeId}&requesterUserId={requesterUserId}&batchId={batchId}&fromDate={encodedFromDate}&toDate={encodedToDate}";
+        return await Get<AttendanceExportModel>(url);
     }
 
     public async Task<ObjectResult> DeleteCollegeClass(string collegeId, string classId)

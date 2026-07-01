@@ -30,12 +30,35 @@
 .summary-card,
 .filters-shell,
 .management-table-shell,
-.integration-note {
+.integration-note,
+.coding-unavailable-shell {
   border: 1px solid rgba(148, 163, 184, 0.14);
   background:
     linear-gradient(180deg, rgba(17, 24, 39, 0.98) 0%, rgba(15, 23, 42, 0.96) 100%),
     radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 38%);
   box-shadow: 0 24px 54px rgba(2, 8, 23, 0.32);
+}
+
+.coding-unavailable-shell {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 14px;
+  padding: 56px 28px 64px;
+  border-radius: 24px;
+}
+
+.coding-unavailable-shell .page-title {
+  margin: 4px 0 0;
+}
+
+.coding-unavailable-shell .page-welcome {
+  max-width: 480px;
+  margin: 0;
+}
+
+.coding-unavailable-shell .primary-action {
+  margin-top: 10px;
 }
 
 .assessments-hero {
@@ -562,9 +585,7 @@
 }
 
 :host(.theme-trainer) .page-container::before {
-  background:
-    radial-gradient(circle at top right, rgba(94, 234, 212, 0.16), transparent 36%),
-    linear-gradient(180deg, rgba(10, 31, 38, 0.95) 0%, rgba(9, 24, 30, 0.99) 100%);
+  background: transparent;
 }
 
 :host(.theme-trainer) .hero-kicker,
@@ -584,7 +605,8 @@
 :host(.theme-trainer) .summary-card,
 :host(.theme-trainer) .filters-shell,
 :host(.theme-trainer) .management-table-shell,
-:host(.theme-trainer) .integration-note {
+:host(.theme-trainer) .integration-note,
+:host(.theme-trainer) .coding-unavailable-shell {
   border-color: rgba(94, 234, 212, 0.14);
   background:
     linear-gradient(180deg, rgba(12, 32, 39, 0.98) 0%, rgba(9, 24, 30, 0.98) 100%),

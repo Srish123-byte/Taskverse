@@ -24,21 +24,42 @@ namespace Taskverse.Data.Migrations
 
             modelBuilder.Entity("Taskverse.Data.DataAccess.Assessment", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("AssessmentId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("assessment_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
-                    b.PrimitiveCollection<Guid[]>("AssignedTo")
-                        .IsRequired()
-                        .HasColumnType("uuid[]")
-                        .HasColumnName("assigned_to");
+                    b.Property<bool>("AllowLateEntry")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allow_late_entry");
 
-                    b.PrimitiveCollection<Guid[]>("ChallengeIds")
+                    b.Property<bool>("AllowQuestionReview")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allow_question_review");
+
+                    b.Property<string>("AssessmentName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("assessment_name");
+
+                    b.Property<int>("AssessmentStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("assessment_status");
+
+                    b.Property<int>("AssessmentType")
+                        .HasColumnType("integer")
+                        .HasColumnName("assessment_type");
+
+                    b.PrimitiveCollection<Guid[]>("AssignedBatchIds")
                         .IsRequired()
                         .HasColumnType("uuid[]")
-                        .HasColumnName("challenge_ids");
+                        .HasColumnName("assigned_batch_ids");
+
+                    b.Property<Guid>("CollegeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("college_id");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -46,47 +67,361 @@ namespace Taskverse.Data.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("now()");
 
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uuid")
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("created_by");
 
-                    b.Property<string>("Description")
-                        .HasColumnType("text")
-                        .HasColumnName("description");
+                    b.Property<int>("DifficultyLevel")
+                        .HasColumnType("integer")
+                        .HasColumnName("difficulty_level");
 
-                    b.Property<DateTime?>("DueDate")
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_minutes");
+
+                    b.Property<DateTime?>("EndDateTime")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("due_date");
+                        .HasColumnName("end_datetime");
 
-                    b.Property<Guid?>("ExamId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("exam_id");
+                    b.Property<string>("Instructions")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("instructions");
 
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
+                    b.Property<bool?>("IsDeleted")
                         .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("is_active");
+                        .HasColumnName("is_deleted");
 
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("title");
+                    b.Property<bool?>("IsTotalMarksAutoCalculated")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_total_marks_auto_calculated");
 
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("type");
-
-                    b.Property<DateTime?>("UpdatedAt")
+                    b.Property<DateTime?>("ModifiedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("modified_at");
 
-                    b.HasKey("Id");
+                    b.Property<bool>("NegativeMarking")
+                        .HasColumnType("boolean")
+                        .HasColumnName("negative_marking");
+
+                    b.Property<int>("PassingPercentage")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(50)
+                        .HasColumnName("passing_percentage");
+
+                    b.Property<bool>("ShowResultsImmediately")
+                        .HasColumnType("boolean")
+                        .HasColumnName("show_results_immediately");
+
+                    b.Property<DateTime?>("SoftDeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("soft_deleted_at");
+
+                    b.Property<string>("SoftDeletedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("soft_deleted_by");
+
+                    b.Property<DateTime?>("StartDateTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_datetime");
+
+                    b.PrimitiveCollection<Guid[]>("SubjectIds")
+                        .IsRequired()
+                        .HasColumnType("uuid[]")
+                        .HasColumnName("subject_id");
+
+                    b.PrimitiveCollection<Guid[]>("TopicIds")
+                        .IsRequired()
+                        .HasColumnType("uuid[]")
+                        .HasColumnName("topic_id");
+
+                    b.Property<int>("TotalMarks")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_marks");
+
+                    b.HasKey("AssessmentId");
 
                     b.ToTable("assessments", (string)null);
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.AssessmentQuestion", b =>
+                {
+                    b.Property<Guid>("AssessmentQuestionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("assessment_questions_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid>("AssessmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assessment_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("display_order");
+
+                    b.Property<decimal>("Marks")
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("marks");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("question_id");
+
+                    b.HasKey("AssessmentQuestionId");
+
+                    b.HasIndex("AssessmentId");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("AssessmentId", "QuestionId")
+                        .IsUnique();
+
+                    b.ToTable("assessment_questions", (string)null);
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.Attempt", b =>
+                {
+                    b.Property<Guid>("AttemptId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("attempt_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid>("AssessmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assessment_id");
+
+                    b.Property<int>("AttemptStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt_status");
+
+                    b.Property<int>("AttemptedQuestions")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempted_questions");
+
+                    b.Property<int>("CorrectAnswers")
+                        .HasColumnType("integer")
+                        .HasColumnName("correct_answers");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("IsPassed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_passed");
+
+                    b.Property<DateTime?>("LastActivityAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_activity_at");
+
+                    b.Property<decimal>("Percentage")
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("percentage");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<int>("TimeTakenSeconds")
+                        .HasColumnType("integer")
+                        .HasColumnName("time_taken_seconds");
+
+                    b.Property<int>("TotalQuestions")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_questions");
+
+                    b.Property<decimal>("TotalScore")
+                        .HasColumnType("numeric(6,2)")
+                        .HasColumnName("total_score");
+
+                    b.Property<int>("UnansweredQuestions")
+                        .HasColumnType("integer")
+                        .HasColumnName("unanswered_questions");
+
+                    b.Property<int>("WrongAnswers")
+                        .HasColumnType("integer")
+                        .HasColumnName("wrong_answers");
+
+                    b.HasKey("AttemptId");
+
+                    b.HasIndex("AssessmentId");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("AssessmentId", "StudentId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_attempts_assessment_student");
+
+                    b.ToTable("attempts", (string)null);
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.AttemptAnswer", b =>
+                {
+                    b.Property<Guid>("AttemptAnswerId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("attempt_answer_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime?>("AnsweredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("answered_at");
+
+                    b.Property<Guid>("AttemptId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("attempt_id");
+
+                    b.Property<bool>("IsCorrect")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_correct");
+
+                    b.Property<decimal>("MarksAwarded")
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("marks_awarded");
+
+                    b.Property<Guid>("QuestionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("question_id");
+
+                    b.Property<string>("SelectedAnswer")
+                        .HasColumnType("text")
+                        .HasColumnName("selected_answer");
+
+                    b.HasKey("AttemptAnswerId");
+
+                    b.HasIndex("AttemptId");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("AttemptId", "QuestionId")
+                        .IsUnique();
+
+                    b.ToTable("attempt_answers", (string)null);
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.AttendanceEntryRecord", b =>
+                {
+                    b.Property<Guid>("AttendanceEntryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("attendance_entry_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<int>("AttendanceEntryType")
+                        .HasColumnType("integer")
+                        .HasColumnName("attendance_entry");
+
+                    b.Property<Guid>("AttendanceSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("attendance_session_id");
+
+                    b.Property<Guid?>("StudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
+
+                    b.HasKey("AttendanceEntryId");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("AttendanceSessionId", "StudentId")
+                        .IsUnique();
+
+                    b.ToTable("attendance_entries", (string)null);
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.AttendanceSession", b =>
+                {
+                    b.Property<Guid>("AttendanceSessionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("attendance_session_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("AttendanceDate")
+                        .HasColumnType("date")
+                        .HasColumnName("attendance_date");
+
+                    b.Property<int>("AttendanceSessionType")
+                        .HasColumnType("integer")
+                        .HasColumnName("attendance_session");
+
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("batch_id");
+
+                    b.Property<Guid?>("BatchOwnerTrainerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("batch_owner_trainer_id");
+
+                    b.Property<Guid?>("ClassId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("class_id");
+
+                    b.Property<Guid>("CollegeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("college_id");
+
+                    b.Property<DateTime>("LastModifiedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid?>("SubmittedByTrainerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submitted_by_trainer_id");
+
+                    b.HasKey("AttendanceSessionId");
+
+                    b.HasIndex("BatchOwnerTrainerId");
+
+                    b.HasIndex("ClassId");
+
+                    b.HasIndex("CollegeId");
+
+                    b.HasIndex("SubmittedByTrainerId");
+
+                    b.HasIndex("BatchId", "AttendanceDate", "AttendanceSessionType")
+                        .IsUnique()
+                        .HasDatabaseName("ix_attendance_sessions_batch_id_attendance_date_attendance_sess");
+
+                    b.ToTable("attendance_sessions", (string)null);
                 });
 
             modelBuilder.Entity("Taskverse.Data.DataAccess.AuditLog", b =>
@@ -138,6 +473,55 @@ namespace Taskverse.Data.Migrations
                     b.ToTable("audit_logs", (string)null);
                 });
 
+            modelBuilder.Entity("Taskverse.Data.DataAccess.AuthSession", b =>
+                {
+                    b.Property<Guid>("AuthSessionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("auth_session_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<DateTime>("LastActivityAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_activity_at");
+
+                    b.Property<DateTime>("ModifiedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("RefreshTokenHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("refresh_token_hash");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("AuthSessionId");
+
+                    b.HasIndex("RefreshTokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "RevokedAt");
+
+                    b.ToTable("auth_sessions", (string)null);
+                });
+
             modelBuilder.Entity("Taskverse.Data.DataAccess.Batch", b =>
                 {
                     b.Property<Guid>("BatchId")
@@ -153,9 +537,6 @@ namespace Taskverse.Data.Migrations
                     b.Property<Guid>("ClassId")
                         .HasColumnType("uuid")
                         .HasColumnName("class_id");
-
-                    b.Property<Guid?>("ClassId1")
-                        .HasColumnType("uuid");
 
                     b.Property<Guid>("CollegeId")
                         .HasColumnType("uuid")
@@ -181,8 +562,6 @@ namespace Taskverse.Data.Migrations
                         .HasColumnName("name");
 
                     b.HasKey("BatchId");
-
-                    b.HasIndex("ClassId1");
 
                     b.HasIndex("CollegeId");
 
@@ -243,13 +622,13 @@ namespace Taskverse.Data.Migrations
                         .HasColumnName("college_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
-                    b.Property<string>("City")
-                        .HasColumnType("text")
-                        .HasColumnName("city");
-
                     b.Property<string>("AdminName")
                         .HasColumnType("text")
                         .HasColumnName("admin_name");
+
+                    b.Property<string>("City")
+                        .HasColumnType("text")
+                        .HasColumnName("city");
 
                     b.Property<string>("CollegeName")
                         .HasColumnType("text")
@@ -281,6 +660,520 @@ namespace Taskverse.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("colleges", (string)null);
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.LookupAttendanceEntry", b =>
+                {
+                    b.Property<int>("AttendanceEntryId")
+                        .HasColumnType("integer")
+                        .HasColumnName("attendance_entry_id");
+
+                    b.Property<string>("AttendanceEntry")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("attendance_entry");
+
+                    b.HasKey("AttendanceEntryId");
+
+                    b.ToTable("lookup_attendance_entry", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            AttendanceEntryId = 1,
+                            AttendanceEntry = "Present"
+                        },
+                        new
+                        {
+                            AttendanceEntryId = 2,
+                            AttendanceEntry = "Absent"
+                        });
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.LookupAttendanceSession", b =>
+                {
+                    b.Property<int>("AttendanceSessionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("attendance_session_id");
+
+                    b.Property<string>("AttendanceSession")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("attendance_session");
+
+                    b.HasKey("AttendanceSessionId");
+
+                    b.ToTable("lookup_attendance_session", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            AttendanceSessionId = 1,
+                            AttendanceSession = "PreBreak"
+                        },
+                        new
+                        {
+                            AttendanceSessionId = 2,
+                            AttendanceSession = "PostBreak"
+                        });
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.ProctoringEvent", b =>
+                {
+                    b.Property<Guid>("ProctoringEventId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("proctoring_event_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid?>("AssessmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assessment_id");
+
+                    b.Property<Guid>("AttemptId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("attempt_id");
+
+                    b.Property<DateTime?>("ClientTimestamp")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("client_timestamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("integer")
+                        .HasColumnName("event_type");
+
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("metadata_json");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
+
+                    b.Property<Guid>("ProctoringSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("proctoring_session_id");
+
+                    b.Property<Guid?>("QuestionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("question_id");
+
+                    b.Property<DateTime>("ServerReceivedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("server_received_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("severity");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
+
+                    b.HasKey("ProctoringEventId");
+
+                    b.HasIndex("AssessmentId");
+
+                    b.HasIndex("AttemptId")
+                        .HasDatabaseName("idx_proctoring_events_attempt_id");
+
+                    b.HasIndex("EventType")
+                        .HasDatabaseName("idx_proctoring_events_event_type");
+
+                    b.HasIndex("ProctoringSessionId");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("proctoring_events", (string)null);
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.ProctoringSession", b =>
+                {
+                    b.Property<Guid>("ProctoringSessionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("proctoring_session_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid?>("AssessmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assessment_id");
+
+                    b.Property<Guid>("AttemptId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("attempt_id");
+
+                    b.Property<string>("BrowserName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("browser_name");
+
+                    b.Property<string>("BrowserVersion")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("browser_version");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("DeviceType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("device_type");
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("ip_address");
+
+                    b.Property<DateTime?>("LastHeartbeatAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_heartbeat_at");
+
+                    b.Property<bool?>("LastKnownIsFullscreen")
+                        .HasColumnType("boolean")
+                        .HasColumnName("last_known_is_fullscreen");
+
+                    b.Property<int?>("LastKnownNetworkStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("last_known_network_status");
+
+                    b.Property<Guid?>("LastKnownQuestionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("last_known_question_id");
+
+                    b.Property<int?>("LastKnownVisibilityState")
+                        .HasColumnType("integer")
+                        .HasColumnName("last_known_visibility_state");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
+
+                    b.Property<string>("OperatingSystem")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("operating_system");
+
+                    b.Property<int>("ProctoringStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("proctoring_status");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("user_agent");
+
+                    b.HasKey("ProctoringSessionId");
+
+                    b.HasIndex("AssessmentId");
+
+                    b.HasIndex("AttemptId");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("proctoring_sessions", (string)null);
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.ProctoringViolationSummary", b =>
+                {
+                    b.Property<Guid>("ProctoringViolationSummaryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("proctoring_violation_summary_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid>("AttemptId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("attempt_id");
+
+                    b.Property<int>("BlockedShortcutCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("blocked_shortcut_count");
+
+                    b.Property<int>("ContextMenuAttemptCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("context_menu_attempt_count");
+
+                    b.Property<int>("CopyAttemptCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("copy_attempt_count");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<int>("CutAttemptCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("cut_attempt_count");
+
+                    b.Property<int>("FullScreenExitCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("full_screen_exit_count");
+
+                    b.Property<DateTime?>("LastEventAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_event_at");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
+
+                    b.Property<int>("NetworkDisconnectCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("network_disconnect_count");
+
+                    b.Property<int>("PasteAttemptCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("paste_attempt_count");
+
+                    b.Property<int>("PossibleDevtoolsCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("possible_devtools_count");
+
+                    b.Property<Guid>("ProctoringSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("proctoring_session_id");
+
+                    b.Property<int>("RiskLevel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("risk_level");
+
+                    b.Property<int>("RiskScore")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("risk_score");
+
+                    b.Property<int>("TabSwitchCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("tab_switch_count");
+
+                    b.HasKey("ProctoringViolationSummaryId");
+
+                    b.HasIndex("AttemptId")
+                        .HasDatabaseName("idx_proctoring_violation_summaries_attempt_id");
+
+                    b.HasIndex("ProctoringSessionId");
+
+                    b.ToTable("proctoring_violation_summaries", (string)null);
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.Question", b =>
+                {
+                    b.Property<Guid>("QuestionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("question_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Answer")
+                        .HasColumnType("text")
+                        .HasColumnName("answer");
+
+                    b.Property<Guid>("CollegeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("college_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(now() at time zone 'utc')");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("DifficultyLevel")
+                        .HasColumnType("integer")
+                        .HasColumnName("difficulty_level");
+
+                    b.Property<string>("Explanation")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("explanation");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<decimal>("Marks")
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("marks");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at")
+                        .HasDefaultValueSql("(now() at time zone 'utc')");
+
+                    b.Property<decimal>("NegativeMarks")
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("negative_marks");
+
+                    b.Property<string>("Options")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("options");
+
+                    b.Property<string>("QuestionText")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("question_text");
+
+                    b.Property<string>("QuestionType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("question_type");
+
+                    b.Property<string>("Stream")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("stream");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("subject");
+
+                    b.Property<string>("Topic")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("topic");
+
+                    b.PrimitiveCollection<string[]>("TopicTag")
+                        .HasColumnType("text[]")
+                        .HasColumnName("topic_tag");
+
+                    b.Property<int>("Version")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("version");
+
+                    b.HasKey("QuestionId");
+
+                    b.HasIndex("CollegeId");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("QuestionType");
+
+                    b.ToTable("questions", (string)null);
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.Result", b =>
+                {
+                    b.Property<Guid>("ResultId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("result_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid>("AssessmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assessment_id");
+
+                    b.Property<Guid>("AttemptId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("attempt_id");
+
+                    b.Property<DateTime>("GeneratedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("generated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<decimal>("ObtainedMarks")
+                        .HasColumnType("numeric(6,2)")
+                        .HasColumnName("obtained_marks");
+
+                    b.Property<decimal>("Percentage")
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("percentage");
+
+                    b.Property<int>("Rank")
+                        .HasColumnType("integer")
+                        .HasColumnName("rank");
+
+                    b.Property<int>("ResultStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("result_status");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
+
+                    b.Property<decimal>("TotalMarks")
+                        .HasColumnType("numeric(6,2)")
+                        .HasColumnName("total_marks");
+
+                    b.HasKey("ResultId");
+
+                    b.HasIndex("AssessmentId");
+
+                    b.HasIndex("AttemptId")
+                        .IsUnique();
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("results", (string)null);
                 });
 
             modelBuilder.Entity("Taskverse.Data.DataAccess.Role", b =>
@@ -319,33 +1212,42 @@ namespace Taskverse.Data.Migrations
                 {
                     b.Property<Guid>("StudentId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
 
                     b.Property<Guid?>("ApprovedBy")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("approved_by");
 
-                    b.Property<Guid>("BatchId")
-                        .HasColumnType("uuid");
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("batch_id");
 
-                    b.Property<Guid?>("BatchId1")
-                        .HasColumnType("uuid");
+                    b.Property<Guid?>("ClassId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("class_id");
 
                     b.Property<Guid>("CollegeId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("college_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("email");
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("full_name");
 
                     b.Property<DateTime>("ModifiedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
@@ -355,13 +1257,14 @@ namespace Taskverse.Data.Migrations
                         .HasColumnType("integer");
 
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
 
                     b.HasKey("StudentId");
 
                     b.HasIndex("BatchId");
 
-                    b.HasIndex("BatchId1");
+                    b.HasIndex("ClassId");
 
                     b.HasIndex("CollegeId");
 
@@ -371,41 +1274,191 @@ namespace Taskverse.Data.Migrations
                     b.ToTable("students", (string)null);
                 });
 
+            modelBuilder.Entity("Taskverse.Data.DataAccess.Subject", b =>
+                {
+                    b.Property<Guid>("SubjectId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
+
+                    b.Property<string>("SubjectName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("subject_name");
+
+                    b.HasKey("SubjectId");
+
+                    b.HasIndex("SubjectName")
+                        .IsUnique();
+
+                    b.ToTable("subjects", (string)null);
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.SubjectBatch", b =>
+                {
+                    b.Property<Guid>("SubjectBatchId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_batch_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("batch_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_id");
+
+                    b.HasKey("SubjectBatchId");
+
+                    b.HasIndex("BatchId");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("SubjectId", "BatchId")
+                        .IsUnique();
+
+                    b.ToTable("subject_batches", (string)null);
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.Topic", b =>
+                {
+                    b.Property<Guid>("TopicId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("topic_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_id");
+
+                    b.Property<string>("TopicName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("topic_name");
+
+                    b.HasKey("TopicId");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("SubjectId", "TopicName")
+                        .IsUnique();
+
+                    b.ToTable("topics", (string)null);
+                });
+
             modelBuilder.Entity("Taskverse.Data.DataAccess.Trainer", b =>
                 {
                     b.Property<Guid>("TrainerId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("trainer_id");
 
                     b.Property<Guid?>("ApprovedBy")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("approved_by");
 
                     b.Property<Guid>("CollegeId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("college_id");
+
+                    b.Property<int?>("CompletedAssessmentsCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("completed_assessments_count");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DateOfBirth")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_of_birth");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("email");
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("full_name");
+
+                    b.Property<int?>("LiveAssessmentsCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("live_assessments_count");
 
                     b.Property<DateTime>("ModifiedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("phone");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
 
-                    b.Property<int>("StatusId")
-                        .HasColumnType("integer");
+                    b.Property<int?>("UpcomingAssessmentsCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("upcoming_assessments_count");
 
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
 
                     b.HasKey("TrainerId");
 
@@ -420,10 +1473,12 @@ namespace Taskverse.Data.Migrations
             modelBuilder.Entity("Taskverse.Data.DataAccess.TrainerBatch", b =>
                 {
                     b.Property<Guid>("TrainerId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("trainer_id");
 
                     b.Property<Guid>("BatchId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("batch_id");
 
                     b.HasKey("TrainerId", "BatchId");
 
@@ -435,10 +1490,12 @@ namespace Taskverse.Data.Migrations
             modelBuilder.Entity("Taskverse.Data.DataAccess.TrainerClass", b =>
                 {
                     b.Property<Guid>("TrainerId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("trainer_id");
 
                     b.Property<Guid>("ClassId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("class_id");
 
                     b.HasKey("TrainerId", "ClassId");
 
@@ -482,16 +1539,37 @@ namespace Taskverse.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("email");
 
+                    b.Property<string>("EnrollmentNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("enrollment_number");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("full_name");
+
+                    b.Property<bool>("IsBulkUploaded")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_bulk_uploaded");
 
                     b.Property<DateTime>("ModifiedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("modified_at")
                         .HasDefaultValueSql("now()");
+
+                    b.Property<bool>("MustChangePassword")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("must_change_password");
+
+                    b.Property<DateTime?>("PasswordChangedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("password_changed_at");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -511,6 +1589,18 @@ namespace Taskverse.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("status");
 
+                    b.Property<DateTime?>("TempPasswordIssuedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("temp_password_issued_at");
+
+                    b.Property<string>("TemporaryPassword")
+                        .HasColumnType("text")
+                        .HasColumnName("temporary_password");
+
+                    b.Property<Guid?>("UploadedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uploaded_by");
+
                     b.HasKey("Id");
 
                     b.HasIndex("BatchId");
@@ -527,6 +1617,82 @@ namespace Taskverse.Data.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("Taskverse.Data.DataAccess.AssessmentQuestion", b =>
+                {
+                    b.HasOne("Taskverse.Data.DataAccess.Assessment", "Assessment")
+                        .WithMany("AssessmentQuestions")
+                        .HasForeignKey("AssessmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_assessment_questions_assessment");
+
+                    b.Navigation("Assessment");
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.AttendanceEntryRecord", b =>
+                {
+                    b.HasOne("Taskverse.Data.DataAccess.AttendanceSession", "AttendanceSession")
+                        .WithMany("Entries")
+                        .HasForeignKey("AttendanceSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_attendance_entries_session");
+
+                    b.HasOne("Taskverse.Data.DataAccess.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_attendance_entries_student");
+
+                    b.Navigation("AttendanceSession");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.AttendanceSession", b =>
+                {
+                    b.HasOne("Taskverse.Data.DataAccess.Batch", "Batch")
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_attendance_sessions_batch");
+
+                    b.HasOne("Taskverse.Data.DataAccess.Trainer", "BatchOwnerTrainer")
+                        .WithMany()
+                        .HasForeignKey("BatchOwnerTrainerId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_attendance_sessions_batch_owner_trainer");
+
+                    b.HasOne("Taskverse.Data.DataAccess.Class", "Class")
+                        .WithMany()
+                        .HasForeignKey("ClassId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_attendance_sessions_class");
+
+                    b.HasOne("Taskverse.Data.DataAccess.College", "College")
+                        .WithMany()
+                        .HasForeignKey("CollegeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_attendance_sessions_college");
+
+                    b.HasOne("Taskverse.Data.DataAccess.Trainer", "SubmittedByTrainer")
+                        .WithMany()
+                        .HasForeignKey("SubmittedByTrainerId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_attendance_sessions_submitted_by_trainer");
+
+                    b.Navigation("Batch");
+
+                    b.Navigation("BatchOwnerTrainer");
+
+                    b.Navigation("Class");
+
+                    b.Navigation("College");
+
+                    b.Navigation("SubmittedByTrainer");
+                });
+
             modelBuilder.Entity("Taskverse.Data.DataAccess.AuditLog", b =>
                 {
                     b.HasOne("Taskverse.Data.DataAccess.User", null)
@@ -537,18 +1703,24 @@ namespace Taskverse.Data.Migrations
                         .HasConstraintName("fk_audit_logs_user");
                 });
 
+            modelBuilder.Entity("Taskverse.Data.DataAccess.AuthSession", b =>
+                {
+                    b.HasOne("Taskverse.Data.DataAccess.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_auth_sessions_user");
+                });
+
             modelBuilder.Entity("Taskverse.Data.DataAccess.Batch", b =>
                 {
-                    b.HasOne("Taskverse.Data.DataAccess.Class", null)
-                        .WithMany()
+                    b.HasOne("Taskverse.Data.DataAccess.Class", "Class")
+                        .WithMany("Batches")
                         .HasForeignKey("ClassId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_batches_class");
-
-                    b.HasOne("Taskverse.Data.DataAccess.Class", null)
-                        .WithMany("Batches")
-                        .HasForeignKey("ClassId1");
 
                     b.HasOne("Taskverse.Data.DataAccess.College", null)
                         .WithMany()
@@ -556,6 +1728,8 @@ namespace Taskverse.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_batches_college");
+
+                    b.Navigation("Class");
                 });
 
             modelBuilder.Entity("Taskverse.Data.DataAccess.Class", b =>
@@ -568,10 +1742,106 @@ namespace Taskverse.Data.Migrations
                         .HasConstraintName("fk_classes_college");
                 });
 
+            modelBuilder.Entity("Taskverse.Data.DataAccess.ProctoringEvent", b =>
+                {
+                    b.HasOne("Taskverse.Data.DataAccess.Assessment", "Assessment")
+                        .WithMany()
+                        .HasForeignKey("AssessmentId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("proctoring_events_assessment_id_fkey");
+
+                    b.HasOne("Taskverse.Data.DataAccess.Attempt", "Attempt")
+                        .WithMany()
+                        .HasForeignKey("AttemptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("proctoring_events_attempt_id_fkey");
+
+                    b.HasOne("Taskverse.Data.DataAccess.ProctoringSession", "ProctoringSession")
+                        .WithMany()
+                        .HasForeignKey("ProctoringSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("proctoring_events_proctoring_session_id_fkey");
+
+                    b.HasOne("Taskverse.Data.DataAccess.Question", "Question")
+                        .WithMany()
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("proctoring_events_question_id_fkey");
+
+                    b.HasOne("Taskverse.Data.DataAccess.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("proctoring_events_student_id_fkey");
+
+                    b.Navigation("Assessment");
+
+                    b.Navigation("Attempt");
+
+                    b.Navigation("ProctoringSession");
+
+                    b.Navigation("Question");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.ProctoringSession", b =>
+                {
+                    b.HasOne("Taskverse.Data.DataAccess.Assessment", "Assessment")
+                        .WithMany()
+                        .HasForeignKey("AssessmentId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("proctoring_sessions_assessment_id_fkey");
+
+                    b.HasOne("Taskverse.Data.DataAccess.Attempt", "Attempt")
+                        .WithMany()
+                        .HasForeignKey("AttemptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("proctoring_sessions_attempt_id_fkey");
+
+                    b.HasOne("Taskverse.Data.DataAccess.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("proctoring_sessions_student_id_fkey");
+
+                    b.Navigation("Assessment");
+
+                    b.Navigation("Attempt");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.ProctoringViolationSummary", b =>
+                {
+                    b.HasOne("Taskverse.Data.DataAccess.Attempt", "Attempt")
+                        .WithMany()
+                        .HasForeignKey("AttemptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("proctoring_violation_summaries_attempt_id_fkey");
+
+                    b.HasOne("Taskverse.Data.DataAccess.ProctoringSession", "ProctoringSession")
+                        .WithMany()
+                        .HasForeignKey("ProctoringSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("proctoring_violation_summaries_proctoring_session_id_fkey");
+
+                    b.Navigation("Attempt");
+
+                    b.Navigation("ProctoringSession");
+                });
+
             modelBuilder.Entity("Taskverse.Data.DataAccess.Student", b =>
                 {
                     b.HasOne("Taskverse.Data.DataAccess.Batch", "Batch")
-                        .WithMany()
+                        .WithMany("Students")
                         .HasForeignKey("BatchId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -597,6 +1867,39 @@ namespace Taskverse.Data.Migrations
                     b.Navigation("College");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.SubjectBatch", b =>
+                {
+                    b.HasOne("Taskverse.Data.DataAccess.Batch", "Batch")
+                        .WithMany("SubjectBatches")
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_subject_batches_batch");
+
+                    b.HasOne("Taskverse.Data.DataAccess.Subject", "Subject")
+                        .WithMany("SubjectBatches")
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_subject_batches_subject");
+
+                    b.Navigation("Batch");
+
+                    b.Navigation("Subject");
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.Topic", b =>
+                {
+                    b.HasOne("Taskverse.Data.DataAccess.Subject", "Subject")
+                        .WithMany("Topics")
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_topics_subject");
+
+                    b.Navigation("Subject");
                 });
 
             modelBuilder.Entity("Taskverse.Data.DataAccess.Trainer", b =>
@@ -683,11 +1986,29 @@ namespace Taskverse.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_users_role_name");
+
+                    b.HasOne("Taskverse.Data.DataAccess.User", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedBy")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_users_uploaded_by");
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.Assessment", b =>
+                {
+                    b.Navigation("AssessmentQuestions");
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.AttendanceSession", b =>
+                {
+                    b.Navigation("Entries");
                 });
 
             modelBuilder.Entity("Taskverse.Data.DataAccess.Batch", b =>
                 {
                     b.Navigation("Students");
+
+                    b.Navigation("SubjectBatches");
 
                     b.Navigation("TrainerBatches");
                 });
@@ -696,7 +2017,16 @@ namespace Taskverse.Data.Migrations
                 {
                     b.Navigation("Batches");
 
+                    b.Navigation("Students");
+
                     b.Navigation("TrainerClasses");
+                });
+
+            modelBuilder.Entity("Taskverse.Data.DataAccess.Subject", b =>
+                {
+                    b.Navigation("SubjectBatches");
+
+                    b.Navigation("Topics");
                 });
 
             modelBuilder.Entity("Taskverse.Data.DataAccess.Trainer", b =>

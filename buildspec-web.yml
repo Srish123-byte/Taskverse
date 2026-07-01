@@ -1,0 +1,44 @@
+version: 0.2
+
+env:
+  variables:
+    NODE_OPTIONS: "--max-old-space-size=4096"
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 22
+    commands:
+      - echo "===== INSTALL PHASE ====="
+      - cd Angular/Taskverse
+      - npm ci --legacy-peer-deps
+
+  build:
+    commands:
+      - echo "===== BUILD PHASE ====="
+      - npx ng build Taskverse --configuration production
+
+  post_build:
+    commands:
+      - echo "===== PREPARING DEPLOYMENT BUNDLE ====="
+
+      - cd $CODEBUILD_SRC_DIR
+
+      - mkdir deployment
+
+      - cp appspec-web.yml deployment/appspec.yml
+
+      - cp -r scripts deployment/
+
+      - cp -r Angular/Taskverse/dist/Taskverse/browser deployment/
+
+      - ls -R deployment
+
+artifacts:
+  base-directory: deployment
+  files:
+    - '**/*'
+
+cache:
+  paths:
+    - Angular/Taskverse/node_modules/**/*

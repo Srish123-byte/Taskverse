@@ -9,6 +9,7 @@ import { FooterComponent } from './components/footer/footer.component';
 import { DashboardLoaderComponent } from './components/dashboard-loader/dashboard-loader.component';
 import { DeleteActionButtonComponent } from './components/delete-action-button/delete-action-button.component';
 import { LogoutConfirmationDialogComponent } from './components/logout-confirmation-dialog/logout-confirmation-dialog.component';
+import { ChangePasswordDialogComponent } from './components/change-password-dialog/change-password-dialog.component';
 import { ProcessingOverlayComponent } from './components/processing-overlay/processing-overlay.component';
 import { SessionInactivityWarningComponent } from './components/session-inactivity-warning/session-inactivity-warning.component';
 import { QuestionBankComponent } from './components/question-bank/question-bank.component';
@@ -16,6 +17,7 @@ import { QuestionEditorComponent } from './components/question-editor/question-e
 import { AssessmentsManagementComponent } from './components/assessments-management/assessments-management.component';
 import { AssessmentCreatorComponent } from './components/assessment-creator/assessment-creator.component';
 import { StudentBulkUploadComponent } from './components/student-bulk-upload/student-bulk-upload.component';
+import { StudentsComponent as TrainerStudentsComponent } from '../website/trainer/students/students.component';
 import { CodingComponent } from './components/coding/coding.component';
 import { MonacoEditorComponent } from './components/coding/monaco-editor/monaco-editor.component';
 
@@ -41,10 +43,12 @@ import { MaterialModule } from '../material.module';
     DashboardLoaderComponent,
     DeleteActionButtonComponent,
     LogoutConfirmationDialogComponent,
+    ChangePasswordDialogComponent,
     ProcessingOverlayComponent,
     SessionInactivityWarningComponent,
     QuestionBankComponent,
     StudentBulkUploadComponent,
+    TrainerStudentsComponent,
     AssessmentsManagementComponent,
     AssessmentCreatorComponent,
     QuestionEditorComponent,
@@ -64,6 +68,7 @@ import { MaterialModule } from '../material.module';
     SessionInactivityWarningComponent,
     QuestionBankComponent,
     StudentBulkUploadComponent,
+    TrainerStudentsComponent,
     AssessmentsManagementComponent,
     AssessmentCreatorComponent,
     QuestionEditorComponent,

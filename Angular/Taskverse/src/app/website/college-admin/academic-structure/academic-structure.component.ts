@@ -5,8 +5,10 @@ import { NavigationEnd, Router } from '@angular/router';
 import { Subscription, filter, startWith } from 'rxjs';
 import { finalize, take, timeout } from 'rxjs/operators';
 import {
+  ApprovedStudent,
   ApprovedTrainer,
   AssignBatchTrainersRequest,
+  AssignStudentToBatchRequest,
   ClassConfiguration,
   CollegeAdminService,
   CollegeBatchSummary,
@@ -65,34 +67,52 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
   isCreateBatchOpen = false;
   isEditBatchMode = false;
   isTrainerAssignmentOpen = false;
+  isStudentAssignmentOpen = false;
   isTrainerDropdownOpen = false;
   isSubmittingClass = false;
   isSubmittingBatch = false;
   isLoadingSubjects = false;
   isLoadingApprovedTrainers = false;
+  isLoadingApprovedStudents = false;
   isSubmittingTrainerAssignment = false;
+  isSubmittingStudentAssignment = false;
   isSuccessDialogOpen = false;
   isDeleteProcessing = false;
   errorMessage = '';
   createClassErrorMessage = '';
   createBatchErrorMessage = '';
   trainerAssignmentErrorMessage = '';
+  studentAssignmentErrorMessage = '';
   successMessage = '';
   private hasBroughtFirstClassIntoView = false;
   private hasLoadedApprovedTrainers = false;
   private routeSubscription?: Subscription;
   approvedTrainers: ApprovedTrainer[] = [];
+  approvedStudents: ApprovedStudent[] = [];
   subjects: SubjectOption[] = [];
   hasLoadedSubjects = false;
+  private hasLoadedApprovedStudents = false;
   deletingClassIds = new Set<string>();
   deletingBatchIds = new Set<string>();
   deleteConfirmationState: DeleteConfirmationState | null = null;
   initialSelectedTrainerIds = new Set<string>();
   selectedTrainerIds = new Set<string>();
+  trainerSearchQuery = '';
+  trainerPage = 1;
+  trainerPageSize = 5;
+  initialSelectedStudentIds = new Set<string>();
+  selectedStudentIds = new Set<string>();
+  studentSearchQuery = '';
+  studentPage = 1;
+  studentPageSize = 5;
   activeTrainerAssignmentClassId = '';
   activeTrainerAssignmentClassName = '';
   activeTrainerAssignmentBatchId = '';
   activeTrainerAssignmentBatchName = '';
+  activeStudentAssignmentClassId = '';
+  activeStudentAssignmentClassName = '';
+  activeStudentAssignmentBatchId = '';
+  activeStudentAssignmentBatchName = '';
   editingClassId = '';
   editingBatchId = '';
   classConfiguration: ClassConfiguration = {
@@ -176,6 +196,7 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     this.successMessage = '';
     this.isCreateBatchOpen = false;
     this.closeTrainerAssignmentModal();
+    this.closeStudentAssignmentModal();
     this.isCreateClassOpen = true;
     this.createClassForm.reset({
       name: classItem.name,
@@ -197,6 +218,7 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     this.successMessage = '';
     this.isCreateClassOpen = false;
     this.closeTrainerAssignmentModal();
+    this.closeStudentAssignmentModal();
     this.isCreateBatchOpen = true;
     this.createBatchForm.reset({
       classId: targetClassId,
@@ -219,6 +241,7 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     this.successMessage = '';
     this.isCreateClassOpen = false;
     this.closeTrainerAssignmentModal();
+    this.closeStudentAssignmentModal();
     this.isCreateBatchOpen = true;
     this.createBatchForm.reset({
       classId: classItem.classId,
@@ -279,10 +302,13 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
   openAssignTrainerModal(classItem: CollegeClassSummary, batch: CollegeBatchSummary): void {
     this.isCreateClassOpen = false;
     this.isCreateBatchOpen = false;
+    this.closeStudentAssignmentModal(true);
     this.isTrainerAssignmentOpen = true;
     this.isTrainerDropdownOpen = true;
     this.trainerAssignmentErrorMessage = '';
     this.successMessage = '';
+    this.trainerSearchQuery = '';
+    this.trainerPage = 1;
     this.activeTrainerAssignmentClassId = classItem.classId;
     this.activeTrainerAssignmentClassName = classItem.name;
     this.activeTrainerAssignmentBatchId = batch.batchId;
@@ -311,6 +337,45 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     this.activeTrainerAssignmentClassName = '';
     this.activeTrainerAssignmentBatchId = '';
     this.activeTrainerAssignmentBatchName = '';
+  }
+
+  openAssignStudentModal(classItem: CollegeClassSummary, batch: CollegeBatchSummary): void {
+    this.isCreateClassOpen = false;
+    this.isCreateBatchOpen = false;
+    this.closeTrainerAssignmentModal(true);
+    this.isStudentAssignmentOpen = true;
+    this.studentAssignmentErrorMessage = '';
+    this.successMessage = '';
+    this.studentSearchQuery = '';
+    this.studentPage = 1;
+    this.activeStudentAssignmentClassId = classItem.classId;
+    this.activeStudentAssignmentClassName = classItem.name;
+    this.activeStudentAssignmentBatchId = batch.batchId;
+    this.activeStudentAssignmentBatchName = batch.name;
+    this.initialSelectedStudentIds = new Set(batch.assignedStudents.map(student => student.studentId));
+    this.selectedStudentIds = new Set(this.initialSelectedStudentIds);
+    this.changeDetectorRef.detectChanges();
+
+    if (!this.hasLoadedApprovedStudents && !this.isLoadingApprovedStudents) {
+      this.loadApprovedStudents(true);
+    }
+  }
+
+  closeStudentAssignmentModal(force = false): void {
+    if (this.isSubmittingStudentAssignment && !force) {
+      return;
+    }
+
+    this.isStudentAssignmentOpen = false;
+    this.isSubmittingStudentAssignment = false;
+    this.isLoadingApprovedStudents = false;
+    this.studentAssignmentErrorMessage = '';
+    this.activeStudentAssignmentClassId = '';
+    this.activeStudentAssignmentClassName = '';
+    this.activeStudentAssignmentBatchId = '';
+    this.activeStudentAssignmentBatchName = '';
+    this.initialSelectedStudentIds = new Set<string>();
+    this.selectedStudentIds = new Set<string>();
   }
 
   submitCreateClass(): void {
@@ -488,6 +553,9 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
           if (this.activeTrainerAssignmentClassId === pendingDelete.classId) {
             this.closeTrainerAssignmentModal(true);
           }
+          if (this.activeStudentAssignmentClassId === pendingDelete.classId) {
+            this.closeStudentAssignmentModal(true);
+          }
 
           this.classConfiguration = {
             ...this.classConfiguration,
@@ -520,6 +588,9 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
         next: () => {
           if (this.activeTrainerAssignmentBatchId === pendingDelete.batchId) {
             this.closeTrainerAssignmentModal(true);
+          }
+          if (this.activeStudentAssignmentBatchId === pendingDelete.batchId) {
+            this.closeStudentAssignmentModal(true);
           }
 
           this.classConfiguration = {
@@ -618,6 +689,10 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     return item.trainerId;
   }
 
+  trackByStudentId(_: number, item: ApprovedStudent): string {
+    return item.studentId;
+  }
+
   isDeletingClass(classId: string): boolean {
     return this.deletingClassIds.has(classId);
   }
@@ -680,6 +755,110 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     return this.approvedTrainers.filter(trainer => this.selectedTrainerIds.has(trainer.trainerId));
   }
 
+  get filteredTrainers(): ApprovedTrainer[] {
+    const q = this.trainerSearchQuery.trim().toLowerCase();
+    return q
+      ? this.approvedTrainers.filter(t =>
+          t.fullName?.toLowerCase().includes(q) || t.email?.toLowerCase().includes(q))
+      : this.approvedTrainers;
+  }
+
+  get pagedTrainers(): ApprovedTrainer[] {
+    const start = (this.trainerPage - 1) * this.trainerPageSize;
+    return this.filteredTrainers.slice(start, start + this.trainerPageSize);
+  }
+
+  get trainerTotalPages(): number {
+    return Math.ceil(this.filteredTrainers.length / this.trainerPageSize);
+  }
+
+  onTrainerSearch(): void {
+    this.trainerPage = 1;
+  }
+
+  selectStudent(studentId: string): void {
+    this.studentAssignmentErrorMessage = '';
+
+    if (this.selectedStudentIds.has(studentId)) {
+      this.selectedStudentIds.delete(studentId);
+      return;
+    }
+
+    this.selectedStudentIds.add(studentId);
+  }
+
+  isStudentSelected(studentId: string): boolean {
+    return this.selectedStudentIds.has(studentId);
+  }
+
+  getSelectedStudentCount(): number {
+    return this.selectedStudentIds.size;
+  }
+
+  getSelectedStudents(): ApprovedStudent[] {
+    const uniqueStudents = new Map<string, ApprovedStudent>();
+
+    for (const student of [...this.getAssignedStudentsForActiveBatch(), ...this.approvedStudents]) {
+      if (!uniqueStudents.has(student.studentId)) {
+        uniqueStudents.set(student.studentId, student);
+      }
+    }
+
+    return [...uniqueStudents.values()].filter(student => this.selectedStudentIds.has(student.studentId));
+  }
+
+  getAssignedStudentsForActiveBatch(): ApprovedStudent[] {
+    if (!this.activeStudentAssignmentClassId || !this.activeStudentAssignmentBatchId) {
+      return [];
+    }
+
+    const classItem = this.classConfiguration.classes.find(item => item.classId === this.activeStudentAssignmentClassId);
+    const batch = classItem?.batches.find(item => item.batchId === this.activeStudentAssignmentBatchId);
+
+    return batch?.assignedStudents ?? [];
+  }
+
+  getStudentAssignmentLabel(): string {
+    if (this.isLoadingApprovedStudents) {
+      return 'Loading approved students...';
+    }
+
+    const selectedCount = this.getSelectedStudentCount();
+    if (selectedCount > 0) {
+      return `${selectedCount} student${selectedCount === 1 ? '' : 's'} selected`;
+    }
+
+    if (this.getAvailableStudentsForAssignment().length === 0) {
+      return this.getAssignedStudentsForActiveBatch().length === 0
+        ? 'No students available for assignment'
+        : 'No other approved students available';
+    }
+
+    return 'Choose approved students for this batch';
+  }
+
+  get filteredStudents(): ApprovedStudent[] {
+    const q = this.studentSearchQuery.trim().toLowerCase();
+    const availableStudents = this.getAvailableStudentsForAssignment();
+    return q
+      ? availableStudents.filter(s =>
+          s.fullName?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q))
+      : availableStudents;
+  }
+
+  get pagedStudents(): ApprovedStudent[] {
+    const start = (this.studentPage - 1) * this.studentPageSize;
+    return this.filteredStudents.slice(start, start + this.studentPageSize);
+  }
+
+  get studentTotalPages(): number {
+    return Math.ceil(this.filteredStudents.length / this.studentPageSize);
+  }
+
+  onStudentSearch(): void {
+    this.studentPage = 1;
+  }
+
   getActiveBatchClassLabel(): string {
     const classId = this.createBatchForm.controls.classId.value?.trim() || '';
     const classItem = this.classConfiguration.classes.find(item => item.classId === classId);
@@ -699,6 +878,20 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
 
     for (const trainerId of this.selectedTrainerIds) {
       if (!this.initialSelectedTrainerIds.has(trainerId)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  hasStudentSelectionChanges(): boolean {
+    if (this.initialSelectedStudentIds.size !== this.selectedStudentIds.size) {
+      return true;
+    }
+
+    for (const studentId of this.selectedStudentIds) {
+      if (!this.initialSelectedStudentIds.has(studentId)) {
         return true;
       }
     }
@@ -742,6 +935,63 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
         },
         error: err => {
           this.trainerAssignmentErrorMessage = err?.error?.message || 'Unable to assign trainers right now.';
+        }
+      });
+  }
+
+  submitStudentAssignment(): void {
+    if (this.isSubmittingStudentAssignment) {
+      return;
+    }
+
+    if (!this.activeStudentAssignmentClassId || !this.activeStudentAssignmentBatchId) {
+      this.studentAssignmentErrorMessage = 'Unable to identify the selected batch right now.';
+      return;
+    }
+
+    const request: AssignStudentToBatchRequest = {
+      studentIds: Array.from(this.selectedStudentIds)
+    };
+
+    const studentsToReassign = this.getStudentsMarkedForReassignment();
+    if (studentsToReassign.length > 0) {
+      const confirmationMessage = [
+        `This will reassign ${studentsToReassign.length} student${studentsToReassign.length === 1 ? '' : 's'} to "${this.activeStudentAssignmentBatchName}".`,
+        '',
+        ...studentsToReassign.slice(0, 8).map(student => `- ${student.fullName} (${this.getStudentAssignmentStatus(student)})`),
+        studentsToReassign.length > 8 ? `- and ${studentsToReassign.length - 8} more` : '',
+        '',
+        'Do you want to continue?'
+      ].filter(Boolean).join('\n');
+
+      if (!window.confirm(confirmationMessage)) {
+        return;
+      }
+    }
+
+    this.isSubmittingStudentAssignment = true;
+    this.studentAssignmentErrorMessage = '';
+
+    this.collegeAdminService.assignStudentToBatch(
+      this.activeStudentAssignmentClassId,
+      this.activeStudentAssignmentBatchId,
+      request)
+      .pipe(
+        take(1),
+        finalize(() => {
+          this.isSubmittingStudentAssignment = false;
+        }))
+      .subscribe({
+        next: updatedBatch => {
+          this.replaceBatchSummary(updatedBatch);
+          this.successMessage = `Student assignments were updated for "${updatedBatch.name}".`;
+          this.isSuccessDialogOpen = true;
+          this.closeStudentAssignmentModal(true);
+          this.recalculateTotals();
+          this.changeDetectorRef.detectChanges();
+        },
+        error: err => {
+          this.studentAssignmentErrorMessage = err?.error?.message || 'Unable to assign the student right now.';
         }
       });
   }
@@ -825,6 +1075,76 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
       });
   }
 
+  private loadApprovedStudents(showError = true): void {
+    this.isLoadingApprovedStudents = true;
+    if (showError) {
+      this.studentAssignmentErrorMessage = '';
+    }
+
+    this.collegeAdminService.getApprovedStudents()
+      .pipe(
+        take(1),
+        finalize(() => {
+          this.isLoadingApprovedStudents = false;
+          this.changeDetectorRef.detectChanges();
+        }))
+      .subscribe({
+        next: students => {
+          this.approvedStudents = students.sort((left, right) =>
+            left.fullName.localeCompare(right.fullName) || left.email.localeCompare(right.email));
+          this.hasLoadedApprovedStudents = true;
+          this.changeDetectorRef.detectChanges();
+        },
+        error: err => {
+          this.approvedStudents = [];
+          this.hasLoadedApprovedStudents = false;
+          if (showError) {
+            this.studentAssignmentErrorMessage = err?.error?.message || 'Unable to load approved students right now.';
+          }
+          this.changeDetectorRef.detectChanges();
+        }
+      });
+  }
+
+  getAvailableStudentsForAssignment(): ApprovedStudent[] {
+    const activeBatchStudentIds = new Set(this.getAssignedStudentsForActiveBatch().map(student => student.studentId));
+    return this.approvedStudents.filter(student => !activeBatchStudentIds.has(student.studentId));
+  }
+
+  isStudentAssignedToActiveBatch(student: ApprovedStudent): boolean {
+    const assignedStudentIds = new Set(this.getAssignedStudentsForActiveBatch().map(item => item.studentId));
+    return assignedStudentIds.has(student.studentId) || (
+      student.currentClassId === this.activeStudentAssignmentClassId &&
+      student.currentBatchId === this.activeStudentAssignmentBatchId
+    );
+  }
+
+  isStudentAssignedElsewhere(student: ApprovedStudent): boolean {
+    if (!student.currentClassId && !student.currentBatchId) {
+      return false;
+    }
+
+    return !this.isStudentAssignedToActiveBatch(student);
+  }
+
+  getStudentAssignmentStatus(student: ApprovedStudent): string {
+    if (this.isStudentAssignedToActiveBatch(student)) {
+      return 'Assigned to this batch';
+    }
+
+    if (this.isStudentAssignedElsewhere(student)) {
+      const className = student.currentClassName?.trim() || 'Unknown class';
+      const batchName = student.currentBatchName?.trim() || 'No batch';
+      return `Assigned to ${className} / ${batchName}`;
+    }
+
+    return 'Unassigned';
+  }
+
+  getStudentsMarkedForReassignment(): ApprovedStudent[] {
+    return this.getSelectedStudents().filter(student => this.isStudentAssignedElsewhere(student));
+  }
+
   private loadSubjects(): void {
     this.isLoadingSubjects = true;
     this.createBatchErrorMessage = '';
@@ -874,14 +1194,15 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
           return classItem;
         }
 
+        const nextBatches = classItem.batches
+          .map(batch => batch.batchId === updatedBatch.batchId ? updatedBatch : batch)
+          .sort((left, right) => left.name.localeCompare(right.name));
+
         return {
           ...classItem,
-          batches: classItem.batches
-            .map(batch => batch.batchId === updatedBatch.batchId ? updatedBatch : batch)
-            .sort((left, right) => left.name.localeCompare(right.name)),
-          totalCapacity: classItem.batches
-            .map(batch => batch.batchId === updatedBatch.batchId ? updatedBatch : batch)
-            .reduce((sum, batch) => sum + (batch.capacity || 0), 0)
+          batches: nextBatches,
+          totalStudents: nextBatches.reduce((sum, batch) => sum + (batch.studentCount || 0), 0),
+          totalCapacity: nextBatches.reduce((sum, batch) => sum + (batch.capacity || 0), 0)
         };
       })
     };
