@@ -115,105 +115,104 @@ public class CollegeService : ICollegeService
         return items;
     }
 
-    public IReadOnlyList<CollegeRecord> GetColleges()
+    public async Task<List<CollegeRecord>> GetColleges()
     {
-        return CollegeStore.Colleges;
+        var colleges = await _context.Colleges
+            .AsNoTracking()
+            .OrderBy(c => c.CollegeName ?? string.Empty)
+            .ToListAsync();
+
+        return colleges.Select(ToCollegeRecord).ToList();
     }
 
-    public List<CollegeRecord> GetPendingColleges()
+    public async Task<List<CollegeRecord>> GetPendingColleges()
     {
-        return CollegeStore.Colleges
-            .Where(college => college.ApprovalStatus == ApprovalStatuses.Pending)
-            .ToList();
+        var colleges = await _context.Colleges
+            .AsNoTracking()
+            .Where(c => c.Status == null || c.Status == "Pending")
+            .OrderBy(c => c.CollegeName ?? string.Empty)
+            .ToListAsync();
+
+        return colleges.Select(ToCollegeRecord).ToList();
     }
 
-    public CollegeRecord? GetCollege(Guid collegeId)
+    public async Task<CollegeRecord?> GetCollege(Guid collegeId)
     {
-        return CollegeStore.Colleges.FirstOrDefault(item => item.CollegeId == collegeId);
+        var college = await _context.Colleges
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.CollegeId == collegeId);
+
+        return college is null ? null : ToCollegeRecord(college);
     }
 
-    public CollegeRecord? ApproveCollege(Guid collegeId, CollegeActionRequest request)
+    public async Task<CollegeRecord?> ApproveCollege(Guid collegeId, CollegeActionRequest request)
     {
-        var college = GetCollege(collegeId);
-        if (college is null)
-        {
-            return null;
-        }
+        var college = await _context.Colleges.FirstOrDefaultAsync(c => c.CollegeId == collegeId);
+        if (college is null) return null;
 
-        var updated = college with
-        {
-            ApprovalStatus = ApprovalStatuses.Approved,
-            Status = CollegeStatuses.Active,
-            IsActive = true,
-            ApprovedAt = DateTime.UtcNow,
-            ApprovedBy = request.PerformedBy,
-            Notes = request.Reason
-        };
-
-        CollegeStore.Replace(updated);
-        return updated;
+        college.Status = CollegeStatuses.Active;
+        college.ModifiedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return ToCollegeRecord(college);
     }
 
-    public CollegeRecord? RejectCollege(Guid collegeId, CollegeActionRequest request)
+    public async Task<CollegeRecord?> RejectCollege(Guid collegeId, CollegeActionRequest request)
     {
-        var college = GetCollege(collegeId);
-        if (college is null)
-        {
-            return null;
-        }
+        var college = await _context.Colleges.FirstOrDefaultAsync(c => c.CollegeId == collegeId);
+        if (college is null) return null;
 
-        var updated = college with
-        {
-            ApprovalStatus = ApprovalStatuses.Rejected,
-            Status = CollegeStatuses.Rejected,
-            IsActive = false,
-            ApprovedAt = null,
-            ApprovedBy = request.PerformedBy,
-            Notes = request.Reason
-        };
-
-        CollegeStore.Replace(updated);
-        return updated;
+        college.Status = CollegeStatuses.Rejected;
+        college.ModifiedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return ToCollegeRecord(college);
     }
 
-    public CollegeRecord? DeactivateCollege(Guid collegeId, CollegeActionRequest request)
+    public async Task<CollegeRecord?> DeactivateCollege(Guid collegeId, CollegeActionRequest request)
     {
-        var college = GetCollege(collegeId);
-        if (college is null)
-        {
-            return null;
-        }
+        var college = await _context.Colleges.FirstOrDefaultAsync(c => c.CollegeId == collegeId);
+        if (college is null) return null;
 
-        var updated = college with
-        {
-            Status = CollegeStatuses.Inactive,
-            IsActive = false,
-            Notes = request.Reason,
-            ApprovedBy = request.PerformedBy
-        };
-
-        CollegeStore.Replace(updated);
-        return updated;
+        college.Status = CollegeStatuses.Inactive;
+        college.ModifiedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return ToCollegeRecord(college);
     }
 
-    public CollegeRecord? ReactivateCollege(Guid collegeId, CollegeActionRequest request)
+    public async Task<CollegeRecord?> ReactivateCollege(Guid collegeId, CollegeActionRequest request)
     {
-        var college = GetCollege(collegeId);
-        if (college is null)
-        {
-            return null;
-        }
+        var college = await _context.Colleges.FirstOrDefaultAsync(c => c.CollegeId == collegeId);
+        if (college is null) return null;
 
-        var updated = college with
-        {
-            Status = CollegeStatuses.Active,
-            IsActive = true,
-            Notes = request.Reason,
-            ApprovedBy = request.PerformedBy
-        };
+        college.Status = CollegeStatuses.Active;
+        college.ModifiedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return ToCollegeRecord(college);
+    }
 
-        CollegeStore.Replace(updated);
-        return updated;
+    private static CollegeRecord ToCollegeRecord(Taskverse.Data.DataAccess.College college)
+    {
+        var normalizedStatus = college.Status?.Trim() ?? string.Empty;
+        var isActive = normalizedStatus.Equals(CollegeStatuses.Active, StringComparison.OrdinalIgnoreCase);
+        var approvalStatus = normalizedStatus.Equals(CollegeStatuses.Rejected, StringComparison.OrdinalIgnoreCase)
+            ? ApprovalStatuses.Rejected
+            : isActive || normalizedStatus.Equals(CollegeStatuses.Inactive, StringComparison.OrdinalIgnoreCase)
+                ? ApprovalStatuses.Approved
+                : ApprovalStatuses.Pending;
+
+        return new CollegeRecord(
+            CollegeId: college.CollegeId,
+            Name: college.CollegeName ?? "Unnamed College",
+            AdminName: college.AdminName,
+            City: college.City,
+            State: college.State,
+            Status: isActive ? CollegeStatuses.Active : (normalizedStatus.Length > 0 ? normalizedStatus : "Pending"),
+            ApprovalStatus: approvalStatus,
+            IsActive: isActive,
+            RequestedAt: college.CreatedAt,
+            RequestedBy: null,
+            ApprovedAt: null,
+            ApprovedBy: null,
+            Notes: null);
     }
 
     private static bool MatchesStatus(string status, string? requestedStatus)
