@@ -4,16 +4,35 @@ phases:
   install:
     runtime-versions:
       dotnet: 10.0
+    commands:
+      - echo "===== INSTALL PHASE ====="
+      - dotnet --version
+
+  pre_build:
+    commands:
+      - echo "===== RESTORE PHASE ====="
+      - dotnet restore API/Taskverse.API.Assessments.Service/Taskverse.API.Assessments.Service.csproj
 
   build:
     commands:
-      - echo "Publishing Assessments Service..."
+      - echo "===== BUILD PHASE ====="
       - dotnet publish API/Taskverse.API.Assessments.Service/Taskverse.API.Assessments.Service.csproj -c Release -o publish
-      - cp appspec-assessments.yml appspec.yml
+
+  post_build:
+    commands:
+      - echo "===== PREPARING DEPLOYMENT BUNDLE ====="
+      - mkdir deployment
+      - cp appspec-assessments.yml deployment/appspec.yml
+      - cp taskverse-assessments.service deployment/
+      - cp -r scripts deployment/
+      - cp -r publish deployment/
+      - ls -R deployment
 
 artifacts:
+  base-directory: deployment
   files:
-    - publish/**/*
-    - appspec.yml
-    - taskverse-assessments.service
-    - scripts/**/*
+    - '**/*'
+
+cache:
+  paths:
+    - /root/.nuget/packages/**/*

@@ -4,16 +4,35 @@ phases:
   install:
     runtime-versions:
       dotnet: 10.0
+    commands:
+      - echo "===== INSTALL PHASE ====="
+      - dotnet --version
+
+  pre_build:
+    commands:
+      - echo "===== RESTORE PHASE ====="
+      - dotnet restore API/Taskverse.API.Proctor.Service/Taskverse.API.Proctor.Service.csproj
 
   build:
     commands:
-      - echo "Publishing Proctor Service..."
+      - echo "===== BUILD PHASE ====="
       - dotnet publish API/Taskverse.API.Proctor.Service/Taskverse.API.Proctor.Service.csproj -c Release -o publish
-      - cp appspec-proctor.yml appspec.yml
+
+  post_build:
+    commands:
+      - echo "===== PREPARING DEPLOYMENT BUNDLE ====="
+      - mkdir deployment
+      - cp appspec-proctor.yml deployment/appspec.yml
+      - cp taskverse-proctor.service deployment/
+      - cp -r scripts deployment/
+      - cp -r publish deployment/
+      - ls -R deployment
 
 artifacts:
+  base-directory: deployment
   files:
-    - publish/**/*
-    - appspec.yml
-    - taskverse-proctor.service
-    - scripts/**/*
+    - '**/*'
+
+cache:
+  paths:
+    - /root/.nuget/packages/**/*
