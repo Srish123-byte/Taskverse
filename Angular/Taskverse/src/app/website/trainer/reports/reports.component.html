@@ -201,7 +201,7 @@
                                 <td class="cell-muted">{{ q.questionType }}</td>
                                 <td class="num">{{ q.marks }}</td>
                                 <td class="num fw">{{ q.awardedMarks }}</td>
-                                <td>
+                                <td class="q-status-cell">
                                   <span class="q-status" [ngClass]="'qs-' + (q.status | lowercase)">
                                     <span class="q-dot"></span>{{ q.status }}
                                   </span>

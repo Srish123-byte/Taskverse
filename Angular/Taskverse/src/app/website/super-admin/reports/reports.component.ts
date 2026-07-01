@@ -3,15 +3,14 @@ import * as XLSX from 'xlsx';
 import { forkJoin } from 'rxjs';
 import { SuperAdminService } from '../../../common/services/api/super-admin.service';
 import { CollegeAdminService, CollegeClassSummary, ApprovedStudent, ClassConfiguration } from '../../../common/services/api/college-admin.service';
-import { AssessmentAdminService, AssessmentManagementItem } from '../../../common/services/api/assessment-admin.service';
 import { HttpClientService } from '../../../common/services/http/http-client.service';
 import { College } from '../../../common/models/super-admin.model';
 
 export type ReportTab = 'overview' | 'batch' | 'student';
 
 interface KpiCard { label: string; value: string | number; icon: string; }
-interface BranchRow { classId: string; name: string; department?: string; studentCount: number; trainerCount: number; assessmentCount: number; }
-interface BatchRow { batchId: string; classId: string; className: string; name: string; subjectName?: string; studentCount: number; trainerCount: number; assessmentCount: number; }
+interface BranchRow { classId: string; name: string; department?: string; studentCount: number; trainerCount: number; }
+interface BatchRow { batchId: string; classId: string; className: string; name: string; subjectName?: string; studentCount: number; trainerCount: number; }
 
 interface QuestionResult {
   displayOrder: number;
@@ -74,7 +73,6 @@ export class ReportsComponent implements OnInit {
   constructor(
     private readonly superAdminService: SuperAdminService,
     private readonly collegeAdminService: CollegeAdminService,
-    private readonly assessmentAdminService: AssessmentAdminService,
     private readonly http: HttpClientService,
     private readonly cdr: ChangeDetectorRef
   ) {}
@@ -184,8 +182,8 @@ export class ReportsComponent implements OnInit {
         ...this.kpiCards.map(c => [c.label, c.value]),
         [],
         ['Branch Performance'],
-        ['Branch / Class', 'Department', 'Students', 'Trainers', 'Assessments'],
-        ...this.branchRows.map(r => [r.name, r.department ?? '—', r.studentCount, r.trainerCount, r.assessmentCount])
+        ['Branch / Class', 'Department', 'Students', 'Trainers'],
+        ...this.branchRows.map(r => [r.name, r.department ?? '—', r.studentCount, r.trainerCount])
       ];
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Overview');
 
@@ -195,8 +193,8 @@ export class ReportsComponent implements OnInit {
         ['College', this.selectedCollegeName],
         ['Generated', this.today],
         [],
-        ['Branch', 'Batch', 'Subject', 'Students', 'Trainers', 'Assessments'],
-        ...this.filteredBatchRows.map(r => [r.className, r.name, r.subjectName ?? '—', r.studentCount, r.trainerCount, r.assessmentCount])
+        ['Branch', 'Batch', 'Subject', 'Students', 'Trainers'],
+        ...this.filteredBatchRows.map(r => [r.className, r.name, r.subjectName ?? '—', r.studentCount, r.trainerCount])
       ];
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Batch Performance');
 
@@ -244,7 +242,7 @@ export class ReportsComponent implements OnInit {
     this.isLoadingColleges = true;
     this.superAdminService.getColleges().subscribe({
       next: (colleges) => {
-        this.colleges = (colleges ?? []).filter(c => c.isActive);
+        this.colleges = (colleges ?? []).filter(c => c.status?.toLowerCase() === 'active' || c.isActive);
         this.isLoadingColleges = false;
         this.cdr.detectChanges();
       },
@@ -259,15 +257,14 @@ export class ReportsComponent implements OnInit {
     this.isLoading = true;
     forkJoin({
       classConfig: this.superAdminService.getCollegeReportClasses(this.selectedCollegeId),
-      students: this.superAdminService.getCollegeReportStudents(this.selectedCollegeId),
-      assessments: this.assessmentAdminService.searchAssessments({ pageNumber: 1, pageSize: 200 })
+      students: this.superAdminService.getCollegeReportStudents(this.selectedCollegeId)
     }).subscribe({
-      next: ({ classConfig, students, assessments }) => {
+      next: ({ classConfig, students }) => {
         const mapped = this.mapClassConfig(classConfig);
         this.classes = mapped.classes;
         this.students = (students ?? []).map((s: any) => this.mapStudent(s));
-        this.buildOverview(mapped, assessments.items);
-        this.buildBatchData(mapped, assessments.items);
+        this.buildOverview(mapped);
+        this.buildBatchData(mapped);
         this.isLoading = false;
         this.cdr.detectChanges();
       },
@@ -292,7 +289,7 @@ export class ReportsComponent implements OnInit {
     this.activeTab = 'overview';
   }
 
-  private buildOverview(classConfig: ClassConfiguration, assessments: AssessmentManagementItem[]): void {
+  private buildOverview(classConfig: ClassConfiguration): void {
     const totalStudents = classConfig.classes.reduce((s, c) => s + c.totalStudents, 0);
     const trainerSet = new Set<string>();
     classConfig.classes.forEach(cls => cls.batches.forEach(b => b.assignedTrainers.forEach(t => trainerSet.add(t.trainerId))));
@@ -301,25 +298,23 @@ export class ReportsComponent implements OnInit {
       { label: 'Total Branches', value: classConfig.classes.length, icon: 'business' },
       { label: 'Total Students', value: totalStudents, icon: 'groups' },
       { label: 'Total Trainers', value: trainerSet.size, icon: 'person_check' },
-      { label: 'Total Assessments', value: assessments.length, icon: 'assignment' }
+      { label: 'Total Batches', value: classConfig.classes.reduce((s, c) => s + c.batches.length, 0), icon: 'groups_3' }
     ];
 
     this.branchRows = classConfig.classes.map(cls => {
       const clsTrainers = new Set<string>();
       cls.batches.forEach(b => b.assignedTrainers.forEach(t => clsTrainers.add(t.trainerId)));
-      const classBatchIds = new Set(cls.batches.map(b => b.batchId));
       return {
         classId: cls.classId,
         name: cls.name,
         department: cls.department,
         studentCount: cls.totalStudents,
-        trainerCount: clsTrainers.size,
-        assessmentCount: assessments.filter(a => (a.assignedBatchIds ?? []).some(id => classBatchIds.has(id))).length
+        trainerCount: clsTrainers.size
       };
     });
   }
 
-  private buildBatchData(classConfig: ClassConfiguration, assessments: AssessmentManagementItem[]): void {
+  private buildBatchData(classConfig: ClassConfiguration): void {
     const rows: BatchRow[] = [];
     for (const cls of classConfig.classes) {
       for (const batch of cls.batches) {
@@ -330,8 +325,7 @@ export class ReportsComponent implements OnInit {
           name: batch.name,
           subjectName: batch.subjectName,
           studentCount: batch.studentCount,
-          trainerCount: batch.assignedTrainers.length,
-          assessmentCount: assessments.filter(a => (a.assignedBatchIds ?? []).includes(batch.batchId)).length
+          trainerCount: batch.assignedTrainers.length
         });
       }
     }

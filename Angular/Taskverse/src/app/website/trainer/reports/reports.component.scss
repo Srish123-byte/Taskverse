@@ -283,7 +283,7 @@ $warn:           #fbbf24;
   font-size: 0.85rem;
 
   th {
-    padding: 8px 12px;
+    padding: 8px 14px;
     text-align: left;
     color: $text-muted;
     font-size: 0.72rem;
@@ -291,17 +291,19 @@ $warn:           #fbbf24;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     border-bottom: 1px solid $border;
+    white-space: nowrap;
     &.num { text-align: right; }
   }
 
   td {
-    padding: 9px 12px;
+    padding: 9px 14px;
     border-top: 1px solid rgba(143, 176, 255, 0.05);
     vertical-align: top;
-    &.num { text-align: right; font-variant-numeric: tabular-nums; }
+    &.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 52px; }
   }
 
-  .q-text { max-width: 440px; word-break: break-word; line-height: 1.5; }
+  .q-text { max-width: 380px; word-break: break-word; line-height: 1.5; }
+  .q-status-cell { white-space: nowrap; min-width: 100px; }
   .fw { font-weight: 700; }
 }
 

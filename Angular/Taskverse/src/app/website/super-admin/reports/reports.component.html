@@ -99,7 +99,6 @@
                 <th>Department</th>
                 <th class="num">Students</th>
                 <th class="num">Trainers</th>
-                <th class="num">Assessments</th>
               </tr>
             </thead>
             <tbody>
@@ -108,7 +107,6 @@
                 <td class="cell-muted">{{ row.department || '—' }}</td>
                 <td class="num">{{ row.studentCount }}</td>
                 <td class="num">{{ row.trainerCount }}</td>
-                <td class="num">{{ row.assessmentCount }}</td>
               </tr>
             </tbody>
           </table>
@@ -145,7 +143,6 @@
                 <th>Subject</th>
                 <th class="num">Students</th>
                 <th class="num">Trainers</th>
-                <th class="num">Assessments</th>
               </tr>
             </thead>
             <tbody>
@@ -155,7 +152,6 @@
                 <td class="cell-muted">{{ row.subjectName || '—' }}</td>
                 <td class="num">{{ row.studentCount }}</td>
                 <td class="num">{{ row.trainerCount }}</td>
-                <td class="num">{{ row.assessmentCount }}</td>
               </tr>
             </tbody>
           </table>
@@ -263,7 +259,7 @@
                                   <td class="cell-muted">{{ q.questionType }}</td>
                                   <td class="num">{{ q.marks }}</td>
                                   <td class="num fw">{{ q.awardedMarks }}</td>
-                                  <td>
+                                  <td class="q-status-cell">
                                     <span class="q-status" [ngClass]="'qs-' + (q.status | lowercase)">
                                       <span class="q-dot"></span>{{ q.status }}
                                     </span>
