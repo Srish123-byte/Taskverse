@@ -2,6 +2,6 @@
   "api_url": "https://api.taskverse.placevalue.in/api",
   "support_phone": "+1 (800) 555-0199",
   "support_email": "support@taskverse.edu",
-  "csp_meta_tag": "default-src 'self'; script-src 'self' https://www.googletagmanager.com https://cdn.mxpnl.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.mixpanel.com https://www.google-analytics.com; frame-src 'none'; object-src 'none'; base-uri 'self';",
+  "csp_meta_tag": "default-src 'self'; script-src 'self' https://www.googletagmanager.com https://cdn.mxpnl.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.taskverse.placevalue.in https://api.mixpanel.com https://www.google-analytics.com; frame-src 'none'; object-src 'none'; base-uri 'self';",
   "local_csp_meta_tag": "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' http://localhost:*; frame-src 'none'; object-src 'none'; base-uri 'self';"
 }
