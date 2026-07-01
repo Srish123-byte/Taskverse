@@ -20,6 +20,7 @@ interface AssessmentGroup {
 interface AttemptSummary {
   resultId: string;
   attemptId: string;
+  assessmentId: string;
   assessmentName: string;
   submittedAt?: Date;
   totalMarks: number;
