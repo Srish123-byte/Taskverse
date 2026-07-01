@@ -43,6 +43,10 @@ export interface ApprovedStudent {
   userId: string;
   fullName: string;
   email: string;
+  currentClassId?: string;
+  currentClassName?: string;
+  currentBatchId?: string;
+  currentBatchName?: string;
 }
 
 export interface CollegeClassSummary {
@@ -185,9 +189,9 @@ export class CollegeAdminService {
       .pipe(map(items => (items ?? []).map(item => this.mapTrainer(item))));
   }
 
-  getApprovedUnassignedStudents(): Observable<ApprovedStudent[]> {
+  getApprovedStudents(): Observable<ApprovedStudent[]> {
     return this.http
-      .get<any[]>(`${this.url}/students/approved-unassigned`)
+      .get<any[]>(`${this.url}/students/approved`)
       .pipe(map(items => (items ?? []).map(item => this.mapStudent(item))));
   }
 
@@ -301,7 +305,11 @@ export class CollegeAdminService {
       studentId: item?.studentId ?? item?.StudentId ?? '',
       userId: item?.userId ?? item?.UserId ?? '',
       fullName: item?.fullName ?? item?.FullName ?? '',
-      email: item?.email ?? item?.Email ?? ''
+      email: item?.email ?? item?.Email ?? '',
+      currentClassId: item?.currentClassId ?? item?.CurrentClassId ?? undefined,
+      currentClassName: item?.currentClassName ?? item?.CurrentClassName ?? undefined,
+      currentBatchId: item?.currentBatchId ?? item?.CurrentBatchId ?? undefined,
+      currentBatchName: item?.currentBatchName ?? item?.CurrentBatchName ?? undefined
     };
   }
 

@@ -7,7 +7,7 @@ public interface ICollegeOrchestrator
     Task<List<PendingUserDto>> GetPendingUsersByCollege(Guid collegeId);
     Task<List<PendingUserDto>> GetPendingUsersForCollegeAdmin(Guid collegeAdminUserId);
     Task<List<ApprovedTrainerDto>> GetApprovedTrainersByCollege(Guid collegeId);
-    Task<List<ApprovedStudentDto>> GetApprovedUnassignedStudentsByCollege(Guid collegeId);
+    Task<List<ApprovedStudentDto>> GetApprovedStudentsByCollege(Guid collegeId);
     Task<List<SubjectOptionDto>> GetSubjects();
     Task<CollegeClassSummaryDto> CreateClass(Guid collegeId, CreateCollegeClassDto dto);
     Task<CollegeClassSummaryDto> UpdateClass(Guid collegeId, Guid classId, UpdateCollegeClassDto dto);

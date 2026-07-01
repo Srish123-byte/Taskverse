@@ -94,7 +94,11 @@ public static class CollegeAdminMappings
         StudentId = dto.StudentId,
         UserId = dto.UserId,
         FullName = dto.FullName,
-        Email = dto.Email
+        Email = dto.Email,
+        CurrentClassId = dto.CurrentClassId,
+        CurrentClassName = dto.CurrentClassName,
+        CurrentBatchId = dto.CurrentBatchId,
+        CurrentBatchName = dto.CurrentBatchName
     };
 
     public static CreateCollegeClassDto ToDto(this CreateCollegeClassRequestModel model) => new()

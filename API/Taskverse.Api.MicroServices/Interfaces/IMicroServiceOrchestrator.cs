@@ -92,7 +92,7 @@ public interface IMicroServiceOrchestrator : IMicroServiceCallingMethods
     Task<ObjectResult> GetCollegePendingUsers(string collegeId);
     Task<ObjectResult> GetCollegeAdminPendingUsers(string collegeAdminUserId);
     Task<ObjectResult> GetApprovedCollegeTrainers(string collegeId);
-    Task<ObjectResult> GetApprovedUnassignedCollegeStudents(string collegeId);
+    Task<ObjectResult> GetApprovedCollegeStudents(string collegeId);
     Task<ObjectResult> GetCollegeSubjects();
     Task<ObjectResult> CreateCollegeClass(string collegeId, CreateCollegeClassModel model);
     Task<ObjectResult> UpdateCollegeClass(string collegeId, string classId, UpdateCollegeClassModel model);

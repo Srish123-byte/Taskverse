@@ -88,6 +88,10 @@ public static class CollegeAdminMappings
         StudentId = model.StudentId,
         UserId = model.UserId,
         FullName = model.FullName,
-        Email = model.Email
+        Email = model.Email,
+        CurrentClassId = model.CurrentClassId,
+        CurrentClassName = model.CurrentClassName,
+        CurrentBatchId = model.CurrentBatchId,
+        CurrentBatchName = model.CurrentBatchName
     };
 }

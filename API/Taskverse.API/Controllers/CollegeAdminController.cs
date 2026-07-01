@@ -70,11 +70,11 @@ public class CollegeAdminController : TaskverseBaseController
         return Ok(dtos.Select(dto => dto.ToResponseModel()).ToList());
     }
 
-    [HttpGet("students/approved-unassigned")]
-    [SwaggerResponse(200, "Approved unassigned students for the college", typeof(List<ApprovedStudentResponseModel>))]
+    [HttpGet("students/approved")]
+    [SwaggerResponse(200, "Approved students for the college", typeof(List<ApprovedStudentResponseModel>))]
     [SwaggerResponse(400, "CollegeId header is missing or invalid")]
     [SwaggerResponse(403, "Forbidden")]
-    public async Task<IActionResult> GetApprovedUnassignedStudents()
+    public async Task<IActionResult> GetApprovedStudents()
     {
         var accessCheck = EnsureCollegeAdminAccess();
         if (accessCheck is not null) return accessCheck;
@@ -82,7 +82,7 @@ public class CollegeAdminController : TaskverseBaseController
         var tenantCheck = TryGetCollegeId(out var collegeId);
         if (tenantCheck is not null) return tenantCheck;
 
-        var dtos = await _collegeAdminOrchestrator.GetApprovedUnassignedStudents(collegeId);
+        var dtos = await _collegeAdminOrchestrator.GetApprovedStudents(collegeId);
         return Ok(dtos.Select(dto => dto.ToResponseModel()).ToList());
     }
 
