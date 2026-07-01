@@ -80,6 +80,7 @@ public class CreateQuestionRequest
 
     public List<CodingQuestionExampleRequest>? Examples { get; set; }
 
+    [JsonPropertyName("test_cases")]
     public List<CodingTestCaseRequest>? TestCases { get; set; }
 
     public int? SourceRowNumber { get; set; }
