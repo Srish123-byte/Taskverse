@@ -83,7 +83,11 @@ public static class CollegeMappings
         dto.StudentId,
         dto.UserId,
         dto.FullName,
-        dto.Email);
+        dto.Email,
+        dto.CurrentClassId,
+        dto.CurrentClassName,
+        dto.CurrentBatchId,
+        dto.CurrentBatchName);
 
     public static AssignBatchTrainersDto ToDto(this AssignBatchTrainersRequest model) => new()
     {

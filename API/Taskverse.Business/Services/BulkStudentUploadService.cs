@@ -193,7 +193,19 @@ public class BulkStudentUploadService : IBulkStudentUploadService
                 };
                 user.PasswordHash = passwordHasher.HashPassword(user, tempPassword);
 
+                if (await StudentRecordExistsAsync(context, user.Id, cancellationToken))
+                {
+                    result.DuplicateRows.Add(new BulkStudentUploadRowIssueDto
+                    {
+                        RowNumber = row.RowNumber,
+                        Email = row.Row.Email,
+                        Message = "A student record already exists for this user."
+                    });
+                    continue;
+                }
+
                 context.Users.Add(user);
+                context.Students.Add(CreateApprovedStudentRecord(user, collegeId, now));
                 existingEmailSet.Add(normalizedEmail);
                 createdUsers.Add(new CreatedStudentCredential(row.Row.FullName.Trim(), normalizedEmail, tempPassword));
                 result.CreatedUsers.Add(new BulkStudentUploadCreatedUserDto
@@ -645,6 +657,29 @@ public class BulkStudentUploadService : IBulkStudentUploadService
         validationMessage = string.Empty;
         return true;
     }
+
+    private static Student CreateApprovedStudentRecord(User user, Guid collegeId, DateTime timestampUtc) => new()
+    {
+        StudentId = Guid.NewGuid(),
+        UserId = user.Id,
+        CollegeId = collegeId,
+        ClassId = user.ClassId,
+        BatchId = user.BatchId,
+        EnrollmentNumber = string.IsNullOrWhiteSpace(user.EnrollmentNumber) ? null : user.EnrollmentNumber.Trim(),
+        FullName = user.FullName,
+        Email = user.Email,
+        Phone = user.Phone,
+        Status = UserStatus.APPROVED,
+        CreatedAt = timestampUtc,
+        ModifiedAt = timestampUtc,
+        ApprovedBy = user.UploadedBy
+    };
+
+    private static Task<bool> StudentRecordExistsAsync(
+        TaskverseContext context,
+        Guid userId,
+        CancellationToken cancellationToken) =>
+        context.Students.AnyAsync(student => student.UserId == userId, cancellationToken);
 
     private static string NormalizeEmail(string? email) =>
         (email ?? string.Empty).Trim().ToLowerInvariant();

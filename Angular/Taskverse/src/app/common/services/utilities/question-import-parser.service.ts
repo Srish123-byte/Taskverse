@@ -5,9 +5,14 @@ import { CreateQuestionRequest } from '../api/assessment-admin.service';
 export interface ParsedQuestionImportFile {
   fileName: string;
   questions: CreateQuestionRequest[];
+  warnings: string[];
 }
 
 type RawCell = string | number | boolean | null | undefined;
+type HeaderMetadata = {
+  variantsByIndex: string[][];
+  warnings: string[];
+};
 
 @Injectable({ providedIn: 'root' })
 export class QuestionImportParserService {
@@ -54,7 +59,7 @@ export class QuestionImportParserService {
       throw new Error('The selected file must include a header row and at least one question row.');
     }
 
-    const headers = rows[0].map(value => this.normalizeText(this.toCellString(value)));
+    const headerMetadata = this.buildHeaderMetadata(rows[0]);
     const questions: CreateQuestionRequest[] = [];
 
     for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
@@ -65,7 +70,7 @@ export class QuestionImportParserService {
         continue;
       }
 
-      questions.push(this.mapRowToQuestion(headers, row, rowNumber));
+      questions.push(this.mapRowToQuestion(headerMetadata.variantsByIndex, row, rowNumber));
     }
 
     if (questions.length === 0) {
@@ -74,14 +79,14 @@ export class QuestionImportParserService {
 
     return {
       fileName: file.name,
-      questions
+      questions,
+      warnings: headerMetadata.warnings
     };
   }
 
-  private mapRowToQuestion(headers: string[], row: RawCell[], rowNumber: number): CreateQuestionRequest {
+  private mapRowToQuestion(headers: string[][], row: RawCell[], rowNumber: number): CreateQuestionRequest {
     const getValue = (fieldName: keyof CreateQuestionRequest | 'subject' | 'topic' | 'options'): string => {
-      const aliases = this.headerAliases[fieldName];
-      const matchedIndex = headers.findIndex(header => aliases.includes(this.normalizeHeader(header)));
+      const matchedIndex = this.findHeaderIndex(headers, fieldName);
       return matchedIndex >= 0 ? this.toCellString(row[matchedIndex]) : '';
     };
 
@@ -277,6 +282,63 @@ export class QuestionImportParserService {
     return this.normalizeText(value)
       .toLowerCase()
       .replace(/[^a-z0-9]/g, '');
+  }
+
+  private getHeaderVariants(value: string): string[] {
+    const normalizedValue = value.trim().toLowerCase();
+    const variants = new Set<string>();
+    const addVariant = (candidate: string): void => {
+      const normalizedCandidate = this.normalizeHeader(candidate);
+      if (normalizedCandidate.length > 0) {
+        variants.add(normalizedCandidate);
+      }
+    };
+
+    addVariant(normalizedValue);
+
+    normalizedValue
+      .split(/[\/+|,&]+/g)
+      .forEach(segment => addVariant(segment));
+
+    return [...variants];
+  }
+
+  private buildHeaderMetadata(headerRow: RawCell[]): HeaderMetadata {
+    const warnings: string[] = [];
+    const primaryHeaderIndexes = new Map<string, number>();
+    const variantsByIndex = headerRow.map((value, index) => {
+      const rawHeader = this.toCellString(value);
+      const variants = this.getHeaderVariants(rawHeader);
+      const normalizedPrimaryHeader = this.normalizeHeader(rawHeader);
+
+      if (normalizedPrimaryHeader.length > 0) {
+        const firstIndex = primaryHeaderIndexes.get(normalizedPrimaryHeader);
+        if (firstIndex === undefined) {
+          primaryHeaderIndexes.set(normalizedPrimaryHeader, index);
+        } else {
+          warnings.push(
+            `Duplicate header '${rawHeader.trim() || `Column ${index + 1}`}' matches the same normalized key as column ${firstIndex + 1}. Using the first matching column.`
+          );
+        }
+      }
+
+      return variants;
+    });
+
+    warnings.forEach(warning => console.warn(`[QuestionImportParserService] ${warning}`));
+
+    return {
+      variantsByIndex,
+      warnings
+    };
+  }
+
+  private findHeaderIndex(
+    headers: string[][],
+    fieldName: keyof CreateQuestionRequest | 'subject' | 'topic' | 'options'
+  ): number {
+    const aliases = (this.headerAliases[fieldName] ?? []).map(alias => this.normalizeHeader(alias));
+    return headers.findIndex(headerVariants => headerVariants.some(header => aliases.includes(header)));
   }
 
   private toCellString(value: RawCell): string {

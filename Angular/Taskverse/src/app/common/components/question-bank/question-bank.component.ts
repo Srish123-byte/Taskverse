@@ -77,6 +77,7 @@ export class QuestionBankComponent implements OnInit {
   infoMessage = '';
   uploadMessage = '';
   uploadErrorMessage = '';
+  uploadWarningMessage = '';
 
   @HostBinding('class.theme-trainer')
   get isTrainerTheme(): boolean {
@@ -191,13 +192,18 @@ export class QuestionBankComponent implements OnInit {
     this.isUploading = true;
     this.uploadMessage = '';
     this.uploadErrorMessage = '';
+    this.uploadWarningMessage = '';
 
     this.questionImportParserService.parse(file)
-      .then(parsedFile => this.submitBulkUpload(parsedFile, input))
+      .then(parsedFile => {
+        this.uploadWarningMessage = parsedFile.warnings.join(' ');
+        this.submitBulkUpload(parsedFile, input);
+      })
       .catch(error => {
         this.uploadErrorMessage = error instanceof Error
           ? error.message
           : 'The selected file could not be parsed. Please review the file and try again.';
+        this.uploadWarningMessage = '';
         this.isUploading = false;
         input.value = '';
         this.changeDetectorRef.detectChanges();

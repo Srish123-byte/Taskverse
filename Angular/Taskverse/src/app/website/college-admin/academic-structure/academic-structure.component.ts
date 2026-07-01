@@ -796,12 +796,15 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
   }
 
   getSelectedStudents(): ApprovedStudent[] {
-    const allStudents = [
-      ...this.getAssignedStudentsForActiveBatch(),
-      ...this.approvedStudents
-    ];
+    const uniqueStudents = new Map<string, ApprovedStudent>();
 
-    return allStudents.filter(student => this.selectedStudentIds.has(student.studentId));
+    for (const student of [...this.getAssignedStudentsForActiveBatch(), ...this.approvedStudents]) {
+      if (!uniqueStudents.has(student.studentId)) {
+        uniqueStudents.set(student.studentId, student);
+      }
+    }
+
+    return [...uniqueStudents.values()].filter(student => this.selectedStudentIds.has(student.studentId));
   }
 
   getAssignedStudentsForActiveBatch(): ApprovedStudent[] {
@@ -825,21 +828,22 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
       return `${selectedCount} student${selectedCount === 1 ? '' : 's'} selected`;
     }
 
-    if (this.approvedStudents.length === 0) {
+    if (this.getAvailableStudentsForAssignment().length === 0) {
       return this.getAssignedStudentsForActiveBatch().length === 0
         ? 'No students available for assignment'
-        : 'No approved unassigned students available';
+        : 'No other approved students available';
     }
 
-    return 'Choose students for this batch';
+    return 'Choose approved students for this batch';
   }
 
   get filteredStudents(): ApprovedStudent[] {
     const q = this.studentSearchQuery.trim().toLowerCase();
+    const availableStudents = this.getAvailableStudentsForAssignment();
     return q
-      ? this.approvedStudents.filter(s =>
+      ? availableStudents.filter(s =>
           s.fullName?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q))
-      : this.approvedStudents;
+      : availableStudents;
   }
 
   get pagedStudents(): ApprovedStudent[] {
@@ -948,6 +952,22 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
     const request: AssignStudentToBatchRequest = {
       studentIds: Array.from(this.selectedStudentIds)
     };
+
+    const studentsToReassign = this.getStudentsMarkedForReassignment();
+    if (studentsToReassign.length > 0) {
+      const confirmationMessage = [
+        `This will reassign ${studentsToReassign.length} student${studentsToReassign.length === 1 ? '' : 's'} to "${this.activeStudentAssignmentBatchName}".`,
+        '',
+        ...studentsToReassign.slice(0, 8).map(student => `- ${student.fullName} (${this.getStudentAssignmentStatus(student)})`),
+        studentsToReassign.length > 8 ? `- and ${studentsToReassign.length - 8} more` : '',
+        '',
+        'Do you want to continue?'
+      ].filter(Boolean).join('\n');
+
+      if (!window.confirm(confirmationMessage)) {
+        return;
+      }
+    }
 
     this.isSubmittingStudentAssignment = true;
     this.studentAssignmentErrorMessage = '';
@@ -1061,7 +1081,7 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
       this.studentAssignmentErrorMessage = '';
     }
 
-    this.collegeAdminService.getApprovedUnassignedStudents()
+    this.collegeAdminService.getApprovedStudents()
       .pipe(
         take(1),
         finalize(() => {
@@ -1084,6 +1104,45 @@ export class AcademicStructureComponent implements OnInit, OnDestroy {
           this.changeDetectorRef.detectChanges();
         }
       });
+  }
+
+  getAvailableStudentsForAssignment(): ApprovedStudent[] {
+    const activeBatchStudentIds = new Set(this.getAssignedStudentsForActiveBatch().map(student => student.studentId));
+    return this.approvedStudents.filter(student => !activeBatchStudentIds.has(student.studentId));
+  }
+
+  isStudentAssignedToActiveBatch(student: ApprovedStudent): boolean {
+    const assignedStudentIds = new Set(this.getAssignedStudentsForActiveBatch().map(item => item.studentId));
+    return assignedStudentIds.has(student.studentId) || (
+      student.currentClassId === this.activeStudentAssignmentClassId &&
+      student.currentBatchId === this.activeStudentAssignmentBatchId
+    );
+  }
+
+  isStudentAssignedElsewhere(student: ApprovedStudent): boolean {
+    if (!student.currentClassId && !student.currentBatchId) {
+      return false;
+    }
+
+    return !this.isStudentAssignedToActiveBatch(student);
+  }
+
+  getStudentAssignmentStatus(student: ApprovedStudent): string {
+    if (this.isStudentAssignedToActiveBatch(student)) {
+      return 'Assigned to this batch';
+    }
+
+    if (this.isStudentAssignedElsewhere(student)) {
+      const className = student.currentClassName?.trim() || 'Unknown class';
+      const batchName = student.currentBatchName?.trim() || 'No batch';
+      return `Assigned to ${className} / ${batchName}`;
+    }
+
+    return 'Unassigned';
+  }
+
+  getStudentsMarkedForReassignment(): ApprovedStudent[] {
+    return this.getSelectedStudents().filter(student => this.isStudentAssignedElsewhere(student));
   }
 
   private loadSubjects(): void {

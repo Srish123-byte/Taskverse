@@ -24,6 +24,7 @@ export class StudentBulkUploadComponent {
   isParsing = false;
   isUploading = false;
   errorMessage = '';
+  warningMessage = '';
   parsedFile: ParsedStudentImportFile | null = null;
   lastResult: BulkStudentUploadResult | null = null;
 
@@ -53,14 +54,17 @@ export class StudentBulkUploadComponent {
     }
 
     this.errorMessage = '';
+    this.warningMessage = '';
     this.lastResult = null;
     this.isParsing = true;
 
     try {
       this.parsedFile = await this.parser.parse(file, this.scope);
+      this.warningMessage = this.parsedFile.warnings.join(' ');
     } catch (error) {
       this.parsedFile = null;
       this.errorMessage = error instanceof Error ? error.message : 'Unable to parse the uploaded file.';
+      this.warningMessage = '';
     } finally {
       this.isParsing = false;
       this.changeDetectorRef.detectChanges();
@@ -71,6 +75,7 @@ export class StudentBulkUploadComponent {
     this.parsedFile = null;
     this.lastResult = null;
     this.errorMessage = '';
+    this.warningMessage = '';
     this.changeDetectorRef.detectChanges();
   }
 

@@ -59,14 +59,12 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             })
             .ToListAsync();
 
-    public Task<List<ApprovedStudentDto>> GetApprovedUnassignedStudentsByCollege(Guid collegeId) =>
+    public Task<List<ApprovedStudentDto>> GetApprovedStudentsByCollege(Guid collegeId) =>
         _context.Students
             .AsNoTracking()
             .Where(student =>
                 student.CollegeId == collegeId &&
-                student.Status == UserStatus.APPROVED &&
-                !student.ClassId.HasValue &&
-                !student.BatchId.HasValue)
+                student.Status == UserStatus.APPROVED)
             .OrderBy(student => student.FullName)
             .ThenBy(student => student.Email)
             .Select(student => new ApprovedStudentDto
@@ -74,7 +72,11 @@ public class CollegeOrchestrator : ICollegeOrchestrator
                 StudentId = student.StudentId.ToString(),
                 UserId = student.UserId.ToString(),
                 FullName = student.FullName,
-                Email = student.Email
+                Email = student.Email,
+                CurrentClassId = student.ClassId.HasValue ? student.ClassId.Value.ToString() : null,
+                CurrentClassName = student.Class != null ? student.Class.Name : null,
+                CurrentBatchId = student.BatchId.HasValue ? student.BatchId.Value.ToString() : null,
+                CurrentBatchName = student.Batch != null ? student.Batch.Name : null
             })
             .ToListAsync();
 
@@ -890,19 +892,6 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             throw new InvalidOperationException($"Only approved students can be assigned. Invalid student ids: {string.Join(", ", unapprovedStudentIds)}.");
         }
 
-        var conflictingStudents = studentsToAssign
-            .Where(item =>
-                (item.ClassId.HasValue || item.BatchId.HasValue) &&
-                (item.ClassId != classId || item.BatchId != batchId))
-            .Select(item => item.StudentId.ToString())
-            .ToList();
-
-        if (conflictingStudents.Count > 0)
-        {
-            throw new InvalidOperationException(
-                $"Some selected students are already assigned to another class or batch: {string.Join(", ", conflictingStudents)}.");
-        }
-
         var affectedUserIds = studentsToAssign
             .Select(item => item.UserId)
             .Concat(studentsToUnassign.Select(item => item.UserId))
@@ -920,12 +909,6 @@ public class CollegeOrchestrator : ICollegeOrchestrator
             if (!usersById.TryGetValue(student.UserId, out var user))
             {
                 throw new KeyNotFoundException($"User record was not found for student '{student.StudentId}'.");
-            }
-
-            if ((user.ClassId.HasValue || user.BatchId.HasValue) &&
-                (user.ClassId != classId || user.BatchId != batchId))
-            {
-                throw new InvalidOperationException($"Student '{student.StudentId}' is already assigned to another class or batch.");
             }
 
             student.ClassId = classId;
