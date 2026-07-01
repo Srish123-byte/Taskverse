@@ -118,20 +118,24 @@ public class AuthOrchestrator : IAuthOrchestrator
             model.ExpiresAt);
     }
 
-    public async Task ChangeTemporaryPassword(ChangeTemporaryPasswordRequestDto request)
+    public async Task ChangePassword(ChangePasswordRequestDto request)
     {
-        _log.Debug($"AuthOrchestrator.ChangeTemporaryPassword: userId={request.UserId}");
+        _log.Debug($"AuthOrchestrator.ChangePassword: userId={request.UserId}, isTemporaryPasswordChange={request.IsTemporaryPasswordChange}");
 
-        var result = await _microServiceOrchestrator.ChangeTemporaryPassword(
-            new ChangeTemporaryPasswordRequestModel(request.UserId, request.CurrentPassword, request.NewPassword));
+        var result = await _microServiceOrchestrator.ChangePassword(
+            new ChangePasswordRequestModel(
+                request.UserId,
+                request.CurrentPassword,
+                request.NewPassword,
+                request.IsTemporaryPasswordChange));
         if (!result.IsSuccess())
         {
             if (result.StatusCode == 400 || result.StatusCode == 401)
             {
-                throw new InvalidOperationException(ExtractMessage(result.Value) ?? "Unable to change the temporary password.");
+                throw new InvalidOperationException(ExtractMessage(result.Value) ?? "Unable to change the password.");
             }
 
-            result.EnsureSuccess(nameof(ChangeTemporaryPassword));
+            result.EnsureSuccess(nameof(ChangePassword));
         }
     }
 }

@@ -142,8 +142,8 @@ public class AuthController : ControllerBase
     }
 
     [Authorize]
-    [HttpPost("change-temporary-password")]
-    public async Task<IActionResult> ChangeTemporaryPassword([FromBody] ChangeTemporaryPasswordRequest request)
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
@@ -154,7 +154,7 @@ public class AuthController : ControllerBase
 
         try
         {
-            await _authService.ChangeTemporaryPasswordAsync(userGuid, request);
+            await _authService.ChangePasswordAsync(userGuid, request);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -167,8 +167,8 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Change temporary password error: {ex.Message}");
-            return StatusCode(500, new { message = "An error occurred while changing the temporary password" });
+            _logger.LogError($"Change password error: {ex.Message}");
+            return StatusCode(500, new { message = "An error occurred while changing the password" });
         }
     }
 

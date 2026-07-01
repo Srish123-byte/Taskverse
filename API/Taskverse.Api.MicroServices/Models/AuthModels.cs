@@ -33,7 +33,8 @@ public record ValidateTokenResponseModel(
     List<string>? Roles,
     DateTime? ExpiresAt);
 
-public record ChangeTemporaryPasswordRequestModel(
+public record ChangePasswordRequestModel(
     string UserId,
     string CurrentPassword,
-    string NewPassword);
+    string NewPassword,
+    bool IsTemporaryPasswordChange);

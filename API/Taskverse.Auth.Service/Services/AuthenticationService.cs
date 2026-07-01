@@ -161,13 +161,22 @@ public class AuthenticationService : IAuthenticationService
                 return null;
             }
 
-            var rotateSession = forceRotate || ShouldRotateAccessToken(accessToken);
+            var isAccessTokenNearExpiry = ShouldRotateAccessToken(accessToken, out var currentAccessTokenExpiresAt);
+            var rotateSession = forceRotate || isAccessTokenNearExpiry;
             if (!rotateSession)
             {
                 authSession.LastActivityAt = now;
                 authSession.ModifiedAt = now;
                 await _context.SaveChangesAsync();
-                return null;
+
+                // Access token is still valid and doesn't need rotation yet - return it
+                // unchanged so the caller treats this as a successful refresh, not a failure.
+                return new RefreshTokenResponse
+                {
+                    AccessToken = accessToken!,
+                    RefreshToken = refreshToken,
+                    ExpiresAt = currentAccessTokenExpiresAt
+                };
             }
 
             var (firstName, lastName) = SplitName(user.FullName);
@@ -247,7 +256,7 @@ public class AuthenticationService : IAuthenticationService
         }
     }
 
-    public async Task ChangeTemporaryPasswordAsync(Guid userId, ChangeTemporaryPasswordRequest request)
+    public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.CurrentPassword) || string.IsNullOrWhiteSpace(request.NewPassword))
         {
@@ -260,23 +269,34 @@ public class AuthenticationService : IAuthenticationService
             throw new UnauthorizedAccessException("User was not found.");
         }
 
-        if (!user.MustChangePassword)
+        if (request.IsTemporaryPasswordChange && !user.MustChangePassword)
         {
             throw new InvalidOperationException("This account is not awaiting a temporary password change.");
+        }
+
+        if (!request.IsTemporaryPasswordChange && user.MustChangePassword)
+        {
+            throw new InvalidOperationException("This account must complete the temporary password change flow first.");
         }
 
         var passwordHasher = new PasswordHasher<User>();
         var verificationResult = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword);
         if (verificationResult == PasswordVerificationResult.Failed)
         {
-            throw new InvalidOperationException("The current temporary password is incorrect.");
+            throw new InvalidOperationException(request.IsTemporaryPasswordChange
+                ? "The current temporary password is incorrect."
+                : "The current password is incorrect.");
         }
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
 
         user.PasswordHash = passwordHasher.HashPassword(user, request.NewPassword);
-        user.TemporaryPassword = null;
-        user.MustChangePassword = false;
+        if (request.IsTemporaryPasswordChange)
+        {
+            user.TemporaryPassword = null;
+            user.MustChangePassword = false;
+        }
+
         user.PasswordChangedAt = DateTime.UtcNow;
         user.ModifiedAt = DateTime.UtcNow;
 
@@ -300,8 +320,10 @@ public class AuthenticationService : IAuthenticationService
         await transaction.CommitAsync();
     }
 
-    private bool ShouldRotateAccessToken(string? accessToken)
+    private bool ShouldRotateAccessToken(string? accessToken, out DateTime expiresAt)
     {
+        expiresAt = DateTime.UtcNow;
+
         if (string.IsNullOrWhiteSpace(accessToken))
         {
             return true;
@@ -320,7 +342,7 @@ public class AuthenticationService : IAuthenticationService
             return true;
         }
 
-        var expiresAt = DateTimeOffset.FromUnixTimeSeconds(expiresAtUnix).UtcDateTime;
+        expiresAt = DateTimeOffset.FromUnixTimeSeconds(expiresAtUnix).UtcDateTime;
         return expiresAt <= DateTime.UtcNow.AddMinutes(3);
     }
 

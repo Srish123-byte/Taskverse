@@ -9,6 +9,7 @@ import { FooterComponent } from './components/footer/footer.component';
 import { DashboardLoaderComponent } from './components/dashboard-loader/dashboard-loader.component';
 import { DeleteActionButtonComponent } from './components/delete-action-button/delete-action-button.component';
 import { LogoutConfirmationDialogComponent } from './components/logout-confirmation-dialog/logout-confirmation-dialog.component';
+import { ChangePasswordDialogComponent } from './components/change-password-dialog/change-password-dialog.component';
 import { ProcessingOverlayComponent } from './components/processing-overlay/processing-overlay.component';
 import { SessionInactivityWarningComponent } from './components/session-inactivity-warning/session-inactivity-warning.component';
 import { QuestionBankComponent } from './components/question-bank/question-bank.component';
@@ -40,6 +41,7 @@ import { MaterialModule } from '../material.module';
     DashboardLoaderComponent,
     DeleteActionButtonComponent,
     LogoutConfirmationDialogComponent,
+    ChangePasswordDialogComponent,
     ProcessingOverlayComponent,
     SessionInactivityWarningComponent,
     QuestionBankComponent,

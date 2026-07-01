@@ -40,6 +40,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  max-width: 240px;
   background: transparent;
   border: 1px solid #1f2937;
   border-radius: 999px;
@@ -69,11 +70,17 @@
 }
 
 .profile-name {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.85rem;
   color: #d1d5db;
 }
 
 .profile-chevron {
+  flex-shrink: 0;
   font-size: 0.75rem;
   color: #6b7280;
 }
@@ -96,6 +103,12 @@
   align-items: center;
   gap: 10px;
   padding: 8px 8px 12px;
+  min-width: 0;
+}
+
+.profile-dropdown-header > div {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .dropdown-avatar {
@@ -113,6 +126,9 @@
 }
 
 .dropdown-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.875rem;
   font-weight: 600;
   color: #fff;
@@ -120,6 +136,9 @@
 }
 
 .dropdown-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.75rem;
   color: #6b7280;
   margin: 0;
@@ -177,6 +196,8 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .profile-role {

@@ -9,5 +9,5 @@ public interface IAuthenticationService
     Task<RefreshTokenResponse?> RefreshTokenAsync(string refreshToken, string? accessToken = null, bool forceRotate = false);
     Task<bool> ValidateTokenAsync(string token);
     Task LogoutAsync(Guid userId, string? refreshToken = null);
-    Task ChangeTemporaryPasswordAsync(Guid userId, ChangeTemporaryPasswordRequest request);
+    Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request);
 }
