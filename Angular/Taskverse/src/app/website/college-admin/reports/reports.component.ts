@@ -388,7 +388,7 @@ export class ReportsComponent implements OnInit {
     forkJoin({
       dashboard: this.collegeAdminService.getDashboard(),
       classConfig: this.collegeAdminService.getClassConfiguration(),
-      assessments: this.assessmentAdminService.searchAssessments({ pageNumber: 1, pageSize: 200 }),
+      assessments: this.assessmentAdminService.searchAssessments({ pageNumber: 1, pageSize: 500 }),
       students: this.collegeAdminService.getApprovedStudents()
     }).subscribe({
       next: ({ dashboard, classConfig, assessments, students }) => {
@@ -419,9 +419,10 @@ export class ReportsComponent implements OnInit {
       cls.batches.forEach(b => b.assignedTrainers.forEach(t => trainerSet.add(t.trainerId)));
 
       const classBatchIds = new Set(cls.batches.map(b => b.batchId));
-      const assessmentCount = assessments.filter(a =>
-        (a.assignedBatchIds ?? []).some(id => classBatchIds.has(id))
-      ).length;
+      const assessmentCount = assessments.filter(a => {
+        const ids = a.assignedBatchIds ?? [];
+        return ids.length === 0 || ids.some(id => classBatchIds.has(id));
+      }).length;
 
       return {
         classId: cls.classId,
@@ -438,9 +439,10 @@ export class ReportsComponent implements OnInit {
 
     for (const cls of classConfig.classes) {
       for (const batch of cls.batches) {
-        const assessmentCount = assessments.filter(a =>
-          (a.assignedBatchIds ?? []).includes(batch.batchId)
-        ).length;
+        const assessmentCount = assessments.filter(a => {
+          const ids = a.assignedBatchIds ?? [];
+          return ids.length === 0 || ids.includes(batch.batchId);
+        }).length;
 
         rows.push({
           batchId: batch.batchId,

@@ -17,7 +17,7 @@ public class AssessmentManager : IAssessmentManager
 {
     private const int DefaultPageNumber = 1;
     private const int DefaultPageSize = 10;
-    private const int MaximumPageSize = 100;
+    private const int MaximumPageSize = 500;
     private static readonly TimeSpan PartialDraftStartOffset = TimeSpan.FromHours(1);
     private static readonly TimeSpan PartialDraftMinimumDuration = TimeSpan.FromMinutes(1);
 
