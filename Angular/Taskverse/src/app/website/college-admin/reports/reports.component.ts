@@ -99,8 +99,8 @@ export class ReportsComponent implements OnInit {
 
   readonly today = new Date().toLocaleString();
 
-  // Mail panel state
-  showMailPanel = false;
+  // Mail modal state
+  showMailModal = false;
   mailPanelFor: 'main' | string = 'main';
   mailRecipients = '';
   isSendingEmail = false;
@@ -228,15 +228,16 @@ export class ReportsComponent implements OnInit {
 
   openMailPanel(forTarget: 'main' | string): void {
     this.mailPanelFor = forTarget;
-    this.showMailPanel = true;
+    this.showMailModal = true;
     this.mailRecipients = '';
     this.emailSendResult = null;
     this.emailSendMessage = '';
+    this.isSendingEmail = false;
     this.cdr.detectChanges();
   }
 
   closeMailPanel(): void {
-    this.showMailPanel = false;
+    this.showMailModal = false;
     this.emailSendResult = null;
     this.cdr.detectChanges();
   }
@@ -263,8 +264,8 @@ export class ReportsComponent implements OnInit {
       fileName = `taskverse-questions-${result.assessmentName.replace(/\s+/g, '-')}-${Date.now()}.xlsx`;
     }
 
-    const fileBytes = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as Uint8Array;
-    const base64 = btoa(String.fromCharCode(...fileBytes));
+    const fileBytes: Uint8Array = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+    const base64 = this.toBase64(fileBytes);
 
     this.isSendingEmail = true;
     this.emailSendResult = null;
@@ -276,6 +277,7 @@ export class ReportsComponent implements OnInit {
         this.emailSendResult = 'success';
         this.emailSendMessage = `Report sent to ${recipients.join(', ')}.`;
         this.cdr.detectChanges();
+        setTimeout(() => { this.showMailModal = false; this.cdr.detectChanges(); }, 2500);
       },
       error: () => {
         this.isSendingEmail = false;
@@ -284,6 +286,15 @@ export class ReportsComponent implements OnInit {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  private toBase64(bytes: Uint8Array): string {
+    let binary = '';
+    const chunk = 8192;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    }
+    return btoa(binary);
   }
 
   private buildMainWorkbook(): XLSX.WorkBook {
