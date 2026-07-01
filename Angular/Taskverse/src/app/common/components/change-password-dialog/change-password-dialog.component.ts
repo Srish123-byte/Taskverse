@@ -1,27 +1,28 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
+import { MatDialogRef } from '@angular/material/dialog';
 import { Router } from '@angular/router';
-import { AccountService } from '../../../common/services/api/account.service';
-import { RouteAddress } from '../../../common/constants/routes.constants';
-import { SessionKey } from '../../../common/enums/session-key';
-import { Session } from '../../../common/services/session/session.service';
+import { RouteAddress } from '../../constants/routes.constants';
+import { AccountService } from '../../services/api/account.service';
+import { Session } from '../../services/session/session.service';
 
-type ChangeTemporaryPasswordField = 'currentPassword' | 'newPassword' | 'confirmPassword';
+type ChangePasswordField = 'currentPassword' | 'newPassword' | 'confirmPassword';
 
 @Component({
-  selector: 'app-change-temporary-password',
+  selector: 'app-change-password-dialog',
   standalone: false,
-  templateUrl: './change-temporary-password.component.html',
-  styleUrl: './change-temporary-password.component.scss'
+  templateUrl: './change-password-dialog.component.html',
+  styleUrl: './change-password-dialog.component.scss'
 })
-export class ChangeTemporaryPasswordComponent implements OnInit {
+export class ChangePasswordDialogComponent {
   isSubmitting = false;
   errorMessage = '';
-  private readonly visibleFields = new Set<ChangeTemporaryPasswordField>();
+  private readonly visibleFields = new Set<ChangePasswordField>();
 
   readonly form;
 
   constructor(
+    private readonly dialogRef: MatDialogRef<ChangePasswordDialogComponent, boolean>,
     private readonly formBuilder: FormBuilder,
     private readonly accountService: AccountService,
     private readonly session: Session,
@@ -34,27 +35,24 @@ export class ChangeTemporaryPasswordComponent implements OnInit {
     });
   }
 
-  ngOnInit(): void {
-    if (!this.session.isLoggedIn()) {
-      void this.router.navigateByUrl(`/${RouteAddress.Login}`);
-      return;
-    }
-
-    if (!this.session.mustChangePassword) {
-      void this.router.navigateByUrl(`/${RouteAddress.RoleDirector}`);
-    }
-  }
-
-  isPasswordVisible(field: ChangeTemporaryPasswordField): boolean {
+  isPasswordVisible(field: ChangePasswordField): boolean {
     return this.visibleFields.has(field);
   }
 
-  togglePasswordVisibility(field: ChangeTemporaryPasswordField): void {
+  togglePasswordVisibility(field: ChangePasswordField): void {
     if (this.visibleFields.has(field)) {
       this.visibleFields.delete(field);
     } else {
       this.visibleFields.add(field);
     }
+  }
+
+  cancel(): void {
+    if (this.isSubmitting) {
+      return;
+    }
+
+    this.dialogRef.close(false);
   }
 
   submit(): void {
@@ -73,7 +71,7 @@ export class ChangeTemporaryPasswordComponent implements OnInit {
     }
 
     if (currentPassword === newPassword) {
-      this.errorMessage = 'Please choose a different password from the temporary one.';
+      this.errorMessage = 'Please choose a password different from your current one.';
       return;
     }
 
@@ -83,16 +81,16 @@ export class ChangeTemporaryPasswordComponent implements OnInit {
     this.accountService.changePassword({
       currentPassword,
       newPassword,
-      isTemporaryPasswordChange: true
+      isTemporaryPasswordChange: false
     }).subscribe({
       next: () => {
-        sessionStorage.setItem(SessionKey.PasswordChangeSuccess, 'true');
+        this.dialogRef.close(true);
         this.session.clear();
         void this.router.navigateByUrl(`/${RouteAddress.Login}`);
       },
       error: err => {
         this.isSubmitting = false;
-        this.errorMessage = err?.error?.message || 'Unable to change the temporary password right now.';
+        this.errorMessage = err?.error?.message || 'Unable to change your password right now.';
       }
     });
   }

@@ -57,8 +57,9 @@ public class LogoutRequest
     public string? RefreshToken { get; set; }
 }
 
-public class ChangeTemporaryPasswordRequest
+public class ChangePasswordRequest
 {
     public string CurrentPassword { get; set; } = default!;
     public string NewPassword { get; set; } = default!;
+    public bool IsTemporaryPasswordChange { get; set; }
 }
