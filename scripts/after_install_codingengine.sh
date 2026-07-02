@@ -1,23 +1,21 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 APP_DIR="/opt/taskverse/codingengine"
 SECRET_NAME="taskverse-codingengine-config"
 AWS_REGION="ap-south-1"
 
+. "$(dirname "$0")/deploy_helpers.sh"
+
 echo "===== AFTER INSTALL ====="
 
-if ! command -v aws >/dev/null 2>&1; then
-    dnf install -y awscli
-fi
+ensure_aws_cli
 
 echo "Fetching appsettings.json from Secrets Manager..."
 
-aws secretsmanager get-secret-value \
-    --secret-id ${SECRET_NAME} \
-    --region ${AWS_REGION} \
-    --query SecretString \
-    --output text > ${APP_DIR}/appsettings.json
+fetch_secret_to_file "${SECRET_NAME}" "${AWS_REGION}" "${APP_DIR}/appsettings.json"
+
+require_file_with_content "${APP_DIR}/appsettings.json" "appsettings.json"
 
 chown -R ec2-user:ec2-user ${APP_DIR}
 

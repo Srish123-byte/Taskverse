@@ -1,10 +1,14 @@
 #!/bin/bash
-set -e
+set -euo pipefail
+
+. "$(dirname "$0")/deploy_helpers.sh"
 
 echo "===== BEFORE INSTALL ====="
 
 systemctl stop taskverse-codingengine.service || true
 
-rm -rf /opt/taskverse/codingengine
+reset_app_dir "/opt/taskverse/codingengine"
 
-mkdir -p /opt/taskverse/codingengine
+mkdir -p /var/log/taskverse
+
+chown -R ec2-user:ec2-user /opt/taskverse

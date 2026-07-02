@@ -1,10 +1,14 @@
 #!/bin/bash
-set -e
+set -euo pipefail
+
+. "$(dirname "$0")/deploy_helpers.sh"
 
 echo "===== BEFORE INSTALL ====="
 
 systemctl stop taskverse-college.service || true
 
-rm -rf /opt/taskverse/college
+reset_app_dir "/opt/taskverse/college"
 
-mkdir -p /opt/taskverse/college
+mkdir -p /var/log/taskverse
+
+chown -R ec2-user:ec2-user /opt/taskverse
