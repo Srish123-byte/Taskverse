@@ -472,7 +472,7 @@ export class LoginComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.applyInstitutionValidators(role);
-    if (this.colleges.length === 0 && !this.isCollegeOptionsLoading) {
+    if (this.mode === 'register' && this.colleges.length === 0 && !this.isCollegeOptionsLoading) {
       this.loadApprovedColleges();
     }
   }

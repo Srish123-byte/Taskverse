@@ -70,6 +70,7 @@ export class QuestionBankComponent implements OnInit {
   currentPage = 1;
   totalCount = 0;
   deletingQuestionId: string | null = null;
+  showCodingComingSoon = false;
 
   isLoading = false;
   isUploading = false;
@@ -135,6 +136,20 @@ export class QuestionBankComponent implements OnInit {
 
   trackByQuestionId(_: number, question: QuestionBankItem): string {
     return question.questionId;
+  }
+
+  selectNonCodingQuestions(): void {
+    void this.router.navigate(['/', ...this.addQuestionRouteSegments, 'non-coding']);
+  }
+
+  selectCodingQuestions(): void {
+    this.showCodingComingSoon = true;
+    this.changeDetectorRef.detectChanges();
+  }
+
+  returnToQuestionBank(): void {
+    this.showCodingComingSoon = false;
+    this.changeDetectorRef.detectChanges();
   }
 
   onServerFilterChange(): void {

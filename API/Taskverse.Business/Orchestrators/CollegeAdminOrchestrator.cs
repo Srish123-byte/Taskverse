@@ -610,8 +610,7 @@ public class CollegeAdminOrchestrator : ICollegeAdminOrchestrator
             var totalAssessments = await context.Assessments
                 .AsNoTracking()
                 .CountAsync(assessment =>
-                    assessment.CollegeId == collegeId &&
-                    assessment.IsDeleted != true);
+                    assessment.CollegeId == collegeId);
 
             var assessmentsThisMonth = await context.Assessments
                 .AsNoTracking()

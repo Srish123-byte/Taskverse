@@ -1,45 +1,19 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import * as XLSX from 'xlsx';
 import { forkJoin } from 'rxjs';
+import { ReportEmailService } from '../../../common/services/api/report-email.service';
+import {
+  TrainerAttendanceService,
+  AttendanceBatchGroup,
+  AttendanceBatchOption
+} from '../../../common/services/api/trainer-attendance.service';
 import {
   CollegeAdminService,
-  ApprovedStudent,
-  ClassConfiguration,
   CollegeClassSummary,
+  ApprovedStudent,
+  ClassConfiguration
 } from '../../../common/services/api/college-admin.service';
-import {
-  AssessmentAdminService,
-  AssessmentManagementItem,
-} from '../../../common/services/api/assessment-admin.service';
 import { HttpClientService } from '../../../common/services/http/http-client.service';
-import { ReportEmailService } from '../../../common/services/api/report-email.service';
-
-export type ReportTab = 'overview' | 'batch' | 'student';
-
-interface KpiCard {
-  label: string;
-  value: string | number;
-  icon: string;
-}
-
-interface BranchRow {
-  classId: string;
-  name: string;
-  studentCount: number;
-  trainerCount: number;
-  assessmentCount: number;
-}
-
-interface BatchRow {
-  batchId: string;
-  classId: string;
-  className: string;
-  name: string;
-  subjectName?: string;
-  studentCount: number;
-  trainerCount: number;
-  assessmentCount: number;
-}
 
 interface QuestionResult {
   displayOrder: number;
@@ -70,36 +44,35 @@ interface StudentResult {
   questionsFetched: boolean;
 }
 
+interface FlatBatch {
+  batchId: string;
+  batchName: string;
+  classId: string;
+  className: string;
+  students: ApprovedStudent[];
+}
+
 @Component({
-  selector: 'app-college-admin-reports',
+  selector: 'app-trainer-reports',
   standalone: false,
   templateUrl: './reports.component.html',
   styleUrl: './reports.component.scss'
 })
 export class ReportsComponent implements OnInit {
-  activeTab: ReportTab = 'overview';
-  isLoading = false;
-
-  // Overview tab
-  kpiCards: KpiCard[] = [];
-  branchRows: BranchRow[] = [];
-
-  // Batch tab
-  classes: CollegeClassSummary[] = [];
-  selectedClassId = '';
-  allBatchRows: BatchRow[] = [];
-  filteredBatchRows: BatchRow[] = [];
-
-  // Student tab
-  students: ApprovedStudent[] = [];
-  selectedStudentId = '';
+  isLoadingBatches = false;
   isLoadingStudentResults = false;
+  isLoadingStructure = false;
+
+  batches: FlatBatch[] = [];
+  selectedBatchId = '';
+  studentsInBatch: ApprovedStudent[] = [];
+  selectedStudentId = '';
+
   studentResults: StudentResult[] = [];
   expandedResultId: string | null = null;
 
   readonly today = new Date().toLocaleString();
 
-  // Mail modal state
   showMailModal = false;
   mailPanelFor: 'main' | string = 'main';
   mailRecipients = '';
@@ -108,26 +81,24 @@ export class ReportsComponent implements OnInit {
   emailSendMessage = '';
 
   constructor(
+    private readonly trainerAttendanceService: TrainerAttendanceService,
     private readonly collegeAdminService: CollegeAdminService,
-    private readonly assessmentAdminService: AssessmentAdminService,
     private readonly http: HttpClientService,
     private readonly emailService: ReportEmailService,
     private readonly cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
-    this.loadReportData();
+    this.loadBatchStructure();
   }
 
-  setActiveTab(tab: ReportTab): void {
-    this.activeTab = tab;
+  onBatchChange(): void {
+    this.selectedStudentId = '';
+    this.studentResults = [];
     this.expandedResultId = null;
-  }
-
-  onClassFilterChange(): void {
-    this.filteredBatchRows = this.selectedClassId
-      ? this.allBatchRows.filter(b => b.classId === this.selectedClassId)
-      : this.allBatchRows;
+    const batch = this.batches.find(b => b.batchId === this.selectedBatchId);
+    this.studentsInBatch = batch?.students ?? [];
+    this.cdr.detectChanges();
   }
 
   onStudentChange(): void {
@@ -180,7 +151,7 @@ export class ReportsComponent implements OnInit {
   }
 
   get selectedStudent(): ApprovedStudent | undefined {
-    return this.students.find(s => s.studentId === this.selectedStudentId);
+    return this.studentsInBatch.find(s => s.studentId === this.selectedStudentId);
   }
 
   get studentAvgScore(): string {
@@ -193,13 +164,13 @@ export class ReportsComponent implements OnInit {
     return this.studentResults.filter(r => r.status?.toLowerCase() === 'pass').length;
   }
 
-  get selectedClassName(): string {
-    return this.classes.find(c => c.classId === this.selectedClassId)?.name ?? '';
+  get selectedBatchName(): string {
+    return this.batches.find(b => b.batchId === this.selectedBatchId)?.batchName ?? '';
   }
 
   exportToExcel(): void {
-    const wb = this.buildMainWorkbook();
-    XLSX.writeFile(wb, `taskverse-${this.activeTab}-report-${Date.now()}.xlsx`);
+    if (!this.selectedStudent) return;
+    XLSX.writeFile(this.buildMainWorkbook(), `taskverse-trainer-report-${Date.now()}.xlsx`);
   }
 
   exportToPdf(): void {
@@ -207,23 +178,7 @@ export class ReportsComponent implements OnInit {
   }
 
   exportResultToExcel(result: StudentResult): void {
-    const wb = XLSX.utils.book_new();
-    const rows: any[][] = [
-      ['Taskverse — Question Details'],
-      ['Assessment', result.assessmentName],
-      ['Student', this.selectedStudent?.fullName ?? ''],
-      ['Submitted', result.submittedAt ? result.submittedAt.toLocaleString() : '—'],
-      ['Score', `${result.obtainedMarks} / ${result.totalMarks} (${Number(result.percentage).toFixed(1)}%)`],
-      ['Status', result.status],
-      [],
-      ['Q#', 'Question', 'Type', 'Max Marks', 'Awarded', 'Status', 'Your Answer', 'Correct Answer'],
-      ...result.questionResults.map(q => [
-        q.displayOrder, q.questionText, q.questionType, q.marks, q.awardedMarks,
-        q.status, q.userAnswers?.join(', ') || '—', q.correctAnswers?.join(', ') || '—'
-      ])
-    ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Question Details');
-    XLSX.writeFile(wb, `taskverse-questions-${result.assessmentName.replace(/\s+/g, '-')}-${Date.now()}.xlsx`);
+    XLSX.writeFile(this.buildResultWorkbook(result), `taskverse-questions-${result.assessmentName.replace(/\s+/g, '-')}-${Date.now()}.xlsx`);
   }
 
   openMailPanel(forTarget: 'main' | string): void {
@@ -256,7 +211,7 @@ export class ReportsComponent implements OnInit {
 
     if (this.mailPanelFor === 'main') {
       wb = this.buildMainWorkbook();
-      fileName = `taskverse-${this.activeTab}-report-${Date.now()}.xlsx`;
+      fileName = `taskverse-trainer-report-${Date.now()}.xlsx`;
     } else {
       const result = this.studentResults.find(r => r.resultId === this.mailPanelFor);
       if (!result) return;
@@ -304,67 +259,34 @@ export class ReportsComponent implements OnInit {
 
   private buildMainWorkbook(): XLSX.WorkBook {
     const wb = XLSX.utils.book_new();
-
-    if (this.activeTab === 'overview') {
-      const rows: any[][] = [
-        ['Taskverse — College Overview Report'],
-        ['Generated', this.today],
-        [],
-        ['Metric', 'Value'],
-        ...this.kpiCards.map(c => [c.label, c.value]),
-        [],
-        ['Branch Performance'],
-        ['Branch / Class', 'Students', 'Trainers', 'Assessments'],
-        ...this.branchRows.map(r => [r.name, r.studentCount, r.trainerCount, r.assessmentCount])
-      ];
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Overview');
-
-    } else if (this.activeTab === 'batch') {
-      const rows: any[][] = [
-        ['Taskverse — Batch Performance Report'],
-        ['Generated', this.today],
-        [],
-        ['Branch', 'Batch', 'Subject', 'Students', 'Trainers', 'Assessments'],
-        ...this.filteredBatchRows.map(r => [r.className, r.name, r.subjectName ?? '—', r.studentCount, r.trainerCount, r.assessmentCount])
-      ];
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Batch Performance');
-
-    } else if (this.activeTab === 'student' && this.selectedStudent) {
-      const student = this.selectedStudent;
-      const summaryRows: any[][] = [
-        ['Taskverse — Student Performance Report'],
-        ['Student', student.fullName],
-        ['Email', student.email],
-        ['Generated', this.today],
-        [],
-        ['Total Assessments', this.studentResults.length],
-        ['Average Score', this.studentAvgScore],
-        ['Passed', this.studentPassCount],
-        [],
-        ['Assessment', 'Date', 'Total Marks', 'Score', 'Percentage', 'Status', 'Correct', 'Wrong', 'Unanswered'],
-        ...this.studentResults.map(r => [
-          r.assessmentName,
-          r.submittedAt ? r.submittedAt.toLocaleDateString() : '—',
-          r.totalMarks, r.obtainedMarks,
-          `${Number(r.percentage).toFixed(1)}%`,
-          r.status, r.correctAnswers, r.wrongAnswers, r.unansweredQuestions
-        ])
-      ];
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryRows), 'Student Report');
-
-      const qRows: any[][] = [
-        ['Assessment', 'Q#', 'Question', 'Type', 'Max Marks', 'Awarded', 'Status', 'Your Answer', 'Correct Answer']
-      ];
-      for (const result of this.studentResults) {
-        for (const q of result.questionResults) {
-          qRows.push([result.assessmentName, q.displayOrder, q.questionText, q.questionType, q.marks, q.awardedMarks, q.status, q.userAnswers?.join(', ') || '', q.correctAnswers?.join(', ') || '']);
-        }
-      }
-      if (qRows.length > 1) {
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(qRows), 'Question Summary');
+    const student = this.selectedStudent;
+    if (!student) return wb;
+    const summaryRows: any[][] = [
+      ['Taskverse — Trainer Report'],
+      ['Batch', this.selectedBatchName],
+      ['Student', student.fullName],
+      ['Email', student.email],
+      ['Generated', this.today],
+      [],
+      ['Total Assessments', this.studentResults.length],
+      ['Average Score', this.studentAvgScore],
+      ['Passed', this.studentPassCount],
+      [],
+      ['Assessment', 'Date', 'Total Marks', 'Score', 'Percentage', 'Status', 'Correct', 'Wrong', 'Skipped'],
+      ...this.studentResults.map(r => [
+        r.assessmentName, r.submittedAt ? r.submittedAt.toLocaleDateString() : '—',
+        r.totalMarks, r.obtainedMarks, `${Number(r.percentage).toFixed(1)}%`,
+        r.status, r.correctAnswers, r.wrongAnswers, r.unansweredQuestions
+      ])
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryRows), 'Student Report');
+    const qRows: any[][] = [['Assessment', 'Q#', 'Question', 'Type', 'Max Marks', 'Awarded', 'Status', 'Your Answer', 'Correct Answer']];
+    for (const result of this.studentResults) {
+      for (const q of result.questionResults) {
+        qRows.push([result.assessmentName, q.displayOrder, q.questionText, q.questionType, q.marks, q.awardedMarks, q.status, q.userAnswers?.join(', ') || '', q.correctAnswers?.join(', ') || '']);
       }
     }
-
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(qRows), 'Question Summary');
     return wb;
   }
 
@@ -388,80 +310,43 @@ export class ReportsComponent implements OnInit {
     return wb;
   }
 
-  private loadReportData(): void {
-    this.isLoading = true;
+  private loadBatchStructure(): void {
+    this.isLoadingStructure = true;
     forkJoin({
-      dashboard: this.collegeAdminService.getDashboard(),
-      classConfig: this.collegeAdminService.getClassConfiguration(),
-      assessments: this.assessmentAdminService.searchAssessments({ pageNumber: 1, pageSize: 500 }),
-      students: this.collegeAdminService.getApprovedStudents()
+      batchGroups: this.trainerAttendanceService.getAttendanceBatches(),
+      classConfig: this.collegeAdminService.getReportClassConfiguration()
     }).subscribe({
-      next: ({ dashboard, classConfig, assessments, students }) => {
-        this.students = students;
-        this.classes = classConfig.classes;
-        this.buildOverview(dashboard, classConfig, assessments.items);
-        this.buildBatchData(classConfig, assessments.items);
-        this.isLoading = false;
+      next: ({ batchGroups, classConfig }) => {
+        this.batches = this.buildFlatBatches(batchGroups, classConfig);
+        this.isLoadingStructure = false;
         this.cdr.detectChanges();
       },
       error: () => {
-        this.isLoading = false;
+        this.isLoadingStructure = false;
         this.cdr.detectChanges();
       }
     });
   }
 
-  private buildOverview(dashboard: any, classConfig: ClassConfiguration, assessments: AssessmentManagementItem[]): void {
-    this.kpiCards = [
-      { label: 'Total Branches', value: classConfig.classes.length, icon: 'business' },
-      { label: 'Total Students', value: dashboard.totals.registeredStudents, icon: 'groups' },
-      { label: 'Total Trainers', value: dashboard.totals.registeredTrainers, icon: 'person_check' },
-      { label: 'Total Assessments', value: dashboard.totals.totalAssessments, icon: 'assignment' }
-    ];
+  private buildFlatBatches(batchGroups: AttendanceBatchGroup[], classConfig: ClassConfiguration): FlatBatch[] {
+    const result: FlatBatch[] = [];
 
-    this.branchRows = classConfig.classes.map(cls => {
-      const trainerSet = new Set<string>();
-      cls.batches.forEach(b => b.assignedTrainers.forEach(t => trainerSet.add(t.trainerId)));
+    for (const group of batchGroups) {
+      for (const attendanceBatch of group.batches) {
+        const cls = classConfig.classes.find(c => c.classId === group.classId);
+        const configBatch = cls?.batches.find(b => b.batchId === attendanceBatch.batchId);
 
-      const classBatchIds = new Set(cls.batches.map(b => b.batchId));
-      const assessmentCount = assessments.filter(a =>
-        (a.assignedBatchIds ?? []).some(id => classBatchIds.has(id))
-      ).length;
-
-      return {
-        classId: cls.classId,
-        name: cls.name,
-        studentCount: cls.totalStudents,
-        trainerCount: trainerSet.size,
-        assessmentCount
-      };
-    });
-  }
-
-  private buildBatchData(classConfig: ClassConfiguration, assessments: AssessmentManagementItem[]): void {
-    const rows: BatchRow[] = [];
-
-    for (const cls of classConfig.classes) {
-      for (const batch of cls.batches) {
-        const assessmentCount = assessments.filter(a =>
-          (a.assignedBatchIds ?? []).includes(batch.batchId)
-        ).length;
-
-        rows.push({
-          batchId: batch.batchId,
-          classId: batch.classId,
-          className: cls.name,
-          name: batch.name,
-          subjectName: batch.subjectName,
-          studentCount: batch.studentCount,
-          trainerCount: batch.assignedTrainers.length,
-          assessmentCount
+        result.push({
+          batchId: attendanceBatch.batchId,
+          batchName: attendanceBatch.batchName,
+          classId: group.classId,
+          className: group.className,
+          students: configBatch?.assignedStudents ?? []
         });
       }
     }
 
-    this.allBatchRows = rows;
-    this.filteredBatchRows = rows;
+    return result;
   }
 
   private mapStudentResult(r: any): StudentResult {

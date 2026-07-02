@@ -10,6 +10,14 @@ export class SuperAdminService {
 
   constructor(private readonly http: HttpClientService) {}
 
+  getCollegeReportClasses(collegeId: string): Observable<any> {
+    return this.http.get<any>(`${this.url}/colleges/${collegeId}/reports/classes`);
+  }
+
+  getCollegeReportStudents(collegeId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.url}/colleges/${collegeId}/reports/students`);
+  }
+
   getDashboard(): Observable<SuperAdminDashboard> {
     return this.http.get<SuperAdminDashboard>(`${this.url}/dashboard`);
   }

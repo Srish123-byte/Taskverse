@@ -193,25 +193,34 @@ public class ResultManager : IResultManager
             from result in _context.Results.AsNoTracking()
             join assessment in _context.Assessments.AsNoTracking()
                 on result.AssessmentId equals assessment.AssessmentId
+            join attempt in _context.Attempts.AsNoTracking()
+                on result.AttemptId equals attempt.AttemptId
             where result.StudentId == resolvedStudentId && assessment.ShowResultsImmediately
             orderby result.GeneratedAt descending, result.ResultId descending
             select new
             {
                 Result = result,
-                assessment.AssessmentName
+                assessment.AssessmentName,
+                assessment.DurationMinutes,
+                attempt.SubmittedAt,
+                attempt.TotalQuestions,
+                attempt.AttemptedQuestions,
+                attempt.CorrectAnswers,
+                attempt.WrongAnswers,
+                attempt.UnansweredQuestions
             })
             .ToListAsync(cancellationToken);
 
         return studentResults
             .Select(item => item.Result.ToStudentResultResponse(
                 item.AssessmentName,
-                submittedAt: null,
-                durationMinutes: 0,
-                totalQuestions: 0,
-                attemptedQuestions: 0,
-                correctAnswers: 0,
-                wrongAnswers: 0,
-                unansweredQuestions: 0,
+                submittedAt: item.SubmittedAt,
+                durationMinutes: item.DurationMinutes,
+                totalQuestions: item.TotalQuestions,
+                attemptedQuestions: item.AttemptedQuestions,
+                correctAnswers: item.CorrectAnswers,
+                wrongAnswers: item.WrongAnswers,
+                unansweredQuestions: item.UnansweredQuestions,
                 participantCount: 0,
                 hasPendingCodingEvaluation: item.Result.ResultStatus == ResultStatus.Pending,
                 showResultsImmediately: true))

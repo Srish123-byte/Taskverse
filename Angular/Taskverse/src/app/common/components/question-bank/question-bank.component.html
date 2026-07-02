@@ -1,4 +1,17 @@
 <div class="page-container">
+  <section *ngIf="showCodingComingSoon" class="coding-unavailable-shell">
+    <span class="hero-kicker">Coding Questions</span>
+    <h2 class="page-title">Coding question creation isn't available yet</h2>
+    <p class="page-welcome">
+      We're still building the coding question experience. Check back soon, or add a
+      non-coding question in the meantime.
+    </p>
+    <button type="button" class="primary-action" (click)="returnToQuestionBank()">
+      <span>Back to Question Bank</span>
+    </button>
+  </section>
+
+  <ng-container *ngIf="!showCodingComingSoon">
   <section class="questions-hero">
     <div class="hero-copy">
       <span class="hero-kicker">{{ heroKicker }}</span>
@@ -17,12 +30,14 @@
         <img src="assets/icons/shared/export.svg" alt="" class="action-icon" aria-hidden="true" />
         <span>{{ isUploading ? 'Uploading...' : 'Bulk Upload' }}</span>
       </button>
-      <a
-        class="primary-action primary-action-link"
-        [routerLink]="['/', ...addQuestionRouteSegments]">
+      <button type="button" class="primary-action" [matMenuTriggerFor]="addQuestionMenu">
         <img src="assets/icons/shared/add.svg" alt="" class="action-icon" aria-hidden="true" />
         <span>Add New Question</span>
-      </a>
+      </button>
+      <mat-menu #addQuestionMenu="matMenu" class="create-assessment-menu">
+        <button type="button" mat-menu-item (click)="selectNonCodingQuestions()">Non-Coding Questions</button>
+        <button type="button" mat-menu-item (click)="selectCodingQuestions()">Coding Questions</button>
+      </mat-menu>
     </div>
   </section>
 
@@ -173,4 +188,5 @@
       </article>
     </section>
   </div>
+  </ng-container>
 </div>

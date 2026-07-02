@@ -1,4 +1,17 @@
+<section *ngIf="isCodingRoute" class="coding-unavailable-shell">
+  <span class="hero-kicker">Coding Questions</span>
+  <h2 class="page-title">Coding assessments aren't ready yet</h2>
+  <p class="page-welcome">
+    We're still building the coding question experience. Check back soon, or create a
+    non-coding assessment in the meantime.
+  </p>
+  <button type="button" class="primary-action" (click)="goBack()">
+    <span>Back to Assessments</span>
+  </button>
+</section>
+
 <app-assessment-creator
+  *ngIf="!isCodingRoute"
   theme="trainer"
   backRoute="trainer/assessments-management">
 </app-assessment-creator>

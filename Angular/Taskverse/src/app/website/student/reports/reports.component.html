@@ -1,0 +1,324 @@
+<div class="reports-page">
+
+  <!-- Print-only header -->
+  <div class="print-header">
+    <div class="print-logo">Taskverse</div>
+    <h1 class="print-title">My Performance Report</h1>
+    <p class="print-meta">Generated: {{ today }}</p>
+  </div>
+
+  <!-- Page header -->
+  <header class="reports-header no-print">
+    <div>
+      <p class="eyebrow">Analytics</p>
+      <h1 class="page-title">My Reports</h1>
+    </div>
+    <div class="export-actions" *ngIf="allResults.length > 0">
+      <button class="btn-export pdf" (click)="exportToPdf()">
+        <mat-icon>picture_as_pdf</mat-icon>
+        Export PDF
+      </button>
+      <button class="btn-export excel" (click)="exportToExcel()">
+        <mat-icon>table_view</mat-icon>
+        Export Excel
+      </button>
+      <button class="btn-export mail" (click)="openMailPanel('main')">
+        <mat-icon>email</mat-icon>
+        Mail
+      </button>
+    </div>
+  </header>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="loading-state">
+    <mat-spinner [diameter]="36"></mat-spinner>
+    <span>Loading your reports…</span>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="!isLoading && errorMessage" class="error-state">
+    <mat-icon>error_outline</mat-icon>
+    <span>{{ errorMessage }}</span>
+  </div>
+
+  <!-- Empty -->
+  <div *ngIf="!isLoading && !errorMessage && allResults.length === 0" class="empty-state full">
+    <mat-icon>assignment</mat-icon>
+    <p>You haven't taken any assessments yet.</p>
+    <p class="empty-sub">Complete an assessment to see your performance report here.</p>
+  </div>
+
+  <ng-container *ngIf="!isLoading && !errorMessage && allResults.length > 0">
+
+    <!-- ── Overall KPI cards ───────────────────────────────────────────────── -->
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <mat-icon class="kpi-icon">assignment_turned_in</mat-icon>
+        <span class="kpi-value">{{ totalTaken }}</span>
+        <span class="kpi-label">Assessments Taken</span>
+      </div>
+      <div class="kpi-card">
+        <mat-icon class="kpi-icon">percent</mat-icon>
+        <span class="kpi-value">{{ avgScore }}</span>
+        <span class="kpi-label">Average Score</span>
+      </div>
+      <div class="kpi-card pass">
+        <mat-icon class="kpi-icon">check_circle</mat-icon>
+        <span class="kpi-value">{{ passRate }}</span>
+        <span class="kpi-label">Pass Rate</span>
+      </div>
+      <div class="kpi-card best">
+        <mat-icon class="kpi-icon">emoji_events</mat-icon>
+        <span class="kpi-value">{{ bestScore }}</span>
+        <span class="kpi-label">Best Score</span>
+      </div>
+    </div>
+
+    <!-- ── Assessment-wise summary table ──────────────────────────────────── -->
+    <div class="report-panel">
+      <div class="panel-header">
+        <mat-icon>bar_chart</mat-icon>
+        <span>Assessment Summary</span>
+        <span class="panel-badge">{{ assessmentGroups.length }}</span>
+      </div>
+      <div class="table-scroll">
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Assessment</th>
+              <th class="num">Attempts</th>
+              <th class="num">Avg Score</th>
+              <th class="num">Best Score</th>
+              <th class="num">Passed</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let group of assessmentGroups">
+              <td class="cell-primary">{{ group.assessmentName }}</td>
+              <td class="num">{{ group.totalAttempts }}</td>
+              <td class="num">
+                <span class="score-pill" [ngClass]="group.avgPercentage >= 50 ? 'pass' : 'fail'">
+                  {{ group.avgPercentage | number:'1.1-1' }}%
+                </span>
+              </td>
+              <td class="num">
+                <span class="score-pill" [ngClass]="group.bestPercentage >= 50 ? 'pass' : 'fail'">
+                  {{ group.bestPercentage | number:'1.1-1' }}%
+                </span>
+              </td>
+              <td class="num">{{ group.passCount }} / {{ group.totalAttempts }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Drill-down section ─────────────────────────────────────────────── -->
+    <div class="report-panel no-print">
+      <div class="panel-header">
+        <mat-icon>manage_search</mat-icon>
+        <span>Drill Down</span>
+        <span class="panel-sub">— select an assessment and attempt to see question details</span>
+      </div>
+      <div class="drill-filters">
+        <div class="filter-bar">
+          <label class="filter-label" for="assessmentPicker">Assessment</label>
+          <select
+            id="assessmentPicker"
+            class="filter-select"
+            [(ngModel)]="selectedAssessmentId"
+            (change)="onAssessmentChange()">
+            <option value="">— Choose an assessment —</option>
+            <option *ngFor="let g of assessmentGroups" [value]="g.assessmentId">
+              {{ g.assessmentName }} ({{ g.totalAttempts }} attempt{{ g.totalAttempts !== 1 ? 's' : '' }})
+            </option>
+          </select>
+        </div>
+
+        <div class="filter-bar" *ngIf="selectedAssessmentId">
+          <label class="filter-label" for="attemptPicker">Attempt</label>
+          <select
+            id="attemptPicker"
+            class="filter-select"
+            [(ngModel)]="selectedAttemptId"
+            (change)="onAttemptChange()">
+            <option value="">— Choose an attempt —</option>
+            <option *ngFor="let a of attemptsForSelectedAssessment" [value]="a.attemptId">
+              {{ a.submittedAt ? (a.submittedAt | date:'dd MMM yyyy, h:mm a') : 'Unknown date' }}
+              — {{ a.percentage | number:'1.1-1' }}% ({{ a.status }})
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <!-- No assessment selected -->
+      <div *ngIf="!selectedAssessmentId" class="drill-prompt">
+        <mat-icon>touch_app</mat-icon>
+        <p>Pick an assessment above to view detailed results.</p>
+      </div>
+
+      <!-- Assessment selected, no attempt yet -->
+      <div *ngIf="selectedAssessmentId && !selectedAttemptId" class="drill-prompt">
+        <mat-icon>arrow_downward</mat-icon>
+        <p>Now select an attempt to see the question-by-question breakdown.</p>
+      </div>
+
+      <!-- Attempt selected — show detail -->
+      <ng-container *ngIf="selectedAttempt">
+
+        <!-- Attempt KPIs -->
+        <div class="attempt-kpi-row">
+          <div class="attempt-kpi"><span class="ak-val">{{ selectedAttempt.obtainedMarks }}</span><span class="ak-lbl">Score</span></div>
+          <div class="attempt-kpi"><span class="ak-val">{{ selectedAttempt.totalMarks }}</span><span class="ak-lbl">Total Marks</span></div>
+          <div class="attempt-kpi"><span class="ak-val">{{ selectedAttempt.percentage | number:'1.1-1' }}%</span><span class="ak-lbl">Percentage</span></div>
+          <div class="attempt-kpi pass"><span class="ak-val">{{ selectedAttempt.correctAnswers }}</span><span class="ak-lbl">Correct</span></div>
+          <div class="attempt-kpi fail"><span class="ak-val">{{ selectedAttempt.wrongAnswers }}</span><span class="ak-lbl">Wrong</span></div>
+          <div class="attempt-kpi muted"><span class="ak-val">{{ selectedAttempt.unansweredQuestions }}</span><span class="ak-lbl">Skipped</span></div>
+          <div class="attempt-kpi status-kpi" [ngClass]="selectedAttempt.status?.toLowerCase()">
+            <span class="ak-val status-text">{{ selectedAttempt.status }}</span>
+            <span class="ak-lbl">Result</span>
+          </div>
+        </div>
+
+        <!-- Attempt export actions -->
+        <div class="qs-header no-print" *ngIf="!selectedAttempt.questionsLoading && selectedAttempt.questionResults.length > 0">
+          <div class="qs-actions">
+            <button class="btn-qs-action excel" (click)="exportAttemptToExcel()">
+              <mat-icon>table_view</mat-icon> Export Excel
+            </button>
+            <button class="btn-qs-action mail" (click)="openMailPanel('attempt')">
+              <mat-icon>email</mat-icon> Mail
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading question details -->
+        <div *ngIf="selectedAttempt.questionsLoading" class="qs-loading">
+          <mat-spinner [diameter]="22"></mat-spinner>
+          <span>Loading question details…</span>
+        </div>
+
+        <!-- Question table -->
+        <ng-container *ngIf="!selectedAttempt.questionsLoading">
+          <div *ngIf="selectedAttempt.questionResults.length > 0; else noQs" class="table-scroll qs-scroll">
+            <table class="question-table">
+              <thead>
+                <tr>
+                  <th class="num">#</th>
+                  <th>Question</th>
+                  <th>Type</th>
+                  <th class="num">Max</th>
+                  <th class="num">Awarded</th>
+                  <th>Status</th>
+                  <th>Your Answer</th>
+                  <th>Correct Answer</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let q of selectedAttempt.questionResults">
+                  <td class="num cell-muted">{{ q.displayOrder }}</td>
+                  <td class="q-text">{{ q.questionText }}</td>
+                  <td class="cell-muted">{{ q.questionType }}</td>
+                  <td class="num">{{ q.marks }}</td>
+                  <td class="num fw">{{ q.awardedMarks }}</td>
+                  <td class="q-status-cell">
+                    <span class="q-status" [ngClass]="'qs-' + (q.status | lowercase)">
+                      <span class="q-dot"></span>{{ q.status }}
+                    </span>
+                  </td>
+                  <td class="cell-muted">{{ q.userAnswers?.join(', ') || '—' }}</td>
+                  <td class="cell-muted">{{ q.correctAnswers?.join(', ') || '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <ng-template #noQs>
+            <div class="empty-state">
+              <mat-icon>help_outline</mat-icon>
+              <span>Question-level details are not available for this attempt.</span>
+            </div>
+          </ng-template>
+        </ng-container>
+      </ng-container>
+    </div>
+
+    <!-- ── Full history table (all attempts) ─────────────────────────────── -->
+    <div class="report-panel">
+      <div class="panel-header">
+        <mat-icon>history</mat-icon>
+        <span>Full Attempt History</span>
+        <span class="panel-badge">{{ allResults.length }}</span>
+      </div>
+      <div class="table-scroll">
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Assessment</th>
+              <th>Submitted</th>
+              <th class="num">Total</th>
+              <th class="num">Score</th>
+              <th class="num">%</th>
+              <th>Result</th>
+              <th class="num">Correct</th>
+              <th class="num">Wrong</th>
+              <th class="num">Skipped</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of allResults">
+              <td class="cell-primary">{{ r.assessmentName }}</td>
+              <td class="cell-muted">{{ r.submittedAt ? (r.submittedAt | date:'dd MMM yyyy, h:mm a') : '—' }}</td>
+              <td class="num">{{ r.totalMarks }}</td>
+              <td class="num fw">{{ r.obtainedMarks }}</td>
+              <td class="num">{{ r.percentage | number:'1.1-1' }}%</td>
+              <td>
+                <span class="status-chip" [ngClass]="'chip-' + (r.status | lowercase)">{{ r.status }}</span>
+              </td>
+              <td class="num text-pass">{{ r.correctAnswers }}</td>
+              <td class="num text-fail">{{ r.wrongAnswers }}</td>
+              <td class="num text-muted">{{ r.unansweredQuestions }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </ng-container>
+</div>
+
+<!-- ── Email modal overlay ──────────────────────────────────────────────── -->
+<div *ngIf="showMailModal" class="modal-overlay no-print" (click)="closeMailPanel()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <mat-icon>email</mat-icon>
+      <span>Send Report via Email</span>
+      <button class="modal-close" (click)="closeMailPanel()"><mat-icon>close</mat-icon></button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc">
+        {{ mailPanelFor === 'main' ? 'The full report will be attached as an Excel file.' : 'Question details for this attempt will be attached as an Excel file.' }}
+      </p>
+      <label class="filter-label">
+        Recipients <span class="mail-hint">(comma, semicolon or space separated)</span>
+      </label>
+      <textarea class="mail-input" rows="3" [(ngModel)]="mailRecipients"
+        placeholder="email@example.com, another@example.com"
+        [disabled]="isSendingEmail" (keydown.enter)="$event.preventDefault()">
+      </textarea>
+      <div *ngIf="emailSendResult === 'error'" class="mail-feedback error">
+        <mat-icon>error</mat-icon> {{ emailSendMessage }}
+      </div>
+      <div *ngIf="emailSendResult === 'success'" class="mail-feedback success">
+        <mat-icon>check_circle</mat-icon> {{ emailSendMessage }}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn cancel" (click)="closeMailPanel()" [disabled]="isSendingEmail">Cancel</button>
+      <button class="modal-btn send" (click)="sendEmail()" [disabled]="isSendingEmail || !mailRecipients.trim()">
+        <mat-spinner *ngIf="isSendingEmail" [diameter]="16"></mat-spinner>
+        <mat-icon *ngIf="!isSendingEmail">send</mat-icon>
+        {{ isSendingEmail ? 'Sending…' : 'Send Report' }}
+      </button>
+    </div>
+  </div>
+</div>

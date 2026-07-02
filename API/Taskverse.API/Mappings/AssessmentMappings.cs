@@ -226,7 +226,8 @@ public static class AssessmentMappings
             AssessmentDate = UtcDateTime.Normalize(dto.AssessmentDate),
             StartDateTime = UtcDateTime.Normalize(dto.StartDateTime),
             TotalMarks = dto.TotalMarks,
-            DifficultyLevel = dto.DifficultyLevel
+            DifficultyLevel = dto.DifficultyLevel,
+            AssignedBatchIds = dto.AssignedBatchIds
         };
     }
 

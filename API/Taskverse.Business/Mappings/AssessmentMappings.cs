@@ -128,7 +128,8 @@ public static class AssessmentMappings
             AssessmentDate = UtcDateTime.Normalize(model.AssessmentDate),
             StartDateTime = UtcDateTime.Normalize(model.StartDateTime),
             TotalMarks = model.TotalMarks,
-            DifficultyLevel = model.DifficultyLevel
+            DifficultyLevel = model.DifficultyLevel,
+            AssignedBatchIds = model.AssignedBatchIds ?? []
         };
 
     public static PagedAssessmentSearchDto ToDto(this PagedAssessmentSearchModel model)

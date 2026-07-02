@@ -190,6 +190,7 @@ export interface AssessmentManagementItem {
   startDateTime?: string | null;
   totalMarks: number;
   difficultyLevel: number;
+  assignedBatchIds?: string[];
 }
 
 export interface PagedAssessmentManagementResult {
@@ -386,7 +387,8 @@ export class AssessmentAdminService {
       assessmentDate: item?.assessmentDate ?? item?.assessment_date ?? item?.AssessmentDate ?? null,
       startDateTime: item?.startDateTime ?? item?.start_datetime ?? item?.StartDateTime ?? null,
       totalMarks: item?.totalMarks ?? item?.total_marks ?? item?.TotalMarks ?? 0,
-      difficultyLevel: item?.difficultyLevel ?? item?.difficulty_level ?? item?.DifficultyLevel ?? 0
+      difficultyLevel: item?.difficultyLevel ?? item?.difficulty_level ?? item?.DifficultyLevel ?? 0,
+      assignedBatchIds: item?.assignedBatchIds ?? item?.assigned_batch_ids ?? item?.AssignedBatchIds ?? []
     };
   }
 
