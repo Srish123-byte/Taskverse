@@ -5,6 +5,7 @@ import { MyAssessmentsComponent } from './my-assessments/my-assessments.componen
 import { AssessmentRunnerComponent } from './assessment-runner/assessment-runner.component';
 import { ResultsComponent } from './results/results.component';
 import { HelpCenterComponent } from './help-center/help-center.component';
+import { ReportsComponent } from './reports/reports.component';
 
 const routes: Routes = [
   {
@@ -17,6 +18,7 @@ const routes: Routes = [
       { path: 'my-assessments/attempts/:attemptId/run', component: AssessmentRunnerComponent },
       { path: 'results/attempts/:attemptId', component: ResultsComponent },
       { path: 'results', component: ResultsComponent },
+      { path: 'reports', component: ReportsComponent },
       { path: 'help-center', component: HelpCenterComponent }
     ]
   }

@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, HostBinding, Input, OnDestroy, OnInit } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Observable, Subject, Subscription } from 'rxjs';
 import {
   AssessmentRecord,
   AssessmentAdminService,
@@ -17,7 +17,7 @@ import {
 } from '../../services/api/assessment-admin.service';
 import { RouteAddress } from '../../constants/routes.constants';
 import { CollegeAdminService, CollegeBatchSummary, CollegeClassSummary } from '../../services/api/college-admin.service';
-import { distinctUntilChanged, forkJoin, map, Subject, switchMap, takeUntil } from 'rxjs';
+import { distinctUntilChanged, forkJoin, map, switchMap, takeUntil } from 'rxjs';
 
 interface DifficultyOption {
   value: string;
@@ -105,7 +105,11 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
   builderMode: AssessmentBuilderMode = 'create';
   editingAssessmentId: string | null = null;
   minimumScheduleDateTime = '';
+  showUnsavedWarningModal = false;
   private pendingSubmitAction: 'draft' | 'schedule' | null = null;
+  private deactivationSubject: Subject<boolean> | null = null;
+  private isNavigatingToAddQuestion = false;
+  private static readonly draftStorageKey = 'taskverse_assessment_draft';
 
   questionSearchTerm = '';
   questionBankCurrentPage = 1;
@@ -644,9 +648,51 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     }
   }
 
+hasUnsavedChanges(): boolean {
+    if (this.isEditMode) {
+      return false;
+    }
+
+    return !!this.assessmentName ||
+      this.selectedBatchIds.size > 0 ||
+      this.selectedQuestionIds.size > 0 ||
+      !!this.startDate ||
+      !!this.endDate;
+  }
+
+  canDeactivate(): Observable<boolean> | boolean {
+    if (this.isNavigatingToAddQuestion || !this.hasUnsavedChanges()) {
+      this.isNavigatingToAddQuestion = false;
+      return true;
+    }
+
+    this.showUnsavedWarningModal = true;
+    this.changeDetectorRef.detectChanges();
+    this.deactivationSubject = new Subject<boolean>();
+    return this.deactivationSubject.asObservable();
+  }
+
+  confirmLeave(): void {
+    this.showUnsavedWarningModal = false;
+    try { sessionStorage.removeItem(AssessmentCreatorComponent.draftStorageKey); } catch { /* ignore */ }
+    this.deactivationSubject?.next(true);
+    this.deactivationSubject?.complete();
+    this.deactivationSubject = null;
+  }
+
+  cancelLeave(): void {
+    this.showUnsavedWarningModal = false;
+    this.deactivationSubject?.next(false);
+    this.deactivationSubject?.complete();
+    this.deactivationSubject = null;
+    this.changeDetectorRef.detectChanges();
+  }
+
   openAddQuestionPlaceholder(): void {
-    void this.router.navigateByUrl(`/${this.addQuestionRoute}`, {
-      state: { returnUrl: `/${this.currentAssessmentRoute}` }
+    this.isNavigatingToAddQuestion = true;
+    this.saveDraftToSession();
+    void this.router.navigateByUrl(`/${this.addQuestionRoute}/non-coding`, {
+      state: { returnUrl: this.router.url }
     });
   }
 
@@ -824,11 +870,83 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     this.loadedAssessmentRecord = null;
     this.isAssessmentLoading = false;
     this.assessmentLoadErrorMessage = '';
-    this.resetBuilderForm();
+
+    const restored = this.restoreFromDraftSession();
+    if (!restored) {
+      this.resetBuilderForm();
+    }
+
     this.refreshMinimumScheduleDateTime();
     this.loadQuestionBank();
     this.loadAssignmentCatalog();
     this.changeDetectorRef.detectChanges();
+  }
+
+  private saveDraftToSession(): void {
+    try {
+      const draft = {
+        assessmentName: this.assessmentName,
+        selectedBatchIds: [...this.selectedBatchIds],
+        selectedQuestionIds: [...this.selectedQuestionIds],
+        selectedSubjectIds: [...this.selectedSubjectIds],
+        selectedTopicIds: [...this.selectedTopicIds],
+        durationMinutes: this.durationMinutes,
+        passingPercentage: this.passingPercentage,
+        startDate: this.startDate,
+        endDate: this.endDate,
+        instructions: this.instructions,
+        allowLateEntry: this.allowLateEntry,
+        showResultsImmediately: this.showResultsImmediately,
+        allowQuestionReview: this.allowQuestionReview,
+        negativeMarking: this.negativeMarking,
+        selectedDifficulty: this.selectedDifficulty,
+        selectedQuestionBankSubjectId: this.selectedQuestionBankSubjectId,
+        selectedQuestionBankTopicId: this.selectedQuestionBankTopicId,
+        theme: this.theme
+      };
+      sessionStorage.setItem(AssessmentCreatorComponent.draftStorageKey, JSON.stringify(draft));
+    } catch {
+      // sessionStorage may be unavailable in some environments
+    }
+  }
+
+  private restoreFromDraftSession(): boolean {
+    try {
+      const raw = sessionStorage.getItem(AssessmentCreatorComponent.draftStorageKey);
+      if (!raw) {
+        return false;
+      }
+
+      const draft = JSON.parse(raw) as Record<string, unknown>;
+      if (draft['theme'] !== this.theme) {
+        sessionStorage.removeItem(AssessmentCreatorComponent.draftStorageKey);
+        return false;
+      }
+
+      sessionStorage.removeItem(AssessmentCreatorComponent.draftStorageKey);
+
+      this.resetBuilderForm();
+      this.assessmentName = (draft['assessmentName'] as string) ?? '';
+      this.selectedBatchIds = new Set((draft['selectedBatchIds'] as string[]) ?? []);
+      this.selectedQuestionIds = new Set((draft['selectedQuestionIds'] as string[]) ?? []);
+      this.selectedSubjectIds = new Set((draft['selectedSubjectIds'] as string[]) ?? []);
+      this.selectedTopicIds = new Set((draft['selectedTopicIds'] as string[]) ?? []);
+      this.durationMinutes = (draft['durationMinutes'] as number) ?? 60;
+      this.passingPercentage = (draft['passingPercentage'] as number) ?? 50;
+      this.startDate = (draft['startDate'] as string) ?? '';
+      this.endDate = (draft['endDate'] as string) ?? '';
+      this.instructions = (draft['instructions'] as string) ?? '';
+      this.allowLateEntry = (draft['allowLateEntry'] as boolean) ?? false;
+      this.showResultsImmediately = (draft['showResultsImmediately'] as boolean) ?? false;
+      this.allowQuestionReview = (draft['allowQuestionReview'] as boolean) ?? true;
+      this.negativeMarking = (draft['negativeMarking'] as boolean) ?? false;
+      this.selectedDifficulty = (draft['selectedDifficulty'] as string) ?? 'all';
+      this.selectedQuestionBankSubjectId = (draft['selectedQuestionBankSubjectId'] as string) ?? '';
+      this.selectedQuestionBankTopicId = (draft['selectedQuestionBankTopicId'] as string) ?? '';
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private submitAssessment(action: 'draft' | 'schedule'): void {
@@ -975,6 +1093,7 @@ export class AssessmentCreatorComponent implements OnInit, OnDestroy {
     this.isSubmitting = false;
     this.pendingSubmitAction = null;
     this.submissionErrorMessage = '';
+    try { sessionStorage.removeItem(AssessmentCreatorComponent.draftStorageKey); } catch { /* ignore */ }
     this.snackBar.open(message, 'Close', {
       duration: 3500,
       horizontalPosition: 'center',

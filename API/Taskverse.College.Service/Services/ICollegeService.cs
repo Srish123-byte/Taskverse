@@ -8,11 +8,11 @@ public interface ICollegeService
     Task<List<RegistrationClassRecord>> GetRegistrationClasses(Guid collegeId);
     Task<List<RegistrationBatchRecord>> GetRegistrationBatches(Guid classId);
     Task<List<CollegeSearchResultRecord>> SearchColleges(CollegeSearchRequest request);
-    IReadOnlyList<CollegeRecord> GetColleges();
-    List<CollegeRecord> GetPendingColleges();
-    CollegeRecord? GetCollege(Guid collegeId);
-    CollegeRecord? ApproveCollege(Guid collegeId, CollegeActionRequest request);
-    CollegeRecord? RejectCollege(Guid collegeId, CollegeActionRequest request);
-    CollegeRecord? DeactivateCollege(Guid collegeId, CollegeActionRequest request);
-    CollegeRecord? ReactivateCollege(Guid collegeId, CollegeActionRequest request);
+    Task<List<CollegeRecord>> GetColleges();
+    Task<List<CollegeRecord>> GetPendingColleges();
+    Task<CollegeRecord?> GetCollege(Guid collegeId);
+    Task<CollegeRecord?> ApproveCollege(Guid collegeId, CollegeActionRequest request);
+    Task<CollegeRecord?> RejectCollege(Guid collegeId, CollegeActionRequest request);
+    Task<CollegeRecord?> DeactivateCollege(Guid collegeId, CollegeActionRequest request);
+    Task<CollegeRecord?> ReactivateCollege(Guid collegeId, CollegeActionRequest request);
 }

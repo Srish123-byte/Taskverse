@@ -42,7 +42,7 @@ public class McqResultEvaluationStrategy : IResultEvaluationStrategy
 
             isCorrect = !hasWrongSelection && selectedCorrectCount == correctAnswers.Count;
             awardedMarks = hasWrongSelection
-                ? 0
+                ? (question.NegativeMarks > 0 ? -question.NegativeMarks : 0)
                 : perChoiceMarks * selectedCorrectCount;
         }
         else

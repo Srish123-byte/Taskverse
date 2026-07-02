@@ -151,7 +151,8 @@ public static class AssessmentMappings
             UtcDateTime.Normalize(assessment.StartDateTime ?? assessment.EndDateTime ?? assessment.CreatedAt),
             UtcDateTime.Normalize(assessment.StartDateTime),
             assessment.TotalMarks,
-            assessment.DifficultyLevel);
+            assessment.DifficultyLevel,
+            assessment.AssignedBatchIds);
     }
 
     private static string NormalizeAssessmentName(string? assessmentName, bool allowDraftDefault)

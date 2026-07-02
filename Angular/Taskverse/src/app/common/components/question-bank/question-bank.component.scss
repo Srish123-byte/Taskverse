@@ -1,5 +1,32 @@
 @use '../../../common/styles/page' as *;
 
+.coding-unavailable-shell {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 14px;
+  padding: 56px 28px 64px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(17, 24, 39, 0.98) 0%, rgba(15, 23, 42, 0.96) 100%),
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 38%);
+  box-shadow: 0 24px 54px rgba(2, 8, 23, 0.32);
+}
+
+.coding-unavailable-shell .page-title {
+  margin: 4px 0 0;
+}
+
+.coding-unavailable-shell .page-welcome {
+  max-width: 480px;
+  margin: 0;
+}
+
+.coding-unavailable-shell .primary-action {
+  margin-top: 10px;
+}
+
 .page-container {
   position: relative;
   margin-top: -22px;

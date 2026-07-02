@@ -59,63 +59,17 @@ $warn:           #fbbf24;
   &.mail  { background: #4a6bdf; color: #fff; }
 }
 
-// ─── College picker ───────────────────────────────────────────────────────────
-.college-picker {
+// ─── Picker panel ─────────────────────────────────────────────────────────────
+.picker-panel {
   margin-bottom: 24px;
   padding: 18px 22px;
   background: $surface;
   border: 1px solid $border;
   border-radius: 14px;
-}
-
-.picker-loading {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  color: $text-muted;
-  font-size: 0.875rem;
-}
-
-.no-selection-prompt {
-  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
   flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  padding: 80px 24px;
-  color: $text-muted;
-  text-align: center;
-
-  mat-icon { font-size: 52px; width: 52px; height: 52px; opacity: 0.25; }
-  p { font-size: 0.95rem; margin: 0; }
-}
-
-// ─── Tab bar ──────────────────────────────────────────────────────────────────
-.tab-bar {
-  display: flex;
-  gap: 2px;
-  border-bottom: 1px solid $border;
-  margin-bottom: 28px;
-}
-
-.tab-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 22px;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: $text-secondary;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-  margin-bottom: -1px;
-
-  mat-icon { font-size: 18px; width: 18px; height: 18px; line-height: 18px; }
-
-  &.active { color: $accent; border-bottom-color: $accent; }
-  &:hover:not(.active) { color: $text-primary; }
 }
 
 // ─── Loading ──────────────────────────────────────────────────────────────────
@@ -129,46 +83,15 @@ $warn:           #fbbf24;
   font-size: 0.95rem;
 }
 
-// ─── KPI cards ────────────────────────────────────────────────────────────────
-.kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.student-kpi-row {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-  margin-bottom: 22px;
-}
-
-.kpi-card {
-  background: $surface;
-  border: 1px solid $border;
-  border-radius: 14px;
-  padding: 22px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-
-  &.mini { padding: 16px 20px; gap: 6px; min-width: 140px; }
-  &.pass { border-color: rgba(74, 222, 128, 0.22); }
-  &.fail { border-color: rgba(248, 113, 113, 0.22); }
-}
-
-.kpi-icon { color: $accent; font-size: 22px; width: 22px; height: 22px; line-height: 22px; }
-.kpi-value { font-size: 2rem; font-weight: 700; line-height: 1; .mini & { font-size: 1.6rem; } }
-.kpi-label { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: $text-secondary; }
-
 // ─── Filters ──────────────────────────────────────────────────────────────────
 .filter-bar {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
+
+  &:last-child { margin-bottom: 0; }
 }
 
 .filter-label { font-size: 0.875rem; font-weight: 600; color: $text-secondary; white-space: nowrap; }
@@ -191,6 +114,45 @@ $warn:           #fbbf24;
 }
 
 .filter-count { font-size: 0.8rem; color: $text-muted; }
+
+// ─── Prompt states ────────────────────────────────────────────────────────────
+.prompt-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 80px 24px;
+  color: $text-muted;
+  text-align: center;
+
+  mat-icon { font-size: 52px; width: 52px; height: 52px; opacity: 0.25; }
+  p { font-size: 0.95rem; margin: 0; }
+}
+
+// ─── KPI cards ────────────────────────────────────────────────────────────────
+.student-kpi-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+.kpi-card {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: 14px;
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  &.mini { padding: 16px 20px; gap: 6px; min-width: 140px; }
+  &.pass { border-color: rgba(74, 222, 128, 0.22); }
+  &.fail { border-color: rgba(248, 113, 113, 0.22); }
+}
+
+.kpi-value { font-size: 2rem; font-weight: 700; line-height: 1; .mini & { font-size: 1.6rem; } }
+.kpi-label { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: $text-secondary; }
 
 // ─── Report panels ────────────────────────────────────────────────────────────
 .report-panel {
@@ -369,7 +331,7 @@ $warn:           #fbbf24;
 
 .qs-empty { padding: 16px 0 4px; color: $text-muted; font-size: 0.875rem; }
 
-// ─── Empty & prompt states ────────────────────────────────────────────────────
+// ─── Empty state ──────────────────────────────────────────────────────────────
 .empty-state {
   display: flex;
   align-items: center;
@@ -381,34 +343,12 @@ $warn:           #fbbf24;
   mat-icon { font-size: 22px; width: 22px; height: 22px; opacity: 0.4; }
 }
 
-.student-prompt {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  padding: 80px 24px;
-  color: $text-muted;
-  text-align: center;
-  mat-icon { font-size: 52px; width: 52px; height: 52px; opacity: 0.25; }
-  p { font-size: 0.95rem; margin: 0; }
-}
-
-// ─── Tab content animation ────────────────────────────────────────────────────
-.tab-content { animation: tabIn 0.18s ease; }
-
-@keyframes tabIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
 // ─── Responsive ───────────────────────────────────────────────────────────────
-@media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 680px) {
-  .kpi-grid { grid-template-columns: 1fr 1fr; }
   .reports-header { flex-direction: column; }
-  .tab-btn { padding: 10px 14px; font-size: 0.82rem; }
   .filter-select { min-width: 200px; }
   .filter-select.wide { min-width: 260px; }
+  .picker-panel { padding: 14px 16px; }
 }
 
 // ─── Print styles ─────────────────────────────────────────────────────────────

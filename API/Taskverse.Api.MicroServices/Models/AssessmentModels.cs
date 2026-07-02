@@ -308,7 +308,9 @@ public record AssessmentSearchItemModel(
     [property: JsonProperty("total_marks")]
     int TotalMarks,
     [property: JsonProperty("difficulty_level")]
-    int DifficultyLevel);
+    int DifficultyLevel,
+    [property: JsonProperty("assigned_batch_ids")]
+    Guid[]? AssignedBatchIds);
 
 public record PagedAssessmentSearchModel(
     [property: JsonProperty("items")]

@@ -58,9 +58,11 @@ public class ObjectiveStudentAttemptAnswerSaveStrategy : IStudentAttemptAnswerSa
             isCorrect = hasAnswered &&
                         !hasWrongSelection &&
                         selectedCorrectCount == normalizedCorrectAnswers.Count;
-            marksAwarded = !hasAnswered || hasWrongSelection
+            marksAwarded = !hasAnswered
                 ? 0
-                : perChoiceMarks * selectedCorrectCount;
+                : hasWrongSelection
+                    ? (assessment.NegativeMarking ? -Math.Abs(question.NegativeMarks) : 0)
+                    : perChoiceMarks * selectedCorrectCount;
         }
         else
         {

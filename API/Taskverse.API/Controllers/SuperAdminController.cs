@@ -14,10 +14,14 @@ public class SuperAdminController : TaskverseBaseController
     private const string SuperAdminRole = "SuperAdmin";
 
     private readonly ISuperAdminOrchestrator _superAdminOrchestrator;
+    private readonly ICollegeAdminOrchestrator _collegeAdminOrchestrator;
 
-    public SuperAdminController(ISuperAdminOrchestrator superAdminOrchestrator)
+    public SuperAdminController(
+        ISuperAdminOrchestrator superAdminOrchestrator,
+        ICollegeAdminOrchestrator collegeAdminOrchestrator)
     {
         _superAdminOrchestrator = superAdminOrchestrator;
+        _collegeAdminOrchestrator = collegeAdminOrchestrator;
     }
 
     [HttpGet("dashboard")]
@@ -210,6 +214,46 @@ public class SuperAdminController : TaskverseBaseController
         var dto = await _superAdminOrchestrator.ReactivateCollege(collegeId, model.ToDto(GetPerformedBy()));
         return Ok(dto.ToResponseModel());
     }
+
+    // ── College-scoped report endpoints for Super Admin ──────────────────────────
+
+    [HttpGet("colleges/{collegeId}/reports/classes")]
+    [SwaggerResponse(200, "Classes and batches for the specified college", typeof(ClassConfigurationResponseModel))]
+    [SwaggerResponse(400, "Invalid college id")]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> GetCollegeReportClasses(string collegeId)
+    {
+        var roleCheck = EnsureSuperAdmin();
+        if (roleCheck is not null) return roleCheck;
+
+        if (!Guid.TryParse(collegeId, out var parsedCollegeId))
+        {
+            return BadRequest(new { message = "Invalid college id." });
+        }
+
+        var dto = await _collegeAdminOrchestrator.GetClassConfiguration(parsedCollegeId);
+        return Ok(dto.ToResponseModel());
+    }
+
+    [HttpGet("colleges/{collegeId}/reports/students")]
+    [SwaggerResponse(200, "Approved students for the specified college", typeof(List<ApprovedStudentResponseModel>))]
+    [SwaggerResponse(400, "Invalid college id")]
+    [SwaggerResponse(403, "Forbidden")]
+    public async Task<IActionResult> GetCollegeReportStudents(string collegeId)
+    {
+        var roleCheck = EnsureSuperAdmin();
+        if (roleCheck is not null) return roleCheck;
+
+        if (!Guid.TryParse(collegeId, out var parsedCollegeId))
+        {
+            return BadRequest(new { message = "Invalid college id." });
+        }
+
+        var dtos = await _collegeAdminOrchestrator.GetApprovedStudents(parsedCollegeId);
+        return Ok(dtos.Select(dto => dto.ToResponseModel()).ToList());
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
 
     private IActionResult? EnsureSuperAdmin()
     {

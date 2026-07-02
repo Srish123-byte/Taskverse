@@ -1,13 +1,15 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { finalize } from 'rxjs/operators';
+import { finalize, map, switchMap } from 'rxjs/operators';
 import { RouteAddress } from '../../../common/constants/routes.constants';
 import {
+  StudentAssessmentDetail,
   StudentAssessmentItem,
   StudentAssessmentsService,
   StudentStreak
 } from '../../../common/services/api/student-assessments.service';
+import { DeviceInformationService } from '../../../common/services/utilities/device-information.service';
 import { Session } from '../../../common/services/session/session.service';
 
 @Component({
@@ -25,11 +27,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
   upcomingAssessments: StudentAssessmentItem[] = [];
   streak: StudentStreak | null = null;
   isLoadingAssessments = false;
+
+  selectedAssessmentDetail: StudentAssessmentDetail | null = null;
+  selectedAssessmentId: string | null = null;
+  selectedAssessmentStatus = '';
+  selectedAssessmentName = '';
+  isDetailModalOpen = false;
+  isStartingAssessment = false;
+  isLoadingDetail = false;
+  loadingAssessmentId: string | null = null;
+  detailErrorMessage = '';
+  attemptErrorMessage = '';
+
   private readonly subscriptions = new Subscription();
+  private detailSubscription?: Subscription;
+  private attemptStartSubscription?: Subscription;
 
   constructor(
     private readonly session: Session,
     private readonly studentAssessmentsService: StudentAssessmentsService,
+    private readonly deviceInformationService: DeviceInformationService,
     private readonly router: Router,
     private readonly changeDetectorRef: ChangeDetectorRef
   ) {}
@@ -101,8 +118,102 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return status?.toUpperCase() === 'LIVE' ? 'Start Assessment' : 'View Details';
   }
 
-  goToAssessments(): void {
-    void this.router.navigateByUrl(`/${RouteAddress.Student.MyAssessments}`);
+  isLiveAssessment(status: string): boolean {
+    return status?.toUpperCase() === 'LIVE';
+  }
+
+  openAssessmentDetail(assessment: StudentAssessmentItem): void {
+    this.detailSubscription?.unsubscribe();
+    this.loadingAssessmentId = assessment.assessmentId;
+    this.detailErrorMessage = '';
+    this.attemptErrorMessage = '';
+
+    this.detailSubscription = this.studentAssessmentsService
+      .getAssessmentDetail(assessment.assessmentId)
+      .pipe(finalize(() => {
+        this.loadingAssessmentId = null;
+        this.changeDetectorRef.detectChanges();
+      }))
+      .subscribe({
+        next: detail => {
+          this.selectedAssessmentDetail = detail;
+          this.selectedAssessmentId = assessment.assessmentId;
+          this.selectedAssessmentStatus = assessment.assessmentStatus;
+          this.selectedAssessmentName = assessment.assessmentName;
+          this.isDetailModalOpen = true;
+          this.changeDetectorRef.detectChanges();
+        },
+        error: error => {
+          this.detailErrorMessage = error?.error?.message || 'Unable to load assessment details right now.';
+          this.changeDetectorRef.detectChanges();
+        }
+      });
+
+    this.subscriptions.add(this.detailSubscription);
+  }
+
+  closeDetailModal(): void {
+    this.isDetailModalOpen = false;
+    this.selectedAssessmentDetail = null;
+    this.selectedAssessmentId = null;
+    this.selectedAssessmentStatus = '';
+    this.selectedAssessmentName = '';
+    this.isStartingAssessment = false;
+    this.attemptErrorMessage = '';
+  }
+
+  async startAssessment(): Promise<void> {
+    if (!this.selectedAssessmentId || this.isStartingAssessment) {
+      return;
+    }
+
+    const assessmentId = this.selectedAssessmentId;
+    this.attemptStartSubscription?.unsubscribe();
+    this.isStartingAssessment = true;
+    this.attemptErrorMessage = '';
+
+    this.attemptStartSubscription = this.deviceInformationService
+      .getProctoringDeviceDetails()
+      .pipe(
+        switchMap(deviceDetails =>
+          this.studentAssessmentsService.startAssessment(assessmentId, deviceDetails).pipe(
+            switchMap(attempt =>
+              this.studentAssessmentsService
+                .startProctorSession(attempt.attemptId, {
+                  attemptId: attempt.attemptId,
+                  assessmentId: attempt.assessmentId,
+                  startedAt: attempt.startedAt ?? new Date().toISOString(),
+                  browserName: deviceDetails.browserName,
+                  browserVersion: deviceDetails.browserVersion,
+                  operatingSystem: deviceDetails.operatingSystem,
+                  deviceType: deviceDetails.deviceType,
+                  userAgent: deviceDetails.userAgent,
+                  ipAddress: deviceDetails.ipAddress
+                })
+                .pipe(map(session => ({ attempt, session })))
+            )
+          )
+        )
+      )
+      .pipe(finalize(() => {
+        this.isStartingAssessment = false;
+        this.changeDetectorRef.detectChanges();
+      }))
+      .subscribe({
+        next: ({ attempt, session }) => {
+          this.closeDetailModal();
+          void this.router.navigateByUrl(
+            `/${RouteAddress.Student.AssessmentRunner}/${attempt.attemptId}/run`,
+            { state: { attempt, session, startInFullscreen: true } }
+          );
+        },
+        error: error => {
+          this.attemptErrorMessage = error?.error?.message || 'Unable to start this assessment right now.';
+          this.changeDetectorRef.detectChanges();
+        }
+      });
+
+    this.subscriptions.add(this.attemptStartSubscription);
   }
 
   private loadUpcomingAssessments(): void {

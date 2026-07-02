@@ -21,6 +21,7 @@ export class TrainerShellComponent {
     { label: 'Students',    route: 'students',    icon: 'groups',      iconPath: 'assets/icons/nav/students.svg' },
     { label: 'Question Bank', route: 'questions-management', icon: 'quiz', iconPath: 'assets/icons/nav/tasks.svg' },
     { label: 'Assessments Management', route: 'assessments-management', icon: 'assignment', iconPath: 'assets/icons/nav/assessment-builder.svg' },
+    { label: 'Reports',     route: 'reports',     icon: 'bar_chart',   iconPath: 'assets/icons/nav/reports.svg' },
     { label: 'Manage',      route: 'manage',      icon: 'tune',        iconPath: 'assets/icons/nav/manage.svg' },
     { label: 'Help Center', route: 'help-center', icon: 'help_center', iconPath: 'assets/icons/nav/help-center.svg' }
   ];

@@ -2,7 +2,6 @@ import { formatDate } from '@angular/common';
 import { ChangeDetectorRef, Component, HostBinding, Input, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { RouteAddress } from '../../constants/routes.constants';
 import {
   AssessmentAdminService,
   AssessmentManagementItem,
@@ -66,8 +65,6 @@ export class AssessmentsManagementComponent implements OnInit {
   completedCount = 0;
   isLoading = false;
   errorMessage = '';
-  showCodingComingSoon = false;
-
   @HostBinding('class.theme-trainer')
   get isTrainerTheme(): boolean {
     return this.theme === 'trainer';
@@ -110,16 +107,11 @@ export class AssessmentsManagementComponent implements OnInit {
   }
 
   selectNonCodingQuestions(): void {
-    void this.router.navigate(['/', ...this.createAssessmentRouteSegments]);
+    void this.router.navigate(['/', ...this.createAssessmentRouteSegments, 'non-coding']);
   }
 
   selectCodingQuestions(): void {
-    this.showCodingComingSoon = true;
-  }
-
-  returnToDashboard(): void {
-    const dashboardRoute = this.theme === 'trainer' ? RouteAddress.Trainer.Dashboard : RouteAddress.CollegeAdmin.Dashboard;
-    void this.router.navigateByUrl(`/${dashboardRoute}`);
+    void this.router.navigate(['/', ...this.createAssessmentRouteSegments, 'coding']);
   }
 
   onFilterChange(): void {

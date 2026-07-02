@@ -100,10 +100,11 @@ public class CollegesController : ControllerBase
     }
 
     [HttpGet("colleges")]
-    [ProducesResponseType(typeof(IReadOnlyList<CollegeRecord>), StatusCodes.Status200OK)]
-    public ActionResult<IReadOnlyList<CollegeRecord>> GetColleges()
+    [ProducesResponseType(typeof(List<CollegeRecord>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<CollegeRecord>>> GetColleges()
     {
-        return Ok(_collegeService.GetColleges());
+        var colleges = await _collegeService.GetColleges();
+        return Ok(colleges);
     }
 
     [HttpPost("colleges/search")]
@@ -335,53 +336,54 @@ public class CollegesController : ControllerBase
 
     [HttpGet("colleges/pending")]
     [ProducesResponseType(typeof(List<CollegeRecord>), StatusCodes.Status200OK)]
-    public ActionResult<List<CollegeRecord>> GetPendingColleges()
+    public async Task<ActionResult<List<CollegeRecord>>> GetPendingColleges()
     {
-        return Ok(_collegeService.GetPendingColleges());
+        var colleges = await _collegeService.GetPendingColleges();
+        return Ok(colleges);
     }
 
     [HttpGet("colleges/{id:guid}")]
     [ProducesResponseType(typeof(CollegeRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public ActionResult<CollegeRecord> GetCollege(Guid id)
+    public async Task<ActionResult<CollegeRecord>> GetCollege(Guid id)
     {
-        var college = _collegeService.GetCollege(id);
+        var college = await _collegeService.GetCollege(id);
         return college is null ? NotFound() : Ok(college);
     }
 
     [HttpPost("colleges/{id:guid}/approve")]
     [ProducesResponseType(typeof(CollegeRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public ActionResult<CollegeRecord> ApproveCollege(Guid id, [FromBody] CollegeActionRequest request)
+    public async Task<ActionResult<CollegeRecord>> ApproveCollege(Guid id, [FromBody] CollegeActionRequest request)
     {
-        var college = _collegeService.ApproveCollege(id, request);
+        var college = await _collegeService.ApproveCollege(id, request);
         return college is null ? NotFound() : Ok(college);
     }
 
     [HttpPost("colleges/{id:guid}/reject")]
     [ProducesResponseType(typeof(CollegeRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public ActionResult<CollegeRecord> RejectCollege(Guid id, [FromBody] CollegeActionRequest request)
+    public async Task<ActionResult<CollegeRecord>> RejectCollege(Guid id, [FromBody] CollegeActionRequest request)
     {
-        var college = _collegeService.RejectCollege(id, request);
+        var college = await _collegeService.RejectCollege(id, request);
         return college is null ? NotFound() : Ok(college);
     }
 
     [HttpPost("colleges/{id:guid}/deactivate")]
     [ProducesResponseType(typeof(CollegeRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public ActionResult<CollegeRecord> DeactivateCollege(Guid id, [FromBody] CollegeActionRequest request)
+    public async Task<ActionResult<CollegeRecord>> DeactivateCollege(Guid id, [FromBody] CollegeActionRequest request)
     {
-        var college = _collegeService.DeactivateCollege(id, request);
+        var college = await _collegeService.DeactivateCollege(id, request);
         return college is null ? NotFound() : Ok(college);
     }
 
     [HttpPost("colleges/{id:guid}/reactivate")]
     [ProducesResponseType(typeof(CollegeRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public ActionResult<CollegeRecord> ReactivateCollege(Guid id, [FromBody] CollegeActionRequest request)
+    public async Task<ActionResult<CollegeRecord>> ReactivateCollege(Guid id, [FromBody] CollegeActionRequest request)
     {
-        var college = _collegeService.ReactivateCollege(id, request);
+        var college = await _collegeService.ReactivateCollege(id, request);
         return college is null ? NotFound() : Ok(college);
     }
 }

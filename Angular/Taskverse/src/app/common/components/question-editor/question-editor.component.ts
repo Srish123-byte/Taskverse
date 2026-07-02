@@ -3,7 +3,7 @@ import { ChangeDetectorRef, Component, HostBinding, Input, OnDestroy, OnInit } f
 import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Subject, takeUntil } from 'rxjs';
+import { Observable, Subject, takeUntil } from 'rxjs';
 import {
   AssessmentAdminService,
   CreateQuestionRequest,
@@ -65,6 +65,8 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
   isEditMode = false;
   successMessage = '';
   errorMessage = '';
+  showUnsavedWarningModal = false;
+  private deactivationSubject: Subject<boolean> | null = null;
   private pendingLoadCount = 0;
   private questionId = '';
   private fallbackReturnUrl = '';
@@ -310,6 +312,32 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
     this.goToQuestionBank();
   }
 
+  canDeactivate(): Observable<boolean> | boolean {
+    if (!this.form.dirty || this.form.pristine) {
+      return true;
+    }
+
+    this.showUnsavedWarningModal = true;
+    this.changeDetectorRef.detectChanges();
+    this.deactivationSubject = new Subject<boolean>();
+    return this.deactivationSubject.asObservable();
+  }
+
+  confirmLeave(): void {
+    this.showUnsavedWarningModal = false;
+    this.deactivationSubject?.next(true);
+    this.deactivationSubject?.complete();
+    this.deactivationSubject = null;
+  }
+
+  cancelLeave(): void {
+    this.showUnsavedWarningModal = false;
+    this.deactivationSubject?.next(false);
+    this.deactivationSubject?.complete();
+    this.deactivationSubject = null;
+    this.changeDetectorRef.detectChanges();
+  }
+
   closeSuccessMessage(): void {
     this.successMessage = '';
   }
@@ -501,6 +529,7 @@ export class QuestionEditorComponent implements OnInit, OnDestroy {
 
     this.syncClassificationSelections();
     this.applyQuestionTypeRules(questionType);
+    this.form.markAsPristine();
   }
 
   private resolveAnswerLabel(options: string[], answer: string | null | undefined): string {

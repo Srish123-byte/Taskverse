@@ -1,4 +1,17 @@
+<section *ngIf="isCodingRoute" class="coding-unavailable-qe-shell">
+  <span class="qe-kicker">Coding Questions</span>
+  <h2 class="qe-title">Coding question creation isn't available yet</h2>
+  <p class="qe-welcome">
+    We're still building the coding question experience. Check back soon, or add a
+    non-coding question in the meantime.
+  </p>
+  <button type="button" class="qe-back-action" (click)="goBack()">
+    <span>Back to Question Bank</span>
+  </button>
+</section>
+
 <app-question-editor
+  *ngIf="!isCodingRoute"
   heroKicker="Trainer Workspace"
   questionBankRoute="trainer/questions-management"
   theme="trainer">
