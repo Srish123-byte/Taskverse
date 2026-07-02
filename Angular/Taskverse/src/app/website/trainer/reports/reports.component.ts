@@ -1,6 +1,7 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import * as XLSX from 'xlsx';
 import { forkJoin } from 'rxjs';
+import { ReportEmailService } from '../../../common/services/api/report-email.service';
 import {
   TrainerAttendanceService,
   AttendanceBatchGroup,
@@ -72,10 +73,18 @@ export class ReportsComponent implements OnInit {
 
   readonly today = new Date().toLocaleString();
 
+  showMailModal = false;
+  mailPanelFor: 'main' | string = 'main';
+  mailRecipients = '';
+  isSendingEmail = false;
+  emailSendResult: 'success' | 'error' | null = null;
+  emailSendMessage = '';
+
   constructor(
     private readonly trainerAttendanceService: TrainerAttendanceService,
     private readonly collegeAdminService: CollegeAdminService,
     private readonly http: HttpClientService,
+    private readonly emailService: ReportEmailService,
     private readonly cdr: ChangeDetectorRef
   ) {}
 
@@ -161,9 +170,97 @@ export class ReportsComponent implements OnInit {
 
   exportToExcel(): void {
     if (!this.selectedStudent) return;
-    const student = this.selectedStudent;
-    const wb = XLSX.utils.book_new();
+    XLSX.writeFile(this.buildMainWorkbook(), `taskverse-trainer-report-${Date.now()}.xlsx`);
+  }
 
+  exportToPdf(): void {
+    window.print();
+  }
+
+  exportResultToExcel(result: StudentResult): void {
+    XLSX.writeFile(this.buildResultWorkbook(result), `taskverse-questions-${result.assessmentName.replace(/\s+/g, '-')}-${Date.now()}.xlsx`);
+  }
+
+  openMailPanel(forTarget: 'main' | string): void {
+    this.mailPanelFor = forTarget;
+    this.showMailModal = true;
+    this.mailRecipients = '';
+    this.emailSendResult = null;
+    this.emailSendMessage = '';
+    this.isSendingEmail = false;
+    this.cdr.detectChanges();
+  }
+
+  closeMailPanel(): void {
+    this.showMailModal = false;
+    this.emailSendResult = null;
+    this.cdr.detectChanges();
+  }
+
+  sendEmail(): void {
+    const recipients = this.emailService.parseRecipients(this.mailRecipients);
+    if (!recipients.length) {
+      this.emailSendResult = 'error';
+      this.emailSendMessage = 'Please enter at least one valid email address.';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    let wb: XLSX.WorkBook;
+    let fileName: string;
+
+    if (this.mailPanelFor === 'main') {
+      wb = this.buildMainWorkbook();
+      fileName = `taskverse-trainer-report-${Date.now()}.xlsx`;
+    } else {
+      const result = this.studentResults.find(r => r.resultId === this.mailPanelFor);
+      if (!result) return;
+      wb = this.buildResultWorkbook(result);
+      fileName = `taskverse-questions-${result.assessmentName.replace(/\s+/g, '-')}-${Date.now()}.xlsx`;
+    }
+
+    let base64: string;
+    try {
+      base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' }) as string;
+    } catch {
+      this.emailSendResult = 'error';
+      this.emailSendMessage = 'Could not generate report file. Please try again.';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    if (!base64) {
+      this.emailSendResult = 'error';
+      this.emailSendMessage = 'Report file is empty. Please try again.';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.isSendingEmail = true;
+    this.emailSendResult = null;
+    this.cdr.detectChanges();
+
+    this.emailService.sendEmail({ recipients, fileName, fileContentBase64: base64 }).subscribe({
+      next: () => {
+        this.isSendingEmail = false;
+        this.emailSendResult = 'success';
+        this.emailSendMessage = `Report sent to ${recipients.join(', ')}.`;
+        this.cdr.detectChanges();
+        setTimeout(() => { this.showMailModal = false; this.cdr.detectChanges(); }, 2500);
+      },
+      error: () => {
+        this.isSendingEmail = false;
+        this.emailSendResult = 'error';
+        this.emailSendMessage = 'Failed to send email. Please try again.';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  private buildMainWorkbook(): XLSX.WorkBook {
+    const wb = XLSX.utils.book_new();
+    const student = this.selectedStudent;
+    if (!student) return wb;
     const summaryRows: any[][] = [
       ['Taskverse — Trainer Report'],
       ['Batch', this.selectedBatchName],
@@ -177,15 +274,12 @@ export class ReportsComponent implements OnInit {
       [],
       ['Assessment', 'Date', 'Total Marks', 'Score', 'Percentage', 'Status', 'Correct', 'Wrong', 'Skipped'],
       ...this.studentResults.map(r => [
-        r.assessmentName,
-        r.submittedAt ? r.submittedAt.toLocaleDateString() : '—',
-        r.totalMarks, r.obtainedMarks,
-        `${Number(r.percentage).toFixed(1)}%`,
+        r.assessmentName, r.submittedAt ? r.submittedAt.toLocaleDateString() : '—',
+        r.totalMarks, r.obtainedMarks, `${Number(r.percentage).toFixed(1)}%`,
         r.status, r.correctAnswers, r.wrongAnswers, r.unansweredQuestions
       ])
     ];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryRows), 'Student Report');
-
     const qRows: any[][] = [['Assessment', 'Q#', 'Question', 'Type', 'Max Marks', 'Awarded', 'Status', 'Your Answer', 'Correct Answer']];
     for (const result of this.studentResults) {
       for (const q of result.questionResults) {
@@ -193,12 +287,27 @@ export class ReportsComponent implements OnInit {
       }
     }
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(qRows), 'Question Summary');
-
-    XLSX.writeFile(wb, `taskverse-trainer-report-${Date.now()}.xlsx`);
+    return wb;
   }
 
-  exportToPdf(): void {
-    window.print();
+  private buildResultWorkbook(result: StudentResult): XLSX.WorkBook {
+    const wb = XLSX.utils.book_new();
+    const rows: any[][] = [
+      ['Taskverse — Question Details'],
+      ['Assessment', result.assessmentName],
+      ['Student', this.selectedStudent?.fullName ?? ''],
+      ['Submitted', result.submittedAt ? result.submittedAt.toLocaleString() : '—'],
+      ['Score', `${result.obtainedMarks} / ${result.totalMarks} (${Number(result.percentage).toFixed(1)}%)`],
+      ['Status', result.status],
+      [],
+      ['Q#', 'Question', 'Type', 'Max Marks', 'Awarded', 'Status', 'Your Answer', 'Correct Answer'],
+      ...result.questionResults.map(q => [
+        q.displayOrder, q.questionText, q.questionType, q.marks, q.awardedMarks,
+        q.status, q.userAnswers?.join(', ') || '—', q.correctAnswers?.join(', ') || '—'
+      ])
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Question Details');
+    return wb;
   }
 
   private loadBatchStructure(): void {

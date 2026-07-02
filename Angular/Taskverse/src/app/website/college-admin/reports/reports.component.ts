@@ -264,8 +264,22 @@ export class ReportsComponent implements OnInit {
       fileName = `taskverse-questions-${result.assessmentName.replace(/\s+/g, '-')}-${Date.now()}.xlsx`;
     }
 
-    const fileBytes: Uint8Array = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
-    const base64 = this.toBase64(fileBytes);
+    let base64: string;
+    try {
+      base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' }) as string;
+    } catch {
+      this.emailSendResult = 'error';
+      this.emailSendMessage = 'Could not generate report file. Please try again.';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    if (!base64) {
+      this.emailSendResult = 'error';
+      this.emailSendMessage = 'Report file is empty. Please try again.';
+      this.cdr.detectChanges();
+      return;
+    }
 
     this.isSendingEmail = true;
     this.emailSendResult = null;
@@ -286,15 +300,6 @@ export class ReportsComponent implements OnInit {
         this.cdr.detectChanges();
       }
     });
-  }
-
-  private toBase64(bytes: Uint8Array): string {
-    let binary = '';
-    const chunk = 8192;
-    for (let i = 0; i < bytes.length; i += chunk) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-    }
-    return btoa(binary);
   }
 
   private buildMainWorkbook(): XLSX.WorkBook {
@@ -419,10 +424,9 @@ export class ReportsComponent implements OnInit {
       cls.batches.forEach(b => b.assignedTrainers.forEach(t => trainerSet.add(t.trainerId)));
 
       const classBatchIds = new Set(cls.batches.map(b => b.batchId));
-      const assessmentCount = assessments.filter(a => {
-        const ids = a.assignedBatchIds ?? [];
-        return ids.length === 0 || ids.some(id => classBatchIds.has(id));
-      }).length;
+      const assessmentCount = assessments.filter(a =>
+        (a.assignedBatchIds ?? []).some(id => classBatchIds.has(id))
+      ).length;
 
       return {
         classId: cls.classId,
@@ -439,10 +443,9 @@ export class ReportsComponent implements OnInit {
 
     for (const cls of classConfig.classes) {
       for (const batch of cls.batches) {
-        const assessmentCount = assessments.filter(a => {
-          const ids = a.assignedBatchIds ?? [];
-          return ids.length === 0 || ids.includes(batch.batchId);
-        }).length;
+        const assessmentCount = assessments.filter(a =>
+          (a.assignedBatchIds ?? []).includes(batch.batchId)
+        ).length;
 
         rows.push({
           batchId: batch.batchId,

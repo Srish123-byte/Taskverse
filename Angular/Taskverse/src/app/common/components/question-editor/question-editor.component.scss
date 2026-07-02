@@ -414,6 +414,93 @@
   color: #11352b;
 }
 
+.qe-unsaved-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(2, 8, 23, 0.48);
+  backdrop-filter: blur(6px);
+}
+
+.qe-unsaved-modal {
+  width: min(100%, 400px);
+  display: grid;
+  gap: 14px;
+  padding: 28px 26px 24px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(17, 24, 39, 0.99) 0%, rgba(15, 23, 42, 0.99) 100%),
+    radial-gradient(circle at top, rgba(56, 189, 248, 0.1), transparent 42%);
+  box-shadow: 0 32px 64px rgba(2, 8, 23, 0.4);
+}
+
+.qe-unsaved-title {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #f8fafc;
+}
+
+.qe-unsaved-body {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #94a3b8;
+  line-height: 1.55;
+}
+
+.qe-unsaved-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.qe-unsaved-btn {
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.qe-unsaved-btn-cancel {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: linear-gradient(180deg, rgba(24, 35, 60, 0.94) 0%, rgba(16, 24, 41, 0.96) 100%);
+  color: #e5eef9;
+}
+
+.qe-unsaved-btn-confirm {
+  border: 0;
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+  color: #fff;
+}
+
+:host(.theme-trainer) .qe-unsaved-modal {
+  border-color: rgba(43, 94, 74, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(245, 250, 247, 0.99) 100%),
+    radial-gradient(circle at top, rgba(149, 213, 178, 0.12), transparent 42%);
+  box-shadow: 0 28px 56px rgba(17, 53, 43, 0.2);
+}
+
+:host(.theme-trainer) .qe-unsaved-title {
+  color: #11352b;
+}
+
+:host(.theme-trainer) .qe-unsaved-body {
+  color: #4e6f63;
+}
+
+:host(.theme-trainer) .qe-unsaved-btn-cancel {
+  border-color: rgba(43, 94, 74, 0.16);
+  background: rgba(255, 255, 255, 0.92);
+  color: #11352b;
+}
+
 @media (max-width: 900px) {
   .form-grid-2,
   .form-grid-3 {

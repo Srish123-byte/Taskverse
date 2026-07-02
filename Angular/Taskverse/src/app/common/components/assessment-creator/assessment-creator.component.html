@@ -472,29 +472,22 @@
               </div>
 
               <div class="assignment-class-list" *ngIf="assignmentClasses.length > 0">
-                <section class="assignment-class-card" *ngFor="let classItem of assignmentClasses; trackBy: trackByAssignmentClassId">
-                  <div class="assignment-class-head">
-                    <div class="assignment-class-copy">
-                      <div class="assignment-class-title">{{ classItem.name }}</div>
-                      <div class="assignment-class-meta" *ngIf="classItem.academicYear">Academic Year {{ classItem.academicYear }}</div>
-                    </div>
-
-                    <div class="assignment-class-count">
+                <div class="batch-group" *ngFor="let classItem of assignmentClasses; trackBy: trackByAssignmentClassId">
+                  <div class="batch-group-header">
+                    <span class="assignment-class-title">{{ classItem.name }}</span>
+                    <span class="assignment-class-meta" *ngIf="classItem.academicYear">AY {{ classItem.academicYear }}</span>
+                    <span class="assignment-class-count">
                       {{ classItem.batches.length }} {{ classItem.batches.length === 1 ? 'batch' : 'batches' }}
-                    </div>
+                    </span>
                   </div>
 
                   <div class="empty-state assignment-inline-empty" *ngIf="classItem.batches.length === 0">
                     No batches available for this class yet.
                   </div>
 
-                  <div class="batch-list" *ngIf="classItem.batches.length > 0">
-                    <label class="batch-option" *ngFor="let batch of classItem.batches; trackBy: trackByAssignmentBatchId">
-                      <div class="batch-copy">
-                        <span>{{ batch.name }}</span>
-                        <small>{{ classItem.name }}</small>
-                      </div>
-
+                  <div class="batch-flat-list" *ngIf="classItem.batches.length > 0">
+                    <label class="batch-flat-row" *ngFor="let batch of classItem.batches; trackBy: trackByAssignmentBatchId">
+                      <span class="batch-flat-name">{{ batch.name }}</span>
                       <span class="batch-toggle-shell" [class.is-selected]="isBatchSelected(batch.batchId)">
                         <input
                           type="checkbox"
@@ -503,7 +496,7 @@
                       </span>
                     </label>
                   </div>
-                </section>
+                </div>
               </div>
             </div>
           </div>
@@ -532,6 +525,17 @@
       <button type="button" class="primary-action" [disabled]="isSubmitting" (click)="scheduleAssessment()">
         {{ primaryActionLabel }}
       </button>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="showUnsavedWarningModal" class="unsaved-modal-backdrop" (click)="cancelLeave()">
+  <div class="unsaved-modal" (click)="$event.stopPropagation()">
+    <h3 class="unsaved-modal-title">Changes not saved</h3>
+    <p class="unsaved-modal-body">You have unsaved changes in this assessment. Do you want to leave without saving?</p>
+    <div class="unsaved-modal-actions">
+      <button type="button" class="unsaved-btn unsaved-btn-cancel" (click)="cancelLeave()">Stay</button>
+      <button type="button" class="unsaved-btn unsaved-btn-confirm" (click)="confirmLeave()">Leave</button>
     </div>
   </div>
 </div>

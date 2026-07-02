@@ -1,17 +1,4 @@
 <div class="page-container">
-  <section *ngIf="showCodingComingSoon" class="coding-unavailable-shell">
-    <span class="hero-kicker">Coding Questions</span>
-    <h2 class="page-title">Coding assessments aren't ready yet</h2>
-    <p class="page-welcome">
-      We're still building the coding question experience. Check back soon, or create a
-      non-coding assessment in the meantime.
-    </p>
-    <button type="button" class="primary-action" (click)="returnToDashboard()">
-      <span>Back to Home</span>
-    </button>
-  </section>
-
-  <ng-container *ngIf="!showCodingComingSoon">
   <section class="assessments-hero">
     <div class="hero-copy">
       <span class="hero-kicker">{{ heroKicker }}</span>
@@ -160,5 +147,4 @@
       </div>
     </div>
   </section>
-  </ng-container>
 </div>

@@ -1,16 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
+using Taskverse.API.Models;
 using Taskverse.Business.Interface;
 
 namespace Taskverse.Api.Controllers;
 
-public class SendReportEmailRequest
-{
-    public List<string> Recipients { get; set; } = [];
-    public string FileName { get; set; } = "report.xlsx";
-    public string FileContentBase64 { get; set; } = string.Empty;
-    public string? Subject { get; set; }
-    public string? Body { get; set; }
-}
+
 
 [ApiController]
 [Route("api/reports")]
@@ -25,7 +19,7 @@ public class ReportsController : TaskverseBaseController
     }
 
     [HttpPost("send-email")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> SendReportEmail(
@@ -73,7 +67,7 @@ public class ReportsController : TaskverseBaseController
         try
         {
             await _emailService.SendEmailAsync(message, cancellationToken);
-            return NoContent();
+            return Ok(new { success = true });
         }
         catch (InvalidOperationException ex)
         {

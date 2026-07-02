@@ -1,3 +1,55 @@
 :host {
   display: block;
 }
+
+.coding-unavailable-shell {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 14px;
+  padding: 56px 28px 64px;
+  border: 1px solid rgba(94, 234, 212, 0.14);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(12, 32, 39, 0.98) 0%, rgba(9, 24, 30, 0.98) 100%),
+    radial-gradient(circle at top right, rgba(94, 234, 212, 0.12), transparent 38%);
+  box-shadow: 0 24px 54px rgba(2, 8, 23, 0.32);
+  margin: 24px;
+}
+
+.hero-kicker {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #5eead4;
+}
+
+.page-title {
+  margin: 4px 0 0;
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  color: #f8fafc;
+}
+
+.page-welcome {
+  max-width: 480px;
+  margin: 0;
+  color: #94a3b8;
+  line-height: 1.6;
+}
+
+.primary-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 14px 28px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #5eead4 0%, #2dd4bf 100%);
+  color: #0c1f1e;
+  font-size: 0.94rem;
+  font-weight: 700;
+  cursor: pointer;
+}

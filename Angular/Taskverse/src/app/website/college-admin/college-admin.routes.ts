@@ -12,6 +12,7 @@ import { HelpCenterComponent } from './help-center/help-center.component';
 import { QuestionEditorPageComponent } from './question-editor/question-editor.component';
 import { NewAssessmentComponent } from './new-assessment/new-assessment.component';
 import { StudentsComponent } from '../trainer/students/students.component';
+import { unsavedChangesGuard } from '../../common/guards/unsaved-changes.guard';
 
 const routes: Routes = [
   {
@@ -25,10 +26,14 @@ const routes: Routes = [
       { path: 'classes-management', component: AcademicStructureComponent },
       { path: 'classes-management/attendance-tracker', component: StudentsComponent },
       { path: 'questions-management', component: QuestionsManagementComponent },
-      { path: 'questions-management/new', component: QuestionEditorPageComponent },
-      { path: 'questions-management/edit/:id', component: QuestionEditorPageComponent },
+      { path: 'questions-management/new', component: QuestionEditorPageComponent, canDeactivate: [unsavedChangesGuard] },
+      { path: 'questions-management/new/non-coding', component: QuestionEditorPageComponent, canDeactivate: [unsavedChangesGuard] },
+      { path: 'questions-management/new/coding', component: QuestionEditorPageComponent },
+      { path: 'questions-management/edit/:id', component: QuestionEditorPageComponent, canDeactivate: [unsavedChangesGuard] },
       { path: 'assessments-management', component: AssessmentBuilderComponent },
-      { path: 'assessments-management/new-assessment', component: NewAssessmentComponent },
+      { path: 'assessments-management/new-assessment', component: NewAssessmentComponent, canDeactivate: [unsavedChangesGuard] },
+      { path: 'assessments-management/new-assessment/non-coding', component: NewAssessmentComponent, canDeactivate: [unsavedChangesGuard] },
+      { path: 'assessments-management/new-assessment/coding', component: NewAssessmentComponent },
       { path: 'assessments-management/edit-assessment/:id', component: NewAssessmentComponent },
       { path: 'reports', component: ReportsComponent },
       { path: 'help-center', component: HelpCenterComponent },

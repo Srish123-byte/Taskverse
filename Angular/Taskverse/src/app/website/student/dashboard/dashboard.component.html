@@ -36,11 +36,17 @@
               </div>
             </div>
 
-            <button type="button" class="assessment-action" (click)="goToAssessments()">
+            <button
+              type="button"
+              class="assessment-action"
+              [disabled]="loadingAssessmentId === assessment.assessmentId"
+              (click)="openAssessmentDetail(assessment)">
               <img src="assets/icons/student/start-assessment.svg" alt="" class="student-action-icon" aria-hidden="true" />
-              <span>{{ getActionLabel(assessment.assessmentStatus) }}</span>
+              <span>{{ loadingAssessmentId === assessment.assessmentId ? 'Loading...' : getActionLabel(assessment.assessmentStatus) }}</span>
             </button>
           </article>
+
+          <p *ngIf="detailErrorMessage" class="assessment-list-empty detail-error">{{ detailErrorMessage }}</p>
 
           <p *ngIf="!isLoadingAssessments && !upcomingAssessments.length" class="assessment-list-empty">
             No active or upcoming assessments right now. New assessments assigned to you will appear here.
@@ -64,5 +70,57 @@
         </article>
       </aside>
     </section>
+  </section>
+</div>
+
+<!-- Assessment detail modal -->
+<div *ngIf="isDetailModalOpen && selectedAssessmentDetail" class="dash-detail-backdrop" (click)="closeDetailModal()">
+  <section class="dash-detail-modal" (click)="$event.stopPropagation()">
+    <button type="button" class="dash-detail-close" aria-label="Close" (click)="closeDetailModal()">&times;</button>
+
+    <span class="dash-detail-eyebrow">Assessment Details</span>
+    <h2>{{ selectedAssessmentDetail.assessmentName || selectedAssessmentName }}</h2>
+
+    <div class="dash-detail-grid">
+      <div class="dash-detail-card">
+        <span>Duration</span>
+        <strong>{{ selectedAssessmentDetail.durationMinutes }} mins</strong>
+      </div>
+      <div class="dash-detail-card">
+        <span>Total Marks</span>
+        <strong>{{ selectedAssessmentDetail.totalMarks }}</strong>
+      </div>
+      <div class="dash-detail-card">
+        <span>Questions</span>
+        <strong>{{ selectedAssessmentDetail.totalQuestions }}</strong>
+      </div>
+      <div class="dash-detail-card">
+        <span>Start Time</span>
+        <strong>{{ selectedAssessmentDetail.startTime ? (selectedAssessmentDetail.startTime | date:'medium') : 'Not set' }}</strong>
+      </div>
+      <div class="dash-detail-card">
+        <span>End Time</span>
+        <strong>{{ selectedAssessmentDetail.endTime ? (selectedAssessmentDetail.endTime | date:'medium') : 'Not set' }}</strong>
+      </div>
+    </div>
+
+    <div class="dash-detail-instructions" *ngIf="selectedAssessmentDetail.instructions">
+      <span>Instructions</span>
+      <p>{{ selectedAssessmentDetail.instructions }}</p>
+    </div>
+
+    <div *ngIf="attemptErrorMessage" class="dash-attempt-error">{{ attemptErrorMessage }}</div>
+
+    <div class="dash-detail-actions">
+      <button type="button" class="dash-detail-btn dash-detail-btn-muted" (click)="closeDetailModal()">Close</button>
+      <button
+        *ngIf="isLiveAssessment(selectedAssessmentStatus)"
+        type="button"
+        class="dash-detail-btn dash-detail-btn-primary"
+        [disabled]="isStartingAssessment"
+        (click)="startAssessment()">
+        {{ isStartingAssessment ? 'Starting...' : 'Start Assessment' }}
+      </button>
+    </div>
   </section>
 </div>

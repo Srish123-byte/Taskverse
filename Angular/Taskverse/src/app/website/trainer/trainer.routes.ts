@@ -1,4 +1,5 @@
 import { RouterModule, Routes } from '@angular/router';
+import { unsavedChangesGuard } from '../../common/guards/unsaved-changes.guard';
 import { TrainerShellComponent } from './trainer-shell/trainer-shell.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { CoursesComponent } from './courses/courses.component';
@@ -21,10 +22,14 @@ const routes: Routes = [
       { path: 'courses', component: CoursesComponent },
       { path: 'students', component: StudentsComponent },
       { path: 'questions-management', component: QuestionsManagementComponent },
-      { path: 'questions-management/new', component: QuestionEditorPageComponent },
-      { path: 'questions-management/edit/:id', component: QuestionEditorPageComponent },
+      { path: 'questions-management/new', component: QuestionEditorPageComponent, canDeactivate: [unsavedChangesGuard] },
+      { path: 'questions-management/new/non-coding', component: QuestionEditorPageComponent, canDeactivate: [unsavedChangesGuard] },
+      { path: 'questions-management/new/coding', component: QuestionEditorPageComponent },
+      { path: 'questions-management/edit/:id', component: QuestionEditorPageComponent, canDeactivate: [unsavedChangesGuard] },
       { path: 'assessments-management', component: AssessmentsManagementComponent },
-      { path: 'assessments-management/new-assessment', component: NewAssessmentComponent },
+      { path: 'assessments-management/new-assessment', component: NewAssessmentComponent, canDeactivate: [unsavedChangesGuard] },
+      { path: 'assessments-management/new-assessment/non-coding', component: NewAssessmentComponent, canDeactivate: [unsavedChangesGuard] },
+      { path: 'assessments-management/new-assessment/coding', component: NewAssessmentComponent },
       { path: 'assessments-management/edit-assessment/:id', component: NewAssessmentComponent },
       { path: 'reports', component: ReportsComponent },
       { path: 'manage', component: ManageComponent },

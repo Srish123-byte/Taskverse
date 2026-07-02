@@ -180,3 +180,14 @@
     </div>
   </form>
 </div>
+
+<div *ngIf="showUnsavedWarningModal" class="qe-unsaved-backdrop" (click)="cancelLeave()">
+  <div class="qe-unsaved-modal" (click)="$event.stopPropagation()">
+    <h3 class="qe-unsaved-title">Changes not saved</h3>
+    <p class="qe-unsaved-body">You have unsaved changes in this question. Do you want to leave without saving?</p>
+    <div class="qe-unsaved-actions">
+      <button type="button" class="qe-unsaved-btn qe-unsaved-btn-cancel" (click)="cancelLeave()">Stay</button>
+      <button type="button" class="qe-unsaved-btn qe-unsaved-btn-confirm" (click)="confirmLeave()">Leave</button>
+    </div>
+  </div>
+</div>

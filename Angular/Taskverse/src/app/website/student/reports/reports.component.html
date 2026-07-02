@@ -22,6 +22,10 @@
         <mat-icon>table_view</mat-icon>
         Export Excel
       </button>
+      <button class="btn-export mail" (click)="openMailPanel('main')">
+        <mat-icon>email</mat-icon>
+        Mail
+      </button>
     </div>
   </header>
 
@@ -176,6 +180,18 @@
           </div>
         </div>
 
+        <!-- Attempt export actions -->
+        <div class="qs-header no-print" *ngIf="!selectedAttempt.questionsLoading && selectedAttempt.questionResults.length > 0">
+          <div class="qs-actions">
+            <button class="btn-qs-action excel" (click)="exportAttemptToExcel()">
+              <mat-icon>table_view</mat-icon> Export Excel
+            </button>
+            <button class="btn-qs-action mail" (click)="openMailPanel('attempt')">
+              <mat-icon>email</mat-icon> Mail
+            </button>
+          </div>
+        </div>
+
         <!-- Loading question details -->
         <div *ngIf="selectedAttempt.questionsLoading" class="qs-loading">
           <mat-spinner [diameter]="22"></mat-spinner>
@@ -268,4 +284,41 @@
     </div>
 
   </ng-container>
+</div>
+
+<!-- ── Email modal overlay ──────────────────────────────────────────────── -->
+<div *ngIf="showMailModal" class="modal-overlay no-print" (click)="closeMailPanel()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <mat-icon>email</mat-icon>
+      <span>Send Report via Email</span>
+      <button class="modal-close" (click)="closeMailPanel()"><mat-icon>close</mat-icon></button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc">
+        {{ mailPanelFor === 'main' ? 'The full report will be attached as an Excel file.' : 'Question details for this attempt will be attached as an Excel file.' }}
+      </p>
+      <label class="filter-label">
+        Recipients <span class="mail-hint">(comma, semicolon or space separated)</span>
+      </label>
+      <textarea class="mail-input" rows="3" [(ngModel)]="mailRecipients"
+        placeholder="email@example.com, another@example.com"
+        [disabled]="isSendingEmail" (keydown.enter)="$event.preventDefault()">
+      </textarea>
+      <div *ngIf="emailSendResult === 'error'" class="mail-feedback error">
+        <mat-icon>error</mat-icon> {{ emailSendMessage }}
+      </div>
+      <div *ngIf="emailSendResult === 'success'" class="mail-feedback success">
+        <mat-icon>check_circle</mat-icon> {{ emailSendMessage }}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn cancel" (click)="closeMailPanel()" [disabled]="isSendingEmail">Cancel</button>
+      <button class="modal-btn send" (click)="sendEmail()" [disabled]="isSendingEmail || !mailRecipients.trim()">
+        <mat-spinner *ngIf="isSendingEmail" [diameter]="16"></mat-spinner>
+        <mat-icon *ngIf="!isSendingEmail">send</mat-icon>
+        {{ isSendingEmail ? 'Sending…' : 'Send Report' }}
+      </button>
+    </div>
+  </div>
 </div>
