@@ -1,5 +1,7 @@
 #!/bin/bash
-set -e
+set -euo pipefail
+
+. "$(dirname "$0")/deploy_helpers.sh"
 
 echo "===== VALIDATING DEPLOYMENT ====="
 
@@ -10,9 +12,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-if [ ! -f /var/www/assets/config.json ]; then
-    echo "assets/config.json not found."
-    exit 1
-fi
+require_file_with_content "/var/www/assets/config.json" "assets/config.json"
 
 echo "Deployment validated successfully."
